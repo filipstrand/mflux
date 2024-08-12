@@ -64,8 +64,6 @@ class Transformer(nn.Module):
         hidden_states = self.norm_out.forward(hidden_states, text_embeddings)
         hidden_states = self.proj_out(hidden_states)
         noise = hidden_states
-        mx.eval(noise)
-        print(t)
         return noise
 
     @staticmethod

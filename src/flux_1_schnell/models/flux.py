@@ -1,6 +1,7 @@
 import PIL
 import mlx.core as mx
 from PIL import Image
+from tqdm import tqdm
 
 from flux_1_schnell.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from flux_1_schnell.tokenizer.clip_tokenizer import TokenizerCLIP
@@ -41,7 +42,7 @@ class Flux1Schnell:
             t5_text_encoder=self.t5_text_encoder
         )
 
-        for t in range(config.num_inference_steps):
+        for t in tqdm(range(config.num_inference_steps)):
             noise = self.transformer.predict(
                 t=t,
                 prompt_embeds=prompt_embeds,
@@ -56,6 +57,8 @@ class Flux1Schnell:
                 latent=latents,
                 config=config
             )
+
+            mx.eval(latents)
 
         latents = Flux1Schnell._unpack_latents(latents)
         decoded = self.vae.decode(latents)
