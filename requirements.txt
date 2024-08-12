@@ -1,0 +1,6 @@
+mlx>=0.16.0
+numpy>=2.0.1
+pillow>=10.4.0
+transformers>=4.44.0
+sentencepiece>=0.2.0
+torch>=2.3.1
