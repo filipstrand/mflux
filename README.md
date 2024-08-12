@@ -62,9 +62,9 @@ In this implementation, this initial latent is fully deterministically controlle
 However, if we were to import a fixed instance of this latent array saved from the Diffusers implementation, then MFLUX will produce an identical image to the Diffusers implementation (assuming a fixed prompt and using the default parameter settings in the Diffusers setup).
 
 
-The images-pairs below illustrate this equivalence. 
-In these both cases the Schnell model was run for 2 time steps, 
-the Diffusers implementation ran in CPU mode. 
+The images below illustrate this equivalence. 
+In all cases the Schnell model was run for 2 time steps. 
+The Diffusers implementation ran in CPU mode. 
 The precision for MFLUX can be set in the [Config](src/flux_1_schnell/config/config.py) class. 
 There is typically a noticeable but very small difference in the final image when switching between 16bit and 32bit precision.
 
