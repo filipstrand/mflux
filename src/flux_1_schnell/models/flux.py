@@ -21,12 +21,12 @@ from flux_1_schnell.weights.weight_handler import WeightHandler
 
 class Flux1Schnell:
 
-    def __init__(self, root_path: str):
-        tokenizers = TokenizerHandler.load_from_disk_via_huggingface_transformers(root_path)
+    def __init__(self, repo_id: str):
+        tokenizers = TokenizerHandler.load_from_disk_or_huggingface(repo_id)
         self.clip_tokenizer = TokenizerCLIP(tokenizers.clip)
         self.t5_tokenizer = TokenizerT5(tokenizers.t5)
 
-        weights = WeightHandler.load_from_disk(root_path)
+        weights = WeightHandler.load_from_disk_or_huggingface(repo_id)
         self.vae = VAE(weights.vae)
         self.transformer = Transformer(weights.transformer)
         self.clip_text_encoder = CLIPEncoder(weights.clip_encoder)
