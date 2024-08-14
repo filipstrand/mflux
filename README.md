@@ -25,7 +25,7 @@ like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) f
 ### Installation
 1. Clone the repo:
     ```
-    git clone git@github.com/filipstrand/mflux.git
+    git clone git@github.com:filipstrand/mflux.git
     ```
 2. Navigate to the project and set up a virtual environment:
    ```
