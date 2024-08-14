@@ -5,3 +5,4 @@ transformers>=4.44.0
 sentencepiece>=0.2.0
 torch>=2.3.1
 tqdm>=4.66.5
+huggingface-hub>=0.24.5
