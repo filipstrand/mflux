@@ -1,7 +1,12 @@
+import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
+
 from flux_1_schnell.config.config import Config
 from flux_1_schnell.models.flux import Flux1Schnell
 
-flux = Flux1Schnell("/Users/filipstrand/.cache/FLUX.1-schnell/")
+flux = Flux1Schnell("black-forest-labs/FLUX.1-schnell")
 
 image = flux.generate_image(
     seed=3,
@@ -11,4 +16,4 @@ image = flux.generate_image(
     )
 )
 
-image.save("/Users/filipstrand/Desktop/image.png")
+image.save("image.png")

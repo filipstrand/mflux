@@ -1,4 +1,7 @@
+from pathlib import Path
+
 import mlx.core as mx
+from huggingface_hub import snapshot_download
 from mlx.utils import tree_unflatten
 
 from flux_1_schnell.config.config import Config
@@ -6,30 +9,32 @@ from flux_1_schnell.config.config import Config
 
 class WeightHandler:
 
-    def __init__(self, root_path: str):
+    def __init__(self, repo_id: str):
+        root_path = WeightHandler._download_or_get_cached_weights(repo_id)
+
         self.clip_encoder = WeightHandler._clip_encoder(
-            weights=WeightHandler._load(root_path + "/text_encoder/model.safetensors")
+            weights=WeightHandler._load(root_path / "text_encoder/model.safetensors")
         )
         self.t5_encoder = WeightHandler._t5_encoder(
-            weights_1=WeightHandler._load(root_path + "/text_encoder_2/model-00001-of-00002.safetensors"),
-            weights_2=WeightHandler._load(root_path + "/text_encoder_2/model-00002-of-00002.safetensors"),
+            weights_1=WeightHandler._load(root_path / "text_encoder_2/model-00001-of-00002.safetensors"),
+            weights_2=WeightHandler._load(root_path / "text_encoder_2/model-00002-of-00002.safetensors"),
         )
         self.vae = WeightHandler._vae(
-            weights=WeightHandler._load(root_path + "/vae/diffusion_pytorch_model.safetensors")
+            weights=WeightHandler._load(root_path / "vae/diffusion_pytorch_model.safetensors")
         )
         self.transformer = WeightHandler._transformer(
-            weights_1=WeightHandler._load(root_path + "transformer/diffusion_pytorch_model-00001-of-00003.safetensors"),
-            weights_2=WeightHandler._load(root_path + "transformer/diffusion_pytorch_model-00002-of-00003.safetensors"),
-            weights_3=WeightHandler._load(root_path + "transformer/diffusion_pytorch_model-00003-of-00003.safetensors"),
+            weights_1=WeightHandler._load(root_path / "transformer/diffusion_pytorch_model-00001-of-00003.safetensors"),
+            weights_2=WeightHandler._load(root_path / "transformer/diffusion_pytorch_model-00002-of-00003.safetensors"),
+            weights_3=WeightHandler._load(root_path / "transformer/diffusion_pytorch_model-00003-of-00003.safetensors"),
         )
 
     @staticmethod
-    def load_from_disk(root_path: str) -> "WeightHandler":
-        return WeightHandler(root_path)
+    def load_from_disk_or_huggingface(repo_id: str) -> "WeightHandler":
+        return WeightHandler(repo_id)
 
     @staticmethod
-    def _load(path: str) -> list[dict]:
-        return list(mx.load(path).items())
+    def _load(path: Path) -> list[dict]:
+        return list(mx.load(str(path)).items())
 
     @staticmethod
     def _clip_encoder(weights: list[dict]) -> dict:
@@ -108,3 +113,17 @@ class WeightHandler:
             value = value.transpose(0, 2, 3, 1)
         value = value.reshape(-1).reshape(value.shape).astype(Config.precision)
         return [(key, value)]
+
+    @staticmethod
+    def _download_or_get_cached_weights(repo_id: str) -> Path:
+        return Path(
+            snapshot_download(
+                repo_id=repo_id,
+                allow_patterns=[
+                    "text_encoder/*.safetensors",
+                    "text_encoder_2/*.safetensors",
+                    "transformer/*.safetensors",
+                    "vae/*.safetensors",
+                ]
+            )
+        )

@@ -22,23 +22,36 @@ like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) f
 - [x] FLUX.1-Scnhell
 - [ ] FLUX.1-Dev
 
-### Prerequisites
-
-- The required libraries are listed in [requirements.txt](requirements.txt). 
-- Development and testing was done with Python 3.12
-- Download the weights and tokenizers at [Huggingface/black-forest-labs](https://huggingface.co/black-forest-labs/FLUX.1-schnell/tree/main).
-    Point to the location of the root folder as shown in the example below:
-
+### Installation
+1. Clone the repo:
+    ```
+    git clone git@github.com/filipstrand/mflux.git
+    ```
+2. Navigate to the project and set up a virtual environment:
+   ```
+   cd mflux && python3 -m venv .venv && source .venv/bin/activate
+   ``` 
+3. Install the required dependencies:
+    ```
+   pip install -r requirements.txt
+   ```
 ### Generating an image
 
-Run [main.py](/src/flux_1_schnell/main.py) or make a new script like the following
-(make sure to correctly define the root path to wherever the model is saved and where you want the images to be stored).
+Run the provided [main.py](main.py) 
+```
+python main.py
+```
+
+or make a new separate script like the following
 
 ```python
+import sys
+sys.path.append("/path/to/mflux/src")
+
 from flux_1_schnell.config.config import Config
 from flux_1_schnell.models.flux import Flux1Schnell
 
-flux = Flux1Schnell("/Users/filipstrand/.cache/FLUX.1-schnell/")
+flux = Flux1Schnell("black-forest-labs/FLUX.1-schnell")
 
 image = flux.generate_image(
     seed=3,
@@ -48,12 +61,17 @@ image = flux.generate_image(
     )
 )
 
-image.save(f"/Users/filipstrand/Desktop/image.png")
+image.save("image.png")
 ```
+
+If the model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell model).
 
 Generating a single image (with 2 inference steps, Schnell model) takes between 2 and 3 minutes. This implementation has been tested on two Macbook Pro machines: 
 - 2021 M1 Pro (32 GB) 
 - 2023 M2 Max (32 GB)
+
+Update:
+On faster machines, [@karpathy](https://gist.github.com/awni/a67d16d50f0f492d94a10418e0592bde?permalink_comment_id=5153531#gistcomment-5153531) and [@awni](https://x.com/awnihannun/status/1823515121827897385) have reported times ~20s and below! 
 
 ### Equivalent to Diffusers implementation 
 
