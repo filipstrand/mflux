@@ -9,13 +9,12 @@ class TokenizerT5:
         self.tokenizer = tokenizer
 
     def tokenize(self, prompt: str) -> mx.array:
-        text_input_ids = self.tokenizer(
+        return self.tokenizer(
             [prompt],
             padding="max_length",
             max_length=TokenizerT5.MAX_TOKEN_LENGTH,
             truncation=True,
             return_length=False,
             return_overflowing_tokens=False,
-            return_tensors="pt",
+            return_tensors="mlx",
         ).input_ids
-        return mx.array(text_input_ids.cpu().numpy())
