@@ -8,3 +8,5 @@
 .env.production.local
 
 .venv
+*.png
+*.jpg
