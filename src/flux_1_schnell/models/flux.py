@@ -21,14 +21,14 @@ class Flux1Schnell:
 
     def __init__(self, repo_id: str):
         tokenizers = TokenizerHandler.load_from_disk_or_huggingface(repo_id)
-        self.clip_tokenizer = TokenizerCLIP(tokenizers.clip)
         self.t5_tokenizer = TokenizerT5(tokenizers.t5)
+        self.clip_tokenizer = TokenizerCLIP(tokenizers.clip)
 
         weights = WeightHandler.load_from_disk_or_huggingface(repo_id)
         self.vae = VAE(weights.vae)
         self.transformer = Transformer(weights.transformer)
-        self.clip_text_encoder = CLIPEncoder(weights.clip_encoder)
         self.t5_text_encoder = T5Encoder(weights.t5_encoder)
+        self.clip_text_encoder = CLIPEncoder(weights.clip_encoder)
 
     def generate_image(self, seed: int, prompt: str, config: Config = Config()) -> PIL.Image.Image:
         latents = LatentCreator.create(seed)
