@@ -3,18 +3,16 @@ import mlx.core as mx
 from PIL import Image
 from tqdm import tqdm
 
-from flux_1_schnell.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
-from flux_1_schnell.tokenizer.clip_tokenizer import TokenizerCLIP
-from flux_1_schnell.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
-from flux_1_schnell.tokenizer.t5_tokenizer import TokenizerT5
-
 from flux_1_schnell.config.config import Config
 from flux_1_schnell.latent_creator.latent_creator import LatentCreator
-from flux_1_schnell.models.text_encoder.text_encoder import TextEncoder
+from flux_1_schnell.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
+from flux_1_schnell.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
 from flux_1_schnell.models.transformer.transformer import Transformer
 from flux_1_schnell.models.vae.vae import VAE
 from flux_1_schnell.post_processing.image_util import ImageUtil
 from flux_1_schnell.scheduler.scheduler import FlowMatchEulerDiscreteNoiseScheduler
+from flux_1_schnell.tokenizer.clip_tokenizer import TokenizerCLIP
+from flux_1_schnell.tokenizer.t5_tokenizer import TokenizerT5
 from flux_1_schnell.tokenizer.tokenizer_handler import TokenizerHandler
 from flux_1_schnell.weights.weight_handler import WeightHandler
 
@@ -34,13 +32,11 @@ class Flux1Schnell:
 
     def generate_image(self, seed: int, prompt: str, config: Config = Config()) -> PIL.Image.Image:
         latents = LatentCreator.create(seed)
-        prompt_embeds, pooled_prompt_embeds = TextEncoder.encode(
-            prompt=prompt,
-            clip_tokenizer=self.clip_tokenizer,
-            t5_tokenizer=self.t5_tokenizer,
-            clip_text_encoder=self.clip_text_encoder,
-            t5_text_encoder=self.t5_text_encoder
-        )
+
+        t5_tokens = self.t5_tokenizer.tokenize(prompt)
+        clip_tokens = self.clip_tokenizer.tokenize(prompt)
+        prompt_embeds = self.t5_text_encoder.forward(t5_tokens)
+        pooled_prompt_embeds = self.clip_text_encoder.forward(clip_tokens)
 
         for t in tqdm(range(config.num_inference_steps)):
             noise = self.transformer.predict(
