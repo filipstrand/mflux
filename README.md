@@ -129,7 +129,6 @@ Luxury food photograph of an italian Linguine pasta alle vongole dish with lots 
 
 - Images are generated one by one.
 - Negative prompts not supported.
-- Image resolution is (1024, 1024)
 
 ### TODO
 
