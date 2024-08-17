@@ -56,12 +56,12 @@ class Flux1Schnell:
 
             mx.eval(latents)
 
-        latents = Flux1Schnell._unpack_latents(latents, config.width, config.height)
+        latents = Flux1Schnell._unpack_latents(latents, config.height, config.width)
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(decoded)
 
     @staticmethod
-    def _unpack_latents(latents, width, height):
+    def _unpack_latents(latents: mx.array, width: int, height: int) -> mx.array:
         latents = mx.reshape(latents, (1, height//16, width//16, 16, 2, 2))
         latents = mx.transpose(latents, (0, 3, 1, 4, 2, 5))
         latents = mx.reshape(latents, (1, 16, height//16 *2, width//16 * 2))
