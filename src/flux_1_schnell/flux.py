@@ -19,8 +19,10 @@ from flux_1_schnell.weights.weight_handler import WeightHandler
 class Flux1:
 
     def __init__(self, repo_id: str):
-        tokenizers = TokenizerHandler.load_from_disk_or_huggingface(repo_id)
-        self.t5_tokenizer = TokenizerT5(tokenizers.t5)
+        is_dev = "FLUX.1-dev" in repo_id
+        max_t5_length = 512 if is_dev else 256
+        tokenizers = TokenizerHandler.load_from_disk_or_huggingface(repo_id, max_t5_length)
+        self.t5_tokenizer = TokenizerT5(tokenizers.t5, max_length=max_t5_length)
         self.clip_tokenizer = TokenizerCLIP(tokenizers.clip)
 
         weights = WeightHandler.load_from_disk_or_huggingface(repo_id)
