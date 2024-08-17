@@ -135,4 +135,3 @@ Luxury food photograph of an italian Linguine pasta alle vongole dish with lots 
 
 - FLUX Dev implementation
 - LoRA adapters
-- Command line args
