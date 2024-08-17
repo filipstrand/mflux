@@ -31,7 +31,7 @@ class Flux1Schnell:
         self.clip_text_encoder = CLIPEncoder(weights.clip_encoder)
 
     def generate_image(self, seed: int, prompt: str, config: Config = Config()) -> PIL.Image.Image:
-        latents = LatentCreator.create(seed)
+        latents = LatentCreator.create(config.height, config.width, seed)
 
         t5_tokens = self.t5_tokenizer.tokenize(prompt)
         clip_tokens = self.clip_tokenizer.tokenize(prompt)
@@ -56,15 +56,15 @@ class Flux1Schnell:
 
             mx.eval(latents)
 
-        latents = Flux1Schnell._unpack_latents(latents)
+        latents = Flux1Schnell._unpack_latents(latents, config.height, config.width)
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(decoded)
 
     @staticmethod
-    def _unpack_latents(latents):
-        latents = mx.reshape(latents, (1, 64, 64, 16, 2, 2))
+    def _unpack_latents(latents: mx.array, width: int, height: int) -> mx.array:
+        latents = mx.reshape(latents, (1, height//16, width//16, 16, 2, 2))
         latents = mx.transpose(latents, (0, 3, 1, 4, 2, 5))
-        latents = mx.reshape(latents, (1, 16, 128, 128))
+        latents = mx.reshape(latents, (1, 16, height//16 *2, width//16 * 2))
         return latents
 
     def encode(self, path: str) -> mx.array:
