@@ -19,7 +19,8 @@ class T5SelfAttention(nn.Module):
         key_states = T5SelfAttention.shape(self.k(hidden_states))
         value_states = T5SelfAttention.shape(self.v(hidden_states))
         scores = mx.matmul(query_states, mx.transpose(key_states, (0, 1, 3, 2)))
-        position_bias = self._compute_bias()
+        seq_length = hidden_states.shape[1]
+        position_bias = self._compute_bias(seq_length=seq_length)
         scores += position_bias
         attn_weights = nn.softmax(scores, axis=-1)
         attn_output = T5SelfAttention.un_shape(mx.matmul(attn_weights, value_states))
@@ -34,9 +35,9 @@ class T5SelfAttention(nn.Module):
     def un_shape(states):
         return mx.reshape(mx.transpose(states, (0, 2, 1, 3)), (1, -1, 4096))
 
-    def _compute_bias(self):
-        context_position = mx.arange(start=0, stop=256, step=1)[:, None]
-        memory_position = mx.arange(start=0, stop=256, step=1)[None, :]
+    def _compute_bias(self, seq_length):
+        context_position = mx.arange(start=0, stop=seq_length, step=1)[:, None]
+        memory_position = mx.arange(start=0, stop=seq_length, step=1)[None, :]
         relative_position = memory_position - context_position
         relative_position_bucket = T5SelfAttention._relative_position_bucket(relative_position)
         values = self.relative_attention_bias(relative_position_bucket)

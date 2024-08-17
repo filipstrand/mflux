@@ -5,18 +5,25 @@ import mlx.core as mx
 from flux_1_schnell.config.config import Config
 from flux_1_schnell.models.transformer.text_embedder import TextEmbedder
 from flux_1_schnell.models.transformer.timestep_embedder import TimestepEmbedder
+from flux_1_schnell.models.transformer.guidance_embedder import GuidanceEmbedder
 
 
 class TimeTextEmbed(nn.Module):
 
-    def __init__(self):
+    def __init__(self, with_guidance_embed: bool = False):
         super().__init__()
         self.text_embedder = TextEmbedder()
+        self.with_guidance_embed = with_guidance_embed
+        if self.with_guidance_embed:
+            self.guidance = mx.broadcast_to(4.0, (1,))
+            self.guidance_embedder = GuidanceEmbedder()
         self.timestep_embedder = TimestepEmbedder()
 
     def forward(self, time_step: mx.array, pooled_projection: mx.array) -> mx.array:
-        time_steps_proj = TimeTextEmbed._time_proj(time_step)
+        time_steps_proj = self._time_proj(time_step)
         time_steps_emb = self.timestep_embedder.forward(time_steps_proj)
+        if self.with_guidance_embed:
+            time_steps_emb += self.guidance_embedder.forward(self._time_proj(self.guidance))
         pooled_projections = self.text_embedder.forward(pooled_projection)
         conditioning = time_steps_emb + pooled_projections
         return conditioning.astype(Config.precision)
