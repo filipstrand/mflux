@@ -13,18 +13,26 @@ class Config:
             num_inference_steps: int = 4,
             width: int = 1024,
             height: int = 1024,
+            guidance: float = 4.0,
     ):
         if width %16 != 0 or height % 16 != 0:
             log.warning("Width and height should be multiples of 16. Rounding down.")
         self.width = 16 * (height // 16)
         self.height = 16 * (width // 16)
-        base_sigmas = Config.base_sigmas(num_inference_steps)
+        self.sigmas = Config.base_sigmas(num_inference_steps)
         self.num_inference_steps = num_inference_steps
-        self.time_steps = base_sigmas * self.num_train_steps
-        self.sigmas = mx.concatenate([base_sigmas, mx.zeros(1)])
+        self.guidance = guidance
 
     @staticmethod
     def base_sigmas(num_inference_steps):
-        sigmas = np.linspace(1.0, 1 / num_inference_steps, num_inference_steps)
+        sigmas = np.linspace(1.0, 0, num_inference_steps+1)
         sigmas = mx.array(sigmas).astype(mx.float32)
         return sigmas
+    
+    def shift_sigmas(self):
+        y1 = 0.5
+        x1 = 256
+        m = (1.15 - y1) / (4096 - x1)
+        b = y1 - m * x1
+        mu = m + b
+        self.sigmas = mx.exp(mu) / (mx.exp(mu) + (1 / self.sigmas - 1))
