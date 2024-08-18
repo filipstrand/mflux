@@ -15,7 +15,7 @@ class Config:
             height: int = 1024,
             guidance: float = 4.0,
     ):
-        if width %16 != 0 or height % 16 != 0:
+        if width % 16 != 0 or height % 16 != 0:
             log.warning("Width and height should be multiples of 16. Rounding down.")
         self.width = 16 * (height // 16)
         self.height = 16 * (width // 16)
