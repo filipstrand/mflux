@@ -41,7 +41,7 @@ class Transformer(nn.Module):
         text_embeddings = self.time_text_embed.forward(time_step, pooled_prompt_embeds, guidance)
         encoder_hidden_states = self.context_embedder(prompt_embeds)
         txt_ids = Transformer._prepare_text_ids(seq_len = prompt_embeds.shape[1])
-        img_ids = Transformer._prepare_latent_image_ids(config.width, config.height)
+        img_ids = Transformer._prepare_latent_image_ids(config.height, config.width)
         ids = mx.concatenate((txt_ids, img_ids), axis=1)
         image_rotary_emb = self.pos_embed.forward(ids)
 
@@ -69,14 +69,14 @@ class Transformer(nn.Module):
         return noise
 
     @staticmethod
-    def _prepare_latent_image_ids(width, height) -> mx.array:
-        r_h = height // 16
-        r_w = width // 16
-        latent_image_ids = mx.zeros((r_h, r_w, 3))
-        latent_image_ids = latent_image_ids.at[:, :, 1].add(mx.arange(0, r_h)[:, None])
-        latent_image_ids = latent_image_ids.at[:, :, 2].add(mx.arange(0, r_w)[None, :])
+    def _prepare_latent_image_ids(width: int, height: int) -> mx.array:
+        latent_height = height // 16
+        latent_width = width // 16
+        latent_image_ids = mx.zeros((latent_height, latent_width, 3))
+        latent_image_ids = latent_image_ids.at[:, :, 1].add(mx.arange(0, latent_height)[:, None])
+        latent_image_ids = latent_image_ids.at[:, :, 2].add(mx.arange(0, latent_width)[None, :])
         latent_image_ids = mx.repeat(latent_image_ids[None, :], 1, axis=0)
-        latent_image_ids = mx.reshape(latent_image_ids, (1, r_h * r_w, 3))
+        latent_image_ids = mx.reshape(latent_image_ids, (1, latent_height * latent_width, 3))
         return latent_image_ids
 
     @staticmethod
