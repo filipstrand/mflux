@@ -11,3 +11,7 @@
 *.png
 *.jpg
 *.pyc
+
+
+*.pt
+trial.py
