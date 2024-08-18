@@ -34,5 +34,5 @@ class Config:
         x1 = 256
         m = (1.15 - y1) / (4096 - x1)
         b = y1 - m * x1
-        mu = m + b
+        mu = m * self.width * self.height / 256   + b
         self.sigmas = mx.exp(mu) / (mx.exp(mu) + (1 / self.sigmas - 1))

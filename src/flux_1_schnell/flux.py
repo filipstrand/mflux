@@ -20,8 +20,7 @@ class Flux1:
 
     def __init__(self, repo_id: str):
         self.is_dev = "FLUX.1-dev" in repo_id
-        # max_t5_length = 512 if self.is_dev else 256
-        max_t5_length = 256
+        max_t5_length = 512 if self.is_dev else 256
         tokenizers = TokenizerHandler.load_from_disk_or_huggingface(repo_id, max_t5_length)
         self.t5_tokenizer = TokenizerT5(tokenizers.t5, max_length=max_t5_length)
         self.clip_tokenizer = TokenizerCLIP(tokenizers.clip)
