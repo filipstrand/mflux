@@ -1,7 +1,12 @@
+import logging
+from pathlib import Path
+
 import PIL
 import mlx.core as mx
 import numpy as np
 from PIL import Image
+
+log = logging.getLogger(__name__)
 
 
 class ImageUtil:
@@ -53,3 +58,23 @@ class ImageUtil:
     def resize(image):
         image = image.resize((1024, 1024), resample=PIL.Image.LANCZOS)
         return image
+
+    @staticmethod
+    def save_image(image: Image.Image, path: str) -> None:
+        file_path = Path(path)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_name = file_path.stem
+        file_extension = file_path.suffix
+
+        # If a file already exists, create a new name with a counter
+        counter = 1
+        while file_path.exists():
+            new_name = f"{file_name}({counter}){file_extension}"
+            file_path = file_path.with_name(new_name)
+            counter += 1
+
+        try:
+            image.save(file_path)
+            log.info(f"Image saved successfully at: {file_path}")
+        except Exception as e:
+            log.info(f"Error saving image: {e}")
