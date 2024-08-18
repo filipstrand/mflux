@@ -67,14 +67,14 @@ class Transformer(nn.Module):
         return noise
 
     @staticmethod
-    def _prepare_latent_image_ids(width: int, height: int) -> mx.array:
-        latent_height = height // 16
+    def _prepare_latent_image_ids(height: int, width: int) -> mx.array:
         latent_width = width // 16
-        latent_image_ids = mx.zeros((latent_height, latent_width, 3))
-        latent_image_ids = latent_image_ids.at[:, :, 1].add(mx.arange(0, latent_height)[:, None])
-        latent_image_ids = latent_image_ids.at[:, :, 2].add(mx.arange(0, latent_width)[None, :])
+        latent_height = height // 16
+        latent_image_ids = mx.zeros((latent_width, latent_height, 3))
+        latent_image_ids = latent_image_ids.at[:, :, 1].add(mx.arange(0, latent_width)[:, None])
+        latent_image_ids = latent_image_ids.at[:, :, 2].add(mx.arange(0, latent_height)[None, :])
         latent_image_ids = mx.repeat(latent_image_ids[None, :], 1, axis=0)
-        latent_image_ids = mx.reshape(latent_image_ids, (1, latent_height * latent_width, 3))
+        latent_image_ids = mx.reshape(latent_image_ids, (1, latent_width * latent_height, 3))
         return latent_image_ids
 
     @staticmethod
