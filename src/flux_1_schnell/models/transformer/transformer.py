@@ -37,7 +37,7 @@ class Transformer(nn.Module):
         time_step = config.sigmas[t] * config.num_train_steps
         time_step = mx.broadcast_to(time_step, (1,))
         hidden_states = self.x_embedder(hidden_states)
-        guidance = mx.broadcast_to(config.guidance, (1,))
+        guidance = mx.broadcast_to(config.guidance * config.num_train_steps, (1,))
         text_embeddings = self.time_text_embed.forward(time_step, pooled_prompt_embeds, guidance)
         encoder_hidden_states = self.context_embedder(prompt_embeds)
         txt_ids = Transformer._prepare_text_ids(seq_len = prompt_embeds.shape[1])
