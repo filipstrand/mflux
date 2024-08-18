@@ -8,6 +8,8 @@ from flux_1_schnell.flux import Flux1
 from flux_1_schnell.post_processing.image_util import ImageUtil
 
 flux = Flux1("black-forest-labs/FLUX.1-schnell", max_sequence_length=256)
+# flux = Flux1("black-forest-labs/FLUX.1-dev", max_sequence_length=512)
+
 
 image = flux.generate_image(
     seed=3,
@@ -16,6 +18,7 @@ image = flux.generate_image(
         num_inference_steps=2,
         height=768,
         width=1360,
+        guidance=3.5,
     )
 )
 
