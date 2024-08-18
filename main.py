@@ -5,6 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 
 from flux_1_schnell.config.config import Config
 from flux_1_schnell.flux import Flux1Schnell
+from flux_1_schnell.post_processing.image_util import ImageUtil
 
 flux = Flux1Schnell("black-forest-labs/FLUX.1-schnell")
 
@@ -18,4 +19,4 @@ image = flux.generate_image(
     )
 )
 
-image.save("image.png")
+ImageUtil.save_image(image, "image.png")
