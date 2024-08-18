@@ -51,6 +51,7 @@ sys.path.append("/path/to/mflux/src")
 
 from flux_1_schnell.config.config import Config
 from flux_1_schnell.flux import Flux1Schnell
+from flux_1_schnell.post_processing.image_util import ImageUtil
 
 flux = Flux1Schnell("black-forest-labs/FLUX.1-schnell")
 
@@ -62,7 +63,7 @@ image = flux.generate_image(
    )
 )
 
-image.save("image.png")
+ImageUtil.save_image(image, "image.png")
 ```
 
 If the model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell model).
