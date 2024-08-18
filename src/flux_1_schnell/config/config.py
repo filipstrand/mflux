@@ -5,7 +5,7 @@ import logging
 log = logging.getLogger(__name__)
 
 class Config:
-    precision: mx.Dtype = mx.float16
+    precision: mx.Dtype = mx.bfloat16
     num_train_steps = 1000
 
     def __init__(
@@ -37,3 +37,4 @@ class Config:
         b = y1 - m * x1
         mu = m * self.width * self.height / 256   + b
         self.sigmas = mx.exp(mu) / (mx.exp(mu) + (1 / self.sigmas - 1))
+        self.sigmas[-1] = 0
