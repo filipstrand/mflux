@@ -20,7 +20,7 @@ like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) f
 ### Models
 
 - [x] FLUX.1-Scnhell
-- [ ] FLUX.1-Dev
+- [x] FLUX.1-Dev
 
 ### Installation
 1. Clone the repo:
