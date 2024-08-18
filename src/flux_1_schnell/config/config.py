@@ -4,6 +4,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
+
 class Config:
     precision: mx.Dtype = mx.float16
     num_train_steps = 1000
