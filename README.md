@@ -37,12 +37,29 @@ like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) f
    ```
 ### Generating an image
 
-Run the provided [main.py](main.py) 
+Run the provided [main.py](main.py) by specifying a prompt and some optional arguments like so:
+
 ```
-python main.py
+python main.py --prompt "Luxury food photograph" --steps 2 --seed 2
 ```
 
-or make a new separate script like the following
+#### Full list of Command-Line Arguments 
+
+- **`--prompt`** (required, `str`): Text description of the image to generate.
+
+- **`--output`** (optional, `str`, default: `"image.png"`): Output image filename.
+
+- **`--model`** (optional, `str`, default: `"black-forest-labs/FLUX.1-schnell"`): Model to use for generation.
+
+- **`--seed`** (optional, `int`, default: `0`): Seed for random number generation. Default is time-based.
+
+- **`--height`** (optional, `int`, default: `1024`): Height of the output image in pixels.
+
+- **`--width`** (optional, `int`, default: `1024`): Width of the output image in pixels.
+
+- **`--steps`** (optional, `int`, default: `4`): Number of inference steps.
+
+Or make a new separate script like the following
 
 ```python
 import sys
@@ -60,6 +77,8 @@ image = flux.generate_image(
    prompt="Luxury food photograph of a birthday cake. In the middle it has three candles shaped like letters spelling the word 'MLX'. It has perfect lighting and a cozy background with big bokeh and shallow depth of field. The mood is a sunset balcony in tuscany. The photo is taken from the side of the cake. The scene is complemented by a warm, inviting light that highlights the textures and colors of the ingredients, giving it an appetizing and elegant look.",
    config=Config(
       num_inference_steps=2,
+      height=768,
+      width=1360,
    )
 )
 
@@ -68,12 +87,28 @@ ImageUtil.save_image(image, "image.png")
 
 If the model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell model).
 
-Generating a single image (with 2 inference steps, Schnell model) takes between 2 and 3 minutes. This implementation has been tested on two Macbook Pro machines: 
-- 2021 M1 Pro (32 GB) 
-- 2023 M2 Max (32 GB)
 
-Update:
-On faster machines, [@karpathy](https://gist.github.com/awni/a67d16d50f0f492d94a10418e0592bde?permalink_comment_id=5153531#gistcomment-5153531) and [@awni](https://x.com/awnihannun/status/1823515121827897385) have reported times ~20s and below! 
+### Image generation speed (updated)
+
+These numbers are based on the Schnell model, with the configuration provided in the code snippet below. 
+To time your machine, run the following:
+```
+time python main.py \
+--prompt "Luxury food photograph" \
+--steps 2 \
+--seed 2 \
+--height 1024 \
+--width 1024
+```
+
+| Device             | User                                                                                                                       | Reported Time |
+|--------------------|----------------------------------------------------------------------------------------------------------------------------|---------------|
+| M3 Max | [@karpathy](https://gist.github.com/awni/a67d16d50f0f492d94a10418e0592bde?permalink_comment_id=5153531#gistcomment-5153531) | ~20s          |
+| M2 Ultra           | [@awni](https://x.com/awnihannun/status/1823515121827897385)                                                               | <15s          |
+| 2023 M2 Max (96GB) | [@explorigin](https://github.com/filipstrand/mflux/issues/6)                                                               | ~25s          |
+| 2021 M1 Pro (16GB) | [@qw-in](https://github.com/filipstrand/mflux/issues/7)                                                                    | ~175s         |
+| 2021 M1 Pro (32GB) | @filipstrand                                                               | ~160s         |
+| 2023 M2 Max (32GB) | @filipstrand                                                               | ~70s           |
 
 ### Equivalent to Diffusers implementation 
 
@@ -134,4 +169,3 @@ Luxury food photograph of an italian Linguine pasta alle vongole dish with lots 
 ### TODO
 
 - LoRA adapters
-- Command line args
