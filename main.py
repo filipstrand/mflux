@@ -9,6 +9,7 @@ from flux_1_schnell.config.config import Config
 from flux_1_schnell.flux import Flux1Schnell
 from flux_1_schnell.post_processing.image_util import ImageUtil
 
+
 def main():
     parser = argparse.ArgumentParser(description='Generate an image based on a prompt.')
     parser.add_argument('--prompt', type=str, required=True, help='The textual description of the image to generate.')
@@ -21,7 +22,7 @@ def main():
 
     args = parser.parse_args()
 
-    seed = args.seed or time.time()
+    seed = args.seed or int(time.time())
 
     flux = Flux1Schnell(args.model)
 
@@ -35,8 +36,8 @@ def main():
         )
     )
 
-    image.save(args.output)
+    ImageUtil.save_image(image, "image.png")
+
 
 if __name__ == '__main__':
     main()
-
