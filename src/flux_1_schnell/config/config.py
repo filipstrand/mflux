@@ -2,6 +2,8 @@ import mlx.core as mx
 import numpy as np
 import logging
 
+from sympy import li
+
 log = logging.getLogger(__name__)
 
 
@@ -22,6 +24,7 @@ class Config:
         self.height = 16 * (width // 16)
         base_sigmas = Config.base_sigmas(num_inference_steps)
         self.num_inference_steps = num_inference_steps
+        self.inference_steps = list(range(num_inference_steps))
         self.guidance = guidance
         self.sigmas = mx.concatenate([base_sigmas, mx.zeros(1)])
 

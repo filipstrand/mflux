@@ -43,7 +43,7 @@ class Flux1:
         prompt_embeds = self.t5_text_encoder.forward(t5_tokens)
         pooled_prompt_embeds = self.clip_text_encoder.forward(clip_tokens)
 
-        for t in tqdm(range(config.num_inference_steps)):
+        for t in tqdm(config.inference_steps, desc="Generating image", unit="step"):
             noise = self.transformer.predict(
                 t=t,
                 prompt_embeds=prompt_embeds,
@@ -102,6 +102,7 @@ class Flux1Img2Img(Flux1):
         image_latents = self.vae.encode(base_image)
         image_latents = self._pack_latents(image_latents, config.height, config.width)
         init_timestep = int(config.num_inference_steps * strength)
+        config.inference_steps = config.inference_steps[init_timestep:]
         latents = config.sigmas[init_timestep] * noise + (1.0 - config.sigmas[init_timestep]) * image_latents
 
         return self._generate_from_latents(latents, prompt, config)

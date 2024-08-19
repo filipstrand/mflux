@@ -19,7 +19,7 @@ image = flux.generate_image(
     config=Config(
         num_inference_steps=2,
     ),
-    strength=0.5,
+    strength=0,
 )
 
 ImageUtil.save_image(image, "image.png")
