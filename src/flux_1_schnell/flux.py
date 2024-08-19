@@ -3,7 +3,7 @@ import mlx.core as mx
 from PIL import Image
 from tqdm import tqdm
 
-from flux_1_schnell.config.config import Config
+from flux_1_schnell.config.config import Config, get_sigmas, shift_sigmas
 from flux_1_schnell.latent_creator.latent_creator import LatentCreator
 from flux_1_schnell.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from flux_1_schnell.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
@@ -31,8 +31,9 @@ class Flux1:
         self.clip_text_encoder = CLIPEncoder(weights.clip_encoder)
 
     def generate_image(self, seed: int, prompt: str, config: Config = Config()) -> PIL.Image.Image:
+        sigmas = get_sigmas(config.num_inference_steps)
         if self.is_dev:
-            config.shift_sigmas()
+            sigmas = shift_sigmas(sigmas)
         latents = LatentCreator.create(config.height, config.width, seed)
 
         t5_tokens = self.t5_tokenizer.tokenize(prompt)
@@ -46,10 +47,11 @@ class Flux1:
                 prompt_embeds=prompt_embeds,
                 pooled_prompt_embeds=pooled_prompt_embeds,
                 hidden_states=latents,
-                config=config
+                config=config,
+                sigmas=sigmas
             )
 
-            dt = config.sigmas[t + 1] - config.sigmas[t]
+            dt = sigmas[t + 1] - sigmas[t]
             latents += noise * dt
 
             mx.eval(latents)
