@@ -32,9 +32,10 @@ class Transformer(nn.Module):
             prompt_embeds: mx.array,
             pooled_prompt_embeds: mx.array,
             hidden_states: mx.array,
-            config: Config
+            config: Config,
+            sigmas: mx.array,
     ) -> mx.array:
-        time_step = config.sigmas[t] * config.num_train_steps
+        time_step = sigmas[t] * config.num_train_steps
         time_step = mx.broadcast_to(time_step, (1,)).astype(config.precision)
         hidden_states = self.x_embedder(hidden_states)
         guidance = mx.broadcast_to(config.guidance * config.num_train_steps, (1,)).astype(config.precision)
