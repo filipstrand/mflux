@@ -39,7 +39,7 @@ like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) f
 
 Run the provided [main.py](main.py) 
 ```
-python main.py
+python main.py --prompt "luxury food photograph" --steps 2
 ```
 
 or make a new separate script like the following
@@ -135,4 +135,3 @@ Luxury food photograph of an italian Linguine pasta alle vongole dish with lots 
 
 - FLUX Dev implementation
 - LoRA adapters
-- Command line args
