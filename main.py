@@ -28,7 +28,7 @@ def main():
     flux = Flux1("black-forest-labs/FLUX.1-schnell", max_sequence_length=args.max_sequence_length)
 
     image = flux.generate_image(
-        seed=args.seed,
+        seed=seed,
         prompt=args.prompt,
         config=Config(
             num_inference_steps=args.steps,
