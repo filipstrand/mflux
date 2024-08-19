@@ -33,7 +33,7 @@ class Flux1:
     def generate_image(self, seed: int, prompt: str, config: Config = Config()) -> PIL.Image.Image:
         sigmas = get_sigmas(config.num_inference_steps)
         if self.is_dev:
-            sigmas = shift_sigmas(sigmas)
+            sigmas = shift_sigmas(sigmas, config.width, config.height)
         latents = LatentCreator.create(config.height, config.width, seed)
 
         t5_tokens = self.t5_tokenizer.tokenize(prompt)
