@@ -1,5 +1,7 @@
 import os
 import sys
+import argparse
+import time
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 
@@ -7,16 +9,34 @@ from flux_1_schnell.config.config import Config
 from flux_1_schnell.flux import Flux1Schnell
 from flux_1_schnell.post_processing.image_util import ImageUtil
 
-flux = Flux1Schnell("black-forest-labs/FLUX.1-schnell")
+def main():
+    parser = argparse.ArgumentParser(description='Generate an image based on a prompt.')
+    parser.add_argument('--prompt', type=str, required=True, help='The textual description of the image to generate.')
+    parser.add_argument('--output', type=str, default="image.png", help='The filename for the output image. Default is "image.png".')
+    parser.add_argument('--model', type=str, default="black-forest-labs/FLUX.1-schnell", help='The model to use. Default is "black-forest-labs/FLUX.1-schnell".')
+    parser.add_argument('--seed', type=int, default=0, help='Entropy Seed (Default is time-based random-seed)')
+    parser.add_argument('--height', type=int, default=1024, help='Image height (Default is 1024)')
+    parser.add_argument('--width', type=int, default=1024, help='Image width (Default is 1024)')
+    parser.add_argument('--steps', type=int, default=4, help='Inference Steps')
 
-image = flux.generate_image(
-    seed=3,
-    prompt="Luxury food photograph of a birthday cake. In the middle it has three candles shaped like letters spelling the word 'MLX'. It has perfect lighting and a cozy background with big bokeh and shallow depth of field. The mood is a sunset balcony in tuscany. The photo is taken from the side of the cake. The scene is complemented by a warm, inviting light that highlights the textures and colors of the ingredients, giving it an appetizing and elegant look.",
-    config=Config(
-        num_inference_steps=2,
-        height=768,
-        width=1360,
+    args = parser.parse_args()
+
+    seed = args.seed or time.time()
+
+    flux = Flux1Schnell(args.model)
+
+    image = flux.generate_image(
+        seed=args.seed,
+        prompt=args.prompt,
+        config=Config(
+            num_inference_steps=args.steps,
+            height=args.height,
+            width=args.width,
+        )
     )
-)
 
-ImageUtil.save_image(image, "image.png")
+    image.save(args.output)
+
+if __name__ == '__main__':
+    main()
+
