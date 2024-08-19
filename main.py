@@ -15,7 +15,7 @@ def main():
     parser.add_argument('--output', type=str, default="image.png", help='The filename for the output image. Default is "image.png".')
     parser.add_argument('--model', type=str, default="black-forest-labs/FLUX.1-schnell", help='The model to use. Default is "black-forest-labs/FLUX.1-schnell".')
     parser.add_argument('--max_sequence_length', type=int, default=256, help='Max Sequence Length (Default is 256)')
-    parser.add_argument('--seed', type=int, default=0, help='Entropy Seed (Default is time-based random-seed)')
+    parser.add_argument('--seed', type=int, default=None, help='Entropy Seed (Default is time-based random-seed)')
     parser.add_argument('--height', type=int, default=1024, help='Image height (Default is 1024)')
     parser.add_argument('--width', type=int, default=1024, help='Image width (Default is 1024)')
     parser.add_argument('--steps', type=int, default=4, help='Inference Steps')
@@ -23,9 +23,9 @@ def main():
 
     args = parser.parse_args()
 
-    seed = args.seed or int(time.time())
+    seed = int(time.time()) if args.seed is None else args.seed
 
-    flux = Flux1("black-forest-labs/FLUX.1-schnell", max_sequence_length=args.max_sequence_length)
+    flux = Flux1(args.model, max_sequence_length=args.max_sequence_length)
 
     image = flux.generate_image(
         seed=seed,
