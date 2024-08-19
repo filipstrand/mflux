@@ -87,12 +87,28 @@ ImageUtil.save_image(image, "image.png")
 
 If the model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell model).
 
-Generating a single image (with 2 inference steps, Schnell model) takes between 2 and 3 minutes. This implementation has been tested on two Macbook Pro machines: 
-- 2021 M1 Pro (32 GB) 
-- 2023 M2 Max (32 GB)
 
-Update:
-On faster machines, [@karpathy](https://gist.github.com/awni/a67d16d50f0f492d94a10418e0592bde?permalink_comment_id=5153531#gistcomment-5153531) and [@awni](https://x.com/awnihannun/status/1823515121827897385) have reported times ~20s and below! 
+### Image generation speed (updated)
+
+These numbers are based on the Schnell model, with the configuration provided in the code snippet below. 
+To time your machine, run the following:
+```
+time python main.py \
+--prompt "Luxury food photograph" \
+--steps 2 \
+--seed 2 \
+--height 1024 \
+--width 1024
+```
+
+| Device             | User                                                                                                                       | Reported Time |
+|--------------------|----------------------------------------------------------------------------------------------------------------------------|---------------|
+| M3 Max | [@karpathy](https://gist.github.com/awni/a67d16d50f0f492d94a10418e0592bde?permalink_comment_id=5153531#gistcomment-5153531) | ~20s          |
+| M2 Ultra           | [@awni](https://x.com/awnihannun/status/1823515121827897385)                                                               | <15s          |
+| 2023 M2 Max (96GB) | [@explorigin](https://github.com/filipstrand/mflux/issues/6)                                                               | ~25s          |
+| 2021 M1 Pro (16GB) | [@qw-in](https://github.com/filipstrand/mflux/issues/7)                                                                    | ~175s         |
+| 2021 M1 Pro (32GB) | @filipstrand                                                               | ~160s         |
+| 2023 M2 Max (32GB) | @filipstrand                                                               | ~70s           |
 
 ### Equivalent to Diffusers implementation 
 
