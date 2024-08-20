@@ -14,12 +14,11 @@ class Config:
             width: int = 1024,
             height: int = 1024,
             guidance: float = 4.0,
-            strength: float = 0.5
     ):
         if width % 16 != 0 or height % 16 != 0:
             log.warning("Width and height should be multiples of 16. Rounding down.")
-        self.width = 16 * (height // 16)
-        self.height = 16 * (width // 16)
+        self.width = 16 * (width // 16)
+        self.height = 16 * (height // 16)
         self.num_inference_steps = num_inference_steps
         self.guidance = guidance
 
@@ -32,6 +31,6 @@ class ConfigImg2Img(Config):
             guidance: float = 4.0,
             strength: float = 0.5
     ):
-        super().__init__(num_inference_steps, width, height, guidance, strength)
+        super().__init__(num_inference_steps, width, height, guidance)
         self.strength = strength
 
