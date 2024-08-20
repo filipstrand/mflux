@@ -20,7 +20,7 @@ like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) f
 ### Models
 
 - [x] FLUX.1-Scnhell
-- [ ] FLUX.1-Dev
+- [x] FLUX.1-Dev
 
 ### Installation
 1. Clone the repo:
@@ -37,11 +37,19 @@ like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) f
    ```
 ### Generating an image
 
-Run the provided [main.py](main.py) by specifying a prompt and some optional arguments like so:
+Run the provided [main.py](main.py) by specifying a prompt and some optional arguments like so using the default `Schnell` model:
 
 ```
 python main.py --prompt "Luxury food photograph" --steps 2 --seed 2
 ```
+
+or use the slower, but more powerful `Dev` model and run it with more time steps:
+
+```
+python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
+```
+
+⚠️ *If the specific model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell or Dev model respectively).* ⚠️
 
 #### Full list of Command-Line Arguments 
 
@@ -49,7 +57,7 @@ python main.py --prompt "Luxury food photograph" --steps 2 --seed 2
 
 - **`--output`** (optional, `str`, default: `"image.png"`): Output image filename.
 
-- **`--model`** (optional, `str`, default: `"black-forest-labs/FLUX.1-schnell"`): Model to use for generation.
+- **`--model`** (optional, `str`, default: `"schnell"`): Model to use for generation (`"schnell"` or `"dev"`).
 
 - **`--seed`** (optional, `int`, default: `0`): Seed for random number generation. Default is time-based.
 
@@ -67,10 +75,10 @@ import sys
 sys.path.append("/path/to/mflux/src")
 
 from flux_1_schnell.config.config import Config
-from flux_1_schnell.flux import Flux1Schnell
+from flux_1_schnell.flux import Flux1
 from flux_1_schnell.post_processing.image_util import ImageUtil
 
-flux = Flux1Schnell("black-forest-labs/FLUX.1-schnell")
+flux = Flux1.from_repo("black-forest-labs/FLUX.1-schnell")
 
 image = flux.generate_image(
    seed=3,
@@ -84,8 +92,6 @@ image = flux.generate_image(
 
 ImageUtil.save_image(image, "image.png")
 ```
-
-If the model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell model).
 
 
 ### Image generation speed (updated)
@@ -169,5 +175,4 @@ Luxury food photograph of an italian Linguine pasta alle vongole dish with lots 
 
 ### TODO
 
-- FLUX Dev implementation
 - LoRA adapters
