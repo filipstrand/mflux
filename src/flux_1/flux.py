@@ -1,10 +1,5 @@
-from re import L
-import re
 import PIL
-from cv2 import log
 import mlx.core as mx
-from PIL import Image
-from sympy import im
 from tqdm import tqdm
 
 from flux_1.config.config import Config
@@ -20,6 +15,9 @@ from flux_1.tokenizer.clip_tokenizer import TokenizerCLIP
 from flux_1.tokenizer.t5_tokenizer import TokenizerT5
 from flux_1.tokenizer.tokenizer_handler import TokenizerHandler
 from flux_1.weights.weight_handler import WeightHandler
+
+import logging
+log = logging.getLogger(__name__)
 
 
 class Flux1:
@@ -88,7 +86,7 @@ class Flux1:
     def _pack_latents(latents: mx.array, height: int, width: int) -> mx.array:
         latents = mx.reshape(latents, (1, 16, height // 16, 2, width // 16, 2))
         latents = mx.transpose(latents, (0, 2, 4, 1, 3, 5))
-        latents = mx.reshape(latents, (1, (height // 16) * (width // 16), 64))
+        latents = mx.reshape(latents, (1, (width // 16) * (height // 16), 64))
         return latents
 
     @staticmethod
@@ -101,27 +99,35 @@ class Flux1:
 
 class Flux1Img2Img(Flux1):
 
-    def __init__(self, repo_id: str, max_sequence_length: int = 512):
-        super().__init__(repo_id, max_sequence_length)
+    def __init__(self, repo_id: str):
+        super().__init__(repo_id)
 
-    def generate_image(self, seed: int, base_image: PIL.Image.Image, prompt: str, config: Config, strength: float) -> mx.array:
+    @staticmethod
+    def from_repo(repo_id: str) -> "Flux1Img2Img":
+        return Flux1Img2Img(repo_id)
+
+    @staticmethod
+    def from_alias(alias: str) -> "Flux1Img2Img":
+        return Flux1Img2Img(ModelConfig.from_alias(alias).model_name)
+
+    def generate_image(self, seed: int, base_image: PIL.Image.Image, prompt: str, config: Config) -> mx.array:
         # Create a new runtime config based on the model type and input parameters
         runtime_config = RuntimeConfig(config, self.model_config)
 
         if config.height != base_image.height or config.width != base_image.width:
-            log.warning("Image dimensions do not match config. Overwriting.")
+            log.warning("Config height and width do not match base image.")
             runtime_config.height = base_image.height
             runtime_config.width = base_image.width
 
-        if strength < 0.0 or strength > 1.0:
+        if runtime_config.strength < 0.0 or runtime_config.strength > 1.0:
             log.warning("Strength should be between 0.0 and 1.0. Clipping.")
-            strength = max(0.0, min(1.0, strength))
+            runtime_config.strength = max(0.0, min(1.0, runtime_config.strength))
 
         noise = LatentCreator.create(runtime_config.height, runtime_config.width, seed)
         base_image = ImageUtil.to_array(base_image)
         image_latents = self.vae.encode(base_image)
         image_latents = self._pack_latents(image_latents, runtime_config.height, runtime_config.width)
-        init_timestep = int(runtime_config.num_inference_steps * strength)
+        init_timestep = int(runtime_config.num_inference_steps * runtime_config.strength)
         runtime_config.inference_steps = runtime_config.inference_steps[init_timestep:]
         latents = runtime_config.sigmas[init_timestep] * noise + (1.0 - runtime_config.sigmas[init_timestep]) * image_latents
 

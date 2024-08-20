@@ -11,14 +11,25 @@ class RuntimeConfig:
         self.config = config
         self.model_config = model_config
         self.sigmas = self._create_sigmas(config, model_config)
+        self.inference_steps = list(range(config.num_inference_steps))
+        self._height = config.height
+        self._width = config.width
 
     @property
     def height(self):
-        return self.config.height
+        return self._height
+    
+    @height.setter
+    def height(self, value):
+        self._height = value
 
     @property
     def width(self):
-        return self.config.height
+        return self._width
+    
+    @width.setter
+    def width(self, value):
+        self._width = value
 
     @property
     def guidance(self):
@@ -35,6 +46,13 @@ class RuntimeConfig:
     @property
     def num_train_steps(self):
         return self.model_config.num_train_steps
+    
+    @property
+    def strength(self):
+        if hasattr(self.config, "strength"):
+            return self.config.strength
+        else:
+            raise AttributeError("Strength is not defined in Config. Please use ConfigImg2Img instead.")
 
     @staticmethod
     def _create_sigmas(config, model):

@@ -54,11 +54,6 @@ class ImageUtil:
         return array
 
     @staticmethod
-    def resize(image):
-        image = image.resize((1024, 1024), resample=PIL.Image.LANCZOS)
-        return image
-
-    @staticmethod
     def save_image(image: Image.Image, path: str) -> None:
         file_path = Path(path)
         file_path.parent.mkdir(parents=True, exist_ok=True)
