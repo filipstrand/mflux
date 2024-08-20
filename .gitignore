@@ -8,6 +8,4 @@
 .env.production.local
 
 .venv
-*.png
-*.jpg
 *.pyc
