@@ -2,6 +2,7 @@ import mlx.core as mx
 from mlx import nn
 
 from flux_1_schnell.config.config import Config
+from flux_1_schnell.config.runtime_config import RuntimeConfig
 from flux_1_schnell.models.transformer.ada_layer_norm_continous import AdaLayerNormContinuous
 from flux_1_schnell.models.transformer.embed_nd import EmbedND
 from flux_1_schnell.models.transformer.joint_transformer_block import JointTransformerBlock
@@ -32,7 +33,7 @@ class Transformer(nn.Module):
             prompt_embeds: mx.array,
             pooled_prompt_embeds: mx.array,
             hidden_states: mx.array,
-            config: Config,
+            config: RuntimeConfig,
     ) -> mx.array:
         time_step = config.sigmas[t] * config.num_train_steps
         time_step = mx.broadcast_to(time_step, (1,)).astype(config.precision)
