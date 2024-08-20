@@ -4,9 +4,8 @@ from PIL import Image
 from tqdm import tqdm
 
 from flux_1.config.config import Config
-from flux_1.config.runtime_config import RuntimeConfig
-from flux_1.latent_creator.latent_creator import LatentCreator
 from flux_1.config.model_config import ModelConfig
+from flux_1.config.runtime_config import RuntimeConfig
 from flux_1.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from flux_1.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
 from flux_1.models.transformer.transformer import Transformer
@@ -48,7 +47,10 @@ class Flux1:
         config = RuntimeConfig(config, self.model_config)
 
         # Create the latents
-        latents = LatentCreator.create(config.height, config.width, seed)
+        latents = mx.random.normal(
+            shape=[1, (config.height // 16) * (config.width // 16), 64],
+            key=mx.random.key(seed)
+        )
 
         # Embedd the prompt
         t5_tokens = self.t5_tokenizer.tokenize(prompt)
