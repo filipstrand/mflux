@@ -9,7 +9,7 @@ class RuntimeConfig:
 
     def __init__(self, config: Config, model_config: ModelConfig):
         self.config = config
-        self.num_train_steps = 1000
+        self.model_config = model_config
         self.sigmas = self._create_sigmas(config, model_config)
 
     @property
@@ -31,6 +31,10 @@ class RuntimeConfig:
     @property
     def precision(self):
         return self.config.precision
+
+    @property
+    def num_train_steps(self):
+        return self.model_config.num_train_steps
 
     @staticmethod
     def _create_sigmas(config, model):
