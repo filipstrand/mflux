@@ -5,9 +5,9 @@ import time
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 
-from flux_1_schnell.config.config import Config
-from flux_1_schnell.flux import Flux1
-from flux_1_schnell.post_processing.image_util import ImageUtil
+from flux_1.config.config import Config
+from flux_1.flux import Flux1
+from flux_1.post_processing.image_util import ImageUtil
 
 
 def main():
