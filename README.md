@@ -78,13 +78,13 @@ from flux_1.config.config import Config
 from flux_1.flux import Flux1
 from flux_1.post_processing.image_util import ImageUtil
 
-flux = Flux1.from_repo("black-forest-labs/FLUX.1-schnell")
+flux = Flux1.from_alias("schnell")  # "schnell" or "dev"
 
 image = flux.generate_image(
    seed=3,
    prompt="Luxury food photograph of a birthday cake. In the middle it has three candles shaped like letters spelling the word 'MLX'. It has perfect lighting and a cozy background with big bokeh and shallow depth of field. The mood is a sunset balcony in tuscany. The photo is taken from the side of the cake. The scene is complemented by a warm, inviting light that highlights the textures and colors of the ingredients, giving it an appetizing and elegant look.",
    config=Config(
-      num_inference_steps=2,
+      num_inference_steps=2,  # Schnell works well with 2-4 steps, Dev works well with 20-25 steps
       height=768,
       width=1360,
    )
