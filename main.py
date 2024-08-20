@@ -14,7 +14,7 @@ def main():
     parser = argparse.ArgumentParser(description='Generate an image based on a prompt.')
     parser.add_argument('--prompt', type=str, required=True, help='The textual description of the image to generate.')
     parser.add_argument('--output', type=str, default="image.png", help='The filename for the output image. Default is "image.png".')
-    parser.add_argument('--model', type=str, default="schnell", help='The model to use. Default is "schnell".')
+    parser.add_argument('--model', type=str, default="schnell", help='The model to use ("schnell" or "dev"). Default is "schnell".')
     parser.add_argument('--seed', type=int, default=None, help='Entropy Seed (Default is time-based random-seed)')
     parser.add_argument('--height', type=int, default=1024, help='Image height (Default is 1024)')
     parser.add_argument('--width', type=int, default=1024, help='Image width (Default is 1024)')
