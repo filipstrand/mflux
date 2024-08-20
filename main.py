@@ -27,7 +27,7 @@ def main():
     flux = Flux1Schnell(args.model)
 
     image = flux.generate_image(
-        seed=args.seed,
+        seed=seed,
         prompt=args.prompt,
         config=Config(
             num_inference_steps=args.steps,
