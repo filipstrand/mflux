@@ -38,7 +38,7 @@ def main():
         )
     )
 
-    ImageUtil.save_image(image, "image.png")
+    ImageUtil.save_image(image, args.output)
 
 
 if __name__ == '__main__':
