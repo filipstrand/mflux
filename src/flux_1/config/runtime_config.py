@@ -18,7 +18,7 @@ class RuntimeConfig:
 
     @property
     def width(self):
-        return self.config.height
+        return self.config.width
 
     @property
     def guidance(self):
