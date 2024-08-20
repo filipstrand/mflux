@@ -1,5 +1,5 @@
 
-![image](src/flux_1_schnell/assets/logo.png)
+![image](src/flux_1/assets/logo.png)
 *A MLX port of FLUX based on the Huggingface Diffusers implementation.*
 
 ### About
@@ -74,9 +74,9 @@ import sys
 
 sys.path.append("/path/to/mflux/src")
 
-from flux_1_schnell.config.config import Config
-from flux_1_schnell.flux import Flux1
-from flux_1_schnell.post_processing.image_util import ImageUtil
+from flux_1.config.config import Config
+from flux_1.flux import Flux1
+from flux_1.post_processing.image_util import ImageUtil
 
 flux = Flux1.from_repo("black-forest-labs/FLUX.1-schnell")
 
@@ -127,27 +127,27 @@ However, if we were to import a fixed instance of this latent array saved from t
 The images below illustrate this equivalence. 
 In all cases the Schnell model was run for 2 time steps. 
 The Diffusers implementation ran in CPU mode. 
-The precision for MFLUX can be set in the [Config](src/flux_1_schnell/config/config.py) class. 
+The precision for MFLUX can be set in the [Config](src/flux_1/config/config.py) class. 
 There is typically a noticeable but very small difference in the final image when switching between 16bit and 32bit precision.
 
 ---
 ```
 Luxury food photograph
 ```
-![image](src/flux_1_schnell/assets/comparison1.jpg)
+![image](src/flux_1/assets/comparison1.jpg)
 
 ---
 ```
 detailed cinematic dof render of an old dusty detailed CRT monitor on a wooden desk in a dim room with items around, messy dirty room. On the screen are the letters "FLUX" glowing softly. High detail hard surface render
 ```
-![image](src/flux_1_schnell/assets/comparison2.jpg)
+![image](src/flux_1/assets/comparison2.jpg)
 
 ---
 
 ```
 photorealistic, lotr, A tiny red dragon curled up asleep inside a nest, (Soft Focus) , (f_stop 2.8) , (focal_length 50mm) macro lens f/2. 8, medieval wizard table, (pastel) colors, (cozy) morning light filtering through a nearby window, (whimsical) steam shapes, captured with a (Canon EOS R5) , highlighting (serene) comfort, medieval, dnd, rpg, 3d, 16K, 8K
 ```
-![image](src/flux_1_schnell/assets/comparison3.jpg)
+![image](src/flux_1/assets/comparison3.jpg)
 
 ---
 
@@ -155,14 +155,14 @@ photorealistic, lotr, A tiny red dragon curled up asleep inside a nest, (Soft Fo
 ```
 A weathered fisherman in his early 60s stands on the deck of his boat, gazing out at a stormy sea. He has a thick, salt-and-pepper beard, deep-set blue eyes, and skin tanned and creased from years of sun exposure. He's wearing a yellow raincoat and hat, with water droplets clinging to the fabric. Behind him, dark clouds loom ominously, and waves crash against the side of the boat. The overall atmosphere is one of tension and respect for the power of nature.
 ```
-![image](src/flux_1_schnell/assets/comparison4.jpg)
+![image](src/flux_1/assets/comparison4.jpg)
 
 ---
 
 ```
 Luxury food photograph of an italian Linguine pasta alle vongole dish with lots of clams. It has perfect lighting and a cozy background with big bokeh and shallow depth of field. The mood is a sunset balcony in tuscany.  The photo is taken from the side of the plate. The pasta is shiny with sprinkled parmesan cheese and basil leaves on top. The scene is complemented by a warm, inviting light that highlights the textures and colors of the ingredients, giving it an appetizing and elegant look.
 ```
-![image](src/flux_1_schnell/assets/comparison5.jpg)
+![image](src/flux_1/assets/comparison5.jpg)
 
 ---
 
