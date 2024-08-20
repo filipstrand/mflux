@@ -49,7 +49,7 @@ python main.py --prompt "Luxury food photograph" --steps 2 --seed 2
 
 - **`--output`** (optional, `str`, default: `"image.png"`): Output image filename.
 
-- **`--model`** (optional, `str`, default: `"black-forest-labs/FLUX.1-schnell"`): Model to use for generation.
+- **`--model`** (optional, `str`, default: `"schnell"`): Model to use for generation.
 
 - **`--seed`** (optional, `int`, default: `0`): Seed for random number generation. Default is time-based.
 
@@ -67,10 +67,10 @@ import sys
 sys.path.append("/path/to/mflux/src")
 
 from flux_1_schnell.config.config import Config
-from flux_1_schnell.flux import Flux1Schnell
+from flux_1_schnell.flux import Flux1
 from flux_1_schnell.post_processing.image_util import ImageUtil
 
-flux = Flux1Schnell("black-forest-labs/FLUX.1-schnell")
+flux = Flux1.from_repo("black-forest-labs/FLUX.1-schnell")
 
 image = flux.generate_image(
    seed=3,

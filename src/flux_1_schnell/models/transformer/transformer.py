@@ -16,7 +16,7 @@ class Transformer(nn.Module):
         self.pos_embed = EmbedND()
         self.x_embedder = nn.Linear(64, 3072)
         with_guidance_embed = "guidance_embedder" in weights["time_text_embed"].keys()
-        self.time_text_embed = TimeTextEmbed(with_guidance_embed = with_guidance_embed)
+        self.time_text_embed = TimeTextEmbed(with_guidance_embed=with_guidance_embed)
         self.context_embedder = nn.Linear(4096, 3072)
         self.transformer_blocks = [JointTransformerBlock(i) for i in range(19)]
         self.single_transformer_blocks = [SingleTransformerBlock(i) for i in range(38)]
@@ -33,15 +33,14 @@ class Transformer(nn.Module):
             pooled_prompt_embeds: mx.array,
             hidden_states: mx.array,
             config: Config,
-            sigmas: mx.array,
     ) -> mx.array:
-        time_step = sigmas[t] * config.num_train_steps
+        time_step = config.sigmas[t] * config.num_train_steps
         time_step = mx.broadcast_to(time_step, (1,)).astype(config.precision)
         hidden_states = self.x_embedder(hidden_states)
         guidance = mx.broadcast_to(config.guidance * config.num_train_steps, (1,)).astype(config.precision)
         text_embeddings = self.time_text_embed.forward(time_step, pooled_prompt_embeds, guidance)
         encoder_hidden_states = self.context_embedder(prompt_embeds)
-        txt_ids = Transformer._prepare_text_ids(seq_len = prompt_embeds.shape[1])
+        txt_ids = Transformer._prepare_text_ids(seq_len=prompt_embeds.shape[1])
         img_ids = Transformer._prepare_latent_image_ids(config.height, config.width)
         ids = mx.concatenate((txt_ids, img_ids), axis=1)
         image_rotary_emb = self.pos_embed.forward(ids)
@@ -81,5 +80,5 @@ class Transformer(nn.Module):
         return latent_image_ids
 
     @staticmethod
-    def _prepare_text_ids(seq_len) -> mx.array:
+    def _prepare_text_ids(seq_len: mx.array) -> mx.array:
         return mx.zeros((1, seq_len, 3))
