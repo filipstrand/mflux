@@ -4,6 +4,7 @@ from PIL import Image
 from tqdm import tqdm
 
 from flux_1_schnell.config.config import Config
+from flux_1_schnell.config.runtime_config import RuntimeConfig
 from flux_1_schnell.latent_creator.latent_creator import LatentCreator
 from flux_1_schnell.config.model_config import ModelConfig
 from flux_1_schnell.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
@@ -43,8 +44,8 @@ class Flux1:
         return Flux1(ModelConfig.from_alias(alias).model_name)
 
     def generate_image(self, seed: int, prompt: str, config: Config = Config()) -> PIL.Image.Image:
-        # Create a new config with sigmas based on what model we are running
-        config = config.copy_with_sigmas(self.model_config)
+        # Create a new runtime config based on the model type and input parameters
+        config = RuntimeConfig(config, self.model_config)
 
         # Create the latents
         latents = LatentCreator.create(config.height, config.width, seed)
