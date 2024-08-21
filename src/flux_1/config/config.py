@@ -1,7 +1,6 @@
 import logging
 
 import mlx.core as mx
-from sympy import N
 
 log = logging.getLogger(__name__)
 

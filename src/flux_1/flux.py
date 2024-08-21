@@ -1,5 +1,3 @@
-from mimetypes import init
-import re
 import PIL
 import mlx.core as mx
 from tqdm import tqdm
