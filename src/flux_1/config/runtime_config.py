@@ -1,17 +1,16 @@
 import mlx.core as mx
 import numpy as np
 
-from flux_1.config.config import Config
+from flux_1.config.config import Config, ConfigImg2Img
 from flux_1.config.model_config import ModelConfig
 
 
 class RuntimeConfig:
 
-    def __init__(self, config: Config, model_config: ModelConfig):
+    def __init__(self, config: Config | ConfigImg2Img, model_config: ModelConfig):
         self.config = config
         self.model_config = model_config
         self.sigmas = self._create_sigmas(config, model_config)
-        self.inference_steps = list(range(config.num_inference_steps))
         self._height = config.height
         self._width = config.width
 
@@ -36,8 +35,8 @@ class RuntimeConfig:
         return self.config.guidance
 
     @property
-    def num_inference_steps(self):
-        return self.config.num_inference_steps
+    def num_total_denoising_steps(self):
+        return self.config.num_total_denoising_steps
 
     @property
     def precision(self):
@@ -48,6 +47,10 @@ class RuntimeConfig:
         return self.model_config.num_train_steps
     
     @property
+    def inference_steps(self):
+        return self.config.inference_steps
+    
+    @property
     def strength(self):
         if hasattr(self.config, "strength"):
             return self.config.strength
@@ -56,14 +59,14 @@ class RuntimeConfig:
 
     @staticmethod
     def _create_sigmas(config, model):
-        sigmas = RuntimeConfig._create_sigmas_values(config.num_inference_steps)
+        sigmas = RuntimeConfig._create_sigmas_values(config.num_total_denoising_steps)
         if model == ModelConfig.FLUX1_DEV:
             sigmas = RuntimeConfig._shift_sigmas(sigmas, config.width, config.height)
         return sigmas
 
     @staticmethod
-    def _create_sigmas_values(num_inference_steps: int) -> mx.array:
-        sigmas = np.linspace(1.0, 1 / num_inference_steps, num_inference_steps)
+    def _create_sigmas_values(num_total_denoising_steps: int) -> mx.array:
+        sigmas = np.linspace(1.0, 1 / num_total_denoising_steps, num_total_denoising_steps)
         sigmas = mx.array(sigmas).astype(mx.float32)
         return mx.concatenate([sigmas, mx.zeros(1)])
 

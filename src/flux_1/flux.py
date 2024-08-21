@@ -1,8 +1,10 @@
+from mimetypes import init
+import re
 import PIL
 import mlx.core as mx
 from tqdm import tqdm
 
-from flux_1.config.config import Config
+from flux_1.config.config import Config, ConfigImg2Img
 from flux_1.config.runtime_config import RuntimeConfig
 from flux_1.latent_creator.latent_creator import LatentCreator
 from flux_1.config.model_config import ModelConfig
@@ -110,26 +112,20 @@ class Flux1Img2Img(Flux1):
     def from_alias(alias: str) -> "Flux1Img2Img":
         return Flux1Img2Img(ModelConfig.from_alias(alias).model_name)
 
-    def generate_image(self, seed: int, base_image: PIL.Image.Image, prompt: str, config: Config) -> mx.array:
+    def generate_image(self, seed: int, base_image: PIL.Image.Image, prompt: str, config: ConfigImg2Img) -> PIL.Image.Image:
         # Create a new runtime config based on the model type and input parameters
         runtime_config = RuntimeConfig(config, self.model_config)
 
         if config.height != base_image.height or config.width != base_image.width:
-            log.warning("Config height and width do not match base image.")
+            log.warning("Config height and width do not match base image. Adjusting to match base image.")
             runtime_config.height = base_image.height
             runtime_config.width = base_image.width
-
-        if runtime_config.strength < 0.0 or runtime_config.strength > 1.0:
-            log.warning("Strength should be between 0.0 and 1.0. Clipping.")
-            runtime_config.strength = max(0.0, min(1.0, runtime_config.strength))
 
         noise = LatentCreator.create(runtime_config.height, runtime_config.width, seed)
         base_image = ImageUtil.to_array(base_image)
         image_latents = self.vae.encode(base_image)
         image_latents = self._pack_latents(image_latents, runtime_config.height, runtime_config.width)
-        init_timestep = int(runtime_config.num_inference_steps * runtime_config.strength)
-        runtime_config.inference_steps = runtime_config.inference_steps[init_timestep:]
-        latents = runtime_config.sigmas[init_timestep] * noise + (1.0 - runtime_config.sigmas[init_timestep]) * image_latents
+        latents = runtime_config.sigmas[config.init_timestep] * noise + (1.0 - runtime_config.sigmas[config.init_timestep]) * image_latents
 
         return self._generate_from_latents(latents, prompt, runtime_config)
 
