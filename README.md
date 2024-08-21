@@ -51,6 +51,8 @@ python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 ⚠️ *If the specific model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell or Dev model respectively).* ⚠️
 
+🔒 [FLUX.1-dev currently requires granted access to its Huggingface repo. For troubleshooting, see the issue tracker](https://github.com/filipstrand/mflux/issues/14) 🔒 
+
 #### Full list of Command-Line Arguments 
 
 - **`--prompt`** (required, `str`): Text description of the image to generate.
