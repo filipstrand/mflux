@@ -67,6 +67,8 @@ python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--steps`** (optional, `int`, default: `4`): Number of inference steps.
 
+- **`--guidance`** (optional, `float`, default: `3.5`): Guidance scale (only used for `"dev"` model).
+
 Or make a new separate script like the following
 
 ```python
