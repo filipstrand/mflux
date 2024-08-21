@@ -51,6 +51,8 @@ python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 ⚠️ *If the specific model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell or Dev model respectively).* ⚠️
 
+🔒 [FLUX.1-dev currently requires granted access to its Huggingface repo. For troubleshooting, see the issue tracker](https://github.com/filipstrand/mflux/issues/14) 🔒 
+
 #### Full list of Command-Line Arguments 
 
 - **`--prompt`** (required, `str`): Text description of the image to generate.
@@ -66,6 +68,8 @@ python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 - **`--width`** (optional, `int`, default: `1024`): Width of the output image in pixels.
 
 - **`--steps`** (optional, `int`, default: `4`): Number of inference steps.
+
+- **`--guidance`** (optional, `float`, default: `3.5`): Guidance scale (only used for `"dev"` model).
 
 Or make a new separate script like the following
 
@@ -107,15 +111,17 @@ time python main.py \
 --width 1024
 ```
 
-| Device             | User                                                                                                                        | Reported Time | Notes                 |
-|--------------------|-----------------------------------------------------------------------------------------------------------------------------|---------------|-----------------------|
-| M3 Max             | [@karpathy](https://gist.github.com/awni/a67d16d50f0f492d94a10418e0592bde?permalink_comment_id=5153531#gistcomment-5153531) | ~20s          |                       |
-| M2 Ultra           | [@awni](https://x.com/awnihannun/status/1823515121827897385)                                                                | <15s          |                       |
-| 2023 M2 Max (96GB) | [@explorigin](https://github.com/filipstrand/mflux/issues/6)                                                                | ~25s          |                       |
-| 2021 M1 Pro (16GB) | [@qw-in](https://github.com/filipstrand/mflux/issues/7)                                                                     | ~175s         | Might freeze your mac |
-| 2023 M3 Pro (36GB) | [@kush-gupt](https://github.com/filipstrand/mflux/issues/11)                                                                | ~80s          |                       |
-| 2021 M1 Pro (32GB) | @filipstrand                                                                                                                | ~160s         |                       |
-| 2023 M2 Max (32GB) | @filipstrand                                                                                                                | ~70s          |                       |
+| Device             | User                                                                                                                        | Reported Time | Notes                     |
+|--------------------|-----------------------------------------------------------------------------------------------------------------------------|---------------|---------------------------|
+| M3 Max             | [@karpathy](https://gist.github.com/awni/a67d16d50f0f492d94a10418e0592bde?permalink_comment_id=5153531#gistcomment-5153531) | ~20s          |                           |
+| M2 Ultra           | [@awni](https://x.com/awnihannun/status/1823515121827897385)                                                                | <15s          |                           |
+| 2023 M2 Max (96GB) | [@explorigin](https://github.com/filipstrand/mflux/issues/6)                                                                | ~25s          |                           |
+| 2021 M1 Pro (16GB) | [@qw-in](https://github.com/filipstrand/mflux/issues/7)                                                                     | ~175s         | Might freeze your mac     |
+| 2023 M3 Pro (36GB) | [@kush-gupt](https://github.com/filipstrand/mflux/issues/11)                                                                | ~80s          |                           |
+| 2020 M1 (8GB)      | [@mbvillaverde](https://github.com/filipstrand/mflux/issues/13)                                                             | ~335s         | With resolution 512 x 512 |
+| 2022 M1 MAX (64GB) | [@BosseParra](https://x.com/BosseParra/status/1826191780812877968)                                                          | ~55s          |                           |
+| 2021 M1 Pro (32GB) | @filipstrand                                                                                                                | ~160s         |                           |
+| 2023 M2 Max (32GB) | @filipstrand                                                                                                                | ~70s          |                           |
 
 ### Equivalent to Diffusers implementation 
 

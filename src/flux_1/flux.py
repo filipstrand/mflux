@@ -6,8 +6,9 @@ from tqdm import tqdm
 
 from flux_1.config.config import Config, ConfigImg2Img
 from flux_1.config.runtime_config import RuntimeConfig
-from flux_1.latent_creator.latent_creator import LatentCreator
+from flux_1.config.config import Config
 from flux_1.config.model_config import ModelConfig
+from flux_1.config.runtime_config import RuntimeConfig
 from flux_1.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from flux_1.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
 from flux_1.models.transformer.transformer import Transformer
@@ -52,7 +53,10 @@ class Flux1:
         runtime_config = RuntimeConfig(config, self.model_config)
 
         # Create the latents
-        latents = LatentCreator.create(runtime_config.height, runtime_config.width, seed)
+        latents = mx.random.normal(
+            shape=[1, (config.height // 16) * (config.width // 16), 64],
+            key=mx.random.key(seed)
+        )
 
         return self._generate_from_latents(latents, prompt, runtime_config)
 
@@ -121,7 +125,10 @@ class Flux1Img2Img(Flux1):
             runtime_config.height = base_image.height
             runtime_config.width = base_image.width
 
-        noise = LatentCreator.create(runtime_config.height, runtime_config.width, seed)
+        noise = mx.random.normal(
+            shape=[1, (runtime_config.height // 16) * (runtime_config.width // 16), 64],
+            key=mx.random.key(seed)
+        )
         base_image = ImageUtil.to_array(base_image)
         image_latents = self.vae.encode(base_image)
         image_latents = self._pack_latents(image_latents, runtime_config.height, runtime_config.width)
