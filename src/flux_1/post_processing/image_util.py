@@ -47,17 +47,11 @@ class ImageUtil:
 
     @staticmethod
     def to_array(image: PIL.Image.Image) -> mx.array:
-        image = ImageUtil.resize(image)
         image = ImageUtil._pil_to_numpy(image)
         array = mx.array(image)
         array = mx.transpose(array, (0, 3, 1, 2))
         array = ImageUtil._normalize(array)
         return array
-
-    @staticmethod
-    def resize(image):
-        image = image.resize((1024, 1024), resample=PIL.Image.LANCZOS)
-        return image
 
     @staticmethod
     def save_image(image: Image.Image, path: str) -> None:
@@ -78,3 +72,7 @@ class ImageUtil:
             log.info(f"Image saved successfully at: {file_path}")
         except Exception as e:
             log.info(f"Error saving image: {e}")
+
+    @staticmethod
+    def load_image(path: str) -> Image.Image:
+        return Image.open(path)
