@@ -51,6 +51,14 @@ python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 ⚠️ *If the specific model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell or Dev model respectively).* ⚠️
 
+*By default, model files are downloaded to the `.cache` folder within your home directory. For example, in my setup, the path looks like this:* 
+
+```
+/Users/filipstrand/.cache/huggingface/hub/models--black-forest-labs--FLUX.1-dev
+```
+
+*To change this default behavior, you can do so by modifying the `HF_HOME` environment variable. For more details on how to adjust this setting, please refer to the [Hugging Face documentation](https://huggingface.co/docs/huggingface_hub/en/package_reference/environment_variables)*.
+
 🔒 [FLUX.1-dev currently requires granted access to its Huggingface repo. For troubleshooting, see the issue tracker](https://github.com/filipstrand/mflux/issues/14) 🔒 
 
 #### Full list of Command-Line Arguments 
