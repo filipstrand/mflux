@@ -11,7 +11,7 @@ from flux_1.flux import Flux1
 from flux_1.post_processing.image_util import ImageUtil
 
 
-def main():
+def setup_arg_parser():
     parser = argparse.ArgumentParser(description='Generate an image based on a prompt.')
     parser.add_argument('--prompt', type=str, required=True, help='The textual description of the image to generate.')
     parser.add_argument('--output', type=str, default="image.png", help='The filename for the output image. Default is "image.png".')
@@ -23,7 +23,10 @@ def main():
     parser.add_argument('--guidance', type=float, default=3.5, help='Guidance Scale (Default is 3.5)')
     parser.add_argument('--quantize',  "-q", type=int, choices=[4, 8], default=None, help='Quantize the model (4 or 8, Default is None)')
     parser.add_argument('--path', type=str, default=None, help='Local path for loading a model from disk')
+    return parser
 
+def main():
+    parser = setup_arg_parser()
     args = parser.parse_args()
 
     if args.path and args.model is None:
