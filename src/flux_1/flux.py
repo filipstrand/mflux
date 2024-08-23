@@ -3,10 +3,6 @@ from pathlib import Path
 import PIL
 import mlx.core as mx
 from PIL import Image
-from mlx import nn
-from mlx.utils import tree_flatten
-from tqdm import tqdm
-
 from flux_1.config.config import Config
 from flux_1.config.model_config import ModelConfig
 from flux_1.config.runtime_config import RuntimeConfig
@@ -19,6 +15,9 @@ from flux_1.tokenizer.clip_tokenizer import TokenizerCLIP
 from flux_1.tokenizer.t5_tokenizer import TokenizerT5
 from flux_1.tokenizer.tokenizer_handler import TokenizerHandler
 from flux_1.weights.weight_handler import WeightHandler
+from mlx import nn
+from mlx.utils import tree_flatten
+from tqdm import tqdm
 
 
 class Flux1:
@@ -99,6 +98,50 @@ class Flux1:
         latents = Flux1._unpack_latents(latents, config.height, config.width)
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(decoded)
+
+    def stream_generate_image(self, seed: int, prompt: str, report_step: int = 1, config: Config = Config()):
+        # Create a new runtime config based on the model type and input parameters
+        config = RuntimeConfig(config, self.model_config)
+
+        # Create the latents
+        latents = mx.random.normal(
+            shape=[1, (config.height // 16) * (config.width // 16), 64],
+            key=mx.random.key(seed)
+        )
+
+        # Embed the prompt
+        t5_tokens = self.t5_tokenizer.tokenize(prompt)
+        clip_tokens = self.clip_tokenizer.tokenize(prompt)
+        prompt_embeds = self.t5_text_encoder.forward(t5_tokens)
+        pooled_prompt_embeds = self.clip_text_encoder.forward(clip_tokens)
+
+        for t in tqdm(range(config.num_inference_steps)):
+            # Predict the noise
+            noise = self.transformer.predict(
+                t=t,
+                prompt_embeds=prompt_embeds,
+                pooled_prompt_embeds=pooled_prompt_embeds,
+                hidden_states=latents,
+                config=config,
+            )
+
+            # Take one denoise step
+            dt = config.sigmas[t + 1] - config.sigmas[t]
+            latents += noise * dt
+
+            # To enable progress tracking
+            mx.eval(latents)
+
+            if (t + 1) % report_step == 0:
+                current_latents = Flux1._unpack_latents(latents, config.height, config.width)
+                decoded_image = self.vae.decode(current_latents)
+                current_image = ImageUtil.to_image(decoded_image)
+                yield current_image
+
+        final_latents = Flux1._unpack_latents(latents, config.height, config.width)
+        final_decoded_image = self.vae.decode(final_latents)
+        final_image = ImageUtil.to_image(final_decoded_image)
+        yield final_image
 
     @staticmethod
     def _unpack_latents(latents: mx.array, height: int, width: int) -> mx.array:
