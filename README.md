@@ -189,4 +189,7 @@ Luxury food photograph of an italian Linguine pasta alle vongole dish with lots 
 
 ### TODO
 
-- LoRA adapters
+- [ ] LoRA adapters
+- [ ] LoRA fine-tuning
+- [ ] Frontend support (Gradio/Streamlit/Other?)
+- [ ] Support for quantized models
