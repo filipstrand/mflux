@@ -214,4 +214,4 @@ running the 8-bit quantized version on this particular machine. Unlike the non-q
 - [ ] LoRA adapters
 - [ ] LoRA fine-tuning
 - [ ] Frontend support (Gradio/Streamlit/Other?)
-- [x] Support for quantized models
+- [x] Basic support for quantized models (Original HF weights still needed)
