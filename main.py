@@ -20,12 +20,13 @@ def main():
     parser.add_argument('--width', type=int, default=1024, help='Image width (Default is 1024)')
     parser.add_argument('--steps', type=int, default=4, help='Inference Steps')
     parser.add_argument('--guidance', type=float, default=3.5, help='Guidance Scale (Default is 3.5)')
+    parser.add_argument('--bits', type=int, default=None, help='Quantize the model (Default is None)')
 
     args = parser.parse_args()
 
     seed = int(time.time()) if args.seed is None else args.seed
 
-    flux = Flux1.from_alias(args.model)
+    flux = Flux1.from_alias(args.model, args.bits)
 
     image = flux.generate_image(
         seed=seed,

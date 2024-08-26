@@ -20,7 +20,7 @@ from flux_1.weights.weight_handler import WeightHandler
 
 class Flux1:
 
-    def __init__(self, repo_id: str, quantize: bool = False):
+    def __init__(self, repo_id: str, bits: int | None = None):
         self.model_config = ModelConfig.from_repo(repo_id)
 
         # Initialize the tokenizers
@@ -35,20 +35,20 @@ class Flux1:
         self.t5_text_encoder = T5Encoder(weights.t5_encoder)
         self.clip_text_encoder = CLIPEncoder(weights.clip_encoder)
 
-        # Quantize the model
-        if quantize:
-            nn.quantize(self.vae, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=8)
-            nn.quantize(self.transformer, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 64, group_size=64, bits=8)
-            nn.quantize(self.t5_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=8)
-            nn.quantize(self.clip_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=8)
+        # Optionally quantize the model
+        if bits:
+            nn.quantize(self.vae, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=bits)
+            nn.quantize(self.transformer, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 64, group_size=64, bits=bits)
+            nn.quantize(self.t5_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=bits)
+            nn.quantize(self.clip_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=bits)
 
     @staticmethod
-    def from_repo(repo_id: str) -> "Flux1":
-        return Flux1(repo_id)
+    def from_repo(repo_id: str, bits: int | None = None) -> "Flux1":
+        return Flux1(repo_id, bits)
 
     @staticmethod
-    def from_alias(alias: str) -> "Flux1":
-        return Flux1(ModelConfig.from_alias(alias).model_name)
+    def from_alias(alias: str, bits: int | None = None) -> "Flux1":
+        return Flux1(ModelConfig.from_alias(alias).model_name, bits)
 
     def generate_image(self, seed: int, prompt: str, config: Config = Config()) -> PIL.Image.Image:
         # Create a new runtime config based on the model type and input parameters
