@@ -1,6 +1,7 @@
 import PIL
 import mlx.core as mx
 from PIL import Image
+from mlx import nn
 from tqdm import tqdm
 
 from flux_1.config.config import Config
@@ -19,7 +20,7 @@ from flux_1.weights.weight_handler import WeightHandler
 
 class Flux1:
 
-    def __init__(self, repo_id: str):
+    def __init__(self, repo_id: str, quantize: bool = False):
         self.model_config = ModelConfig.from_repo(repo_id)
 
         # Initialize the tokenizers
@@ -33,6 +34,13 @@ class Flux1:
         self.transformer = Transformer(weights.transformer)
         self.t5_text_encoder = T5Encoder(weights.t5_encoder)
         self.clip_text_encoder = CLIPEncoder(weights.clip_encoder)
+
+        # Quantize the model
+        if quantize:
+            nn.quantize(self.vae, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=8)
+            nn.quantize(self.transformer, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 64, group_size=64, bits=8)
+            nn.quantize(self.t5_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=8)
+            nn.quantize(self.clip_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=8)
 
     @staticmethod
     def from_repo(repo_id: str) -> "Flux1":
