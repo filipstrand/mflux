@@ -69,7 +69,7 @@ python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--model`** (optional, `str`, default: `"schnell"`): Model to use for generation (`"schnell"` or `"dev"`).
 
-- **`--seed`** (optional, `int`, default: `0`): Seed for random number generation. Default is time-based.
+- **`--seed`** (optional, `int`, default: `None`): Seed for random number generation. Default is time-based.
 
 - **`--height`** (optional, `int`, default: `1024`): Height of the output image in pixels.
 
@@ -78,6 +78,9 @@ python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 - **`--steps`** (optional, `int`, default: `4`): Number of inference steps.
 
 - **`--guidance`** (optional, `float`, default: `3.5`): Guidance scale (only used for `"dev"` model).
+
+- **`--bits`** (optional, `int`, default: `None`): [Quantization](#quantization-) (choose between `4` or `8`).
+
 
 Or make a new separate script like the following
 
@@ -180,7 +183,26 @@ Luxury food photograph of an italian Linguine pasta alle vongole dish with lots 
 
 ---
 
+### Quantization 
 
+MFLUX supports running FLUX in 4-bit or 8-bit quantized mode. Running a quantized version can greatly speed up the
+generation process and reduce the memory consumption by several gigabytes. Currently, the model will be quantized at
+initialization and the full weights are still needed.
+
+```
+python main.py \
+    --steps 2 \
+    --seed 2 \
+    --bits 8 \
+    --height 1920 \
+    --width 1024 \
+    --prompt "Tranquil pond in a bamboo forest at dawn, the sun is barely starting to peak over the horizon, panda practices Tai Chi near the edge of the pond, atmospheric perspective through the mist of morning dew, sunbeams, its movements are graceful and fluid — creating a sense of harmony and balance, the pond’s calm waters reflecting the scene, inviting a sense of meditation and connection with nature, style of Howard Terpning and Jessica Rossier" 
+```
+![image](src/flux_1/assets/comparison6.jpg)
+
+By selecting the `--bits` flag to be `4`, `8`, or removing it entirely, we get all 3 images above. As can be seen, there is very little difference between the images (especially between the 8-bit, and the non-quantized result).
+Image generation times are based on a 2021 M1 Pro (32GB) machine. Even though the images are almost identical, there is a ~2x speedup by
+running the 8-bit quantized version on this particular machine. Unlike the non-quantized version, for the 8-bit version the swap memory usage is drastically reduced and GPU utilization is close to 100% during the whole generation.  
 
 ### Current limitations
 
@@ -192,4 +214,4 @@ Luxury food photograph of an italian Linguine pasta alle vongole dish with lots 
 - [ ] LoRA adapters
 - [ ] LoRA fine-tuning
 - [ ] Frontend support (Gradio/Streamlit/Other?)
-- [ ] Support for quantized models
+- [x] Support for quantized models
