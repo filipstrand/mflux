@@ -3,6 +3,8 @@ import sys
 import argparse
 import time
 
+from flux_1.config.model_config import ModelConfig
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 
 from flux_1.config.config import Config
@@ -26,8 +28,9 @@ def main():
 
     seed = int(time.time()) if args.seed is None else args.seed
 
+    # flux = Flux1.from_disk(model_config=ModelConfig.FLUX1_DEV, path="/Users/filipstrand/Desktop/schnell_16bit_huggingface")
     flux = Flux1.from_alias(alias=args.model, bits=args.bits)
-    flux.save_model_weights("/Users/filipstrand/Desktop/test_save")
+    # flux.save_model_weights("/Users/filipstrand/Desktop/test_save")
 
     image = flux.generate_image(
         seed=seed,

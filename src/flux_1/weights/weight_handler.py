@@ -13,66 +13,59 @@ class WeightHandler:
             self,
             repo_id: str | None = None,
             local_path: str | None = None,
-            should_reshape: bool = True,
+            is_huggingface: bool = True,
     ):
-        root_path = local_path if local_path else WeightHandler._download_or_get_cached_weights(repo_id)
+        root_path = Path(local_path) if local_path else WeightHandler._download_or_get_cached_weights(repo_id)
 
-        self.clip_encoder = WeightHandler._clip_encoder(
-            should_reshape=should_reshape,
-            weights=WeightHandler._load(root_path / "text_encoder/model.safetensors")
-        )
-        self.t5_encoder = WeightHandler._t5_encoder(
-            should_reshape=should_reshape,
-            weights_1=WeightHandler._load(root_path / "text_encoder_2/model-00001-of-00002.safetensors"),
-            weights_2=WeightHandler._load(root_path / "text_encoder_2/model-00002-of-00002.safetensors"),
-        )
-        self.vae = WeightHandler._vae(
-            should_reshape=should_reshape,
-            weights=WeightHandler._load(root_path / "vae/diffusion_pytorch_model.safetensors")
-        )
-        self.transformer = WeightHandler._transformer(
-            should_reshape=should_reshape,
-            weights_1=WeightHandler._load(root_path / "transformer/diffusion_pytorch_model-00001-of-00003.safetensors"),
-            weights_2=WeightHandler._load(root_path / "transformer/diffusion_pytorch_model-00002-of-00003.safetensors"),
-            weights_3=WeightHandler._load(root_path / "transformer/diffusion_pytorch_model-00003-of-00003.safetensors"),
-        )
+        self.clip_encoder = WeightHandler._clip_encoder(root_path=root_path, is_huggingface=is_huggingface)
+        self.t5_encoder = WeightHandler._t5_encoder(root_path=root_path, is_huggingface=is_huggingface)
+        self.vae = WeightHandler._vae(root_path=root_path, is_huggingface=is_huggingface)
+        self.transformer = WeightHandler._transformer(root_path=root_path, is_huggingface=is_huggingface)
 
     @staticmethod
     def load_from_cache_or_huggingface(repo_id: str) -> "WeightHandler":
-        return WeightHandler(repo_id=repo_id, local_path=None, should_reshape=True)
+        return WeightHandler(repo_id=repo_id, local_path=None, is_huggingface=True)
 
     @staticmethod
     def load_quantized_model_from_disk(path: str) -> "WeightHandler":
-        return WeightHandler(repo_id=None, local_path=path, should_reshape=False)
+        return WeightHandler(repo_id=None, local_path=path, is_huggingface=False)
 
     @staticmethod
     def load_huggingface_model_from_disk(path: str) -> "WeightHandler":
-        return WeightHandler(repo_id=None, local_path=path, should_reshape=True)
+        return WeightHandler(repo_id=None, local_path=path, is_huggingface=True)
 
     @staticmethod
     def _load(path: Path) -> list[dict]:
         return list(mx.load(str(path)).items())
 
     @staticmethod
-    def _clip_encoder(should_reshape: bool, weights: list[dict]) -> dict:
-        if should_reshape:
-            weights = [WeightHandler._reshape_weights(k, v) for k, v in weights]
+    def _clip_encoder(root_path: Path, is_huggingface: bool) -> dict:
+        if is_huggingface is False:
+            weights = WeightHandler._flatten(WeightHandler._load(root_path / "clip_0.npz"))
+            unflatten = tree_unflatten(weights)
+            return unflatten
+
+        weights = WeightHandler._load(root_path / "text_encoder/model.safetensors")
+        weights = [WeightHandler._reshape_weights(k, v) for k, v in weights]
         weights = WeightHandler._flatten(weights)
         unflatten = tree_unflatten(weights)
         return unflatten
 
     @staticmethod
-    def _t5_encoder(
-            should_reshape: bool,
-            weights_1: list[dict],
-            weights_2: list[dict],
-    ) -> dict:
-        if should_reshape:
-            weights_1 = [WeightHandler._reshape_weights(k, v) for k, v in weights_1]
-            weights_2 = [WeightHandler._reshape_weights(k, v) for k, v in weights_2]
-        weights_1 = WeightHandler._flatten(weights_1)
-        weights_2 = WeightHandler._flatten(weights_2)
+    def _t5_encoder(root_path: Path, is_huggingface: bool) -> dict:
+        if is_huggingface is False:
+            weights_1 = WeightHandler._flatten(WeightHandler._load(root_path / "t5_0.npz"))
+            weights_2 = WeightHandler._flatten(WeightHandler._load(root_path / "t5_1.npz"))
+            weights_3 = WeightHandler._flatten(WeightHandler._load(root_path / "t5_2.npz"))
+            unflatten = tree_unflatten(weights_1 + weights_2 + weights_3)
+            return unflatten
+
+        weights_1 = WeightHandler._load(root_path / "text_encoder_2/model-00001-of-00002.safetensors"),
+        weights_2 = WeightHandler._load(root_path / "text_encoder_2/model-00002-of-00002.safetensors"),
+        weights_1 = WeightHandler._flatten([WeightHandler._reshape_weights(k, v) for k, v in weights_1])
+        weights_2 = WeightHandler._flatten([WeightHandler._reshape_weights(k, v) for k, v in weights_2])
         unflatten = tree_unflatten(weights_1 + weights_2)
+
         unflatten["final_layer_norm"] = unflatten["encoder"]["final_layer_norm"]
         for block in unflatten["encoder"]["block"]:
             attention = block["layer"][0]
@@ -92,19 +85,23 @@ class WeightHandler:
         return unflatten
 
     @staticmethod
-    def _transformer(
-            should_reshape: bool,
-            weights_1: list[dict],
-            weights_2: list[dict],
-            weights_3: list[dict],
-    ) -> dict:
-        if should_reshape:
-            weights_1 = [WeightHandler._reshape_weights(k, v) for k, v in weights_1]
-            weights_2 = [WeightHandler._reshape_weights(k, v) for k, v in weights_2]
-            weights_3 = [WeightHandler._reshape_weights(k, v) for k, v in weights_3]
-        weights_1 = WeightHandler._flatten(weights_1)
-        weights_2 = WeightHandler._flatten(weights_2)
-        weights_3 = WeightHandler._flatten(weights_3)
+    def _transformer(root_path: Path, is_huggingface: bool) -> dict:
+        if is_huggingface is False:
+            weights_1 = WeightHandler._flatten(WeightHandler._load(root_path / "transformer_0.npz"))
+            weights_2 = WeightHandler._flatten(WeightHandler._load(root_path / "transformer_1.npz"))
+            weights_3 = WeightHandler._flatten(WeightHandler._load(root_path / "transformer_2.npz"))
+            weights_4 = WeightHandler._flatten(WeightHandler._load(root_path / "transformer_3.npz"))
+            weights_5 = WeightHandler._flatten(WeightHandler._load(root_path / "transformer_4.npz"))
+            weights_6 = WeightHandler._flatten(WeightHandler._load(root_path / "transformer_5.npz"))
+            unflatten = tree_unflatten(weights_1 + weights_2 + weights_3 + weights_4 + weights_5 + weights_6)
+            return unflatten
+
+        weights_1 = WeightHandler._load(root_path / "transformer/diffusion_pytorch_model-00001-of-00003.safetensors"),
+        weights_2 = WeightHandler._load(root_path / "transformer/diffusion_pytorch_model-00002-of-00003.safetensors"),
+        weights_3 = WeightHandler._load(root_path / "transformer/diffusion_pytorch_model-00003-of-00003.safetensors"),
+        weights_1 = WeightHandler._flatten([WeightHandler._reshape_weights(k, v) for k, v in weights_1])
+        weights_2 = WeightHandler._flatten([WeightHandler._reshape_weights(k, v) for k, v in weights_2])
+        weights_3 = WeightHandler._flatten([WeightHandler._reshape_weights(k, v) for k, v in weights_3])
         unflatten = tree_unflatten(weights_1 + weights_2 + weights_3)
 
         for block in unflatten["transformer_blocks"]:
@@ -120,11 +117,16 @@ class WeightHandler:
         return unflatten
 
     @staticmethod
-    def _vae(should_reshape: bool, weights: list[dict]) -> dict:
-        if should_reshape:
-            weights = [WeightHandler._reshape_weights(k, v) for k, v in weights]
-        weights = WeightHandler._flatten(weights)
+    def _vae(root_path: Path, is_huggingface: bool) -> dict:
+        if is_huggingface is False:
+            weights_1 = WeightHandler._flatten(WeightHandler._load(root_path / "vae_0.npz"))
+            unflatten = tree_unflatten(weights_1)
+            return unflatten
+
+        weights = WeightHandler._load(root_path / "vae/diffusion_pytorch_model.safetensors")
+        weights = WeightHandler._flatten([WeightHandler._reshape_weights(k, v) for k, v in weights])
         unflatten = tree_unflatten(weights)
+
         unflatten['decoder']['conv_in'] = {'conv2d': unflatten['decoder']['conv_in']}
         unflatten['decoder']['conv_out'] = {'conv2d': unflatten['decoder']['conv_out']}
         unflatten['decoder']['conv_norm_out'] = {'norm': unflatten['decoder']['conv_norm_out']}

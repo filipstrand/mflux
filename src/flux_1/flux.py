@@ -33,7 +33,7 @@ class Flux1:
         self.model_config = model_config
 
         # Initialize the tokenizers
-        tokenizers = TokenizerHandler.load_from_cache_or_huggingface(model_config.model_name, self.model_config.max_sequence_length)
+        tokenizers = TokenizerHandler.load_from_cache_or_huggingface(model_config.model_name, self.model_config.max_sequence_length, path)
         self.t5_tokenizer = TokenizerT5(tokenizers.t5, max_length=self.model_config.max_sequence_length)
         self.clip_tokenizer = TokenizerCLIP(tokenizers.clip)
 
@@ -153,6 +153,7 @@ class Flux1:
 
     @staticmethod
     def _split_weights(weights: dict, max_file_size_gb: int = 2) -> list:
+        # Copied from mlx-examples repo
         max_file_size_bytes = max_file_size_gb << 30
         shards = []
         shard, shard_size = {}, 0
