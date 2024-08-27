@@ -4,7 +4,6 @@ import transformers
 from huggingface_hub import snapshot_download
 
 from flux_1.tokenizer.clip_tokenizer import TokenizerCLIP
-from flux_1.tokenizer.t5_tokenizer import TokenizerT5
 
 
 class TokenizerHandler:

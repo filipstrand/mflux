@@ -100,11 +100,3 @@ class Flux1:
             model_config=model_config,
             bits=bits,
         )
-
-    @staticmethod
-    def from_disk(model_config: ModelConfig, path: str):
-        pass
-
-    def save_model_weights(self):
-        self.transformer.save_weights()
-        pass
