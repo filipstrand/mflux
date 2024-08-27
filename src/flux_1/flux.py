@@ -1,7 +1,10 @@
+from pathlib import Path
+
 import PIL
 import mlx.core as mx
 from PIL import Image
 from mlx import nn
+from mlx.utils import tree_flatten
 from tqdm import tqdm
 
 from flux_1.config.config import Config
@@ -134,5 +137,30 @@ class Flux1:
             else:
                 return WeightHandler.load_quantized_model_from_disk(path)
 
-    def save_model_weights(self, path: str):
-        self.transformer.save_weights()
+    def save_model_weights(self, base_path: str):
+        base_path = Path(base_path)
+        base_path.mkdir(parents=True, exist_ok=True)
+
+        vae_weights = Flux1._split_weights(dict(tree_flatten(self.vae.parameters())))
+        transformer_weights = Flux1._split_weights(dict(tree_flatten(self.transformer.parameters())))
+        clip_text_encoder_weights = Flux1._split_weights(dict(tree_flatten(self.clip_text_encoder.parameters())))
+        t5_text_encoder_weights = Flux1._split_weights(dict(tree_flatten(self.t5_text_encoder.parameters())))
+
+        [mx.savez(str(base_path / f"vae_{i}.npz"), **weight) for i, weight in enumerate(vae_weights)]
+        [mx.savez(str(base_path / f"transformer_{i}.npz"), **weight) for i, weight in enumerate(transformer_weights)]
+        [mx.savez(str(base_path / f"clip_{i}.npz"), **weight) for i, weight in enumerate(clip_text_encoder_weights)]
+        [mx.savez(str(base_path / f"t5_{i}.npz"), **weight) for i, weight in enumerate(t5_text_encoder_weights)]
+
+    @staticmethod
+    def _split_weights(weights: dict, max_file_size_gb: int = 2) -> list:
+        max_file_size_bytes = max_file_size_gb << 30
+        shards = []
+        shard, shard_size = {}, 0
+        for k, v in weights.items():
+            if shard_size + v.nbytes > max_file_size_bytes:
+                shards.append(shard)
+                shard, shard_size = {}, 0
+            shard[k] = v
+            shard_size += v.nbytes
+        shards.append(shard)
+        return shards
