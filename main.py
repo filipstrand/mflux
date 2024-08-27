@@ -26,7 +26,7 @@ def main():
 
     seed = int(time.time()) if args.seed is None else args.seed
 
-    flux = Flux1.from_alias(args.model, args.bits)
+    flux = Flux1.from_alias(alias=args.model, bits=args.bits)
 
     image = flux.generate_image(
         seed=seed,

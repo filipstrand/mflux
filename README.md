@@ -93,7 +93,7 @@ from flux_1.config.config import Config
 from flux_1.flux import Flux1
 from flux_1.post_processing.image_util import ImageUtil
 
-flux = Flux1.from_alias("schnell")  # "schnell" or "dev"
+flux = Flux1.from_alias(alias="schnell")  # "schnell" or "dev"
 
 image = flux.generate_image(
    seed=3,
