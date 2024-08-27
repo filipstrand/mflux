@@ -115,10 +115,10 @@ class Flux1:
         )
 
     @staticmethod
-    def from_disk_quantized(model_config: ModelConfig, path: str):
+    def from_disk_mlx(model_config: ModelConfig, path: str, bits: int | None = None):
         return Flux1(
             model_config=model_config,
-            bits=None,
+            bits=bits,
             path=path,
             is_huggingface=False,
         )
@@ -138,18 +138,18 @@ class Flux1:
                 return WeightHandler.load_quantized_model_from_disk(path)
 
     def save_model_weights(self, base_path: str):
-        base_path = Path(base_path)
-        base_path.mkdir(parents=True, exist_ok=True)
+        def save_weights(model, subdir: str):
+            path = Path(base_path) / subdir
+            path.mkdir(parents=True, exist_ok=True)
+            weights = Flux1._split_weights(dict(tree_flatten(model.parameters())))
+            for i, weight in enumerate(weights):
+                mx.savez(str(path / f"{i}.npz"), **weight)
 
-        vae_weights = Flux1._split_weights(dict(tree_flatten(self.vae.parameters())))
-        transformer_weights = Flux1._split_weights(dict(tree_flatten(self.transformer.parameters())))
-        clip_text_encoder_weights = Flux1._split_weights(dict(tree_flatten(self.clip_text_encoder.parameters())))
-        t5_text_encoder_weights = Flux1._split_weights(dict(tree_flatten(self.t5_text_encoder.parameters())))
-
-        [mx.savez(str(base_path / f"vae_{i}.npz"), **weight) for i, weight in enumerate(vae_weights)]
-        [mx.savez(str(base_path / f"transformer_{i}.npz"), **weight) for i, weight in enumerate(transformer_weights)]
-        [mx.savez(str(base_path / f"clip_{i}.npz"), **weight) for i, weight in enumerate(clip_text_encoder_weights)]
-        [mx.savez(str(base_path / f"t5_{i}.npz"), **weight) for i, weight in enumerate(t5_text_encoder_weights)]
+        # Save each model component
+        save_weights(self.vae, "vae")
+        save_weights(self.transformer, "transformer")
+        save_weights(self.clip_text_encoder, "clip")
+        save_weights(self.t5_text_encoder, "t5")
 
     @staticmethod
     def _split_weights(weights: dict, max_file_size_gb: int = 2) -> list:
