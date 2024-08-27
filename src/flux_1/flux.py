@@ -20,35 +20,27 @@ from flux_1.weights.weight_handler import WeightHandler
 
 class Flux1:
 
-    def __init__(self, repo_id: str, bits: int | None = None):
-        self.model_config = ModelConfig.from_repo(repo_id)
+    def __init__(self, model_config: ModelConfig, bits: int | None = None):
+        self.model_config = model_config
 
         # Initialize the tokenizers
-        tokenizers = TokenizerHandler.load_from_disk_or_huggingface(repo_id, self.model_config.max_sequence_length)
+        tokenizers = TokenizerHandler.load_from_disk_or_huggingface(model_config.model_name, self.model_config.max_sequence_length)
         self.t5_tokenizer = TokenizerT5(tokenizers.t5, max_length=self.model_config.max_sequence_length)
         self.clip_tokenizer = TokenizerCLIP(tokenizers.clip)
 
         # Initialize the models
-        weights = WeightHandler.load_from_disk_or_huggingface(repo_id)
+        weights = WeightHandler.load_from_disk_or_huggingface(model_config.model_name)
         self.vae = VAE(weights.vae)
         self.transformer = Transformer(weights.transformer)
         self.t5_text_encoder = T5Encoder(weights.t5_encoder)
         self.clip_text_encoder = CLIPEncoder(weights.clip_encoder)
 
-        # Optionally quantize the model
+        # Optionally quantize the model at initialization
         if bits:
             nn.quantize(self.vae, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=bits)
             nn.quantize(self.transformer, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 64, group_size=64, bits=bits)
             nn.quantize(self.t5_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=bits)
             nn.quantize(self.clip_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=bits)
-
-    @staticmethod
-    def from_repo(repo_id: str, bits: int | None = None) -> "Flux1":
-        return Flux1(repo_id, bits)
-
-    @staticmethod
-    def from_alias(alias: str, bits: int | None = None) -> "Flux1":
-        return Flux1(ModelConfig.from_alias(alias).model_name, bits)
 
     def generate_image(self, seed: int, prompt: str, config: Config = Config()) -> PIL.Image.Image:
         # Create a new runtime config based on the model type and input parameters
@@ -95,10 +87,24 @@ class Flux1:
         latents = mx.reshape(latents, (1, 16, width // 16 * 2, height // 16 * 2))
         return latents
 
-    def encode(self, path: str) -> mx.array:
-        array = ImageUtil.to_array(Image.open(path))
-        return self.vae.encode(array)
+    @staticmethod
+    def from_alias(alias: str, bits: int | None = None) -> "Flux1":
+        return Flux1(
+            model_config=ModelConfig.from_alias(alias),
+            bits=bits,
+        )
 
-    def decode(self, code: mx.array) -> PIL.Image.Image:
-        decoded = self.vae.decode(code)
-        return ImageUtil.to_image(decoded)
+    @staticmethod
+    def from_disk_huggingface(model_config: ModelConfig, path: str, bits: int | None = None):
+        return Flux1(
+            model_config=model_config,
+            bits=bits,
+        )
+
+    @staticmethod
+    def from_disk(model_config: ModelConfig, path: str):
+        pass
+
+    def save_model_weights(self):
+        self.transformer.save_weights()
+        pass
