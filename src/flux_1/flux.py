@@ -106,10 +106,10 @@ class Flux1:
         )
 
     @staticmethod
-    def from_disk(model_config: ModelConfig, path: str):
+    def from_disk(model_config: ModelConfig, path: str, bits: int | None = None):
         return Flux1(
             model_config=model_config,
-            bits=None,
+            bits=bits,
             path=path,
             is_huggingface=True,
         )

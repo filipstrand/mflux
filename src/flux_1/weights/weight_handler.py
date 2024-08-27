@@ -60,8 +60,8 @@ class WeightHandler:
             unflatten = tree_unflatten(weights_1 + weights_2 + weights_3)
             return unflatten
 
-        weights_1 = WeightHandler._load(root_path / "text_encoder_2/model-00001-of-00002.safetensors"),
-        weights_2 = WeightHandler._load(root_path / "text_encoder_2/model-00002-of-00002.safetensors"),
+        weights_1 = WeightHandler._load(root_path / "text_encoder_2/model-00001-of-00002.safetensors")
+        weights_2 = WeightHandler._load(root_path / "text_encoder_2/model-00002-of-00002.safetensors")
         weights_1 = WeightHandler._flatten([WeightHandler._reshape_weights(k, v) for k, v in weights_1])
         weights_2 = WeightHandler._flatten([WeightHandler._reshape_weights(k, v) for k, v in weights_2])
         unflatten = tree_unflatten(weights_1 + weights_2)
@@ -96,9 +96,9 @@ class WeightHandler:
             unflatten = tree_unflatten(weights_1 + weights_2 + weights_3 + weights_4 + weights_5 + weights_6)
             return unflatten
 
-        weights_1 = WeightHandler._load(root_path / "transformer/diffusion_pytorch_model-00001-of-00003.safetensors"),
-        weights_2 = WeightHandler._load(root_path / "transformer/diffusion_pytorch_model-00002-of-00003.safetensors"),
-        weights_3 = WeightHandler._load(root_path / "transformer/diffusion_pytorch_model-00003-of-00003.safetensors"),
+        weights_1 = WeightHandler._load(root_path / "transformer/diffusion_pytorch_model-00001-of-00003.safetensors")
+        weights_2 = WeightHandler._load(root_path / "transformer/diffusion_pytorch_model-00002-of-00003.safetensors")
+        weights_3 = WeightHandler._load(root_path / "transformer/diffusion_pytorch_model-00003-of-00003.safetensors")
         weights_1 = WeightHandler._flatten([WeightHandler._reshape_weights(k, v) for k, v in weights_1])
         weights_2 = WeightHandler._flatten([WeightHandler._reshape_weights(k, v) for k, v in weights_2])
         weights_3 = WeightHandler._flatten([WeightHandler._reshape_weights(k, v) for k, v in weights_3])

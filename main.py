@@ -28,8 +28,8 @@ def main():
 
     seed = int(time.time()) if args.seed is None else args.seed
 
-    # flux = Flux1.from_disk(model_config=ModelConfig.FLUX1_DEV, path="/Users/filipstrand/Desktop/schnell_16bit_huggingface")
-    flux = Flux1.from_alias(alias=args.model, bits=args.bits)
+    flux = Flux1.from_disk(model_config=ModelConfig.FLUX1_DEV, path="/Users/filipstrand/Desktop/schnell_16bit_huggingface", bits=8)
+    # flux = Flux1.from_alias(alias=args.model, bits=args.bits)
     # flux.save_model_weights("/Users/filipstrand/Desktop/test_save")
 
     image = flux.generate_image(
