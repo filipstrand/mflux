@@ -148,8 +148,8 @@ class Flux1:
         # Save each model component
         save_weights(self.vae, "vae")
         save_weights(self.transformer, "transformer")
-        save_weights(self.clip_text_encoder, "clip")
-        save_weights(self.t5_text_encoder, "t5")
+        save_weights(self.clip_text_encoder, "text_encoder")
+        save_weights(self.t5_text_encoder, "text_encoder_2")
 
     @staticmethod
     def _split_weights(weights: dict, max_file_size_gb: int = 2) -> list:
