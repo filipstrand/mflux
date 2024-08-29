@@ -143,7 +143,7 @@ class Flux1:
             path.mkdir(parents=True, exist_ok=True)
             weights = Flux1._split_weights(dict(tree_flatten(model.parameters())))
             for i, weight in enumerate(weights):
-                mx.savez(str(path / f"{i}.npz"), **weight)
+                mx.save_safetensors(str(path / f"{i}.safetensors"), weight)
 
         # Save each model component
         save_weights(self.vae, "vae")

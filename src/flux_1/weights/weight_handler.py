@@ -41,7 +41,7 @@ class WeightHandler:
     @staticmethod
     def _clip_encoder(root_path: Path, is_huggingface: bool) -> dict:
         if is_huggingface is False:
-            weights = WeightHandler._load(root_path / "clip/0.npz")
+            weights = WeightHandler._load(root_path / "text_encoder/0.safetensors")
             unflatten = tree_unflatten(weights)
             return unflatten
 
@@ -54,9 +54,9 @@ class WeightHandler:
     @staticmethod
     def _t5_encoder(root_path: Path, is_huggingface: bool) -> dict:
         if is_huggingface is False:
-            weights_1 = WeightHandler._load(root_path / "t5/0.npz")
-            weights_2 = WeightHandler._load(root_path / "t5/1.npz")
-            weights_3 = WeightHandler._load(root_path / "t5/2.npz")
+            weights_1 = WeightHandler._load(root_path / "text_encoder_2/0.safetensors")
+            weights_2 = WeightHandler._load(root_path / "text_encoder_2/1.safetensors")
+            weights_3 = WeightHandler._load(root_path / "text_encoder_2/2.safetensors")
             unflatten = tree_unflatten(weights_1 + weights_2 + weights_3)
             return unflatten
 
@@ -87,12 +87,12 @@ class WeightHandler:
     @staticmethod
     def _transformer(root_path: Path, is_huggingface: bool) -> dict:
         if is_huggingface is False:
-            weights_1 = WeightHandler._load(root_path / "transformer/0.npz")
-            weights_2 = WeightHandler._load(root_path / "transformer/1.npz")
-            weights_3 = WeightHandler._load(root_path / "transformer/2.npz")
-            weights_4 = WeightHandler._load(root_path / "transformer/3.npz")
-            weights_5 = WeightHandler._load(root_path / "transformer/4.npz")
-            weights_6 = WeightHandler._load(root_path / "transformer/5.npz")
+            weights_1 = WeightHandler._load(root_path / "transformer/0.safetensors")
+            weights_2 = WeightHandler._load(root_path / "transformer/1.safetensors")
+            weights_3 = WeightHandler._load(root_path / "transformer/2.safetensors")
+            weights_4 = WeightHandler._load(root_path / "transformer/3.safetensors")
+            weights_5 = WeightHandler._load(root_path / "transformer/4.safetensors")
+            weights_6 = WeightHandler._load(root_path / "transformer/5.safetensors")
             unflatten = tree_unflatten(weights_1 + weights_2 + weights_3 + weights_4 + weights_5 + weights_6)
             return unflatten
 
@@ -119,7 +119,7 @@ class WeightHandler:
     @staticmethod
     def _vae(root_path: Path, is_huggingface: bool) -> dict:
         if is_huggingface is False:
-            weights = WeightHandler._load(root_path / "vae/0.npz")
+            weights = WeightHandler._load(root_path / "vae/0.safetensors")
             unflatten = tree_unflatten(weights)
             return unflatten
 
