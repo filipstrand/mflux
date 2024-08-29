@@ -16,21 +16,22 @@ def main():
     parser = argparse.ArgumentParser(description='Generate an image based on a prompt.')
     parser.add_argument('--prompt', type=str, required=True, help='The textual description of the image to generate.')
     parser.add_argument('--output', type=str, default="image.png", help='The filename for the output image. Default is "image.png".')
-    parser.add_argument('--model', type=str, default="schnell", help='The model to use ("schnell" or "dev"). Default is "schnell".')
+    parser.add_argument('--model', type=str, choices=["dev", "schnell"], default="schnell", help='The model to use ("schnell" or "dev"). Default is "schnell".')
     parser.add_argument('--seed', type=int, default=None, help='Entropy Seed (Default is time-based random-seed)')
     parser.add_argument('--height', type=int, default=1024, help='Image height (Default is 1024)')
     parser.add_argument('--width', type=int, default=1024, help='Image width (Default is 1024)')
     parser.add_argument('--steps', type=int, default=4, help='Inference Steps')
     parser.add_argument('--guidance', type=float, default=3.5, help='Guidance Scale (Default is 3.5)')
-    parser.add_argument('--bits', type=int, default=None, help='Quantize the model (Default is None)')
+    parser.add_argument('--quantize',  "-q", type=int, choices=[4, 8], default=None, help='Quantize the model (4 or 8, Default is None)')
 
     args = parser.parse_args()
 
     seed = int(time.time()) if args.seed is None else args.seed
 
     # flux = Flux1.from_disk(model_config=ModelConfig.FLUX1_SCHNELL, path="/Users/filipstrand/Desktop/schnell_16bit_huggingface", bits=8)
-    flux = Flux1.from_disk_mlx(model_config=ModelConfig.FLUX1_SCHNELL, path="/Users/filipstrand/Desktop/mlx_weights")
-    # flux = Flux1.from_alias(alias=args.model, bits=args.bits)
+    flux = Flux1.from_disk_mlx(model_config=ModelConfig.FLUX1_SCHNELL, path="/Users/filipstrand/Desktop/mlx_weights", bits=8)
+    # flux = Flux1.from_alias(alias=args.model, bits=args.quantize)
+
     # flux.save_model_weights("/Users/filipstrand/Desktop/mlx_weights")
 
     image = flux.generate_image(
