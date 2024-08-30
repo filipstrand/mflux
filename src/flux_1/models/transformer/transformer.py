@@ -1,7 +1,7 @@
 import mlx.core as mx
 from mlx import nn
 
-from flux_1.config.config import Config
+from flux_1.config.model_config import ModelConfig
 from flux_1.config.runtime_config import RuntimeConfig
 from flux_1.models.transformer.ada_layer_norm_continous import AdaLayerNormContinuous
 from flux_1.models.transformer.embed_nd import EmbedND
@@ -12,20 +12,16 @@ from flux_1.models.transformer.time_text_embed import TimeTextEmbed
 
 class Transformer(nn.Module):
 
-    def __init__(self, weights: dict):
+    def __init__(self, model_config: ModelConfig):
         super().__init__()
         self.pos_embed = EmbedND()
         self.x_embedder = nn.Linear(64, 3072)
-        with_guidance_embed = "guidance_embedder" in weights["time_text_embed"].keys()
-        self.time_text_embed = TimeTextEmbed(with_guidance_embed=with_guidance_embed)
+        self.time_text_embed = TimeTextEmbed(model_config=model_config)
         self.context_embedder = nn.Linear(4096, 3072)
         self.transformer_blocks = [JointTransformerBlock(i) for i in range(19)]
         self.single_transformer_blocks = [SingleTransformerBlock(i) for i in range(38)]
         self.norm_out = AdaLayerNormContinuous(3072, 3072)
         self.proj_out = nn.Linear(3072, 64)
-
-        # Load the weights after all components are initialized
-        self.update(weights)
 
     def predict(
             self,

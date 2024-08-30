@@ -3,6 +3,7 @@ from mlx import nn
 import mlx.core as mx
 
 from flux_1.config.config import Config
+from flux_1.config.model_config import ModelConfig
 from flux_1.models.transformer.text_embedder import TextEmbedder
 from flux_1.models.transformer.timestep_embedder import TimestepEmbedder
 from flux_1.models.transformer.guidance_embedder import GuidanceEmbedder
@@ -10,18 +11,16 @@ from flux_1.models.transformer.guidance_embedder import GuidanceEmbedder
 
 class TimeTextEmbed(nn.Module):
 
-    def __init__(self, with_guidance_embed: bool = False):
+    def __init__(self, model_config: ModelConfig):
         super().__init__()
         self.text_embedder = TextEmbedder()
-        self.with_guidance_embed = with_guidance_embed
-        if self.with_guidance_embed:
-            self.guidance_embedder = GuidanceEmbedder()
+        self.guidance_embedder = GuidanceEmbedder() if model_config == ModelConfig.FLUX1_DEV else None
         self.timestep_embedder = TimestepEmbedder()
 
     def forward(self, time_step: mx.array, pooled_projection: mx.array, guidance: mx.array) -> mx.array:
         time_steps_proj = self._time_proj(time_step)
         time_steps_emb = self.timestep_embedder.forward(time_steps_proj)
-        if self.with_guidance_embed:
+        if self.guidance_embedder is not None:
             time_steps_emb += self.guidance_embedder.forward(self._time_proj(guidance))
         pooled_projections = self.text_embedder.forward(pooled_projection)
         conditioning = time_steps_emb + pooled_projections
