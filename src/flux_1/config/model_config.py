@@ -18,15 +18,6 @@ class ModelConfig(Enum):
         self.max_sequence_length = max_sequence_length
 
     @staticmethod
-    def from_repo(model_name: str) -> "ModelConfig":
-        try:
-            for model in ModelConfig:
-                if model.model_name == model_name:
-                    return model
-        except KeyError:
-            raise ValueError(f"'{model_name}' is not a valid model")
-
-    @staticmethod
     def from_alias(alias: str) -> "ModelConfig":
         try:
             for model in ModelConfig:

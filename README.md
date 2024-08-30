@@ -37,19 +37,19 @@ like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) f
    ```
 ### Generating an image
 
-Run the provided [main.py](main.py) by specifying a prompt and some optional arguments like so using the default `Schnell` model:
+Run the provided [main.py](main.py) by specifying a prompt and some optional arguments like so using the `schnell` model:
 
 ```
-python main.py --prompt "Luxury food photograph" --steps 2 --seed 2
+python main.py --model schnell --prompt "Luxury food photograph" --steps 2 --seed 2
 ```
 
-or use the slower, but more powerful `Dev` model and run it with more time steps:
+or use the slower, but more powerful `dev` model and run it with more time steps:
 
 ```
 python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 ```
 
-⚠️ *If the specific model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell or Dev model respectively).* ⚠️
+⚠️ *If the specific model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell or Dev model respectively). See the [quantization](#quantization) section for running compressed versions of the model.* ⚠️
 
 *By default, model files are downloaded to the `.cache` folder within your home directory. For example, in my setup, the path looks like this:* 
 
@@ -65,11 +65,11 @@ python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--prompt`** (required, `str`): Text description of the image to generate.
 
+- **`--model`** or **`-m`** (required, `str`): Model to use for generation (`"schnell"` or `"dev"`).
+
 - **`--output`** (optional, `str`, default: `"image.png"`): Output image filename.
 
-- **`--model`** (optional, `str`, default: `"schnell"`): Model to use for generation (`"schnell"` or `"dev"`).
-
-- **`--seed`** (optional, `int`, default: `0`): Seed for random number generation. Default is time-based.
+- **`--seed`** (optional, `int`, default: `None`): Seed for random number generation. Default is time-based.
 
 - **`--height`** (optional, `int`, default: `1024`): Height of the output image in pixels.
 
@@ -78,6 +78,11 @@ python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 - **`--steps`** (optional, `int`, default: `4`): Number of inference steps.
 
 - **`--guidance`** (optional, `float`, default: `3.5`): Guidance scale (only used for `"dev"` model).
+
+- **`--path`** (optional, `str`, default: `None`): Path to a local model on disk.
+
+- **`--quantize`** or **`-q`** (optional, `int`, default: `None`): [Quantization](#quantization) (choose between `4` or `8`).
+
 
 Or make a new separate script like the following
 
@@ -90,7 +95,7 @@ from flux_1.config.config import Config
 from flux_1.flux import Flux1
 from flux_1.post_processing.image_util import ImageUtil
 
-flux = Flux1.from_alias("schnell")  # "schnell" or "dev"
+flux = Flux1.from_alias(alias="schnell")  # "schnell" or "dev"
 
 image = flux.generate_image(
    seed=3,
@@ -113,6 +118,7 @@ To time your machine, run the following:
 ```
 time python main.py \
 --prompt "Luxury food photograph" \
+--model schnell \
 --steps 2 \
 --seed 2 \
 --height 1024 \
@@ -180,7 +186,114 @@ Luxury food photograph of an italian Linguine pasta alle vongole dish with lots 
 
 ---
 
+### Quantization 
 
+MFLUX supports running FLUX in 4-bit or 8-bit quantized mode. Running a quantized version can greatly speed up the
+generation process and reduce the memory consumption by several gigabytes. [Quantized models also take up less disk space](#size-comparisons-for-quantized-models). 
+
+```
+python main.py \
+    --model schnell \
+    --steps 2 \
+    --seed 2 \
+    --quantize 8 \
+    --height 1920 \
+    --width 1024 \
+    --prompt "Tranquil pond in a bamboo forest at dawn, the sun is barely starting to peak over the horizon, panda practices Tai Chi near the edge of the pond, atmospheric perspective through the mist of morning dew, sunbeams, its movements are graceful and fluid — creating a sense of harmony and balance, the pond’s calm waters reflecting the scene, inviting a sense of meditation and connection with nature, style of Howard Terpning and Jessica Rossier" 
+```
+![image](src/flux_1/assets/comparison6.jpg)
+
+*In this example, weights are quantized at **runtime** - this is convenient if you don't want to [save a quantized copy of the weights to disk](#saving-a-quantized-version-to-disk), but still want to benefit from the potential speedup and RAM reduction quantization might bring.*
+
+
+By selecting the `--quantize` or `-q` flag to be `4`, `8`, or removing it entirely, we get all 3 images above. As can be seen, there is very little difference between the images (especially between the 8-bit, and the non-quantized result).
+Image generation times in this example are based on a 2021 M1 Pro (32GB) machine. Even though the images are almost identical, there is a ~2x speedup by
+running the 8-bit quantized version on this particular machine. Unlike the non-quantized version, for the 8-bit version the swap memory usage is drastically reduced and GPU utilization is close to 100% during the whole generation. Results here can vary across different machines.
+
+#### Size comparisons for quantized models 
+
+The model sizes for both `schnell` and `dev` at various quantization levels are as follows:
+
+| 4 bit  | 8 bit   | Original (16 bit) |
+|--------|---------|-------------------|
+| 9.85GB | 18.16GB | 33.73GB           |
+
+The reason weights sizes are not fully cut in half is because a small number of weights are not quantized and kept at full precision.
+
+#### Saving a quantized version to disk
+
+To save a local copy of the quantized weights, run the `save.py` script like so:
+
+```
+python save.py \
+    --path "/Users/filipstrand/Desktop/schnell_8bit" \
+    --model schnell \
+    --quantize 8
+```
+
+*Note that when saving a quantized version, you will need the original huggingface weights.*
+
+#### Loading and running a quantized version from disk
+
+To generate a new image from the quantized model, simply provide a `--path` to where it was saved: 
+
+```
+python main.py \
+    --path "/Users/filipstrand/Desktop/schnell_8bit" \
+    --model schnell \
+    --steps 2 \
+    --seed 2 \
+    --height 1920 \
+    --width 1024 \
+    --prompt "Tranquil pond in a bamboo forest at dawn, the sun is barely starting to peak over the horizon, panda practices Tai Chi near the edge of the pond, atmospheric perspective through the mist of morning dew, sunbeams, its movements are graceful and fluid — creating a sense of harmony and balance, the pond’s calm waters reflecting the scene, inviting a sense of meditation and connection with nature, style of Howard Terpning and Jessica Rossier" 
+```
+
+*Note: Once we have a local model (quantized or not) specified via the `--path` argument, the huggingface cache models are not required to launch the model*. 
+
+### Running a non-quantized model directly from disk
+
+MFLUX also supports running a non-quantized model directly from a custom location.  
+In the example below, the model is placed in `/Users/filipstrand/Desktop/schnell`:
+
+```
+python main.py \
+    --path "/Users/filipstrand/Desktop/schnell" \
+    --model schnell \
+    --steps 2 \
+    --seed 2 \
+    --prompt "Luxury food photograph" 
+```
+
+Note that the `--model` flag must be set when loading a model from disk. 
+
+Also note that unlike when using the typical `alias` way of initializing the model (which internally handles that the required resources are downloaded),
+when loading a model directly from disk, we require the downloaded models to look like the following:
+
+```
+.
+├── text_encoder
+│   └── model.safetensors
+├── text_encoder_2
+│   ├── model-00001-of-00002.safetensors
+│   └── model-00002-of-00002.safetensors
+├── tokenizer
+│   ├── merges.txt
+│   ├── special_tokens_map.json
+│   ├── tokenizer_config.json
+│   └── vocab.json
+├── tokenizer_2
+│   ├── special_tokens_map.json
+│   ├── spiece.model
+│   ├── tokenizer.json
+│   └── tokenizer_config.json
+├── transformer
+│   ├── diffusion_pytorch_model-00001-of-00003.safetensors
+│   ├── diffusion_pytorch_model-00002-of-00003.safetensors
+│   └── diffusion_pytorch_model-00003-of-00003.safetensors
+└── vae
+    └── diffusion_pytorch_model.safetensors
+```
+This mirrors how the resources are placed in the [HuggingFace Repo](https://huggingface.co/black-forest-labs/FLUX.1-schnell/tree/main) for FLUX.1.
 
 ### Current limitations
 
@@ -192,4 +305,3 @@ Luxury food photograph of an italian Linguine pasta alle vongole dish with lots 
 - [ ] LoRA adapters
 - [ ] LoRA fine-tuning
 - [ ] Frontend support (Gradio/Streamlit/Other?)
-- [ ] Support for quantized models
