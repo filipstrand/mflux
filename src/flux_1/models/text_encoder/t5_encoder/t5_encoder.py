@@ -7,14 +7,11 @@ from flux_1.models.text_encoder.t5_encoder.t5_layer_norm import T5LayerNorm
 
 class T5Encoder(nn.Module):
 
-    def __init__(self, weights: dict):
+    def __init__(self):
         super().__init__()
         self.shared = nn.Embedding(num_embeddings=32128, dims=4096)
         self.t5_blocks = [T5Block(i) for i in range(24)]
         self.final_layer_norm = T5LayerNorm()
-
-        # Load the weights after all components are initialized
-        self.update(weights)
 
     def forward(self, tokens: mx.array):
         hidden_states = self.shared(tokens)
