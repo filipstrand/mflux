@@ -1,6 +1,6 @@
+import argparse
 import os
 import sys
-import argparse
 import time
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
@@ -32,6 +32,10 @@ def main():
     if args.path and args.model is None:
         parser.error("--model must be specified when using --path")
 
+    generate_image(args)
+    # stream_generate_image(args)
+
+def generate_image(args):
     seed = int(time.time()) if args.seed is None else args.seed
 
     flux = Flux1(
@@ -52,6 +56,37 @@ def main():
     )
 
     ImageUtil.save_image(image, args.output)
+
+def stream_generate_image(args):
+    seed = int(time.time()) if args.seed is None else args.seed
+
+    flux = Flux1(
+        model_config=ModelConfig.from_alias(args.model),
+        quantize_full_weights=args.quantize,
+        local_path=args.path
+    )
+
+    stream = flux.stream_generate_image(
+        seed=seed,
+        prompt=args.prompt,
+        report_step=1,
+        config=Config(
+            num_inference_steps=args.steps,
+            height=args.height,
+            width=args.width,
+            guidance=args.guidance,
+        ),
+    )
+
+    step_count = 0
+
+    for image in stream:
+        step_count += 1
+
+        intermediate_output_path = f"{args.output}_report_step_{step_count}.png"
+        ImageUtil.save_image(image, "build/stream/" + intermediate_output_path)
+
+    print(f"Generation complete. Total steps: {step_count}")
 
 
 if __name__ == '__main__':
