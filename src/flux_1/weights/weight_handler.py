@@ -6,22 +6,19 @@ from mlx.utils import tree_unflatten
 from safetensors import safe_open
 
 from flux_1.config.config import Config
-import json
 from mlx.utils import tree_flatten
-from functools import reduce
+import logging
 
-class NumpyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return super(NumpyEncoder, self).default(obj)
+log = logging.getLogger(__name__)
+
 class WeightHandler:
 
     def __init__(
             self,
             repo_id: str | None = None,
             local_path: str | None = None,
-            lora_path: str | None = None
+            lora_path: str | None = None,
+            lora_scale: float = 1.0
     ):
         root_path = Path(local_path) if local_path else WeightHandler._download_or_get_cached_weights(repo_id)
 
@@ -30,12 +27,16 @@ class WeightHandler:
         self.vae, _ = WeightHandler._vae(root_path=root_path)
         self.transformer, self.quantization_level = WeightHandler._transformer(root_path=root_path)
         if(lora_path is not None):
-            self.lora_transformer,self.lora_quantization_level= WeightHandler._lora_transformer(lora_path=lora_path)
-            if 'transformer' not in self.lora_transformer:
-                pass
-            self._apply_transformer(self.transformer,self.lora_transformer['transformer'])
+            try:
+                self.lora_transformer,self.lora_quantization_level= WeightHandler._lora_transformer(lora_path=lora_path)
+                if 'transformer' not in self.lora_transformer:
+                    raise Exception("The key `transformer` is missing in the LoRA safetensors file. Please ensure that the file is correctly formatted and contains the expected keys.")
+                self._apply_transformer(self.transformer,self.lora_transformer['transformer'],lora_scale)
+            except Exception as e:
+                log.error(f"Error loading the LoRA safetensors file: {e}")
+
         
-    def _apply_transformer(self,transformer,lora_transformer):
+    def _apply_transformer(self,transformer,lora_transformer,lora_scale):
         lora_weights = tree_flatten(lora_transformer)
         visited={}
         
@@ -82,7 +83,7 @@ class WeightHandler:
                         lora_a=visited[parentKey]['lora_A']
                         lora_b=visited[parentKey]['lora_B']
                         transWeight=target['weight']
-                        weight=transWeight + lora_b @lora_a
+                        weight=transWeight + lora_scale* (lora_b @lora_a)
                         target['weight']=weight
                         
                         
