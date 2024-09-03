@@ -29,12 +29,12 @@ class Flux1:
             model_config: ModelConfig,
             quantize_full_weights: int | None = None,
             local_path: str | None = None,
-            lora_path: str | None = None,
-            lora_scale: float =1.0,
+            lora_files: [str] =[], 
+            lora_scales: [float] = [1.0]
     ):
         self.model_config = model_config
         self.quantize_full_weights = quantize_full_weights
-        self.lora_path = lora_path
+        self.lora_files = lora_files
 
         # Load and initialize the tokenizers from disk, huggingface cache, or download from huggingface
         tokenizers = TokenizerHandler(model_config.model_name, self.model_config.max_sequence_length, local_path)
@@ -47,8 +47,7 @@ class Flux1:
         self.clip_text_encoder = CLIPEncoder()
 
         # Load the weights from disk, huggingface cache, or download from huggingface
-        weights = WeightHandler(repo_id=model_config.model_name, local_path=local_path,lora_path=lora_path,lora_scale=lora_scale)
-        
+        weights = WeightHandler(repo_id=model_config.model_name, local_path=local_path,lora_files=lora_files,lora_scales=lora_scales)
         # Set the loaded weights if they are not quantized
         if weights.quantization_level is None:
             self._set_model_weights(weights)

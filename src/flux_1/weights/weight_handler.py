@@ -17,8 +17,8 @@ class WeightHandler:
             self,
             repo_id: str | None = None,
             local_path: str | None = None,
-            lora_path: str | None = None,
-            lora_scale: float = 1.0
+            lora_files: [str] =[], 
+            lora_scales: [float] = [1.0]
     ):
         root_path = Path(local_path) if local_path else WeightHandler._download_or_get_cached_weights(repo_id)
 
@@ -26,14 +26,22 @@ class WeightHandler:
         self.t5_encoder, _ = WeightHandler._t5_encoder(root_path=root_path)
         self.vae, _ = WeightHandler._vae(root_path=root_path)
         self.transformer, self.quantization_level = WeightHandler._transformer(root_path=root_path)
-        if(lora_path is not None):
-            try:
-                self.lora_transformer,self.lora_quantization_level= WeightHandler._lora_transformer(lora_path=lora_path)
-                if 'transformer' not in self.lora_transformer:
-                    raise Exception("The key `transformer` is missing in the LoRA safetensors file. Please ensure that the file is correctly formatted and contains the expected keys.")
-                self._apply_transformer(self.transformer,self.lora_transformer['transformer'],lora_scale)
-            except Exception as e:
-                log.error(f"Error loading the LoRA safetensors file: {e}")
+        if(lora_files):
+            if(len(lora_files)< len(lora_scales)):
+                lora_scales=lora_scales[0:len(lora_files)]
+            if(len(lora_scales)<len(lora_files)):
+                lora_scales= lora_scales + (len(lora_files)-len(lora_scales)) * [1.0]
+            for lora_file, lora_scale in zip(lora_files, lora_scales):
+                if( lora_scale<0.0 or lora_scale>1.0):
+                    raise Exception(f"Invalid scale {lora_scale} provided for {lora_file}. Valid Range [0.0-1.0] ")
+
+                try:
+                    lora_transformer,_ = WeightHandler._lora_transformer(lora_file=lora_file)
+                    if 'transformer' not in lora_transformer:
+                        raise Exception("The key `transformer` is missing in the LoRA safetensors file. Please ensure that the file is correctly formatted and contains the expected keys.")
+                    self._apply_transformer(self.transformer,lora_transformer['transformer'],lora_scale)
+                except Exception as e:
+                    log.error(f"Error loading the LoRA safetensors file: {e}")
 
         
     def _apply_transformer(self,transformer,lora_transformer,lora_scale):
@@ -91,9 +99,9 @@ class WeightHandler:
     
 
     @staticmethod
-    def _lora_transformer(lora_path: Path) -> (dict, int):
-        quantization_level = safe_open(lora_path, framework="pt").metadata().get("quantization_level")
-        weights = list(mx.load(str(lora_path)).items())
+    def _lora_transformer(lora_file: Path) -> (dict, int):
+        quantization_level = safe_open(lora_file, framework="pt").metadata().get("quantization_level")
+        weights = list(mx.load(str(lora_file)).items())
         weights = [WeightHandler._reshape_weights(k, v) for k, v in weights]
         weights = WeightHandler._flatten(weights)
         unflatten = tree_unflatten(weights)
