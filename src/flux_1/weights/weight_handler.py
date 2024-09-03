@@ -6,7 +6,6 @@ from mlx.utils import tree_unflatten
 from safetensors import safe_open
 
 from flux_1.config.config import Config
-import icecream as ic
 import json
 from mlx.utils import tree_flatten
 from functools import reduce
