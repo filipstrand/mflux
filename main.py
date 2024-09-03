@@ -23,6 +23,8 @@ def main():
     parser.add_argument('--guidance', type=float, default=3.5, help='Guidance Scale (Default is 3.5)')
     parser.add_argument('--quantize',  "-q", type=int, choices=[4, 8], default=None, help='Quantize the model (4 or 8, Default is None)')
     parser.add_argument('--path', type=str, default=None, help='Local path for loading a model from disk')
+    parser.add_argument('--apply-lora', type=str, default=None, help='Local safetensors for applying LORA from disk')
+
 
     args = parser.parse_args()
 
@@ -34,7 +36,8 @@ def main():
     flux = Flux1(
         model_config=ModelConfig.from_alias(args.model),
         quantize_full_weights=args.quantize,
-        local_path=args.path
+        local_path=args.path,
+        lora_path=args.apply_lora
     )
 
     image = flux.generate_image(
