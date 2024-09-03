@@ -91,10 +91,8 @@ class WeightHandler:
 
     @staticmethod
     def _lora_transformer(lora_path: Path) -> (dict, int):
-        weights = []
         quantization_level = safe_open(lora_path, framework="pt").metadata().get("quantization_level")
-        weight = list(mx.load(str(lora_path)).items())
-        weights.extend(weight)
+        weights = list(mx.load(str(lora_path)).items())
         weights = [WeightHandler._reshape_weights(k, v) for k, v in weights]
         weights = WeightHandler._flatten(weights)
         unflatten = tree_unflatten(weights)
