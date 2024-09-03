@@ -19,8 +19,6 @@ from flux_1.tokenizer.clip_tokenizer import TokenizerCLIP
 from flux_1.tokenizer.t5_tokenizer import TokenizerT5
 from flux_1.tokenizer.tokenizer_handler import TokenizerHandler
 from flux_1.weights.weight_handler import WeightHandler
-import safetensors
-from safetensors import safe_open
 
 
 
@@ -31,7 +29,8 @@ class Flux1:
             model_config: ModelConfig,
             quantize_full_weights: int | None = None,
             local_path: str | None = None,
-            lora_path: str | None = None
+            lora_path: str | None = None,
+            lora_scale: float =1.0,
     ):
         self.model_config = model_config
         self.quantize_full_weights = quantize_full_weights
@@ -48,7 +47,7 @@ class Flux1:
         self.clip_text_encoder = CLIPEncoder()
 
         # Load the weights from disk, huggingface cache, or download from huggingface
-        weights = WeightHandler(repo_id=model_config.model_name, local_path=local_path,lora_path=lora_path)
+        weights = WeightHandler(repo_id=model_config.model_name, local_path=local_path,lora_path=lora_path,lora_scale=lora_scale)
         
         # Set the loaded weights if they are not quantized
         if weights.quantization_level is None:
