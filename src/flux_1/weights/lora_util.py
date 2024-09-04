@@ -6,7 +6,7 @@ from mlx.utils import tree_flatten
 from mlx.utils import tree_unflatten
 from safetensors import safe_open
 
-from flux_1.weights.weight_handler import WeightHandler
+from flux_1.weights.weight_util import WeightUtil
 
 log = logging.getLogger(__name__)
 
@@ -86,8 +86,8 @@ class LoraUtil:
     def _lora_transformer(lora_file: Path) -> (dict, int):
         quantization_level = safe_open(lora_file, framework="pt").metadata().get("quantization_level")
         weights = list(mx.load(str(lora_file)).items())
-        weights = [WeightHandler.reshape_weights(k, v) for k, v in weights]
-        weights = WeightHandler.flatten(weights)
+        weights = [WeightUtil.reshape_weights(k, v) for k, v in weights]
+        weights = WeightUtil.flatten(weights)
         unflatten = tree_unflatten(weights)
         for block in unflatten["transformer"]["transformer_blocks"]:
             block["ff"] = {

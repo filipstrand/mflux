@@ -5,8 +5,8 @@ from huggingface_hub import snapshot_download
 from mlx.utils import tree_unflatten
 from safetensors import safe_open
 
-from flux_1.config.config import Config
 from flux_1.weights.lora_util import LoraUtil
+from flux_1.weights.weight_util import WeightUtil
 
 
 class WeightHandler:
@@ -117,21 +117,10 @@ class WeightHandler:
             return tree_unflatten(weights), quantization_level
 
         # Huggingface weights needs to be reshaped
-        weights = [WeightHandler.reshape_weights(k, v) for k, v in weights]
-        weights = WeightHandler.flatten(weights)
+        weights = [WeightUtil.reshape_weights(k, v) for k, v in weights]
+        weights = WeightUtil.flatten(weights)
         unflatten = tree_unflatten(weights)
         return unflatten, quantization_level
-
-    @staticmethod
-    def flatten(params):
-        return [(k, v) for p in params for (k, v) in p]
-
-    @staticmethod
-    def reshape_weights(key, value):
-        if len(value.shape) == 4:
-            value = value.transpose(0, 2, 3, 1)
-        value = value.reshape(-1).reshape(value.shape).astype(Config.precision)
-        return [(key, value)]
 
     @staticmethod
     def _download_or_get_cached_weights(repo_id: str) -> Path:
