@@ -3,7 +3,6 @@ from pathlib import Path
 import mlx.core as mx
 from huggingface_hub import snapshot_download
 from mlx.utils import tree_unflatten
-from safetensors import safe_open
 
 from flux_1.weights.lora_util import LoraUtil
 from flux_1.weights.weight_util import WeightUtil
@@ -108,7 +107,7 @@ class WeightHandler:
         weights = []
         quantization_level = None
         for file in sorted(root_path.glob(model_name + "/*.safetensors")):
-            quantization_level = safe_open(file, framework="pt").metadata().get("quantization_level")
+            quantization_level = mx.load(str(file), return_metadata=True)[1].get("quantization_level")
             weight = list(mx.load(str(file)).items())
             weights.extend(weight)
 
