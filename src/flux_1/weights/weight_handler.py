@@ -105,6 +105,16 @@ class WeightHandler:
         weights = [WeightHandler._reshape_weights(k, v) for k, v in weights]
         weights = WeightHandler._flatten(weights)
         unflatten = tree_unflatten(weights)
+        for block in unflatten["transformer"]["transformer_blocks"]:
+            block["ff"] = {
+                "linear1": block["ff"]["net"][0]["proj"],
+                "linear2": block["ff"]["net"][2]
+            }
+            if block.get("ff_context") is not None:
+                block["ff_context"] = {
+                    "linear1": block["ff_context"]["net"][0]["proj"],
+                    "linear2": block["ff_context"]["net"][2]
+                }
         return unflatten, quantization_level
 
 
