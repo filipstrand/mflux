@@ -86,7 +86,7 @@ class WeightHandler:
                         visited[parentKey]={}
                     visited[parentKey][splitKey]=weight
                     if not 'weight' in target:
-                        continue
+                       raise ValueError(f"LoRA weights for layer {parentKey} cannot be loaded into the model.")
                     if  'lora_A' in visited[parentKey] and 'lora_B' in visited[parentKey]:
                         lora_a=visited[parentKey]['lora_A']
                         lora_b=visited[parentKey]['lora_B']
