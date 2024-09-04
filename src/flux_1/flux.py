@@ -21,7 +21,6 @@ from flux_1.tokenizer.tokenizer_handler import TokenizerHandler
 from flux_1.weights.weight_handler import WeightHandler
 
 
-
 class Flux1:
 
     def __init__(
@@ -29,17 +28,17 @@ class Flux1:
             model_config: ModelConfig,
             quantize_full_weights: int | None = None,
             local_path: str | None = None,
-            lora_files: [str] =[], 
+            lora_files: [str] = [],
             lora_scales: [float] = [1.0]
     ):
         self.model_config = model_config
         self.quantize_full_weights = quantize_full_weights
-        self.lora_files = lora_files
 
         # Load and initialize the tokenizers from disk, huggingface cache, or download from huggingface
         tokenizers = TokenizerHandler(model_config.model_name, self.model_config.max_sequence_length, local_path)
         self.t5_tokenizer = TokenizerT5(tokenizers.t5, max_length=self.model_config.max_sequence_length)
         self.clip_tokenizer = TokenizerCLIP(tokenizers.clip)
+
         # Initialize the models
         self.vae = VAE()
         self.transformer = Transformer(model_config)
@@ -47,7 +46,8 @@ class Flux1:
         self.clip_text_encoder = CLIPEncoder()
 
         # Load the weights from disk, huggingface cache, or download from huggingface
-        weights = WeightHandler(repo_id=model_config.model_name, local_path=local_path,lora_files=lora_files,lora_scales=lora_scales)
+        weights = WeightHandler(repo_id=model_config.model_name, local_path=local_path, lora_files=lora_files, lora_scales=lora_scales)
+
         # Set the loaded weights if they are not quantized
         if weights.quantization_level is None:
             self._set_model_weights(weights)
@@ -63,7 +63,7 @@ class Flux1:
         # If loading previously saved quantized weights, the weights must be set after modules have been quantized
         if weights.quantization_level is not None:
             self._set_model_weights(weights)
-            
+
     def generate_image(self, seed: int, prompt: str, config: Config = Config()) -> PIL.Image.Image:
         # Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
