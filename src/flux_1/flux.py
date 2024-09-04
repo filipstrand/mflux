@@ -29,7 +29,7 @@ class Flux1:
             quantize_full_weights: int | None = None,
             local_path: str | None = None,
             lora_path: str | None = None,
-            lora_scale: str | None = None,
+            lora_scale: float = 1.0,
     ):
         self.model_config = model_config
         self.quantize_full_weights = quantize_full_weights
