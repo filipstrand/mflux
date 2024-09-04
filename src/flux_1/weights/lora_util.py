@@ -15,7 +15,7 @@ class LoraUtil:
             raise Exception(f"Invalid scale {lora_scale} provided for {lora_file}. Valid Range [0.0 - 1.0] ")
         try:
             from flux_1.weights.weight_handler import WeightHandler
-            lora_transformer, _ = WeightHandler.load_transformer(Path(lora_file), is_lora=True)
+            lora_transformer, _ = WeightHandler.load_transformer(lora_path=lora_file)
             LoraUtil._apply_transformer(transformer, lora_transformer, lora_scale)
         except Exception as e:
             log.error(f"Error loading the LoRA safetensors file: {e}")
