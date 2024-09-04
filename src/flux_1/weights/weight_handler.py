@@ -14,31 +14,26 @@ class WeightHandler:
             self,
             repo_id: str | None = None,
             local_path: str | None = None,
-            lora_files=None,
-            lora_scales=None
+            lora_path: str | None = None,
+            lora_scale: float | None = None,
     ):
-        if lora_files is None:
-            lora_files = []
-        if lora_scales is None:
-            lora_scales = [1.0]
-
         root_path = Path(local_path) if local_path else WeightHandler._download_or_get_cached_weights(repo_id)
 
-        self.clip_encoder, _ = WeightHandler._clip_encoder(root_path=root_path)
-        self.t5_encoder, _ = WeightHandler._t5_encoder(root_path=root_path)
-        self.vae, _ = WeightHandler._vae(root_path=root_path)
-        self.transformer, self.quantization_level = WeightHandler._transformer(root_path=root_path)
+        self.clip_encoder, _ = WeightHandler.load_clip_encoder(root_path=root_path)
+        self.t5_encoder, _ = WeightHandler.load_t5_encoder(root_path=root_path)
+        self.vae, _ = WeightHandler.load_vae(root_path=root_path)
+        self.transformer, self.quantization_level = WeightHandler.load_transformer(root_path=root_path)
 
-        # Optionally apply LoRA weights
-        LoraUtil.apply_lora(self.transformer, lora_files, lora_scales)
+        if lora_path:
+            LoraUtil.apply_lora(self.transformer, lora_path, lora_scale)
 
     @staticmethod
-    def _clip_encoder(root_path: Path) -> (dict, int):
+    def load_clip_encoder(root_path: Path) -> (dict, int):
         weights, quantization_level = WeightHandler._get_weights("text_encoder", root_path)
         return weights, quantization_level
 
     @staticmethod
-    def _t5_encoder(root_path: Path) -> (dict, int):
+    def load_t5_encoder(root_path: Path) -> (dict, int):
         weights, quantization_level = WeightHandler._get_weights("text_encoder_2", root_path)
 
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
@@ -65,28 +60,34 @@ class WeightHandler:
         return weights, quantization_level
 
     @staticmethod
-    def _transformer(root_path: Path) -> (dict, int):
+    def load_transformer(root_path: Path, is_lora: bool = False) -> (dict, int):
         weights, quantization_level = WeightHandler._get_weights("transformer", root_path)
+
+        if is_lora:
+            if 'transformer' not in weights:
+                raise Exception("The key `transformer` is missing in the LoRA safetensors file. Please ensure that the file is correctly formatted and contains the expected keys.")
+            weights = weights["transformer"]
 
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
         if quantization_level is not None:
             return weights, quantization_level
 
         # Reshape and process the huggingface weights
-        for block in weights["transformer_blocks"]:
-            block["ff"] = {
-                "linear1": block["ff"]["net"][0]["proj"],
-                "linear2": block["ff"]["net"][2]
-            }
-            if block.get("ff_context") is not None:
-                block["ff_context"] = {
-                    "linear1": block["ff_context"]["net"][0]["proj"],
-                    "linear2": block["ff_context"]["net"][2]
+        if "transformer_blocks" in weights:
+            for block in weights["transformer_blocks"]:
+                block["ff"] = {
+                    "linear1": block["ff"]["net"][0]["proj"],
+                    "linear2": block["ff"]["net"][2]
                 }
+                if block.get("ff_context") is not None:
+                    block["ff_context"] = {
+                        "linear1": block["ff_context"]["net"][0]["proj"],
+                        "linear2": block["ff_context"]["net"][2]
+                    }
         return weights, quantization_level
 
     @staticmethod
-    def _vae(root_path: Path) -> (dict, int):
+    def load_vae(root_path: Path) -> (dict, int):
         weights, quantization_level = WeightHandler._get_weights("vae", root_path)
 
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
