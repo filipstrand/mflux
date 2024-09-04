@@ -15,7 +15,7 @@ class WeightHandler:
             repo_id: str | None = None,
             local_path: str | None = None,
             lora_path: str | None = None,
-            lora_scale: float | None = None,
+            lora_scale: float = 1.0,
     ):
         root_path = Path(local_path) if local_path else WeightHandler._download_or_get_cached_weights(repo_id)
 

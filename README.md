@@ -85,7 +85,7 @@ python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--apply-lora`** (optional, `[str]`, default: `[]`): [Lora Safetensors file]
 
-- **`--lora-scales`** (optional, `[float]`, default: `[1.0]`): [Scaling factor for each LoRA files]
+- **`--lora-scale`** (optional, `[float]`, default: `[1.0]`): [Scaling factor for each LoRA files]
 
 ### Note:
 Ensure that the safetensors file provided is compatible with the model's architecture and that the LoRA keys correctly map to the model's layers. The missing lora-scales shall be treated as 1.0 by default.
