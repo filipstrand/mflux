@@ -60,10 +60,10 @@ class WeightHandler:
         return weights, quantization_level
 
     @staticmethod
-    def load_transformer(root_path: Path, is_lora: bool = False) -> (dict, int):
-        weights, quantization_level = WeightHandler._get_weights("transformer", root_path)
+    def load_transformer(root_path: Path | None = None, lora_path: str | None = None) -> (dict, int):
+        weights, quantization_level = WeightHandler._get_weights("transformer", root_path, lora_path)
 
-        if is_lora:
+        if lora_path:
             if 'transformer' not in weights:
                 raise Exception("The key `transformer` is missing in the LoRA safetensors file. Please ensure that the file is correctly formatted and contains the expected keys.")
             weights = weights["transformer"]
@@ -104,12 +104,18 @@ class WeightHandler:
         return weights, quantization_level
 
     @staticmethod
-    def _get_weights(model_name: str, root_path: Path) -> (dict, int):
+    def _get_weights(model_name: str, root_path: Path | None = None, lora_path: str | None = None) -> (dict, int):
         weights = []
         quantization_level = None
-        for file in sorted(root_path.glob(model_name + "/*.safetensors")):
-            quantization_level = mx.load(str(file), return_metadata=True)[1].get("quantization_level")
-            weight = list(mx.load(str(file)).items())
+
+        if root_path is not None:
+            for file in sorted(root_path.glob(model_name + "/*.safetensors")):
+                quantization_level = mx.load(str(file), return_metadata=True)[1].get("quantization_level")
+                weight = list(mx.load(str(file)).items())
+                weights.extend(weight)
+
+        if lora_path and root_path is None:
+            weight = list(mx.load(lora_path).items())
             weights.extend(weight)
 
         # Non huggingface weights (i.e. ones exported from this project) don't need any reshaping.
