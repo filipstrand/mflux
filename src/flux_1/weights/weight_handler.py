@@ -14,8 +14,8 @@ class WeightHandler:
             self,
             repo_id: str | None = None,
             local_path: str | None = None,
-            lora_path: str | None = None,
-            lora_scale: float = 1.0,
+            lora_paths: list[str] | None = None,
+            lora_scales: list[float] | None = None,
     ):
         root_path = Path(local_path) if local_path else WeightHandler._download_or_get_cached_weights(repo_id)
 
@@ -24,8 +24,8 @@ class WeightHandler:
         self.vae, _ = WeightHandler.load_vae(root_path=root_path)
         self.transformer, self.quantization_level = WeightHandler.load_transformer(root_path=root_path)
 
-        if lora_path:
-            LoraUtil.apply_lora(self.transformer, lora_path, lora_scale)
+        if lora_paths:
+            LoraUtil.apply_loras(self.transformer, lora_paths, lora_scales)
 
     @staticmethod
     def load_clip_encoder(root_path: Path) -> (dict, int):

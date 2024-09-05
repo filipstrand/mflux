@@ -1,8 +1,6 @@
 import logging
-from pathlib import Path
 
 from mlx.utils import tree_flatten
-
 
 log = logging.getLogger(__name__)
 
@@ -10,7 +8,24 @@ log = logging.getLogger(__name__)
 class LoraUtil:
 
     @staticmethod
-    def apply_lora(transformer: dict, lora_file: str, lora_scale: float) -> None:
+    def apply_loras(transformer: dict, lora_files: list[str], lora_scales: list[float] | None = None) -> None:
+        lora_scales = LoraUtil._validate_lora_scales(lora_files, lora_scales)
+
+        for lora_file, lora_scale in zip(lora_files, lora_scales):
+            LoraUtil._apply_lora(transformer, lora_file, lora_scale)
+
+    @staticmethod
+    def _validate_lora_scales(lora_files: list[str], lora_scales: list[float]):
+        if len(lora_files) == 1:
+            if not lora_scales:
+                lora_scales = [1.0]
+        elif len(lora_files) > 1:
+            if len(lora_files) != len(lora_scales):
+                raise ValueError("When providing multiple LoRAs, be sure to specify a scale for each one respectively")
+        return lora_scales
+
+    @staticmethod
+    def _apply_lora(transformer: dict, lora_file: str, lora_scale: float) -> None:
         if lora_scale < 0.0 or lora_scale > 1.0:
             raise Exception(f"Invalid scale {lora_scale} provided for {lora_file}. Valid Range [0.0 - 1.0] ")
         try:
