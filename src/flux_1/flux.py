@@ -102,9 +102,9 @@ class Flux1:
 
     @staticmethod
     def _unpack_latents(latents: mx.array, height: int, width: int) -> mx.array:
-        latents = mx.reshape(latents, (1, width // 16, height // 16, 16, 2, 2))
+        latents = mx.reshape(latents, (1, height // 16, width // 16, 16, 2, 2))
         latents = mx.transpose(latents, (0, 3, 1, 4, 2, 5))
-        latents = mx.reshape(latents, (1, 16, width // 16 * 2, height // 16 * 2))
+        latents = mx.reshape(latents, (1, 16, height // 16 * 2, width // 16 * 2))
         return latents
 
     @staticmethod
