@@ -17,7 +17,7 @@ class Config:
     ):
         if width % 16 != 0 or height % 16 != 0:
             log.warning("Width and height should be multiples of 16. Rounding down.")
-        self.width = 16 * (height // 16)
-        self.height = 16 * (width // 16)
+        self.width = 16 * (width // 16)
+        self.height = 16 * (height // 16)
         self.num_inference_steps = num_inference_steps
         self.guidance = guidance
