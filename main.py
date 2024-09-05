@@ -23,7 +23,7 @@ def main():
     parser.add_argument('--guidance', type=float, default=3.5, help='Guidance Scale (Default is 3.5)')
     parser.add_argument('--quantize',  "-q", type=int, choices=[4, 8], default=None, help='Quantize the model (4 or 8, Default is None)')
     parser.add_argument('--path', type=str, default=None, help='Local path for loading a model from disk')
-    parser.add_argument('--apply-lora', type=str, nargs='*', default=None, help='Local safetensors for applying LORA from disk')
+    parser.add_argument('--lora-paths', type=str, nargs='*', default=None, help='Local safetensors for applying LORA from disk')
     parser.add_argument('--lora-scales', type=float, nargs='*', default=None, help='Scaling factor to adjust the impact of LoRA weights on the model. A value of 1.0 applies the LoRA weights as they are.')
 
     args = parser.parse_args()
@@ -35,7 +35,7 @@ def main():
         model_config=ModelConfig.from_alias(args.model),
         quantize_full_weights=args.quantize,
         local_path=args.path,
-        lora_paths=args.apply_lora,
+        lora_paths=args.lora_paths,
         lora_scales=args.lora_scales
     )
 

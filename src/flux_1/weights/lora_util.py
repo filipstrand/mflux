@@ -15,10 +15,12 @@ class LoraUtil:
             LoraUtil._apply_lora(transformer, lora_file, lora_scale)
 
     @staticmethod
-    def _validate_lora_scales(lora_files: list[str], lora_scales: list[float]):
+    def _validate_lora_scales(lora_files: list[str], lora_scales: list[float]) -> list[float]:
         if len(lora_files) == 1:
             if not lora_scales:
                 lora_scales = [1.0]
+            if len(lora_scales) > 1:
+                raise ValueError("Please provide a single scale for the LoRA, or skip it to default to 1")
         elif len(lora_files) > 1:
             if len(lora_files) != len(lora_scales):
                 raise ValueError("When providing multiple LoRAs, be sure to specify a scale for each one respectively")
@@ -28,12 +30,10 @@ class LoraUtil:
     def _apply_lora(transformer: dict, lora_file: str, lora_scale: float) -> None:
         if lora_scale < 0.0 or lora_scale > 1.0:
             raise Exception(f"Invalid scale {lora_scale} provided for {lora_file}. Valid Range [0.0 - 1.0] ")
-        try:
-            from flux_1.weights.weight_handler import WeightHandler
-            lora_transformer, _ = WeightHandler.load_transformer(lora_path=lora_file)
-            LoraUtil._apply_transformer(transformer, lora_transformer, lora_scale)
-        except Exception as e:
-            log.error(f"Error loading the LoRA safetensors file: {e}")
+
+        from flux_1.weights.weight_handler import WeightHandler
+        lora_transformer, _ = WeightHandler.load_transformer(lora_path=lora_file)
+        LoraUtil._apply_transformer(transformer, lora_transformer, lora_scale)
 
     @staticmethod
     def _apply_transformer(transformer: dict, lora_transformer: dict, lora_scale: float) -> None:

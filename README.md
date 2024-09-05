@@ -83,12 +83,9 @@ python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--quantize`** or **`-q`** (optional, `int`, default: `None`): [Quantization](#quantization) (choose between `4` or `8`).
 
-- **`--apply-lora`** (optional, `[str]`, default: `[]`): [Lora Safetensors file]
+- **`--lora-paths`** (optional, `[str]`, default: `None`): The paths to the [LoRA](#LoRA) weights.
 
-- **`--lora-scale`** (optional, `[float]`, default: `[1.0]`): [Scaling factor for each LoRA files]
-
-### Note:
-Ensure that the safetensors file provided is compatible with the model's architecture and that the LoRA keys correctly map to the model's layers. The missing lora-scales shall be treated as 1.0 by default.
+- **`--lora-scales`** (optional, `[float]`, default: `None`): The scale for each respective [LoRA](#LoRA) (will default to `1.0` if not specified and only one LoRA weight is loaded.)
 
 Or make a new separate script like the following
 
@@ -300,6 +297,11 @@ when loading a model directly from disk, we require the downloaded models to loo
     └── diffusion_pytorch_model.safetensors
 ```
 This mirrors how the resources are placed in the [HuggingFace Repo](https://huggingface.co/black-forest-labs/FLUX.1-schnell/tree/main) for FLUX.1.
+
+### LoRA
+
+MFLUX support loading precomputed [LoRA](https://huggingface.co/docs/diffusers/en/training/lora) weights (training support is coming soon). 
+By pointing out 
 
 ### Current limitations
 
