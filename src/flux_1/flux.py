@@ -28,6 +28,8 @@ class Flux1:
             model_config: ModelConfig,
             quantize_full_weights: int | None = None,
             local_path: str | None = None,
+            lora_paths: list[str] | None = None,
+            lora_scales: list[float] | None = None,
     ):
         self.model_config = model_config
         self.quantize_full_weights = quantize_full_weights
@@ -44,7 +46,7 @@ class Flux1:
         self.clip_text_encoder = CLIPEncoder()
 
         # Load the weights from disk, huggingface cache, or download from huggingface
-        weights = WeightHandler(repo_id=model_config.model_name, local_path=local_path)
+        weights = WeightHandler(repo_id=model_config.model_name, local_path=local_path, lora_paths=lora_paths, lora_scales=lora_scales)
 
         # Set the loaded weights if they are not quantized
         if weights.quantization_level is None:

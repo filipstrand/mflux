@@ -1,6 +1,6 @@
+import argparse
 import os
 import sys
-import argparse
 import time
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
@@ -23,22 +23,24 @@ def main():
     parser.add_argument('--guidance', type=float, default=3.5, help='Guidance Scale (Default is 3.5)')
     parser.add_argument('--quantize',  "-q", type=int, choices=[4, 8], default=None, help='Quantize the model (4 or 8, Default is None)')
     parser.add_argument('--path', type=str, default=None, help='Local path for loading a model from disk')
+    parser.add_argument('--lora-paths', type=str, nargs='*', default=None, help='Local safetensors for applying LORA from disk')
+    parser.add_argument('--lora-scales', type=float, nargs='*', default=None, help='Scaling factor to adjust the impact of LoRA weights on the model. A value of 1.0 applies the LoRA weights as they are.')
 
     args = parser.parse_args()
 
     if args.path and args.model is None:
         parser.error("--model must be specified when using --path")
 
-    seed = int(time.time()) if args.seed is None else args.seed
-
     flux = Flux1(
         model_config=ModelConfig.from_alias(args.model),
         quantize_full_weights=args.quantize,
-        local_path=args.path
+        local_path=args.path,
+        lora_paths=args.lora_paths,
+        lora_scales=args.lora_scales
     )
 
     image = flux.generate_image(
-        seed=seed,
+        seed=int(time.time()) if args.seed is None else args.seed,
         prompt=args.prompt,
         config=Config(
             num_inference_steps=args.steps,
