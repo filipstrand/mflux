@@ -83,6 +83,9 @@ python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--quantize`** or **`-q`** (optional, `int`, default: `None`): [Quantization](#quantization) (choose between `4` or `8`).
 
+- **`--lora-paths`** (optional, `[str]`, default: `None`): The paths to the [LoRA](#LoRA) weights.
+
+- **`--lora-scales`** (optional, `[float]`, default: `None`): The scale for each respective [LoRA](#LoRA) (will default to `1.0` if not specified and only one LoRA weight is loaded.)
 
 Or make a new separate script like the following
 
@@ -295,13 +298,55 @@ when loading a model directly from disk, we require the downloaded models to loo
 ```
 This mirrors how the resources are placed in the [HuggingFace Repo](https://huggingface.co/black-forest-labs/FLUX.1-schnell/tree/main) for FLUX.1.
 
+### LoRA
+
+MFLUX support loading trained [LoRA](https://huggingface.co/docs/diffusers/en/training/lora) adapters (actual training support is coming).
+
+The following example [The_Hound](https://huggingface.co/TheLastBen/The_Hound) LoRA from [@TheLastBen](https://github.com/TheLastBen): 
+
+```
+python main.py --prompt "sandor clegane" --model dev --steps 20 --seed 43 -q 8 --lora-paths "sandor_clegane_single_layer.safetensors"
+```
+
+![image](src/flux_1/assets/lora1.jpg)
+---
+
+The following example is [Flux_1_Dev_LoRA_Paper-Cutout-Style](https://huggingface.co/Norod78/Flux_1_Dev_LoRA_Paper-Cutout-Style) LoRA from [@Norod78](https://huggingface.co/Norod78):
+
+```
+python main.py --prompt "pikachu, Paper Cutout Style" --model schnell --steps 4 --seed 43 -q 8 --lora-paths "Flux_1_Dev_LoRA_Paper-Cutout-Style.safetensors"
+```
+![image](src/flux_1/assets/lora2.jpg)
+
+*Note that LoRA trained weights are typically trained with a **trigger word or phrase**. For example, in the latter case, the sentence should include the phrase **"Paper Cutout Style"**.*
+
+*Also note that the same LoRA weights can work well with both the `schnell` and `dev` models. Refer to the original LoRA repository to see what mode it was trained for.*
+
+#### Multi-LoRA
+
+Multiple LoRAs can be sent in to combine the effects of the individual adapters. The following example combines both of the above LoRAs:
+
+```
+python main.py \
+--prompt "sandor clegane in a forest, Paper Cutout Style" \ 
+--model dev \
+--steps 20 \
+--seed 43 \
+--lora-paths sandor.safetensors paper.safetensors \ 
+--lora-scales 1.0 1.0 -q 8 \
+```
+![image](src/flux_1/assets/lora3.jpg)
+
+Just to see the difference, this image displays the four cases: One of having both adapters fully active, partially active and no LoRA at all. 
+The example above also show the usage of `--lora-scales` flag. 
+
 ### Current limitations
 
 - Images are generated one by one.
 - Negative prompts not supported.
+- LoRA weights are only supported for the transformer part of the network.
 
 ### TODO
 
-- [ ] LoRA adapters
 - [ ] LoRA fine-tuning
 - [ ] Frontend support (Gradio/Streamlit/Other?)
