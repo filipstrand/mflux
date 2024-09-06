@@ -55,7 +55,7 @@ class Image:
 
             # Optionally save json metadata file
             if export_json_metadata:
-                with open(f"{file_path.with_suffix(".json")}", 'w') as json_file:
+                with open(f"{file_path.with_suffix('.json')}", 'w') as json_file:
                     json.dump(self._get_metadata(), json_file, indent=4)
 
             # Embed metadata
