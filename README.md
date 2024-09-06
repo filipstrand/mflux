@@ -345,7 +345,8 @@ python main.py \
 --steps 20 \
 --seed 43 \
 --lora-paths sandor.safetensors paper.safetensors \ 
---lora-scales 1.0 1.0 -q 8 \
+--lora-scales 1.0 1.0 \ 
+-q 8
 ```
 ![image](src/flux_1/assets/lora3.jpg)
 
