@@ -14,7 +14,6 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: MacOS",
 ]
-python-requires = ">=3.11"
 dependencies = [
     "mlx>=0.16.0",
     "numpy>=2.0.0",
