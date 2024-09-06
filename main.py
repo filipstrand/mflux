@@ -5,9 +5,9 @@ import time
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 
-from flux_1.config.model_config import ModelConfig
-from flux_1.config.config import Config
-from flux_1.flux import Flux1
+from mflux.config.model_config import ModelConfig
+from mflux.config.config import Config
+from mflux.flux import Flux1
 
 
 def main():

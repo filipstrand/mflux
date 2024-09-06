@@ -1,5 +1,5 @@
 
-![image](src/flux_1/assets/logo.png)
+![image](src/mflux/assets/logo.png)
 *A MLX port of FLUX based on the Huggingface Diffusers implementation.*
 
 ### About
@@ -96,8 +96,8 @@ import sys
 
 sys.path.append("/path/to/mflux/src")
 
-from flux_1.config.config import Config
-from flux_1.flux import Flux1
+from mflux.config.config import Config
+from mflux.flux import Flux1
 
 # Load the model
 flux = Flux1.from_alias(alias="schnell")  # "schnell" or "dev"
@@ -157,27 +157,27 @@ However, if we were to import a fixed instance of this latent array saved from t
 The images below illustrate this equivalence. 
 In all cases the Schnell model was run for 2 time steps. 
 The Diffusers implementation ran in CPU mode. 
-The precision for MFLUX can be set in the [Config](src/flux_1/config/config.py) class. 
+The precision for MFLUX can be set in the [Config](src/mflux/config/config.py) class. 
 There is typically a noticeable but very small difference in the final image when switching between 16bit and 32bit precision.
 
 ---
 ```
 Luxury food photograph
 ```
-![image](src/flux_1/assets/comparison1.jpg)
+![image](src/mflux/assets/comparison1.jpg)
 
 ---
 ```
 detailed cinematic dof render of an old dusty detailed CRT monitor on a wooden desk in a dim room with items around, messy dirty room. On the screen are the letters "FLUX" glowing softly. High detail hard surface render
 ```
-![image](src/flux_1/assets/comparison2.jpg)
+![image](src/mflux/assets/comparison2.jpg)
 
 ---
 
 ```
 photorealistic, lotr, A tiny red dragon curled up asleep inside a nest, (Soft Focus) , (f_stop 2.8) , (focal_length 50mm) macro lens f/2. 8, medieval wizard table, (pastel) colors, (cozy) morning light filtering through a nearby window, (whimsical) steam shapes, captured with a (Canon EOS R5) , highlighting (serene) comfort, medieval, dnd, rpg, 3d, 16K, 8K
 ```
-![image](src/flux_1/assets/comparison3.jpg)
+![image](src/mflux/assets/comparison3.jpg)
 
 ---
 
@@ -185,14 +185,14 @@ photorealistic, lotr, A tiny red dragon curled up asleep inside a nest, (Soft Fo
 ```
 A weathered fisherman in his early 60s stands on the deck of his boat, gazing out at a stormy sea. He has a thick, salt-and-pepper beard, deep-set blue eyes, and skin tanned and creased from years of sun exposure. He's wearing a yellow raincoat and hat, with water droplets clinging to the fabric. Behind him, dark clouds loom ominously, and waves crash against the side of the boat. The overall atmosphere is one of tension and respect for the power of nature.
 ```
-![image](src/flux_1/assets/comparison4.jpg)
+![image](src/mflux/assets/comparison4.jpg)
 
 ---
 
 ```
 Luxury food photograph of an italian Linguine pasta alle vongole dish with lots of clams. It has perfect lighting and a cozy background with big bokeh and shallow depth of field. The mood is a sunset balcony in tuscany.  The photo is taken from the side of the plate. The pasta is shiny with sprinkled parmesan cheese and basil leaves on top. The scene is complemented by a warm, inviting light that highlights the textures and colors of the ingredients, giving it an appetizing and elegant look.
 ```
-![image](src/flux_1/assets/comparison5.jpg)
+![image](src/mflux/assets/comparison5.jpg)
 
 ---
 
@@ -211,7 +211,7 @@ python main.py \
     --width 1024 \
     --prompt "Tranquil pond in a bamboo forest at dawn, the sun is barely starting to peak over the horizon, panda practices Tai Chi near the edge of the pond, atmospheric perspective through the mist of morning dew, sunbeams, its movements are graceful and fluid — creating a sense of harmony and balance, the pond’s calm waters reflecting the scene, inviting a sense of meditation and connection with nature, style of Howard Terpning and Jessica Rossier" 
 ```
-![image](src/flux_1/assets/comparison6.jpg)
+![image](src/mflux/assets/comparison6.jpg)
 
 *In this example, weights are quantized at **runtime** - this is convenient if you don't want to [save a quantized copy of the weights to disk](#saving-a-quantized-version-to-disk), but still want to benefit from the potential speedup and RAM reduction quantization might bring.*
 
@@ -320,7 +320,7 @@ The following example [The_Hound](https://huggingface.co/TheLastBen/The_Hound) L
 python main.py --prompt "sandor clegane" --model dev --steps 20 --seed 43 -q 8 --lora-paths "sandor_clegane_single_layer.safetensors"
 ```
 
-![image](src/flux_1/assets/lora1.jpg)
+![image](src/mflux/assets/lora1.jpg)
 ---
 
 The following example is [Flux_1_Dev_LoRA_Paper-Cutout-Style](https://huggingface.co/Norod78/Flux_1_Dev_LoRA_Paper-Cutout-Style) LoRA from [@Norod78](https://huggingface.co/Norod78):
@@ -328,7 +328,7 @@ The following example is [Flux_1_Dev_LoRA_Paper-Cutout-Style](https://huggingfac
 ```
 python main.py --prompt "pikachu, Paper Cutout Style" --model schnell --steps 4 --seed 43 -q 8 --lora-paths "Flux_1_Dev_LoRA_Paper-Cutout-Style.safetensors"
 ```
-![image](src/flux_1/assets/lora2.jpg)
+![image](src/mflux/assets/lora2.jpg)
 
 *Note that LoRA trained weights are typically trained with a **trigger word or phrase**. For example, in the latter case, the sentence should include the phrase **"Paper Cutout Style"**.*
 
@@ -348,7 +348,7 @@ python main.py \
    --lora-scales 1.0 1.0 \
    -q 8
 ```
-![image](src/flux_1/assets/lora3.jpg)
+![image](src/mflux/assets/lora3.jpg)
 
 Just to see the difference, this image displays the four cases: One of having both adapters fully active, partially active and no LoRA at all. 
 The example above also show the usage of `--lora-scales` flag. 
