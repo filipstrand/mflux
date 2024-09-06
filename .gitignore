@@ -12,3 +12,4 @@
 *.jpg
 *.pyc
 *.safetensors
+*.json
