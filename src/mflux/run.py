@@ -7,7 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 
 from mflux.config.model_config import ModelConfig
 from mflux.config.config import Config
-from mflux.flux import Flux1
+from mflux.flux.flux import Flux1
 
 
 def main():
