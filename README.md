@@ -46,16 +46,16 @@ For users, the easiest way to install MFLUX is via pip:
 
 ### Generating an image
 
-Run the provided [main.py](src/mflux/run.py) by specifying a prompt and some optional arguments like so using the `schnell` model:
+Run the command `mflux-generate` by specifying a prompt and the model and some optional arguments. For example, here we use a quantized version of the `schnell` model for 2 steps:
 
 ```
-python main.py --model schnell --prompt "Luxury food photograph" --steps 2 --seed 2 -q 8
+mflux-generate --model schnell --prompt "Luxury food photograph" --steps 2 --seed 2 -q 8
 ```
 
-or use the slower, but more powerful `dev` model and run it with more time steps:
+This example uses the more powerful `dev` model with 25 time steps:
 
 ```
-python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2 -q 8
+mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2 -q 8
 ```
 
 ⚠️ *If the specific model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell or Dev model respectively). See the [quantization](#quantization) section for running compressed versions of the model.* ⚠️
@@ -98,7 +98,7 @@ python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
  
 - **`--metadata`** (optional): Exports a `.json` file containing the metadata for the image with the same name. (Even without this flag, the image metadata is saved and can be viewed using `exiftool image.png`)
 
-Or, with the correct python environment active, make a new separate script like the following:
+Or, with the correct python environment active, create and run a separate script like the following:
 
 ```python
 from mflux.flux.flux import Flux1
@@ -107,7 +107,7 @@ from mflux.config.config import Config
 # Load the model
 flux = Flux1.from_alias(
    alias="schnell",  # "schnell" or "dev"
-   quantize=8,  # 4 or 8
+   quantize=8,       # 4 or 8
 )  
 
 # Generate an image
@@ -124,14 +124,14 @@ image = flux.generate_image(
 image.save(path="image.png")
 ```
 
-For more options on how to configure MFLUX, please see [main.py](src/mflux/run.py).
+For more options on how to configure MFLUX, please see [generate.py](src/mflux/generate.py).
 
 ### Image generation speed (updated)
 
 These numbers are based on the non-quantized `schnell` model, with the configuration provided in the code snippet below. 
 To time your machine, run the following:
 ```
-time python main.py \
+time mflux-generate \
 --prompt "Luxury food photograph" \
 --model schnell \
 --steps 2 \
@@ -210,7 +210,7 @@ MFLUX supports running FLUX in 4-bit or 8-bit quantized mode. Running a quantize
 generation process and reduce the memory consumption by several gigabytes. [Quantized models also take up less disk space](#size-comparisons-for-quantized-models). 
 
 ```
-python main.py \
+mflux-generate \
     --model schnell \
     --steps 2 \
     --seed 2 \
@@ -240,10 +240,10 @@ The reason weights sizes are not fully cut in half is because a small number of 
 
 #### Saving a quantized version to disk
 
-To save a local copy of the quantized weights, run the `save.py` script like so:
+To save a local copy of the quantized weights, run the `mflux-save` command like so:
 
 ```
-python save.py \
+mflux-save \
     --path "/Users/filipstrand/Desktop/schnell_8bit" \
     --model schnell \
     --quantize 8
@@ -256,7 +256,7 @@ python save.py \
 To generate a new image from the quantized model, simply provide a `--path` to where it was saved: 
 
 ```
-python main.py \
+mflux-generate \
     --path "/Users/filipstrand/Desktop/schnell_8bit" \
     --model schnell \
     --steps 2 \
@@ -276,7 +276,7 @@ MFLUX also supports running a non-quantized model directly from a custom locatio
 In the example below, the model is placed in `/Users/filipstrand/Desktop/schnell`:
 
 ```
-python main.py \
+mflux-generate \
     --path "/Users/filipstrand/Desktop/schnell" \
     --model schnell \
     --steps 2 \
@@ -325,7 +325,7 @@ MFLUX support loading trained [LoRA](https://huggingface.co/docs/diffusers/en/tr
 The following example [The_Hound](https://huggingface.co/TheLastBen/The_Hound) LoRA from [@TheLastBen](https://github.com/TheLastBen): 
 
 ```
-python main.py --prompt "sandor clegane" --model dev --steps 20 --seed 43 -q 8 --lora-paths "sandor_clegane_single_layer.safetensors"
+mflux-generate --prompt "sandor clegane" --model dev --steps 20 --seed 43 -q 8 --lora-paths "sandor_clegane_single_layer.safetensors"
 ```
 
 ![image](src/mflux/assets/lora1.jpg)
@@ -334,7 +334,7 @@ python main.py --prompt "sandor clegane" --model dev --steps 20 --seed 43 -q 8 -
 The following example is [Flux_1_Dev_LoRA_Paper-Cutout-Style](https://huggingface.co/Norod78/Flux_1_Dev_LoRA_Paper-Cutout-Style) LoRA from [@Norod78](https://huggingface.co/Norod78):
 
 ```
-python main.py --prompt "pikachu, Paper Cutout Style" --model schnell --steps 4 --seed 43 -q 8 --lora-paths "Flux_1_Dev_LoRA_Paper-Cutout-Style.safetensors"
+mflux-generate --prompt "pikachu, Paper Cutout Style" --model schnell --steps 4 --seed 43 -q 8 --lora-paths "Flux_1_Dev_LoRA_Paper-Cutout-Style.safetensors"
 ```
 ![image](src/mflux/assets/lora2.jpg)
 
@@ -347,7 +347,7 @@ python main.py --prompt "pikachu, Paper Cutout Style" --model schnell --steps 4 
 Multiple LoRAs can be sent in to combine the effects of the individual adapters. The following example combines both of the above LoRAs:
 
 ```
-python main.py \
+mflux-generate \
    --prompt "sandor clegane in a forest, Paper Cutout Style" \
    --model dev \
    --steps 20 \
