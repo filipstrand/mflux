@@ -11,6 +11,12 @@ setup(
     url="https://github.com/filipstrand/mflux",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
+    entry_points={
+        "console_scripts": [
+            "mflux-generate=src.mflux.generate:main",
+            "mflux-save=src.mflux.save:main",
+        ]
+    },
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: MacOS",
