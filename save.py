@@ -20,7 +20,7 @@ def main():
 
     flux = Flux1(
         model_config=ModelConfig.from_alias(args.model),
-        quantize_full_weights=args.quantize,
+        quantize=args.quantize,
     )
 
     flux.save_model(args.path)
