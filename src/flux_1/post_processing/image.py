@@ -24,6 +24,8 @@ class Image:
             precision: mx.Dtype,
             quantization: int,
             generation_time: float,
+            lora_paths: list[str],
+            lora_scales: list[float],
     ):
         self.image = image
         self.model_config = model_config
@@ -34,6 +36,8 @@ class Image:
         self.precision = precision
         self.quantization = quantization
         self.generation_time = generation_time
+        self.lora_paths = lora_paths
+        self.lora_scales = lora_scales
 
     def save(self, path: str, export_json_metadata: bool = False) -> None:
         file_path = Path(path)
@@ -116,5 +120,7 @@ class Image:
             'precision': f"{self.precision}",
             'quantization': "None" if self.quantization is None else f"{self.quantization} bit",
             'generation_time': f"{self.generation_time:.2f} seconds",
+            'lora_paths': ', '.join(self.lora_paths) if self.lora_paths else '',
+            'lora_scales': ', '.join([f"{scale:.2f}" for scale in self.lora_scales]) if self.lora_scales else '',
             'prompt': self.prompt,
         }

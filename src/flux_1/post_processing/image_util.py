@@ -16,6 +16,8 @@ class ImageUtil:
             prompt: str,
             quantization: int,
             generation_time: float,
+            lora_paths: list[str],
+            lora_scales: list[float],
             config: RuntimeConfig,
     ) -> Image:
         normalized = ImageUtil._denormalize(decoded_latents)
@@ -31,6 +33,8 @@ class ImageUtil:
             precision=config.precision,
             quantization=quantization,
             generation_time=generation_time,
+            lora_paths=lora_paths,
+            lora_scales=lora_scales,
         )
 
     @staticmethod
