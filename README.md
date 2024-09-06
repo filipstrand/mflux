@@ -340,13 +340,13 @@ Multiple LoRAs can be sent in to combine the effects of the individual adapters.
 
 ```
 python main.py \
---prompt "sandor clegane in a forest, Paper Cutout Style" \ 
---model dev \
---steps 20 \
---seed 43 \
---lora-paths sandor.safetensors paper.safetensors \ 
---lora-scales 1.0 1.0 \ 
--q 8
+   --prompt "sandor clegane in a forest, Paper Cutout Style" \
+   --model dev \
+   --steps 20 \
+   --seed 43 \
+   --lora-paths sandor_clegane_single_layer.safetensors Flux_1_Dev_LoRA_Paper-Cutout-Style.safetensors \
+   --lora-scales 1.0 1.0 \
+   -q 8
 ```
 ![image](src/flux_1/assets/lora3.jpg)
 
