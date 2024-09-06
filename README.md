@@ -37,7 +37,7 @@ like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) f
    ```
 ### Generating an image
 
-Run the provided [main.py](main.py) by specifying a prompt and some optional arguments like so using the `schnell` model:
+Run the provided [main.py](src/mflux/main.py) by specifying a prompt and some optional arguments like so using the `schnell` model:
 
 ```
 python main.py --model schnell --prompt "Luxury food photograph" --steps 2 --seed 2 -q 8
@@ -116,7 +116,7 @@ image = flux.generate_image(
 image.save(path="image.png")
 ```
 
-For more options on how to configure MFLUX, please see [main.py](main.py).
+For more options on how to configure MFLUX, please see [main.py](src/mflux/main.py).
 
 ### Image generation speed (updated)
 
