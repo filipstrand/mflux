@@ -8,7 +8,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 from flux_1.config.model_config import ModelConfig
 from flux_1.config.config import Config
 from flux_1.flux import Flux1
-from flux_1.post_processing.image_util import ImageUtil
 
 
 def main():
@@ -25,20 +24,23 @@ def main():
     parser.add_argument('--path', type=str, default=None, help='Local path for loading a model from disk')
     parser.add_argument('--lora-paths', type=str, nargs='*', default=None, help='Local safetensors for applying LORA from disk')
     parser.add_argument('--lora-scales', type=float, nargs='*', default=None, help='Scaling factor to adjust the impact of LoRA weights on the model. A value of 1.0 applies the LoRA weights as they are.')
+    parser.add_argument('--metadata', action='store_true', help='Export image metadata as a JSON file.')
 
     args = parser.parse_args()
 
     if args.path and args.model is None:
         parser.error("--model must be specified when using --path")
 
+    # Load the model
     flux = Flux1(
         model_config=ModelConfig.from_alias(args.model),
-        quantize_full_weights=args.quantize,
+        quantize=args.quantize,
         local_path=args.path,
         lora_paths=args.lora_paths,
         lora_scales=args.lora_scales
     )
 
+    # Generate an image
     image = flux.generate_image(
         seed=int(time.time()) if args.seed is None else args.seed,
         prompt=args.prompt,
@@ -50,7 +52,8 @@ def main():
         )
     )
 
-    ImageUtil.save_image(image, args.output)
+    # Save the image
+    image.save(path=args.output, export_json_metadata=args.metadata)
 
 
 if __name__ == '__main__':
