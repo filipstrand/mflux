@@ -30,6 +30,8 @@ class Flux1:
             lora_paths: list[str] | None = None,
             lora_scales: list[float] | None = None,
     ):
+        self.lora_paths = lora_paths
+        self.lora_scales = lora_scales
         self.model_config = model_config
 
         # Load and initialize the tokenizers from disk, huggingface cache, or download from huggingface
@@ -44,7 +46,12 @@ class Flux1:
         self.clip_text_encoder = CLIPEncoder()
 
         # Load the weights from disk, huggingface cache, or download from huggingface
-        weights = WeightHandler(repo_id=model_config.model_name, local_path=local_path, lora_paths=lora_paths, lora_scales=lora_scales)
+        weights = WeightHandler(
+            repo_id=model_config.model_name,
+            local_path=local_path,
+            lora_paths=lora_paths,
+            lora_scales=lora_scales
+        )
 
         # Set the loaded weights if they are not quantized
         if weights.quantization_level is None:
@@ -106,6 +113,8 @@ class Flux1:
             prompt=prompt,
             quantization=self.bits,
             generation_time=time_steps.format_dict['elapsed'],
+            lora_paths=self.lora_paths,
+            lora_scales=self.lora_scales,
             config=config,
         )
 
