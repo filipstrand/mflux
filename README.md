@@ -23,18 +23,27 @@ like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) f
 - [x] FLUX.1-Dev
 
 ### Installation
+For users, the easiest way to install MFLUX is via pip:
+   ```
+   pip install mflux
+   ```
+<details>
+<summary>For contributors (click to expand)</summary>
+
 1. Clone the repo:
-    ```
-    git clone git@github.com:filipstrand/mflux.git
-    ```
+ ```
+ git clone git@github.com:filipstrand/mflux.git
+ ```
 2. Navigate to the project and set up a virtual environment:
-   ```
-   cd mflux && python3 -m venv .venv && source .venv/bin/activate
-   ``` 
+ ```
+ cd mflux && python3 -m venv .venv && source .venv/bin/activate
+ ```
 3. Install the required dependencies:
-    ```
-   pip install -r requirements.txt
-   ```
+ ```
+ pip install -r requirements.txt
+ ```
+</details>
+
 ### Generating an image
 
 Run the provided [main.py](src/mflux/run.py) by specifying a prompt and some optional arguments like so using the `schnell` model:
@@ -92,12 +101,8 @@ python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 Or, with the correct python environment active, make a new separate script like the following:
 
 ```python
-import sys
-
-sys.path.append("/path/to/mflux/src")
-
-from mflux.config.config import Config
 from mflux.flux.flux import Flux1
+from mflux.config.config import Config
 
 # Load the model
 flux = Flux1.from_alias(
