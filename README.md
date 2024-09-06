@@ -97,10 +97,13 @@ import sys
 sys.path.append("/path/to/mflux/src")
 
 from mflux.config.config import Config
-from mflux.flux import Flux1
+from mflux.flux.flux import Flux1
 
 # Load the model
-flux = Flux1.from_alias(alias="schnell")  # "schnell" or "dev"
+flux = Flux1.from_alias(
+   alias="schnell",  # "schnell" or "dev"
+   quantize=8,  # 4 or 8
+)  
 
 # Generate an image
 image = flux.generate_image(
