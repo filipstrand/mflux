@@ -13,31 +13,31 @@ class RuntimeConfig:
         self.sigmas = self._create_sigmas(config, model_config)
 
     @property
-    def height(self):
+    def height(self) -> int:
         return self.config.height
 
     @property
-    def width(self):
+    def width(self) -> int:
         return self.config.width
 
     @property
-    def guidance(self):
+    def guidance(self) -> float:
         return self.config.guidance
 
     @property
-    def num_inference_steps(self):
+    def num_inference_steps(self) -> int:
         return self.config.num_inference_steps
 
     @property
-    def precision(self):
+    def precision(self) -> mx.Dtype:
         return self.config.precision
 
     @property
-    def num_train_steps(self):
+    def num_train_steps(self) -> int:
         return self.model_config.num_train_steps
 
     @staticmethod
-    def _create_sigmas(config, model):
+    def _create_sigmas(config, model) -> mx.array:
         sigmas = RuntimeConfig._create_sigmas_values(config.num_inference_steps)
         if model == ModelConfig.FLUX1_DEV:
             sigmas = RuntimeConfig._shift_sigmas(sigmas, config.width, config.height)
