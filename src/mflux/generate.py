@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 import time
+from tqdm import tqdm
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -49,12 +50,21 @@ def main():
             height=args.height,
             width=args.width,
             guidance=args.guidance,
-        )
+        ),
+        progress_callback=tqdm_progress(args.steps,args.output)
     )
 
     # Save the image
     image.save(path=args.output, export_json_metadata=args.metadata)
 
+
+def tqdm_progress(total_steps,output_filename):
+    pbar = tqdm(total=total_steps, desc=output_filename)
+    def update(step, _):
+        pbar.update(1)
+        if step == total_steps:
+            pbar.close()
+    return update
 
 if __name__ == '__main__':
     main()
