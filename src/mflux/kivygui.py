@@ -396,11 +396,11 @@ class ImageGeneratorGUI(BoxLayout):
             
             self.quantize_toggle.set_quantize(request.get('quantize'))
             path = request.get('path', '')
-            self.path_input.text_input.text = path if path else ''
+            self.path_input.text_input.text = str(path) if path else ''
             lora_paths = request.get('lora_paths', '')
-            self.lora_paths_input.text_input.text = lora_paths if lora_paths else ''
+            self.lora_paths_input.text_input.text = str(lora_paths) if lora_paths else ''
             lora_scales = request.get('lora_scales', '')
-            self.lora_paths_input.text_input.text = lora_scales if lora_scales else ''
+            self.lora_scales_input.text_input.text = str(lora_scales) if lora_scales else ''
 
             self.metadata_checkbox.active = bool(request.get('export_metadata', False))
 
@@ -459,7 +459,18 @@ class ImageGeneratorGUI(BoxLayout):
 
 
         # Sauvegarde de la requête dans la base de données
-        timestamp = self.save_request(prompt, model, seed, steps, height, width, guidance, quantize, path, lora_paths, lora_scales, export_metadata)
+        timestamp = self.save_request(prompt, 
+                                      model, 
+                                      seed, 
+                                      steps, 
+                                      height, 
+                                      width, 
+                                      guidance, 
+                                      quantize, 
+                                      path, 
+                                      self.lora_paths_input.text_input.text, 
+                                      self.lora_scales_input.text_input.text, 
+                                      export_metadata)
 
         Clock.schedule_once(lambda dt: self.update_output('Init model...'))
         try:
