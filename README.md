@@ -8,10 +8,10 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 
 ### Philosophy
 
-MFLUX (MacFLUX) is a line-by-line port of the FLUX implementation in the [Huggingface Diffusers](https://github.com/huggingface/diffusers) library to [Apple MLX](https://github.com/ml-explore/mlx). 
+MFLUX is a line-by-line port of the FLUX implementation in the [Huggingface Diffusers](https://github.com/huggingface/diffusers) library to [Apple MLX](https://github.com/ml-explore/mlx). 
 MFLUX is purposefully kept minimal and explicit - Network architectures are hardcoded and no config files are used
 except for the tokenizers. The aim is to have a tiny codebase with the single purpose of expressing these models 
-(thereby avoiding too many abstractions). MFLUX priorities readability over generality and performance.
+(thereby avoiding too many abstractions). While MFLUX priorities readability over generality and performance, [it can still be quite fast](#image-generation-speed-updated), [and even faster quantized](#quantization).
 
 All models are implemented from scratch in MLX and only the tokenizers are used via the 
 [Huggingface Transformers](https://github.com/huggingface/transformers) library. Other than that, there are only minimal dependencies 
@@ -40,13 +40,13 @@ like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) f
 Run the provided [main.py](main.py) by specifying a prompt and some optional arguments like so using the `schnell` model:
 
 ```
-python main.py --model schnell --prompt "Luxury food photograph" --steps 2 --seed 2
+python main.py --model schnell --prompt "Luxury food photograph" --steps 2 --seed 2 -q 8
 ```
 
 or use the slower, but more powerful `dev` model and run it with more time steps:
 
 ```
-python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
+python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2 -q 8
 ```
 
 ⚠️ *If the specific model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell or Dev model respectively). See the [quantization](#quantization) section for running compressed versions of the model.* ⚠️
@@ -83,8 +83,13 @@ python main.py --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--quantize`** or **`-q`** (optional, `int`, default: `None`): [Quantization](#quantization) (choose between `4` or `8`).
 
+- **`--lora-paths`** (optional, `[str]`, default: `None`): The paths to the [LoRA](#LoRA) weights.
 
-Or make a new separate script like the following
+- **`--lora-scales`** (optional, `[float]`, default: `None`): The scale for each respective [LoRA](#LoRA) (will default to `1.0` if not specified and only one LoRA weight is loaded.)
+ 
+- **`--metadata`** (optional): Exports a `.json` file containing the metadata for the image with the same name. (Even without this flag, the image metadata is saved and can be viewed using `exiftool image.png`)
+
+Or, with the correct python environment active, make a new separate script like the following:
 
 ```python
 import sys
@@ -93,27 +98,29 @@ sys.path.append("/path/to/mflux/src")
 
 from flux_1.config.config import Config
 from flux_1.flux import Flux1
-from flux_1.post_processing.image_util import ImageUtil
 
+# Load the model
 flux = Flux1.from_alias(alias="schnell")  # "schnell" or "dev"
 
+# Generate an image
 image = flux.generate_image(
-   seed=3,
-   prompt="Luxury food photograph of a birthday cake. In the middle it has three candles shaped like letters spelling the word 'MLX'. It has perfect lighting and a cozy background with big bokeh and shallow depth of field. The mood is a sunset balcony in tuscany. The photo is taken from the side of the cake. The scene is complemented by a warm, inviting light that highlights the textures and colors of the ingredients, giving it an appetizing and elegant look.",
+   seed=2,
+   prompt="Luxury food photograph",
    config=Config(
-      num_inference_steps=2,  # Schnell works well with 2-4 steps, Dev works well with 20-25 steps
-      height=768,
-      width=1360,
+      num_inference_steps=2,  # "schnell" works well with 2-4 steps, "dev" works well with 20-25 steps
+      height=1024,
+      width=1024,
    )
 )
 
-ImageUtil.save_image(image, "image.png")
+image.save(path="image.png")
 ```
 
+For more options on how to configure MFLUX, please see [main.py](main.py).
 
 ### Image generation speed (updated)
 
-These numbers are based on the Schnell model, with the configuration provided in the code snippet below. 
+These numbers are based on the non-quantized `schnell` model, with the configuration provided in the code snippet below. 
 To time your machine, run the following:
 ```
 time python main.py \
@@ -136,6 +143,9 @@ time python main.py \
 | 2022 M1 MAX (64GB) | [@BosseParra](https://x.com/BosseParra/status/1826191780812877968)                                                          | ~55s          |                           |
 | 2021 M1 Pro (32GB) | @filipstrand                                                                                                                | ~160s         |                           |
 | 2023 M2 Max (32GB) | @filipstrand                                                                                                                | ~70s          |                           |
+
+*Note that these numbers includes starting the application from scratch, which means doing model i/o, setting/quantizing weights etc. 
+If we assume that the model is already loaded, you can inspect the image metadata using `exiftool image.png` and see the total duration of the denoising loop (excluding text embedding).*
 
 ### Equivalent to Diffusers implementation 
 
@@ -248,7 +258,9 @@ python main.py \
     --prompt "Tranquil pond in a bamboo forest at dawn, the sun is barely starting to peak over the horizon, panda practices Tai Chi near the edge of the pond, atmospheric perspective through the mist of morning dew, sunbeams, its movements are graceful and fluid — creating a sense of harmony and balance, the pond’s calm waters reflecting the scene, inviting a sense of meditation and connection with nature, style of Howard Terpning and Jessica Rossier" 
 ```
 
-*Note: Once we have a local model (quantized or not) specified via the `--path` argument, the huggingface cache models are not required to launch the model*. 
+*Note: When loading a quantized model from disk, there is no need to pass in `-q` flag, since we can infer this from the weight metadata.*
+
+*Also Note: Once we have a local model (quantized [or not](#running-a-non-quantized-model-directly-from-disk)) specified via the `--path` argument, the huggingface cache models are not required to launch the model*. 
 
 ### Running a non-quantized model directly from disk
 
@@ -294,14 +306,60 @@ when loading a model directly from disk, we require the downloaded models to loo
     └── diffusion_pytorch_model.safetensors
 ```
 This mirrors how the resources are placed in the [HuggingFace Repo](https://huggingface.co/black-forest-labs/FLUX.1-schnell/tree/main) for FLUX.1.
+*Huggingface weights, unlike quantized ones exported directly from this project, have to be
+processed a bit differently, which is why we require this structure above.* 
+
+
+### LoRA
+
+MFLUX support loading trained [LoRA](https://huggingface.co/docs/diffusers/en/training/lora) adapters (actual training support is coming).
+
+The following example [The_Hound](https://huggingface.co/TheLastBen/The_Hound) LoRA from [@TheLastBen](https://github.com/TheLastBen): 
+
+```
+python main.py --prompt "sandor clegane" --model dev --steps 20 --seed 43 -q 8 --lora-paths "sandor_clegane_single_layer.safetensors"
+```
+
+![image](src/flux_1/assets/lora1.jpg)
+---
+
+The following example is [Flux_1_Dev_LoRA_Paper-Cutout-Style](https://huggingface.co/Norod78/Flux_1_Dev_LoRA_Paper-Cutout-Style) LoRA from [@Norod78](https://huggingface.co/Norod78):
+
+```
+python main.py --prompt "pikachu, Paper Cutout Style" --model schnell --steps 4 --seed 43 -q 8 --lora-paths "Flux_1_Dev_LoRA_Paper-Cutout-Style.safetensors"
+```
+![image](src/flux_1/assets/lora2.jpg)
+
+*Note that LoRA trained weights are typically trained with a **trigger word or phrase**. For example, in the latter case, the sentence should include the phrase **"Paper Cutout Style"**.*
+
+*Also note that the same LoRA weights can work well with both the `schnell` and `dev` models. Refer to the original LoRA repository to see what mode it was trained for.*
+
+#### Multi-LoRA
+
+Multiple LoRAs can be sent in to combine the effects of the individual adapters. The following example combines both of the above LoRAs:
+
+```
+python main.py \
+   --prompt "sandor clegane in a forest, Paper Cutout Style" \
+   --model dev \
+   --steps 20 \
+   --seed 43 \
+   --lora-paths sandor_clegane_single_layer.safetensors Flux_1_Dev_LoRA_Paper-Cutout-Style.safetensors \
+   --lora-scales 1.0 1.0 \
+   -q 8
+```
+![image](src/flux_1/assets/lora3.jpg)
+
+Just to see the difference, this image displays the four cases: One of having both adapters fully active, partially active and no LoRA at all. 
+The example above also show the usage of `--lora-scales` flag. 
 
 ### Current limitations
 
 - Images are generated one by one.
 - Negative prompts not supported.
+- LoRA weights are only supported for the transformer part of the network.
 
 ### TODO
 
-- [ ] LoRA adapters
 - [ ] LoRA fine-tuning
 - [ ] Frontend support (Gradio/Streamlit/Other?)

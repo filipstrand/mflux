@@ -1,8 +1,6 @@
 from pathlib import Path
 
-import PIL
 import mlx.core as mx
-from PIL import Image
 from mlx import nn
 from mlx.utils import tree_flatten
 from tqdm import tqdm
@@ -14,6 +12,7 @@ from flux_1.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from flux_1.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
 from flux_1.models.transformer.transformer import Transformer
 from flux_1.models.vae.vae import VAE
+from flux_1.post_processing.image import Image
 from flux_1.post_processing.image_util import ImageUtil
 from flux_1.tokenizer.clip_tokenizer import TokenizerCLIP
 from flux_1.tokenizer.t5_tokenizer import TokenizerT5
@@ -26,11 +25,14 @@ class Flux1:
     def __init__(
             self,
             model_config: ModelConfig,
-            quantize_full_weights: int | None = None,
+            quantize: int | None = None,
             local_path: str | None = None,
+            lora_paths: list[str] | None = None,
+            lora_scales: list[float] | None = None,
     ):
+        self.lora_paths = lora_paths
+        self.lora_scales = lora_scales
         self.model_config = model_config
-        self.quantize_full_weights = quantize_full_weights
 
         # Load and initialize the tokenizers from disk, huggingface cache, or download from huggingface
         tokenizers = TokenizerHandler(model_config.model_name, self.model_config.max_sequence_length, local_path)
@@ -44,27 +46,34 @@ class Flux1:
         self.clip_text_encoder = CLIPEncoder()
 
         # Load the weights from disk, huggingface cache, or download from huggingface
-        weights = WeightHandler(repo_id=model_config.model_name, local_path=local_path)
+        weights = WeightHandler(
+            repo_id=model_config.model_name,
+            local_path=local_path,
+            lora_paths=lora_paths,
+            lora_scales=lora_scales
+        )
 
         # Set the loaded weights if they are not quantized
         if weights.quantization_level is None:
             self._set_model_weights(weights)
 
         # Optionally quantize the model here at initialization (also required if about to load quantized weights)
-        if quantize_full_weights is not None or weights.quantization_level is not None:
-            bits = weights.quantization_level if weights.quantization_level is not None else quantize_full_weights
-            nn.quantize(self.vae, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=bits)
-            nn.quantize(self.transformer, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 64, group_size=64, bits=bits)
-            nn.quantize(self.t5_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=bits)
-            nn.quantize(self.clip_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=bits)
+        self.bits = None
+        if quantize is not None or weights.quantization_level is not None:
+            self.bits = weights.quantization_level if weights.quantization_level is not None else quantize
+            nn.quantize(self.vae, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=self.bits)
+            nn.quantize(self.transformer, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 64, group_size=64, bits=self.bits)
+            nn.quantize(self.t5_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=self.bits)
+            nn.quantize(self.clip_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=self.bits)
 
         # If loading previously saved quantized weights, the weights must be set after modules have been quantized
         if weights.quantization_level is not None:
             self._set_model_weights(weights)
 
-    def generate_image(self, seed: int, prompt: str, config: Config = Config()) -> PIL.Image.Image:
+    def generate_image(self, seed: int, prompt: str, config: Config = Config()) -> Image:
         # Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
+        time_steps = tqdm(range(config.num_inference_steps))
 
         # 1. Create the initial latents
         latents = mx.random.normal(
@@ -78,7 +87,7 @@ class Flux1:
         prompt_embeds = self.t5_text_encoder.forward(t5_tokens)
         pooled_prompt_embeds = self.clip_text_encoder.forward(clip_tokens)
 
-        for t in tqdm(range(config.num_inference_steps)):
+        for t in time_steps:
             # 3.t Predict the noise
             noise = self.transformer.predict(
                 t=t,
@@ -95,16 +104,25 @@ class Flux1:
             # Evaluate to enable progress tracking
             mx.eval(latents)
 
-        # 5. Decode the latent array
+        # 5. Decode the latent array and return the image
         latents = Flux1._unpack_latents(latents, config.height, config.width)
         decoded = self.vae.decode(latents)
-        return ImageUtil.to_image(decoded)
+        return ImageUtil.to_image(
+            decoded_latents=decoded,
+            seed=seed,
+            prompt=prompt,
+            quantization=self.bits,
+            generation_time=time_steps.format_dict['elapsed'],
+            lora_paths=self.lora_paths,
+            lora_scales=self.lora_scales,
+            config=config,
+        )
 
     @staticmethod
     def _unpack_latents(latents: mx.array, height: int, width: int) -> mx.array:
-        latents = mx.reshape(latents, (1, width // 16, height // 16, 16, 2, 2))
+        latents = mx.reshape(latents, (1, height // 16, width // 16, 16, 2, 2))
         latents = mx.transpose(latents, (0, 3, 1, 4, 2, 5))
-        latents = mx.reshape(latents, (1, 16, width // 16 * 2, height // 16 * 2))
+        latents = mx.reshape(latents, (1, 16, height // 16 * 2, width // 16 * 2))
         return latents
 
     @staticmethod
@@ -128,7 +146,7 @@ class Flux1:
             path.mkdir(parents=True, exist_ok=True)
             weights = _split_weights(dict(tree_flatten(model.parameters())))
             for i, weight in enumerate(weights):
-                mx.save_safetensors(str(path / f"{i}.safetensors"), weight, {"quantization_level": str(self.quantize_full_weights)})
+                mx.save_safetensors(str(path / f"{i}.safetensors"), weight, {"quantization_level": str(self.bits)})
 
         def _split_weights(weights: dict, max_file_size_gb: int = 2) -> list:
             # Copied from mlx-examples repo
