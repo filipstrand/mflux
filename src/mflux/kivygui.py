@@ -474,7 +474,6 @@ class ImageGeneratorGUI(BoxLayout):
 
         Clock.schedule_once(lambda dt: self.update_output('Init model...'))
         try:
-            # Initialisation du modèle Flux1
             flux = Flux1(
                 model_config=ModelConfig.from_alias(model),
                 quantize=quantize,
@@ -585,23 +584,6 @@ class ImageGeneratorGUI(BoxLayout):
                     func(result, *callback_args)
                 else:
                     callback(result)
-
-    #def load_request_history(self, *args):
-    #    def db_load_request_history():
-    #        self.cursor.execute("SELECT * FROM requests ORDER BY timestamp DESC LIMIT 50")
-    #        return self.cursor.fetchall()
-
-    #    def update_history(requests):
-    #        self.history_view.data = [
-    #            {
-    #                'prompt': row[1],
-    #                'model': row[2],
-    #                'timestamp': str(row[8]),
-    #                'index': idx
-    #            } for idx, row in enumerate(requests)
-    #        ]
-
-    #    self.db_queue.put((db_load_request_history, (), update_history))
 
     def delete_request(self, index):
         def db_delete_request(index):
