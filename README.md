@@ -25,7 +25,7 @@ like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) f
 ### Installation
 For users, the easiest way to install MFLUX is via pip:
    ```
-   pip install mflux
+   pip install -U mflux
    ```
 <details>
 <summary>For contributors (click to expand)</summary>
