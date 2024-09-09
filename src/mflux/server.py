@@ -15,12 +15,24 @@ from flask import Flask, request, Response, jsonify
 from flask_restx import Api, Resource, fields
 from flask_cors import CORS
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from flux_1.config.model_config import ModelConfig
-from flux_1.config.config import Config
-from flux_1.flux import Flux1
-from flux_1.post_processing.image_util import ImageUtil
+
+from mflux.config.model_config import ModelConfig
+from mflux.config.config import Config
+from mflux.flux.flux import Flux1
+from mflux.post_processing.image_util import ImageUtil
+
+import requests
+
+# Monkey patching the Session to ignore SSL verification
+old_request = requests.Session.request
+
+def new_request(self, *args, **kwargs):
+    kwargs['verify'] = False
+    return old_request(self, *args, **kwargs)
+
+requests.Session.request = new_request
 
 app = Flask(__name__)
 api = Api(app, version='1.0', title='MFLUX API Server',
@@ -66,17 +78,18 @@ def compute_image_task():
             
             # convert the image (we do not count this on the computation time on purpose)
             # we do this here and not during retrieval to save memory in the tasklist
+            pilimage = image.image
             format = task['format'].upper()
             if format not in ['PNG', 'JPEG']: format = 'JPEG'
             if format == 'PNG':
                 png_image = io.BytesIO()
-                image.save(png_image, format='PNG')
+                pilimage.save(png_image, format=format)
                 png_image.seek(0)
                 task['image'] = png_image
             else:
                 quality = task['quality']
                 jpeg_image = io.BytesIO()
-                image.save(jpeg_image, format='JPEG', quality=quality)
+                pilimage.save(jpeg_image, format=format)
                 jpeg_image.seek(0)
                 task['image'] = jpeg_image
             
@@ -335,7 +348,7 @@ def main():
     global flux
     flux = Flux1(
         model_config=ModelConfig.from_alias(args.model),
-        quantize_full_weights=args.quantize,
+        quantize=args.quantize,
         local_path=args.path
     )
 
