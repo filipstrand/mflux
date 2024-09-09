@@ -23,7 +23,11 @@ like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) f
 - [x] FLUX.1-Dev
 
 ### Installation
-For users, the easiest way to install MFLUX is via pip:
+For users, the easiest way to install MFLUX is to first create a new virtual environment to isolate dependencies:
+   ```
+   mkdir -p mflux && cd mflux && python3 -m venv .venv && source .venv/bin/activate
+   ```
+This creates and activates a virtual environment in the `mflux` folder. After that, install MFLUX via pip:
    ```
    pip install -U mflux
    ```
