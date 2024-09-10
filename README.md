@@ -272,7 +272,12 @@ mflux-generate \
 
 *Note: When loading a quantized model from disk, there is no need to pass in `-q` flag, since we can infer this from the weight metadata.*
 
-*Also Note: Once we have a local model (quantized [or not](#running-a-non-quantized-model-directly-from-disk)) specified via the `--path` argument, the huggingface cache models are not required to launch the model*. 
+*Also Note: Once we have a local model (quantized [or not](#running-a-non-quantized-model-directly-from-disk)) specified via the `--path` argument, the huggingface cache models are not required to launch the model. 
+In other words, you can reclaim the 34GB diskspace (per model) by deleting the full 16-bit model from the [Huggingface cache](#generating-an-image) if you choose.* 
+
+*If you don't want to download the full models and quantize them yourself, the 4-bit weights are available here for a direct download:* 
+- [madroid/flux.1-schnell-mflux-4bit](https://huggingface.co/madroid/flux.1-schnell-mflux-4bit)
+- [madroid/flux.1-dev-mflux-4bit](https://huggingface.co/madroid/flux.1-dev-mflux-4bit)
 
 ### Running a non-quantized model directly from disk
 
