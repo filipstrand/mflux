@@ -3,6 +3,7 @@ from mlx import nn
 
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
+from mflux.flux.controlnet import ControlNetOutput
 from mflux.models.transformer.ada_layer_norm_continous import AdaLayerNormContinuous
 from mflux.models.transformer.embed_nd import EmbedND
 from mflux.models.transformer.joint_transformer_block import JointTransformerBlock
@@ -30,6 +31,7 @@ class Transformer(nn.Module):
             pooled_prompt_embeds: mx.array,
             hidden_states: mx.array,
             config: RuntimeConfig,
+            controlnet_samples: ControlNetOutput | None = None
     ) -> mx.array:
         time_step = config.sigmas[t] * config.num_train_steps
         time_step = mx.broadcast_to(time_step, (1,)).astype(config.precision)

@@ -4,7 +4,7 @@ import mlx.core as mx
 import numpy as np
 
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.post_processing.image import Image
+from mflux.post_processing.image import GeneratedImage
 
 
 class ImageUtil:
@@ -19,11 +19,11 @@ class ImageUtil:
             lora_paths: list[str],
             lora_scales: list[float],
             config: RuntimeConfig,
-    ) -> Image:
+    ) -> GeneratedImage:
         normalized = ImageUtil._denormalize(decoded_latents)
         normalized_numpy = ImageUtil._to_numpy(normalized)
         image = ImageUtil._numpy_to_pil(normalized_numpy)
-        return Image(
+        return GeneratedImage(
             image=image,
             model_config=config.model_config,
             seed=seed,
@@ -66,14 +66,8 @@ class ImageUtil:
 
     @staticmethod
     def to_array(image: PIL.Image.Image) -> mx.array:
-        image = ImageUtil._resize(image)
         image = ImageUtil._pil_to_numpy(image)
         array = mx.array(image)
         array = mx.transpose(array, (0, 3, 1, 2))
         array = ImageUtil._normalize(array)
         return array
-
-    @staticmethod
-    def _resize(image):
-        image = image.resize((1024, 1024), resample=PIL.Image.LANCZOS)
-        return image
