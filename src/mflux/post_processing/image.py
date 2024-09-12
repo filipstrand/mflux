@@ -11,7 +11,7 @@ from mflux.config.model_config import ModelConfig
 log = logging.getLogger(__name__)
 
 
-class Image:
+class GeneratedImage:
 
     def __init__(
             self,

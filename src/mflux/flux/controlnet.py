@@ -1,11 +1,13 @@
 from pathlib import Path
+from typing import Tuple
 
+import PIL.Image
 import mlx.core as mx
 from mlx import nn
 from mlx.utils import tree_flatten
 from tqdm import tqdm
 
-from mflux.config.config import Config
+from mflux.config.config import Config, ConfigControlnet
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
@@ -19,9 +21,20 @@ from mflux.tokenizer.t5_tokenizer import TokenizerT5
 from mflux.tokenizer.tokenizer_handler import TokenizerHandler
 from mflux.weights.weight_handler import WeightHandler
 
+from mflux.config.model_config import ModelConfig
+from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.transformer.ada_layer_norm_continous import AdaLayerNormContinuous
+from mflux.models.transformer.embed_nd import EmbedND
+from mflux.models.transformer.joint_transformer_block import JointTransformerBlock
+from mflux.models.transformer.single_transformer_block import SingleTransformerBlock
+from mflux.models.transformer.time_text_embed import TimeTextEmbed
 
-class Flux1:
+import logging
 
+log = logging.getLogger(__name__)
+
+
+class Flux1Controlnet:
     def __init__(
             self,
             model_config: ModelConfig,
@@ -29,6 +42,7 @@ class Flux1:
             local_path: str | None = None,
             lora_paths: list[str] | None = None,
             lora_scales: list[float] | None = None,
+            controlnet_path: str | None = None,
     ):
         self.lora_paths = lora_paths
         self.lora_scales = lora_scales
@@ -70,16 +84,38 @@ class Flux1:
         if weights.quantization_level is not None:
             self._set_model_weights(weights)
 
-    def generate_image(self, seed: int, prompt: str, config: Config = Config()) -> GeneratedImage:
+        self.transformer_controlnet = TransformerControlnet(model_config=model_config, local_path=controlnet_path, quantize=quantize)
+
+        weights_controlnet = WeightHandler.load_transformer(root_path=controlnet_path)
+        if weights_controlnet.quantization_level is None:
+            self.transformer_controlnet.update(weights_controlnet)
+
+        self.bits = None
+        if quantize is not None or weights.quantization_level is not None:
+            self.bits = weights_controlnet.quantization_level if weights_controlnet.quantization_level is not None else quantize
+            nn.quantize(self.transformer_controlnet, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 64, group_size=64, bits=self.bits)
+
+        if weights_controlnet.quantization_level is not None:
+            self.transformer_controlnet.update(weights_controlnet)
+
+    def generate_image(self, seed: int, prompt: str, control_image: PIL.Image.Image, config: ConfigControlnet = ConfigControlnet()) -> GeneratedImage:
         # Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.num_inference_steps))
+
+        if config.height != control_image.height or config.width != control_image.width:
+            log.warning(f"Control image has different dimensions than the model. Resizing to {config.width}x{config.height}")
+            control_image = control_image.resize((config.width, config.height), PIL.Image.LANCZOS)
 
         # 1. Create the initial latents
         latents = mx.random.normal(
             shape=[1, (config.height // 16) * (config.width // 16), 64],
             key=mx.random.key(seed)
         )
+        control_cond = ImageUtil.to_array(control_image)
+        control_cond = self.vae.encode(control_cond)
+        control_cond = (control_cond - self.vae.shift_factor) * self.vae.scaling_factor
+        control_cond = Flux1Controlnet._pack_latents(control_cond, config.height, config.width)
 
         # 2. Embedd the prompt
         t5_tokens = self.t5_tokenizer.tokenize(prompt)
@@ -88,6 +124,14 @@ class Flux1:
         pooled_prompt_embeds = self.clip_text_encoder.forward(clip_tokens)
 
         for t in time_steps:
+            controlnet_samples = self.transformer_controlnet(
+                t=t,
+                prompt_embeds=prompt_embeds,
+                pooled_prompt_embeds=pooled_prompt_embeds,
+                hidden_states=latents,
+                control_cond=control_cond,
+                config=config,
+            )
             # 3.t Predict the noise
             noise = self.transformer.predict(
                 t=t,
@@ -95,6 +139,7 @@ class Flux1:
                 pooled_prompt_embeds=pooled_prompt_embeds,
                 hidden_states=latents,
                 config=config,
+                controlnet_samples=controlnet_samples,
             )
 
             # 4.t Take one denoise step
@@ -105,7 +150,7 @@ class Flux1:
             mx.eval(latents)
 
         # 5. Decode the latent array and return the image
-        latents = Flux1._unpack_latents(latents, config.height, config.width)
+        latents = Flux1Controlnet._unpack_latents(latents, config.height, config.width)
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,
@@ -124,13 +169,13 @@ class Flux1:
         latents = mx.transpose(latents, (0, 3, 1, 4, 2, 5))
         latents = mx.reshape(latents, (1, 16, height // 16 * 2, width // 16 * 2))
         return latents
-
+    
     @staticmethod
-    def from_alias(alias: str, quantize: int | None = None) -> "Flux1":
-        return Flux1(
-            model_config=ModelConfig.from_alias(alias),
-            quantize=quantize,
-        )
+    def _pack_latents(latents: mx.array, height: int, width: int) -> mx.array:
+        latents = mx.reshape(latents, (1, 16, height // 16, 2, width // 16, 2))
+        latents = mx.transpose(latents, (0, 2, 4, 1, 3, 5))
+        latents = mx.reshape(latents, (1, (width // 16) * (height // 16), 64))
+        return latents
 
     def _set_model_weights(self, weights):
         self.vae.update(weights.vae)
@@ -174,3 +219,63 @@ class Flux1:
         _save_weights(self.transformer, "transformer")
         _save_weights(self.clip_text_encoder, "text_encoder")
         _save_weights(self.t5_text_encoder, "text_encoder_2")
+        
+
+class ControlNetOutput:
+    controlnet_block_samples: Tuple[mx.array]
+    controlnet_single_block_samples: Tuple[mx.array]
+
+class TransformerControlnet(nn.Module):
+
+    def __init__(self, model_config: ModelConfig):
+        super().__init__()
+        self.pos_embed = EmbedND()
+        self.x_embedder = nn.Linear(64, 3072)
+        self.time_text_embed = TimeTextEmbed(model_config=model_config)
+        self.context_embedder = nn.Linear(4096, 3072)
+        self.transformer_blocks = [JointTransformerBlock(i) for i in range(19)]
+        self.single_transformer_blocks = [SingleTransformerBlock(i) for i in range(38)]
+        self.norm_out = AdaLayerNormContinuous(3072, 3072)
+        self.proj_out = nn.Linear(3072, 64)
+
+    def forward(
+            self,
+            t: int,
+            prompt_embeds: mx.array,
+            pooled_prompt_embeds: mx.array,
+            hidden_states: mx.array,
+            config: RuntimeConfig,
+    ) -> ControlNetOutput:
+        time_step = config.sigmas[t] * config.num_train_steps
+        time_step = mx.broadcast_to(time_step, (1,)).astype(config.precision)
+        hidden_states = self.x_embedder(hidden_states)
+        guidance = mx.broadcast_to(config.guidance * config.num_train_steps, (1,)).astype(config.precision)
+        text_embeddings = self.time_text_embed.forward(time_step, pooled_prompt_embeds, guidance)
+        encoder_hidden_states = self.context_embedder(prompt_embeds)
+        txt_ids = Transformer._prepare_text_ids(seq_len=prompt_embeds.shape[1])
+        img_ids = Transformer._prepare_latent_image_ids(config.height, config.width)
+        ids = mx.concatenate((txt_ids, img_ids), axis=1)
+        image_rotary_emb = self.pos_embed.forward(ids)
+
+        for block in self.transformer_blocks:
+            encoder_hidden_states, hidden_states = block.forward(
+                hidden_states=hidden_states,
+                encoder_hidden_states=encoder_hidden_states,
+                text_embeddings=text_embeddings,
+                rotary_embeddings=image_rotary_emb
+            )
+
+        hidden_states = mx.concatenate([encoder_hidden_states, hidden_states], axis=1)
+
+        for block in self.single_transformer_blocks:
+            hidden_states = block.forward(
+                hidden_states=hidden_states,
+                text_embeddings=text_embeddings,
+                rotary_embeddings=image_rotary_emb
+            )
+
+        hidden_states = hidden_states[:, encoder_hidden_states.shape[1]:, ...]
+        hidden_states = self.norm_out.forward(hidden_states, text_embeddings)
+        hidden_states = self.proj_out(hidden_states)
+        noise = hidden_states
+        return noise

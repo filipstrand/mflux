@@ -21,3 +21,16 @@ class Config:
         self.height = 16 * (height // 16)
         self.num_inference_steps = num_inference_steps
         self.guidance = guidance
+
+
+class ConfigControlnet(Config):
+    def __init__(
+            self,
+            num_inference_steps: int = 4,
+            width: int = 1024,
+            height: int = 1024,
+            guidance: float = 4.0,
+            controlnet_conditioning_scale: float = 1.0,
+    ):
+        super().__init__(num_inference_steps, width, height, guidance)
+        self.controlnet_conditioning_scale = controlnet_conditioning_scale
