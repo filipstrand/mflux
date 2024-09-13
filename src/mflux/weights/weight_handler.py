@@ -4,6 +4,7 @@ import mlx.core as mx
 from huggingface_hub import snapshot_download
 from mlx.utils import tree_unflatten
 
+from mflux.weights.lora_converter import LoRAConverter
 from mflux.weights.lora_util import LoraUtil
 from mflux.weights.weight_util import WeightUtil
 
@@ -65,7 +66,7 @@ class WeightHandler:
 
         if lora_path:
             if 'transformer' not in weights:
-                raise Exception("The key `transformer` is missing in the LoRA safetensors file. Please ensure that the file is correctly formatted and contains the expected keys.")
+                weights = LoRAConverter.load_weights(lora_path)
             weights = weights["transformer"]
 
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
