@@ -370,11 +370,26 @@ mflux-generate \
 Just to see the difference, this image displays the four cases: One of having both adapters fully active, partially active and no LoRA at all. 
 The example above also show the usage of `--lora-scales` flag. 
 
+#### Supported LoRA formats (updated)
+
+Since different fine-tuning services can use different implementations of FLUX, the corresponding 
+LoRA weights trained on these services can be different from one another. The aim of MFLUX is to support the most common ones.
+The following table show the current supported formats:
+
+| Supported | Name      | Example                                                                                                  | Notes                               |
+|-----------|-----------|----------------------------------------------------------------------------------------------------------|-------------------------------------|
+| ✅        | BFL       | [civitai - Impressionism](https://civitai.com/models/545264/impressionism-sdxl-pony-flux)                | Many things on civitai seem to work |
+| ✅        | Diffusers | [Flux_1_Dev_LoRA_Paper-Cutout-Style](https://huggingface.co/Norod78/Flux_1_Dev_LoRA_Paper-Cutout-Style/) |                                     |
+| ❌        | XLabs-AI  | [flux-RealismLora](https://huggingface.co/XLabs-AI/flux-RealismLora/tree/main)                           |                                     |
+
+To report additional formats, examples or other any suggestions related to LoRA format support, please see [issue #47](https://github.com/filipstrand/mflux/issues/47).
+
 ### Current limitations
 
 - Images are generated one by one.
 - Negative prompts not supported.
 - LoRA weights are only supported for the transformer part of the network.
+- Some LoRA adapters does not work.
 
 ### TODO
 
