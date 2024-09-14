@@ -6,7 +6,7 @@ log = logging.getLogger(__name__)
 
 
 class Config:
-    precision: mx.Dtype = mx.bfloat16
+    precision: mx.Dtype = mx.float16
 
     def __init__(
             self,

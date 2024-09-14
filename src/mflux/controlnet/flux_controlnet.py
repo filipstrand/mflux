@@ -10,6 +10,7 @@ from tqdm import tqdm
 from mflux.config.config import Config, ConfigControlnet
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
+from mflux.controlnet.utils_controlnet import preprocess_canny
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.transformer.transformer import Transformer
@@ -28,6 +29,8 @@ from mflux.models.transformer.embed_nd import EmbedND
 from mflux.models.transformer.joint_transformer_block import JointTransformerBlock
 from mflux.models.transformer.single_transformer_block import SingleTransformerBlock
 from mflux.models.transformer.time_text_embed import TimeTextEmbed
+import numpy as np
+import cv2
 
 import logging
 
@@ -84,18 +87,18 @@ class Flux1Controlnet:
         if weights.quantization_level is not None:
             self._set_model_weights(weights)
 
-        self.transformer_controlnet = TransformerControlnet(model_config=model_config, local_path=controlnet_path, quantize=quantize)
+        self.transformer_controlnet = TransformerControlnet(model_config=model_config)
 
-        weights_controlnet = WeightHandler.load_transformer(root_path=controlnet_path)
-        if weights_controlnet.quantization_level is None:
+        weights_controlnet, ctrlnet_quantization_level = WeightHandler.load_controlnet_transformer(controlnet_path=controlnet_path)
+        if ctrlnet_quantization_level is None:
             self.transformer_controlnet.update(weights_controlnet)
 
         self.bits = None
-        if quantize is not None or weights.quantization_level is not None:
-            self.bits = weights_controlnet.quantization_level if weights_controlnet.quantization_level is not None else quantize
-            nn.quantize(self.transformer_controlnet, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 64, group_size=64, bits=self.bits)
+        if quantize is not None or ctrlnet_quantization_level is not None:
+            self.bits = ctrlnet_quantization_level if ctrlnet_quantization_level is not None else quantize
+            nn.quantize(self.transformer_controlnet, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 128, group_size=128, bits=self.bits)
 
-        if weights_controlnet.quantization_level is not None:
+        if ctrlnet_quantization_level is not None:
             self.transformer_controlnet.update(weights_controlnet)
 
     def generate_image(self, seed: int, prompt: str, control_image: PIL.Image.Image, config: ConfigControlnet = ConfigControlnet()) -> GeneratedImage:
@@ -112,10 +115,10 @@ class Flux1Controlnet:
             shape=[1, (config.height // 16) * (config.width // 16), 64],
             key=mx.random.key(seed)
         )
-        control_cond = ImageUtil.to_array(control_image)
-        control_cond = self.vae.encode(control_cond)
-        control_cond = (control_cond - self.vae.shift_factor) * self.vae.scaling_factor
-        control_cond = Flux1Controlnet._pack_latents(control_cond, config.height, config.width)
+        control_image = preprocess_canny(control_image)
+        controlnet_cond = ImageUtil.to_array(control_image)
+        controlnet_cond = self.vae.encode(controlnet_cond)
+        controlnet_cond = Flux1Controlnet._pack_latents(controlnet_cond, config.height, config.width)
 
         # 2. Embedd the prompt
         t5_tokens = self.t5_tokenizer.tokenize(prompt)
@@ -124,12 +127,12 @@ class Flux1Controlnet:
         pooled_prompt_embeds = self.clip_text_encoder.forward(clip_tokens)
 
         for t in time_steps:
-            controlnet_samples = self.transformer_controlnet(
+            controlnet_block_samples = self.transformer_controlnet.forward(
                 t=t,
                 prompt_embeds=prompt_embeds,
                 pooled_prompt_embeds=pooled_prompt_embeds,
                 hidden_states=latents,
-                control_cond=control_cond,
+                controlnet_cond=controlnet_cond,
                 config=config,
             )
             # 3.t Predict the noise
@@ -139,7 +142,8 @@ class Flux1Controlnet:
                 pooled_prompt_embeds=pooled_prompt_embeds,
                 hidden_states=latents,
                 config=config,
-                controlnet_samples=controlnet_samples,
+                controlnet_block_samples=controlnet_block_samples,
+                # controlnet_single_block_samples=controlnet_single_block_samples,
             )
 
             # 4.t Take one denoise step
@@ -219,11 +223,10 @@ class Flux1Controlnet:
         _save_weights(self.transformer, "transformer")
         _save_weights(self.clip_text_encoder, "text_encoder")
         _save_weights(self.t5_text_encoder, "text_encoder_2")
+        _save_weights(self.transformer_controlnet, "transformer_controlnet")
         
 
-class ControlNetOutput:
-    controlnet_block_samples: Tuple[mx.array]
-    controlnet_single_block_samples: Tuple[mx.array]
+ControlNetOutput = Tuple[list[mx.array], list[mx.array]]
 
 class TransformerControlnet(nn.Module):
 
@@ -233,10 +236,14 @@ class TransformerControlnet(nn.Module):
         self.x_embedder = nn.Linear(64, 3072)
         self.time_text_embed = TimeTextEmbed(model_config=model_config)
         self.context_embedder = nn.Linear(4096, 3072)
-        self.transformer_blocks = [JointTransformerBlock(i) for i in range(19)]
-        self.single_transformer_blocks = [SingleTransformerBlock(i) for i in range(38)]
-        self.norm_out = AdaLayerNormContinuous(3072, 3072)
-        self.proj_out = nn.Linear(3072, 64)
+        self.transformer_blocks = [JointTransformerBlock(i) for i in range(5)]
+        # self.single_transformer_blocks = [SingleTransformerBlock(i) for i in range(38)]
+
+        zero_init = nn.init.constant(0)
+        self.controlnet_x_embedder = nn.Linear(64, 3072).apply(zero_init)
+        self.controlnet_blocks = [nn.Linear(3072, 3072).apply(zero_init) for _ in range(5)]
+
+        # self.controlnet_single_blocks = [nn.Linear(3072, 3072) for _ in range(38)]
 
     def forward(
             self,
@@ -244,11 +251,15 @@ class TransformerControlnet(nn.Module):
             prompt_embeds: mx.array,
             pooled_prompt_embeds: mx.array,
             hidden_states: mx.array,
+            controlnet_cond: mx.array,
             config: RuntimeConfig,
     ) -> ControlNetOutput:
         time_step = config.sigmas[t] * config.num_train_steps
         time_step = mx.broadcast_to(time_step, (1,)).astype(config.precision)
         hidden_states = self.x_embedder(hidden_states)
+        hidden_states = hidden_states + self.controlnet_x_embedder(controlnet_cond)
+        conditioning_scale = config.config.controlnet_conditioning_scale
+
         guidance = mx.broadcast_to(config.guidance * config.num_train_steps, (1,)).astype(config.precision)
         text_embeddings = self.time_text_embed.forward(time_step, pooled_prompt_embeds, guidance)
         encoder_hidden_states = self.context_embedder(prompt_embeds)
@@ -257,6 +268,7 @@ class TransformerControlnet(nn.Module):
         ids = mx.concatenate((txt_ids, img_ids), axis=1)
         image_rotary_emb = self.pos_embed.forward(ids)
 
+        block_samples = ()
         for block in self.transformer_blocks:
             encoder_hidden_states, hidden_states = block.forward(
                 hidden_states=hidden_states,
@@ -264,18 +276,33 @@ class TransformerControlnet(nn.Module):
                 text_embeddings=text_embeddings,
                 rotary_embeddings=image_rotary_emb
             )
+            block_samples = block_samples + (hidden_states,)
 
         hidden_states = mx.concatenate([encoder_hidden_states, hidden_states], axis=1)
 
-        for block in self.single_transformer_blocks:
-            hidden_states = block.forward(
-                hidden_states=hidden_states,
-                text_embeddings=text_embeddings,
-                rotary_embeddings=image_rotary_emb
-            )
+        # controlnet block
+        controlnet_block_samples = ()
+        for block_sample, controlnet_block in zip(block_samples, self.controlnet_blocks):
+            block_sample = controlnet_block(block_sample)
+            controlnet_block_samples = controlnet_block_samples + (block_sample,)
 
-        hidden_states = hidden_states[:, encoder_hidden_states.shape[1]:, ...]
-        hidden_states = self.norm_out.forward(hidden_states, text_embeddings)
-        hidden_states = self.proj_out(hidden_states)
-        noise = hidden_states
-        return noise
+
+        # single_block_samples = ()
+        # for block in self.single_transformer_blocks:
+        #     ctrlnet_hidden_states = block.forward(
+        #         hidden_states=ctrlnet_hidden_states,
+        #         text_embeddings=text_embeddings,
+        #         rotary_embeddings=image_rotary_emb
+        #     )
+        #     single_block_samples = single_block_samples + (ctrlnet_hidden_states[:, encoder_hidden_states.shape[1] :],)
+
+        # controlnet_single_block_samples = ()
+        # for single_block_sample, controlnet_block in zip(single_block_samples, self.controlnet_single_blocks):
+        #     single_block_sample = controlnet_block(single_block_sample)
+        #     controlnet_single_block_samples = controlnet_single_block_samples + (single_block_sample,)
+
+        # # scaling
+        controlnet_block_samples = [sample * conditioning_scale for sample in controlnet_block_samples]
+        # controlnet_single_block_samples = [sample * conditioning_scale for sample in controlnet_single_block_samples]
+
+        return controlnet_block_samples

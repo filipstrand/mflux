@@ -1,35 +1,35 @@
-import argparse
 import os
 import sys
-import time
+from mflux.post_processing.image_util import ImageUtil
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from mflux.config.model_config import ModelConfig
-from mflux.config.config import Config
-from mflux.flux.flux import Flux1
+from mflux.config.config import ConfigControlnet
+from mflux.controlnet.flux_controlnet import Flux1Controlnet
 
-
-prompt = "Luxury food photograph"
+prompt = "A girl in Venice, 25 years old"
 
 # Load the model
-flux = Flux1(
+flux = Flux1Controlnet(
     model_config=ModelConfig.from_alias("dev"),
-    quantize=None,
-    local_path=None,
-    lora_paths=["diffusion_pytorch_model.safetensors"],
-    lora_scales=None,
+    quantize=8,
+    controlnet_path="diffusion_pytorch_model.safetensors",
 )
+
+control_image = ImageUtil.load_image("image_51.png")
 
 # Generate an image
 image = flux.generate_image(
-    seed=3,
+    seed=4,
     prompt=prompt,
-    config=Config(
+    control_image=control_image,
+    config=ConfigControlnet(
         num_inference_steps=10,
         height=256,
         width=512,
         guidance=3.5,
+        controlnet_conditioning_scale=1.6,
     )
 )
 
