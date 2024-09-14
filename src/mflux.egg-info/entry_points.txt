@@ -1,0 +1,4 @@
+[console_scripts]
+mflux-generate = mflux.generate:main
+mflux-generate-controlnet = mflux.generate_controlnet:main
+mflux-save = mflux.save:main

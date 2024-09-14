@@ -33,6 +33,7 @@ homepage = "https://github.com/filipstrand/mflux"
 [project.scripts]
 mflux-generate = "mflux.generate:main"
 mflux-save = "mflux.save:main"
+mflux-generate-controlnet = "mflux.generate_controlnet:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
