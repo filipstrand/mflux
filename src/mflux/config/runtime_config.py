@@ -1,5 +1,3 @@
-from math import e
-from cycler import V
 import mlx.core as mx
 import numpy as np
 
