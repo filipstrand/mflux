@@ -28,9 +28,6 @@ class LoraUtil:
 
     @staticmethod
     def _apply_lora(transformer: dict, lora_file: str, lora_scale: float) -> None:
-        if lora_scale < 0.0 or lora_scale > 1.0:
-            raise Exception(f"Invalid scale {lora_scale} provided for {lora_file}. Valid Range [0.0 - 1.0] ")
-
         from mflux.weights.weight_handler import WeightHandler
         lora_transformer, _ = WeightHandler.load_transformer(lora_path=lora_file)
         LoraUtil._apply_transformer(transformer, lora_transformer, lora_scale)
