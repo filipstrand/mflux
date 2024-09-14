@@ -70,7 +70,7 @@ class Flux1:
         if weights.quantization_level is not None:
             self._set_model_weights(weights)
 
-    def generate_image(self, seed: int, prompt: str, config: Config = Config()) -> Image:
+    def generate_image(self, seed: int, prompt: str, config: Config = Config(), progress_callback=None) -> Image:
         # Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.num_inference_steps))
@@ -103,6 +103,9 @@ class Flux1:
 
             # Evaluate to enable progress tracking
             mx.eval(latents)
+            # Call the progress callback if provided
+            if progress_callback:
+                progress_callback(t + 1, config.num_inference_steps)
 
         # 5. Decode the latent array and return the image
         latents = Flux1._unpack_latents(latents, config.height, config.width)
