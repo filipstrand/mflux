@@ -8,20 +8,21 @@ from mflux.config.model_config import ModelConfig
 from mflux.config.config import ConfigControlnet
 from mflux.controlnet.flux_controlnet import Flux1Controlnet
 
-prompt = "A girl in Venice, 25 years old"
+prompt = "Luxury picture of food"
+
 
 # Load the model
 flux = Flux1Controlnet(
     model_config=ModelConfig.from_alias("dev"),
     quantize=8,
-    controlnet_path="diffusion_pytorch_model.safetensors",
+    lora_paths=["Flux_1_Dev_LoRA_Paper-Cutout-Style.safetensors"]
 )
 
-control_image = ImageUtil.load_image("image_51.png")
+control_image = ImageUtil.load_image("image_1.png")
 
 # Generate an image
 image = flux.generate_image(
-    seed=4,
+    seed=2500,
     prompt=prompt,
     control_image=control_image,
     config=ConfigControlnet(
@@ -29,7 +30,7 @@ image = flux.generate_image(
         height=256,
         width=512,
         guidance=3.5,
-        controlnet_conditioning_scale=1.6,
+        controlnet_strength=0.7,
     )
 )
 

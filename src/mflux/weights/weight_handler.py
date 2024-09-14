@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import mlx.core as mx
@@ -87,8 +88,18 @@ class WeightHandler:
         return weights, quantization_level
     
     @staticmethod
-    def load_controlnet_transformer(controlnet_path: Path | None = None) -> (dict, int):
-        weights, quantization_level = WeightHandler._get_weights("transformer", weights_path=controlnet_path)
+    def load_controlnet_transformer(controlnet_id: Path | None = None) -> (dict, int):
+        controlnet_path = Path(snapshot_download(repo_id=controlnet_id,allow_patterns=["*.safetensors","config.json"]))
+        file = next(controlnet_path.glob("diffusion_pytorch_model.safetensors"))
+        quantization_level = mx.load(str(file), return_metadata=True)[1].get("quantization_level")
+        weights = list(mx.load(str(file)).items())
+
+        if quantization_level is not None:
+            return tree_unflatten(weights), quantization_level
+
+        weights = [WeightUtil.reshape_weights(k, v) for k, v in weights]
+        weights = WeightUtil.flatten(weights)
+        weights = tree_unflatten(weights)
 
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
         if quantization_level is not None:
@@ -106,7 +117,8 @@ class WeightHandler:
                         "linear1": block["ff_context"]["net"][0]["proj"],
                         "linear2": block["ff_context"]["net"][2]
                     }
-        return weights, quantization_level
+        config = json.load(open(controlnet_path / "config.json"))
+        return weights, quantization_level, config
 
     @staticmethod
     def load_vae(root_path: Path) -> (dict, int):
@@ -126,7 +138,7 @@ class WeightHandler:
         return weights, quantization_level
 
     @staticmethod
-    def _get_weights(model_name: str, root_path: Path | None = None, weights_path: str | None = None) -> (dict, int):
+    def _get_weights(model_name: str, root_path: Path | None = None, lora_path: str | None = None) -> (dict, int):
         weights = []
         quantization_level = None
 
@@ -136,8 +148,8 @@ class WeightHandler:
                 weight = list(mx.load(str(file)).items())
                 weights.extend(weight)
 
-        if weights_path and root_path is None:
-            weight = list(mx.load(weights_path).items())
+        if lora_path and root_path is None:
+            weight = list(mx.load(lora_path).items())
             weights.extend(weight)
 
         # Non huggingface weights (i.e. ones exported from this project) don't need any reshaping.

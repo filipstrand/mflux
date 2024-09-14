@@ -30,7 +30,7 @@ class ConfigControlnet(Config):
             width: int = 1024,
             height: int = 1024,
             guidance: float = 4.0,
-            controlnet_conditioning_scale: float = 1.0,
+            controlnet_strength: float = 1.0,
     ):
         super().__init__(num_inference_steps, width, height, guidance)
-        self.controlnet_conditioning_scale = controlnet_conditioning_scale
+        self.controlnet_conditioning_scale = controlnet_strength

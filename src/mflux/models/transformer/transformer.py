@@ -1,6 +1,7 @@
 from typing import Tuple
 import mlx.core as mx
 from mlx import nn
+import math
 
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
@@ -10,7 +11,6 @@ from mflux.models.transformer.joint_transformer_block import JointTransformerBlo
 from mflux.models.transformer.single_transformer_block import SingleTransformerBlock
 from mflux.models.transformer.time_text_embed import TimeTextEmbed
 
-import numpy as np
 
 
 class Transformer(nn.Module):
@@ -56,7 +56,7 @@ class Transformer(nn.Module):
             )
             if controlnet_block_samples is not None:
                 interval_control = len(self.transformer_blocks) / len(controlnet_block_samples)
-                interval_control = int(np.ceil(interval_control))
+                interval_control = int(math.ceil(interval_control))
                 hidden_states = hidden_states + controlnet_block_samples[idx // interval_control]
 
         hidden_states = mx.concatenate([encoder_hidden_states, hidden_states], axis=1)
@@ -68,9 +68,11 @@ class Transformer(nn.Module):
                 rotary_embeddings=image_rotary_emb
             )
             if controlnet_single_block_samples is not None:
+                interval_control = len(self.single_transformer_blocks) / len(controlnet_single_block_samples)
+                interval_control = int(math.ceil(interval_control))
                 hidden_states[:, encoder_hidden_states.shape[1] :, ...] = (
                     hidden_states[:, encoder_hidden_states.shape[1] :, ...]
-                    + controlnet_single_block_samples[idx]
+                    + controlnet_single_block_samples[idx // interval_control]
                 )
 
         hidden_states = hidden_states[:, encoder_hidden_states.shape[1]:, ...]

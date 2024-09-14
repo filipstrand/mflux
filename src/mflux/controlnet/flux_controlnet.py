@@ -36,6 +36,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
+CONTOLNET_ID = "InstantX/FLUX.1-dev-Controlnet-Canny"
 
 class Flux1Controlnet:
     def __init__(
@@ -87,9 +88,13 @@ class Flux1Controlnet:
         if weights.quantization_level is not None:
             self._set_model_weights(weights)
 
-        self.transformer_controlnet = TransformerControlnet(model_config=model_config)
+        weights_controlnet, ctrlnet_quantization_level, controlnet_config = WeightHandler.load_controlnet_transformer(controlnet_id=CONTOLNET_ID)
+        self.transformer_controlnet = TransformerControlnet(
+            model_config=model_config,
+            num_blocks= controlnet_config["num_layers"],
+            num_single_blocks= controlnet_config["num_single_layers"],
+        )
 
-        weights_controlnet, ctrlnet_quantization_level = WeightHandler.load_controlnet_transformer(controlnet_path=controlnet_path)
         if ctrlnet_quantization_level is None:
             self.transformer_controlnet.update(weights_controlnet)
 
@@ -117,7 +122,10 @@ class Flux1Controlnet:
         )
         control_image = preprocess_canny(control_image)
         controlnet_cond = ImageUtil.to_array(control_image)
-        controlnet_cond = self.vae.encode(controlnet_cond)
+        controlnet_cong = self.vae.encode(controlnet_cond)
+        # the rescaling in the next line is not in the huggingface code, but without it the images from 
+        # the chosen controlnet model are very bad
+        controlnet_cond = (controlnet_cong / self.vae.scaling_factor) + self.vae.shift_factor
         controlnet_cond = Flux1Controlnet._pack_latents(controlnet_cond, config.height, config.width)
 
         # 2. Embedd the prompt
@@ -230,20 +238,25 @@ ControlNetOutput = Tuple[list[mx.array], list[mx.array]]
 
 class TransformerControlnet(nn.Module):
 
-    def __init__(self, model_config: ModelConfig):
+    def __init__(
+            self,
+            model_config: ModelConfig,
+            num_blocks: int,
+            num_single_blocks: int,
+        ):
         super().__init__()
         self.pos_embed = EmbedND()
         self.x_embedder = nn.Linear(64, 3072)
         self.time_text_embed = TimeTextEmbed(model_config=model_config)
         self.context_embedder = nn.Linear(4096, 3072)
-        self.transformer_blocks = [JointTransformerBlock(i) for i in range(5)]
-        # self.single_transformer_blocks = [SingleTransformerBlock(i) for i in range(38)]
+        self.transformer_blocks = [JointTransformerBlock(i) for i in range(num_blocks)]
+        self.single_transformer_blocks = [SingleTransformerBlock(i) for i in range(num_single_blocks)]
 
         zero_init = nn.init.constant(0)
         self.controlnet_x_embedder = nn.Linear(64, 3072).apply(zero_init)
-        self.controlnet_blocks = [nn.Linear(3072, 3072).apply(zero_init) for _ in range(5)]
+        self.controlnet_blocks = [nn.Linear(3072, 3072).apply(zero_init) for _ in range(num_blocks)]
 
-        # self.controlnet_single_blocks = [nn.Linear(3072, 3072) for _ in range(38)]
+        self.controlnet_single_blocks = [nn.Linear(3072, 3072) for _ in range(num_single_blocks)]
 
     def forward(
             self,
@@ -287,22 +300,22 @@ class TransformerControlnet(nn.Module):
             controlnet_block_samples = controlnet_block_samples + (block_sample,)
 
 
-        # single_block_samples = ()
-        # for block in self.single_transformer_blocks:
-        #     ctrlnet_hidden_states = block.forward(
-        #         hidden_states=ctrlnet_hidden_states,
-        #         text_embeddings=text_embeddings,
-        #         rotary_embeddings=image_rotary_emb
-        #     )
-        #     single_block_samples = single_block_samples + (ctrlnet_hidden_states[:, encoder_hidden_states.shape[1] :],)
+        single_block_samples = ()
+        for block in self.single_transformer_blocks:
+            ctrlnet_hidden_states = block.forward(
+                hidden_states=ctrlnet_hidden_states,
+                text_embeddings=text_embeddings,
+                rotary_embeddings=image_rotary_emb
+            )
+            single_block_samples = single_block_samples + (ctrlnet_hidden_states[:, encoder_hidden_states.shape[1] :],)
 
-        # controlnet_single_block_samples = ()
-        # for single_block_sample, controlnet_block in zip(single_block_samples, self.controlnet_single_blocks):
-        #     single_block_sample = controlnet_block(single_block_sample)
-        #     controlnet_single_block_samples = controlnet_single_block_samples + (single_block_sample,)
+        controlnet_single_block_samples = ()
+        for single_block_sample, controlnet_block in zip(single_block_samples, self.controlnet_single_blocks):
+            single_block_sample = controlnet_block(single_block_sample)
+            controlnet_single_block_samples = controlnet_single_block_samples + (single_block_sample,)
 
         # # scaling
         controlnet_block_samples = [sample * conditioning_scale for sample in controlnet_block_samples]
-        # controlnet_single_block_samples = [sample * conditioning_scale for sample in controlnet_single_block_samples]
+        controlnet_single_block_samples = [sample * conditioning_scale for sample in controlnet_single_block_samples]
 
         return controlnet_block_samples
