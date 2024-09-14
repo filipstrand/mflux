@@ -85,6 +85,28 @@ class WeightHandler:
                         "linear2": block["ff_context"]["net"][2]
                     }
         return weights, quantization_level
+    
+    @staticmethod
+    def load_controlnet_transformer(controlnet_path: Path | None = None) -> (dict, int):
+        weights, quantization_level = WeightHandler._get_weights("transformer", weights_path=controlnet_path)
+
+        # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
+        if quantization_level is not None:
+            return weights, quantization_level
+
+        # Reshape and process the huggingface weights
+        if "transformer_blocks" in weights:
+            for block in weights["transformer_blocks"]:
+                block["ff"] = {
+                    "linear1": block["ff"]["net"][0]["proj"],
+                    "linear2": block["ff"]["net"][2]
+                }
+                if block.get("ff_context") is not None:
+                    block["ff_context"] = {
+                        "linear1": block["ff_context"]["net"][0]["proj"],
+                        "linear2": block["ff_context"]["net"][2]
+                    }
+        return weights, quantization_level
 
     @staticmethod
     def load_vae(root_path: Path) -> (dict, int):
@@ -104,7 +126,7 @@ class WeightHandler:
         return weights, quantization_level
 
     @staticmethod
-    def _get_weights(model_name: str, root_path: Path | None = None, lora_path: str | None = None) -> (dict, int):
+    def _get_weights(model_name: str, root_path: Path | None = None, weights_path: str | None = None) -> (dict, int):
         weights = []
         quantization_level = None
 
@@ -114,8 +136,8 @@ class WeightHandler:
                 weight = list(mx.load(str(file)).items())
                 weights.extend(weight)
 
-        if lora_path and root_path is None:
-            weight = list(mx.load(lora_path).items())
+        if weights_path and root_path is None:
+            weight = list(mx.load(weights_path).items())
             weights.extend(weight)
 
         # Non huggingface weights (i.e. ones exported from this project) don't need any reshaping.

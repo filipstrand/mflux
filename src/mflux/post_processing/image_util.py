@@ -71,3 +71,7 @@ class ImageUtil:
         array = mx.transpose(array, (0, 3, 1, 2))
         array = ImageUtil._normalize(array)
         return array
+    
+    @staticmethod
+    def load_image(path: str) -> Image.Image:
+        return Image.open(path)
