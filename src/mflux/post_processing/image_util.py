@@ -1,5 +1,4 @@
 import PIL
-from PIL import Image
 import mlx.core as mx
 import numpy as np
 

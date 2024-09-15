@@ -81,15 +81,6 @@ class Image:
             # Define the UserComment tag ID
             USER_COMMENT_TAG_ID = 0x9286
 
-            # Create an EXIF dictionary
-            exif_dict = {
-                "0th": {},
-                "Exif": {USER_COMMENT_TAG_ID: user_comment_bytes},
-                "GPS": {},
-                "1st": {},
-                "thumbnail": None,
-            }
-
             # Create a piexif-compatible dictionary structure
             exif_piexif_dict = {"Exif": {USER_COMMENT_TAG_ID: user_comment_bytes}}
 
