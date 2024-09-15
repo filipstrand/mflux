@@ -37,7 +37,7 @@ class RuntimeConfig:
         return self.model_config.num_train_steps
     
     @property
-    def controlnet_conditioning_scale(self) -> float:
+    def controlnet_strength(self) -> float:
         if isinstance(self.config, ConfigControlnet):
             return self.config.controlnet_strength
         else:
