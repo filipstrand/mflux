@@ -90,7 +90,7 @@ class WeightHandler:
         return weights, quantization_level
     
     @staticmethod
-    def load_controlnet_transformer(controlnet_id: Path | None = None) -> (dict, int):
+    def load_controlnet_transformer(controlnet_id: str) -> (dict, int):
         controlnet_path = Path(snapshot_download(repo_id=controlnet_id,allow_patterns=["*.safetensors","config.json"]))
         file = next(controlnet_path.glob("diffusion_pytorch_model.safetensors"))
         quantization_level = mx.load(str(file), return_metadata=True)[1].get("quantization_level")
