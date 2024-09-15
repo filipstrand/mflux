@@ -21,22 +21,25 @@ from mflux.weights.weight_handler import WeightHandler
 
 
 class Flux1:
-
     def __init__(
-            self,
-            model_config: ModelConfig,
-            quantize: int | None = None,
-            local_path: str | None = None,
-            lora_paths: list[str] | None = None,
-            lora_scales: list[float] | None = None,
+        self,
+        model_config: ModelConfig,
+        quantize: int | None = None,
+        local_path: str | None = None,
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
     ):
         self.lora_paths = lora_paths
         self.lora_scales = lora_scales
         self.model_config = model_config
 
         # Load and initialize the tokenizers from disk, huggingface cache, or download from huggingface
-        tokenizers = TokenizerHandler(model_config.model_name, self.model_config.max_sequence_length, local_path)
-        self.t5_tokenizer = TokenizerT5(tokenizers.t5, max_length=self.model_config.max_sequence_length)
+        tokenizers = TokenizerHandler(
+            model_config.model_name, self.model_config.max_sequence_length, local_path
+        )
+        self.t5_tokenizer = TokenizerT5(
+            tokenizers.t5, max_length=self.model_config.max_sequence_length
+        )
         self.clip_tokenizer = TokenizerCLIP(tokenizers.clip)
 
         # Initialize the models
@@ -50,7 +53,7 @@ class Flux1:
             repo_id=model_config.model_name,
             local_path=local_path,
             lora_paths=lora_paths,
-            lora_scales=lora_scales
+            lora_scales=lora_scales,
         )
 
         # Set the loaded weights if they are not quantized
@@ -60,17 +63,44 @@ class Flux1:
         # Optionally quantize the model here at initialization (also required if about to load quantized weights)
         self.bits = None
         if quantize is not None or weights.quantization_level is not None:
-            self.bits = weights.quantization_level if weights.quantization_level is not None else quantize
-            nn.quantize(self.vae, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=self.bits)
-            nn.quantize(self.transformer, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 64, group_size=64, bits=self.bits)
-            nn.quantize(self.t5_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=self.bits)
-            nn.quantize(self.clip_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=self.bits)
+            self.bits = (
+                weights.quantization_level
+                if weights.quantization_level is not None
+                else quantize
+            )
+            nn.quantize(
+                self.vae,
+                class_predicate=lambda _, m: isinstance(m, nn.Linear),
+                group_size=64,
+                bits=self.bits,
+            )
+            nn.quantize(
+                self.transformer,
+                class_predicate=lambda _, m: isinstance(m, nn.Linear)
+                and len(m.weight[1]) > 64,
+                group_size=64,
+                bits=self.bits,
+            )
+            nn.quantize(
+                self.t5_text_encoder,
+                class_predicate=lambda _, m: isinstance(m, nn.Linear),
+                group_size=64,
+                bits=self.bits,
+            )
+            nn.quantize(
+                self.clip_text_encoder,
+                class_predicate=lambda _, m: isinstance(m, nn.Linear),
+                group_size=64,
+                bits=self.bits,
+            )
 
         # If loading previously saved quantized weights, the weights must be set after modules have been quantized
         if weights.quantization_level is not None:
             self._set_model_weights(weights)
 
-    def generate_image(self, seed: int, prompt: str, config: Config = Config()) -> Image:
+    def generate_image(
+        self, seed: int, prompt: str, config: Config = Config()
+    ) -> Image:
         # Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.num_inference_steps))
@@ -78,7 +108,7 @@ class Flux1:
         # 1. Create the initial latents
         latents = mx.random.normal(
             shape=[1, (config.height // 16) * (config.width // 16), 64],
-            key=mx.random.key(seed)
+            key=mx.random.key(seed),
         )
 
         # 2. Embedd the prompt
@@ -112,7 +142,7 @@ class Flux1:
             seed=seed,
             prompt=prompt,
             quantization=self.bits,
-            generation_time=time_steps.format_dict['elapsed'],
+            generation_time=time_steps.format_dict["elapsed"],
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
             config=config,
@@ -149,7 +179,11 @@ class Flux1:
             path.mkdir(parents=True, exist_ok=True)
             weights = _split_weights(dict(tree_flatten(model.parameters())))
             for i, weight in enumerate(weights):
-                mx.save_safetensors(str(path / f"{i}.safetensors"), weight, {"quantization_level": str(self.bits)})
+                mx.save_safetensors(
+                    str(path / f"{i}.safetensors"),
+                    weight,
+                    {"quantization_level": str(self.bits)},
+                )
 
         def _split_weights(weights: dict, max_file_size_gb: int = 2) -> list:
             # Copied from mlx-examples repo

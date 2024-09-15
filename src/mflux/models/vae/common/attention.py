@@ -5,7 +5,6 @@ from mflux.config.config import Config
 
 
 class Attention(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.group_norm = nn.GroupNorm(32, 512, pytorch_compatible=True)

@@ -13,7 +13,6 @@ from mflux.models.vae.encoder.down_block_4 import DownBlock4
 
 
 class Encoder(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.conv_in = ConvIn()

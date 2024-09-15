@@ -6,7 +6,6 @@ from mflux.models.text_encoder.t5_encoder.t5_self_attention import T5SelfAttenti
 
 
 class T5Attention(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.SelfAttention = T5SelfAttention()

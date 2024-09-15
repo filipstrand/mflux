@@ -5,7 +5,6 @@ import mlx.core as mx
 
 
 class T5DenseReluDense(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.wi_0 = nn.Linear(4096, 10240, bias=False)
@@ -21,4 +20,14 @@ class T5DenseReluDense(nn.Module):
 
     @staticmethod
     def new_gelu(input_array: mx.array) -> mx.array:
-        return 0.5 * input_array * (1.0 + mx.tanh(math.sqrt(2.0 / math.pi) * (input_array + 0.044715 * mx.power(input_array, 3.0))))
+        return (
+            0.5
+            * input_array
+            * (
+                1.0
+                + mx.tanh(
+                    math.sqrt(2.0 / math.pi)
+                    * (input_array + 0.044715 * mx.power(input_array, 3.0))
+                )
+            )
+        )

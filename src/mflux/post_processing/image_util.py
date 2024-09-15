@@ -8,17 +8,16 @@ from mflux.post_processing.image import Image
 
 
 class ImageUtil:
-
     @staticmethod
     def to_image(
-            decoded_latents: mx.array,
-            seed: int,
-            prompt: str,
-            quantization: int,
-            generation_time: float,
-            lora_paths: list[str],
-            lora_scales: list[float],
-            config: RuntimeConfig,
+        decoded_latents: mx.array,
+        seed: int,
+        prompt: str,
+        quantization: int,
+        generation_time: float,
+        lora_paths: list[str],
+        lora_scales: list[float],
+        config: RuntimeConfig,
     ) -> Image:
         normalized = ImageUtil._denormalize(decoded_latents)
         normalized_numpy = ImageUtil._to_numpy(normalized)

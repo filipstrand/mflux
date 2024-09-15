@@ -6,7 +6,6 @@ from mflux.models.text_encoder.clip_encoder.clip_sdpa_attention import CLIPSdpaA
 
 
 class CLIPEncoderLayer(nn.Module):
-
     def __init__(self, layer: int):
         super().__init__()
         self.self_attn = CLIPSdpaAttention()
@@ -14,7 +13,9 @@ class CLIPEncoderLayer(nn.Module):
         self.mlp = CLIPMLP()
         self.layer_norm2 = nn.LayerNorm(dims=768)
 
-    def forward(self, hidden_states: mx.array, causal_attention_mask: mx.array) -> mx.array:
+    def forward(
+        self, hidden_states: mx.array, causal_attention_mask: mx.array
+    ) -> mx.array:
         residual = hidden_states
         hidden_states = self.layer_norm1(hidden_states)
         hidden_states = self.self_attn.forward(hidden_states, causal_attention_mask)

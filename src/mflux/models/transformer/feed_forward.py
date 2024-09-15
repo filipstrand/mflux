@@ -3,7 +3,6 @@ import mlx.core as mx
 
 
 class FeedForward(nn.Module):
-
     def __init__(self, activation_function):
         super().__init__()
         self.linear1 = nn.Linear(3072, 6144)

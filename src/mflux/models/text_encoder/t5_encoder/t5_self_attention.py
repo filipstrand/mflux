@@ -5,7 +5,6 @@ from mlx import nn
 
 
 class T5SelfAttention(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.q = nn.Linear(4096, 4096, bias=False)
@@ -39,14 +38,18 @@ class T5SelfAttention(nn.Module):
         context_position = mx.arange(start=0, stop=seq_length, step=1)[:, None]
         memory_position = mx.arange(start=0, stop=seq_length, step=1)[None, :]
         relative_position = memory_position - context_position
-        relative_position_bucket = T5SelfAttention._relative_position_bucket(relative_position)
+        relative_position_bucket = T5SelfAttention._relative_position_bucket(
+            relative_position
+        )
         values = self.relative_attention_bias(relative_position_bucket)
         values = mx.transpose(values, (2, 0, 1))
         values = mx.expand_dims(values, 0)
         return values
 
     @staticmethod
-    def _relative_position_bucket(relative_position, bidirectional=True, num_buckets=32, max_distance=128):
+    def _relative_position_bucket(
+        relative_position, bidirectional=True, num_buckets=32, max_distance=128
+    ):
         relative_buckets = mx.zeros_like(relative_position)
         num_buckets //= 2
         relative_buckets += mx.where(relative_position > 0, num_buckets, 0)
@@ -64,8 +67,10 @@ class T5SelfAttention(nn.Module):
         ).astype(mx.int32)
         relative_position_if_large = mx.minimum(
             relative_position_if_large,
-            mx.full(relative_position_if_large.shape, num_buckets - 1)
+            mx.full(relative_position_if_large.shape, num_buckets - 1),
         )
 
-        relative_buckets += mx.where(is_small, relative_position, relative_position_if_large)
+        relative_buckets += mx.where(
+            is_small, relative_position, relative_position_if_large
+        )
         return relative_buckets

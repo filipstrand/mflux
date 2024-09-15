@@ -6,12 +6,25 @@ from mflux.models.vae.encoder.down_sampler import DownSampler
 
 
 class DownBlock1(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.resnets = [
-            ResnetBlock2D(norm1=128, conv1_in=128, conv1_out=128, norm2=128, conv2_in=128, conv2_out=128),
-            ResnetBlock2D(norm1=128, conv1_in=128, conv1_out=128, norm2=128, conv2_in=128, conv2_out=128),
+            ResnetBlock2D(
+                norm1=128,
+                conv1_in=128,
+                conv1_out=128,
+                norm2=128,
+                conv2_in=128,
+                conv2_out=128,
+            ),
+            ResnetBlock2D(
+                norm1=128,
+                conv1_in=128,
+                conv1_out=128,
+                norm2=128,
+                conv2_in=128,
+                conv2_out=128,
+            ),
         ]
         self.downsamplers = [DownSampler(conv_in=128, conv_out=128)]
 

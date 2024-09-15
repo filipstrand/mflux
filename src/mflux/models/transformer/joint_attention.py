@@ -23,10 +23,10 @@ class JointAttention(nn.Module):
         self.norm_added_k = nn.RMSNorm(128)
 
     def forward(
-            self,
-            hidden_states: mx.array,
-            encoder_hidden_states: mx.array,
-            image_rotary_emb: mx.array
+        self,
+        hidden_states: mx.array,
+        encoder_hidden_states: mx.array,
+        image_rotary_emb: mx.array,
     ) -> (mx.array, mx.array):
         residual = hidden_states
 
@@ -45,12 +45,22 @@ class JointAttention(nn.Module):
         encoder_hidden_states_key_proj = self.add_k_proj(encoder_hidden_states)
         encoder_hidden_states_value_proj = self.add_v_proj(encoder_hidden_states)
 
-        encoder_hidden_states_query_proj = mx.transpose(mx.reshape(encoder_hidden_states_query_proj, (1, -1, 24, 128)), (0, 2, 1, 3))
-        encoder_hidden_states_key_proj = mx.transpose(mx.reshape(encoder_hidden_states_key_proj, (1, -1, 24, 128)), (0, 2, 1, 3))
-        encoder_hidden_states_value_proj = mx.transpose(mx.reshape(encoder_hidden_states_value_proj, (1, -1, 24, 128)),   (0, 2, 1, 3))
+        encoder_hidden_states_query_proj = mx.transpose(
+            mx.reshape(encoder_hidden_states_query_proj, (1, -1, 24, 128)), (0, 2, 1, 3)
+        )
+        encoder_hidden_states_key_proj = mx.transpose(
+            mx.reshape(encoder_hidden_states_key_proj, (1, -1, 24, 128)), (0, 2, 1, 3)
+        )
+        encoder_hidden_states_value_proj = mx.transpose(
+            mx.reshape(encoder_hidden_states_value_proj, (1, -1, 24, 128)), (0, 2, 1, 3)
+        )
 
-        encoder_hidden_states_query_proj = self.norm_added_q(encoder_hidden_states_query_proj)
-        encoder_hidden_states_key_proj = self.norm_added_k(encoder_hidden_states_key_proj)
+        encoder_hidden_states_query_proj = self.norm_added_q(
+            encoder_hidden_states_query_proj
+        )
+        encoder_hidden_states_key_proj = self.norm_added_k(
+            encoder_hidden_states_key_proj
+        )
 
         query = mx.concatenate([encoder_hidden_states_query_proj, query], axis=2)
         key = mx.concatenate([encoder_hidden_states_key_proj, key], axis=2)
@@ -60,10 +70,12 @@ class JointAttention(nn.Module):
 
         hidden_states = JointAttention.attention(query, key, value)
         hidden_states = mx.transpose(hidden_states, (0, 2, 1, 3))
-        hidden_states = mx.reshape(hidden_states, (self.batch_size, -1, self.num_heads * self.head_dimension))
+        hidden_states = mx.reshape(
+            hidden_states, (self.batch_size, -1, self.num_heads * self.head_dimension)
+        )
         encoder_hidden_states, hidden_states = (
             hidden_states[:, : encoder_hidden_states.shape[1]],
-            hidden_states[:, encoder_hidden_states.shape[1]:],
+            hidden_states[:, encoder_hidden_states.shape[1] :],
         )
 
         hidden_states = self.to_out[0](hidden_states)
@@ -76,7 +88,7 @@ class JointAttention(nn.Module):
         scale = 1 / mx.sqrt(query.shape[-1])
         scores = (query * scale) @ key.transpose(0, 1, 3, 2)
         attn = mx.softmax(scores, axis=-1)
-        hidden_states = (attn @ value)
+        hidden_states = attn @ value
         return hidden_states
 
     @staticmethod
@@ -85,4 +97,6 @@ class JointAttention(nn.Module):
         xk_ = xk.astype(mx.float32).reshape(*xk.shape[:-1], -1, 1, 2)
         xq_out = freqs_cis[..., 0] * xq_[..., 0] + freqs_cis[..., 1] * xq_[..., 1]
         xk_out = freqs_cis[..., 0] * xk_[..., 0] + freqs_cis[..., 1] * xk_[..., 1]
-        return xq_out.reshape(*xq.shape).astype(mx.float32), xk_out.reshape(*xk.shape).astype(mx.float32)
+        return xq_out.reshape(*xq.shape).astype(mx.float32), xk_out.reshape(
+            *xk.shape
+        ).astype(mx.float32)

@@ -6,7 +6,6 @@ from mflux.config.model_config import ModelConfig
 
 
 class RuntimeConfig:
-
     def __init__(self, config: Config, model_config: ModelConfig):
         self.config = config
         self.model_config = model_config

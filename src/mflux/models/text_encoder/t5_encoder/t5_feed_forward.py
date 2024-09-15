@@ -8,7 +8,6 @@ from mflux.models.text_encoder.t5_encoder.t5_layer_norm import T5LayerNorm
 
 
 class T5FeedForward(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.layer_norm = T5LayerNorm()

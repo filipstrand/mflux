@@ -6,23 +6,24 @@ from mflux.models.transformer.single_block_attention import SingleBlockAttention
 
 
 class SingleTransformerBlock(nn.Module):
-
     def __init__(self, layer):
         super().__init__()
         self.layer = layer
         self.norm = AdaLayerNormZeroSingle()
-        self.proj_mlp = nn.Linear(3072, 4*3072)
+        self.proj_mlp = nn.Linear(3072, 4 * 3072)
         self.attn = SingleBlockAttention()
-        self.proj_out = nn.Linear(3072 + 4*3072, 3072)
+        self.proj_out = nn.Linear(3072 + 4 * 3072, 3072)
 
     def forward(
-            self,
-            hidden_states: mx.array,
-            text_embeddings: mx.array,
-            rotary_embeddings: mx.array
+        self,
+        hidden_states: mx.array,
+        text_embeddings: mx.array,
+        rotary_embeddings: mx.array,
     ) -> (mx.array, mx.array):
         residual = hidden_states
-        norm_hidden_states, gate = self.norm.forward(x=hidden_states, text_embeddings=text_embeddings)
+        norm_hidden_states, gate = self.norm.forward(
+            x=hidden_states, text_embeddings=text_embeddings
+        )
         mlp_hidden_states = nn.gelu_approx(self.proj_mlp(norm_hidden_states))
         attn_output = self.attn.forward(
             hidden_states=norm_hidden_states,

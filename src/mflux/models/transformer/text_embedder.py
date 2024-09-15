@@ -3,7 +3,6 @@ import mlx.core as mx
 
 
 class TextEmbedder(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.linear_1 = nn.Linear(768, 3072)

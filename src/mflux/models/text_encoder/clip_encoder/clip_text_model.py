@@ -6,7 +6,6 @@ from mflux.models.text_encoder.clip_encoder.encoder_clip import EncoderCLIP
 
 
 class CLIPTextModel(nn.Module):
-
     def __init__(self, dims: int, num_encoder_layers: int):
         super().__init__()
         self.encoder = EncoderCLIP(num_encoder_layers)
@@ -15,7 +14,9 @@ class CLIPTextModel(nn.Module):
 
     def forward(self, tokens: mx.array) -> (mx.array, mx.array):
         hidden_states = self.embeddings.forward(tokens)
-        causal_attention_mask = CLIPTextModel.create_causal_attention_mask(hidden_states.shape)
+        causal_attention_mask = CLIPTextModel.create_causal_attention_mask(
+            hidden_states.shape
+        )
         encoder_outputs = self.encoder.forward(hidden_states, causal_attention_mask)
         last_hidden_state = self.final_layer_norm(encoder_outputs)
         pooled_output = last_hidden_state[0, mx.argmax(tokens, axis=-1)]
