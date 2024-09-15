@@ -33,4 +33,4 @@ class ConfigControlnet(Config):
             controlnet_strength: float = 1.0,
     ):
         super().__init__(num_inference_steps, width, height, guidance)
-        self.controlnet_conditioning_scale = controlnet_strength
+        self.controlnet_strength = controlnet_strength

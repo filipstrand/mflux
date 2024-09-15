@@ -268,7 +268,7 @@ class TransformerControlnet(nn.Module):
         time_step = mx.broadcast_to(time_step, (1,)).astype(config.precision)
         hidden_states = self.x_embedder(hidden_states)
         hidden_states = hidden_states + self.controlnet_x_embedder(controlnet_cond)
-        conditioning_scale = config.config.controlnet_conditioning_scale
+        conditioning_scale = config.config.controlnet_strength
 
         guidance = mx.broadcast_to(config.guidance * config.num_train_steps, (1,)).astype(config.precision)
         text_embeddings = self.time_text_embed.forward(time_step, pooled_prompt_embeds, guidance)
