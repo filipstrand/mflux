@@ -54,7 +54,7 @@ class Transformer(nn.Module):
                 text_embeddings=text_embeddings,
                 rotary_embeddings=image_rotary_emb
             )
-            if controlnet_block_samples is not None:
+            if controlnet_block_samples is not None and len(controlnet_block_samples) > 0:
                 interval_control = len(self.transformer_blocks) / len(controlnet_block_samples)
                 interval_control = int(math.ceil(interval_control))
                 hidden_states = hidden_states + controlnet_block_samples[idx // interval_control]
@@ -67,7 +67,7 @@ class Transformer(nn.Module):
                 text_embeddings=text_embeddings,
                 rotary_embeddings=image_rotary_emb
             )
-            if controlnet_single_block_samples is not None:
+            if controlnet_single_block_samples is not None and len(controlnet_single_block_samples) > 0:
                 interval_control = len(self.single_transformer_blocks) / len(controlnet_single_block_samples)
                 interval_control = int(math.ceil(interval_control))
                 hidden_states[:, encoder_hidden_states.shape[1] :, ...] = (

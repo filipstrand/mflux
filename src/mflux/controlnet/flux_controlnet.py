@@ -7,7 +7,7 @@ from mlx import nn
 from mlx.utils import tree_flatten
 from tqdm import tqdm
 
-from mflux.config.config import Config, ConfigControlnet
+from mflux.config.config import ConfigControlnet
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.controlnet.utils_controlnet import preprocess_canny
@@ -24,19 +24,16 @@ from mflux.weights.weight_handler import WeightHandler
 
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.models.transformer.ada_layer_norm_continous import AdaLayerNormContinuous
 from mflux.models.transformer.embed_nd import EmbedND
 from mflux.models.transformer.joint_transformer_block import JointTransformerBlock
 from mflux.models.transformer.single_transformer_block import SingleTransformerBlock
 from mflux.models.transformer.time_text_embed import TimeTextEmbed
-import numpy as np
-import cv2
 
 import logging
 
 log = logging.getLogger(__name__)
 
-CONTOLNET_ID = "InstantX/FLUX.1-dev-Controlnet-Canny"
+CONTROLNET_ID = "InstantX/FLUX.1-dev-Controlnet-Canny"
 
 class Flux1Controlnet:
     def __init__(
@@ -88,7 +85,7 @@ class Flux1Controlnet:
         if weights.quantization_level is not None:
             self._set_model_weights(weights)
 
-        weights_controlnet, ctrlnet_quantization_level, controlnet_config = WeightHandler.load_controlnet_transformer(controlnet_id=CONTOLNET_ID)
+        weights_controlnet, ctrlnet_quantization_level, controlnet_config = WeightHandler.load_controlnet_transformer(controlnet_id=CONTROLNET_ID)
         self.transformer_controlnet = TransformerControlnet(
             model_config=model_config,
             num_blocks= controlnet_config["num_layers"],
@@ -135,7 +132,7 @@ class Flux1Controlnet:
         pooled_prompt_embeds = self.clip_text_encoder.forward(clip_tokens)
 
         for t in time_steps:
-            controlnet_block_samples = self.transformer_controlnet.forward(
+            ctrlnet_block_samples, ctrlnet_single_block_samples = self.transformer_controlnet.forward(
                 t=t,
                 prompt_embeds=prompt_embeds,
                 pooled_prompt_embeds=pooled_prompt_embeds,
@@ -150,8 +147,8 @@ class Flux1Controlnet:
                 pooled_prompt_embeds=pooled_prompt_embeds,
                 hidden_states=latents,
                 config=config,
-                controlnet_block_samples=controlnet_block_samples,
-                # controlnet_single_block_samples=controlnet_single_block_samples,
+                controlnet_block_samples=ctrlnet_block_samples,
+                controlnet_single_block_samples=ctrlnet_single_block_samples,
             )
 
             # 4.t Take one denoise step
@@ -318,4 +315,4 @@ class TransformerControlnet(nn.Module):
         controlnet_block_samples = [sample * conditioning_scale for sample in controlnet_block_samples]
         controlnet_single_block_samples = [sample * conditioning_scale for sample in controlnet_single_block_samples]
 
-        return controlnet_block_samples
+        return controlnet_block_samples, controlnet_single_block_samples
