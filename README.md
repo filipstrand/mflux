@@ -105,8 +105,7 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 Or, with the correct python environment active, create and run a separate script like the following:
 
 ```python
-from mflux.flux.flux import Flux1
-from mflux.config.config import Config
+from mflux import Flux1, Config
 
 # Load the model
 flux = Flux1.from_alias(

@@ -4,8 +4,7 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from mflux.flux.flux import Flux1
-from mflux.config.model_config import ModelConfig
+from mflux import Flux1, ModelConfig
 
 
 def main():
