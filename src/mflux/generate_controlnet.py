@@ -6,13 +6,15 @@ import time
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from mflux.config.model_config import ModelConfig
-from mflux.config.config import Config
-from mflux.flux.flux import Flux1
+from mflux.config.config import ConfigControlnet
+from mflux.controlnet.flux_controlnet import Flux1Controlnet
+from mflux.post_processing.image_util import ImageUtil
 
 
 def main():
     parser = argparse.ArgumentParser(description='Generate an image based on a prompt.')
     parser.add_argument('--prompt', type=str, required=True, help='The textual description of the image to generate.')
+    parser.add_argument('--control-image-path', type=str, required=True, help='Local path of the image to use as input for controlnet.')
     parser.add_argument('--output', type=str, default="image.png", help='The filename for the output image. Default is "image.png".')
     parser.add_argument('--model', "-m", type=str, required=True, choices=["dev", "schnell"], help='The model to use ("schnell" or "dev").')
     parser.add_argument('--seed', type=int, default=None, help='Entropy Seed (Default is time-based random-seed)')
@@ -20,6 +22,7 @@ def main():
     parser.add_argument('--width', type=int, default=1024, help='Image width (Default is 1024)')
     parser.add_argument('--steps', type=int, default=None, help='Inference Steps')
     parser.add_argument('--guidance', type=float, default=3.5, help='Guidance Scale (Default is 3.5)')
+    parser.add_argument('--controlnet-strength', type=float, default=0.7, help='Controls how strongly the control image influences the output image. A value of 0.0 means no influence. (Default is 0.7)')
     parser.add_argument('--quantize',  "-q", type=int, choices=[4, 8], default=None, help='Quantize the model (4 or 8, Default is None)')
     parser.add_argument('--path', type=str, default=None, help='Local path for loading a model from disk')
     parser.add_argument('--lora-paths', type=str, nargs='*', default=None, help='Local safetensors for applying LORA from disk')
@@ -35,7 +38,7 @@ def main():
         args.steps = 4 if args.model == "schnell" else 14
 
     # Load the model
-    flux = Flux1(
+    flux = Flux1Controlnet(
         model_config=ModelConfig.from_alias(args.model),
         quantize=args.quantize,
         local_path=args.path,
@@ -47,11 +50,13 @@ def main():
     image = flux.generate_image(
         seed=int(time.time()) if args.seed is None else args.seed,
         prompt=args.prompt,
-        config=Config(
+        control_image=ImageUtil.load_image(args.control_image_path),
+        config=ConfigControlnet(
             num_inference_steps=args.steps,
             height=args.height,
             width=args.width,
             guidance=args.guidance,
+            controlnet_strength=args.controlnet_strength
         )
     )
 

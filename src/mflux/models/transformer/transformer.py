@@ -1,3 +1,5 @@
+import math
+
 import mlx.core as mx
 from mlx import nn
 
@@ -30,6 +32,8 @@ class Transformer(nn.Module):
             pooled_prompt_embeds: mx.array,
             hidden_states: mx.array,
             config: RuntimeConfig,
+            controlnet_block_samples: list[mx.array] | None = None,
+            controlnet_single_block_samples: list[mx.array] | None = None,
     ) -> mx.array:
         time_step = config.sigmas[t] * config.num_train_steps
         time_step = mx.broadcast_to(time_step, (1,)).astype(config.precision)
@@ -37,27 +41,38 @@ class Transformer(nn.Module):
         guidance = mx.broadcast_to(config.guidance * config.num_train_steps, (1,)).astype(config.precision)
         text_embeddings = self.time_text_embed.forward(time_step, pooled_prompt_embeds, guidance)
         encoder_hidden_states = self.context_embedder(prompt_embeds)
-        txt_ids = Transformer._prepare_text_ids(seq_len=prompt_embeds.shape[1])
-        img_ids = Transformer._prepare_latent_image_ids(config.height, config.width)
+        txt_ids = Transformer.prepare_text_ids(seq_len=prompt_embeds.shape[1])
+        img_ids = Transformer.prepare_latent_image_ids(config.height, config.width)
         ids = mx.concatenate((txt_ids, img_ids), axis=1)
         image_rotary_emb = self.pos_embed.forward(ids)
 
-        for block in self.transformer_blocks:
+        for idx, block in enumerate(self.transformer_blocks):
             encoder_hidden_states, hidden_states = block.forward(
                 hidden_states=hidden_states,
                 encoder_hidden_states=encoder_hidden_states,
                 text_embeddings=text_embeddings,
                 rotary_embeddings=image_rotary_emb
             )
+            if controlnet_block_samples is not None and len(controlnet_block_samples) > 0:
+                interval_control = len(self.transformer_blocks) / len(controlnet_block_samples)
+                interval_control = int(math.ceil(interval_control))
+                hidden_states = hidden_states + controlnet_block_samples[idx // interval_control]
 
         hidden_states = mx.concatenate([encoder_hidden_states, hidden_states], axis=1)
 
-        for block in self.single_transformer_blocks:
+        for idx, block in enumerate(self.single_transformer_blocks):
             hidden_states = block.forward(
                 hidden_states=hidden_states,
                 text_embeddings=text_embeddings,
                 rotary_embeddings=image_rotary_emb
             )
+            if controlnet_single_block_samples is not None and len(controlnet_single_block_samples) > 0:
+                interval_control = len(self.single_transformer_blocks) / len(controlnet_single_block_samples)
+                interval_control = int(math.ceil(interval_control))
+                hidden_states[:, encoder_hidden_states.shape[1] :, ...] = (
+                    hidden_states[:, encoder_hidden_states.shape[1] :, ...]
+                    + controlnet_single_block_samples[idx // interval_control]
+                )
 
         hidden_states = hidden_states[:, encoder_hidden_states.shape[1]:, ...]
         hidden_states = self.norm_out.forward(hidden_states, text_embeddings)
@@ -66,7 +81,7 @@ class Transformer(nn.Module):
         return noise
 
     @staticmethod
-    def _prepare_latent_image_ids(height: int, width: int) -> mx.array:
+    def prepare_latent_image_ids(height: int, width: int) -> mx.array:
         latent_width = width // 16
         latent_height = height // 16
         latent_image_ids = mx.zeros((latent_height, latent_width, 3))
@@ -77,5 +92,5 @@ class Transformer(nn.Module):
         return latent_image_ids
 
     @staticmethod
-    def _prepare_text_ids(seq_len: mx.array) -> mx.array:
+    def prepare_text_ids(seq_len: mx.array) -> mx.array:
         return mx.zeros((1, seq_len, 3))

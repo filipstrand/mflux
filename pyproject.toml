@@ -25,6 +25,7 @@ dependencies = [
     "huggingface-hub>=0.24.5",
     "safetensors>=0.4.4",
     "piexif>=1.1.3",
+    "opencv-python>=4.10.0",
 ]
 
 [project.urls]
@@ -33,6 +34,7 @@ homepage = "https://github.com/filipstrand/mflux"
 [project.scripts]
 mflux-generate = "mflux.generate:main"
 mflux-save = "mflux.save:main"
+mflux-generate-controlnet = "mflux.generate_controlnet:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

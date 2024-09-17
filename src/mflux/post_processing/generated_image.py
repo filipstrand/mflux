@@ -11,7 +11,7 @@ from mflux.config.model_config import ModelConfig
 log = logging.getLogger(__name__)
 
 
-class Image:
+class GeneratedImage:
 
     def __init__(
             self,
@@ -26,6 +26,7 @@ class Image:
             generation_time: float,
             lora_paths: list[str],
             lora_scales: list[float],
+            controlnet_strength: float | None = None,
     ):
         self.image = image
         self.model_config = model_config
@@ -38,6 +39,7 @@ class Image:
         self.generation_time = generation_time
         self.lora_paths = lora_paths
         self.lora_scales = lora_scales
+        self.controlnet_strength = controlnet_strength
 
     def save(self, path: str, export_json_metadata: bool = False) -> None:
         file_path = Path(path)
@@ -123,4 +125,5 @@ class Image:
             'lora_paths': ', '.join(self.lora_paths) if self.lora_paths else '',
             'lora_scales': ', '.join([f"{scale:.2f}" for scale in self.lora_scales]) if self.lora_scales else '',
             'prompt': self.prompt,
+            'controlnet_strength': "None" if self.controlnet_strength is None else f"{self.controlnet_strength:.2f}",
         }
