@@ -85,8 +85,8 @@ class Flux1Controlnet:
         weights_controlnet, ctrlnet_quantization_level, controlnet_config = WeightHandler.load_controlnet_transformer(controlnet_id=CONTROLNET_ID)
         self.transformer_controlnet = TransformerControlnet(
             model_config=model_config,
-            num_blocks= controlnet_config["num_layers"],
-            num_single_blocks= controlnet_config["num_single_layers"],
+            num_blocks=controlnet_config["num_layers"],
+            num_single_blocks=controlnet_config["num_single_layers"],
         )
 
         if ctrlnet_quantization_level is None:
@@ -230,6 +230,7 @@ class Flux1Controlnet:
 
 ControlNetOutput = Tuple[list[mx.array], list[mx.array]]
 
+
 class TransformerControlnet(nn.Module):
 
     def __init__(
@@ -237,7 +238,7 @@ class TransformerControlnet(nn.Module):
             model_config: ModelConfig,
             num_blocks: int,
             num_single_blocks: int,
-        ):
+    ):
         super().__init__()
         self.pos_embed = EmbedND()
         self.x_embedder = nn.Linear(64, 3072)
@@ -270,8 +271,8 @@ class TransformerControlnet(nn.Module):
         guidance = mx.broadcast_to(config.guidance * config.num_train_steps, (1,)).astype(config.precision)
         text_embeddings = self.time_text_embed.forward(time_step, pooled_prompt_embeds, guidance)
         encoder_hidden_states = self.context_embedder(prompt_embeds)
-        txt_ids = Transformer._prepare_text_ids(seq_len=prompt_embeds.shape[1])
-        img_ids = Transformer._prepare_latent_image_ids(config.height, config.width)
+        txt_ids = Transformer.prepare_text_ids(seq_len=prompt_embeds.shape[1])
+        img_ids = Transformer.prepare_latent_image_ids(config.height, config.width)
         ids = mx.concatenate((txt_ids, img_ids), axis=1)
         image_rotary_emb = self.pos_embed.forward(ids)
 
@@ -292,7 +293,6 @@ class TransformerControlnet(nn.Module):
         for block_sample, controlnet_block in zip(block_samples, self.controlnet_blocks):
             block_sample = controlnet_block(block_sample)
             controlnet_block_samples = controlnet_block_samples + (block_sample,)
-
 
         single_block_samples = ()
         for block in self.single_transformer_blocks:
