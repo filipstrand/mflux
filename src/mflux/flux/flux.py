@@ -1,8 +1,5 @@
-from pathlib import Path
-
 import mlx.core as mx
 from mlx import nn
-from mlx.utils import tree_flatten
 from tqdm import tqdm
 
 from mflux.config.config import Config
@@ -17,6 +14,7 @@ from mflux.post_processing.image_util import ImageUtil
 from mflux.tokenizer.clip_tokenizer import TokenizerCLIP
 from mflux.tokenizer.t5_tokenizer import TokenizerT5
 from mflux.tokenizer.tokenizer_handler import TokenizerHandler
+from mflux.weights.model_saver import ModelSaver
 from mflux.weights.weight_handler import WeightHandler
 
 
@@ -138,39 +136,5 @@ class Flux1:
         self.t5_text_encoder.update(weights.t5_encoder)
         self.clip_text_encoder.update(weights.clip_encoder)
 
-    def save_model(self, base_path: str):
-        def _save_tokenizer(tokenizer, subdir: str):
-            path = Path(base_path) / subdir
-            path.mkdir(parents=True, exist_ok=True)
-            tokenizer.save_pretrained(path)
-
-        def _save_weights(model, subdir: str):
-            path = Path(base_path) / subdir
-            path.mkdir(parents=True, exist_ok=True)
-            weights = _split_weights(dict(tree_flatten(model.parameters())))
-            for i, weight in enumerate(weights):
-                mx.save_safetensors(str(path / f"{i}.safetensors"), weight, {"quantization_level": str(self.bits)})
-
-        def _split_weights(weights: dict, max_file_size_gb: int = 2) -> list:
-            # Copied from mlx-examples repo
-            max_file_size_bytes = max_file_size_gb << 30
-            shards = []
-            shard, shard_size = {}, 0
-            for k, v in weights.items():
-                if shard_size + v.nbytes > max_file_size_bytes:
-                    shards.append(shard)
-                    shard, shard_size = {}, 0
-                shard[k] = v
-                shard_size += v.nbytes
-            shards.append(shard)
-            return shards
-
-        # Save the tokenizers
-        _save_tokenizer(self.clip_tokenizer.tokenizer, "tokenizer")
-        _save_tokenizer(self.t5_tokenizer.tokenizer, "tokenizer_2")
-
-        # Save the models
-        _save_weights(self.vae, "vae")
-        _save_weights(self.transformer, "transformer")
-        _save_weights(self.clip_text_encoder, "text_encoder")
-        _save_weights(self.t5_text_encoder, "text_encoder_2")
+    def save_model(self, base_path: str) -> None:
+        ModelSaver.save_model(self, self.bits, base_path)
