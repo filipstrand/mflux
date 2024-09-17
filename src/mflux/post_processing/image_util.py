@@ -5,7 +5,7 @@ import numpy as np
 
 from mflux.config.config import ConfigControlnet
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.post_processing.image import GeneratedImage
+from mflux.post_processing.generated_image import GeneratedImage
 
 
 class ImageUtil:
