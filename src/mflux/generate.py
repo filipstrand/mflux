@@ -18,7 +18,7 @@ def main():
     parser.add_argument('--seed', type=int, default=None, help='Entropy Seed (Default is time-based random-seed)')
     parser.add_argument('--height', type=int, default=1024, help='Image height (Default is 1024)')
     parser.add_argument('--width', type=int, default=1024, help='Image width (Default is 1024)')
-    parser.add_argument('--steps', type=int, default=4, help='Inference Steps')
+    parser.add_argument('--steps', type=int, default=None, help='Inference Steps')
     parser.add_argument('--guidance', type=float, default=3.5, help='Guidance Scale (Default is 3.5)')
     parser.add_argument('--quantize',  "-q", type=int, choices=[4, 8], default=None, help='Quantize the model (4 or 8, Default is None)')
     parser.add_argument('--path', type=str, default=None, help='Local path for loading a model from disk')
@@ -30,6 +30,9 @@ def main():
 
     if args.path and args.model is None:
         parser.error("--model must be specified when using --path")
+
+    if args.steps is None:
+        args.steps = 4 if args.model == "schnell" else 14
 
     # Load the model
     flux = Flux1(

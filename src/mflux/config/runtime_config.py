@@ -41,7 +41,7 @@ class RuntimeConfig:
         if isinstance(self.config, ConfigControlnet):
             return self.config.controlnet_strength
         else:
-            return NotImplementedError("Controlnet conditioning scale is only available for ConfigControlnet")
+            raise NotImplementedError("Controlnet conditioning scale is only available for ConfigControlnet")
 
     @staticmethod
     def _create_sigmas(config, model) -> mx.array:
