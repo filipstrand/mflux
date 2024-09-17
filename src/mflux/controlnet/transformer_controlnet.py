@@ -89,7 +89,7 @@ class TransformerControlnet(nn.Module):
             single_block_sample = controlnet_block(single_block_sample)
             controlnet_single_block_samples = controlnet_single_block_samples + (single_block_sample,)
 
-        # # scaling
+        # scaling
         controlnet_block_samples = [sample * conditioning_scale for sample in controlnet_block_samples]
         controlnet_single_block_samples = [sample * conditioning_scale for sample in controlnet_single_block_samples]
 
