@@ -11,7 +11,7 @@ from tqdm import tqdm
 from mflux.config.config import ConfigControlnet
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.controlnet.utils_controlnet import preprocess_canny
+from mflux.controlnet.controlnet_util import ControlnetUtil
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.transformer.embed_nd import EmbedND
@@ -114,7 +114,7 @@ class Flux1Controlnet:
             shape=[1, (config.height // 16) * (config.width // 16), 64],
             key=mx.random.key(seed)
         )
-        control_image = preprocess_canny(control_image)
+        control_image = ControlnetUtil.preprocess_canny(control_image)
         controlnet_cond = ImageUtil.to_array(control_image)
         controlnet_cong = self.vae.encode(controlnet_cond)
         # the rescaling in the next line is not in the huggingface code, but without it the images from 
