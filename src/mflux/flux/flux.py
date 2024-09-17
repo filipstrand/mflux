@@ -12,7 +12,7 @@ from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.transformer.transformer import Transformer
 from mflux.models.vae.vae import VAE
-from mflux.post_processing.image import GeneratedImage
+from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
 from mflux.tokenizer.clip_tokenizer import TokenizerCLIP
 from mflux.tokenizer.t5_tokenizer import TokenizerT5
