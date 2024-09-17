@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Tuple
 
@@ -13,6 +14,10 @@ from mflux.config.runtime_config import RuntimeConfig
 from mflux.controlnet.utils_controlnet import preprocess_canny
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
+from mflux.models.transformer.embed_nd import EmbedND
+from mflux.models.transformer.joint_transformer_block import JointTransformerBlock
+from mflux.models.transformer.single_transformer_block import SingleTransformerBlock
+from mflux.models.transformer.time_text_embed import TimeTextEmbed
 from mflux.models.transformer.transformer import Transformer
 from mflux.models.vae.vae import VAE
 from mflux.post_processing.image import GeneratedImage
@@ -22,18 +27,10 @@ from mflux.tokenizer.t5_tokenizer import TokenizerT5
 from mflux.tokenizer.tokenizer_handler import TokenizerHandler
 from mflux.weights.weight_handler import WeightHandler
 
-from mflux.config.model_config import ModelConfig
-from mflux.config.runtime_config import RuntimeConfig
-from mflux.models.transformer.embed_nd import EmbedND
-from mflux.models.transformer.joint_transformer_block import JointTransformerBlock
-from mflux.models.transformer.single_transformer_block import SingleTransformerBlock
-from mflux.models.transformer.time_text_embed import TimeTextEmbed
-
-import logging
-
 log = logging.getLogger(__name__)
 
 CONTROLNET_ID = "InstantX/FLUX.1-dev-Controlnet-Canny"
+
 
 class Flux1Controlnet:
     def __init__(
