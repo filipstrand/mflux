@@ -23,48 +23,48 @@ like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) f
 - [x] FLUX.1-Dev
 
 ### Installation
-For users, the easiest way to install MFLUX is to first create a new virtual environment to isolate dependencies:
-   ```
-   mkdir -p mflux && cd mflux && python3 -m venv .venv && source .venv/bin/activate
-   ```
+For users, the easiest way to install MFLUX is to use `uv tool`:
+
+If you have [installed `uv`](https://github.com/astral-sh/uv?tab=readme-ov-file#installation), simply: `uv tool install mflux` to get the `mflux-generate` and related command line executables. You can skip to the usage guides below.
+
+<details>
+<summary>For the classic way to create a user virtual environment:</summary>
+```
+mkdir -p mflux && cd mflux && python3 -m venv .venv && source .venv/bin/activate
+```
 This creates and activates a virtual environment in the `mflux` folder. After that, install MFLUX via pip:
-   ```
-   pip install -U mflux
-   ```
+```
+pip install -U mflux
+```
+</details>
+
 <details>
 <summary>For contributors (click to expand)</summary>
 
 1. Clone the repo:
- ```
+ ```sh
  git clone git@github.com:filipstrand/mflux.git
  ```
-2. Navigate to the project and set up a virtual environment:
- ```
- cd mflux
- python3 -m venv .venv  # alternative: `uv venv`
- source .venv/bin/activate
- ```
-3. Install the required dependencies in [development mode](https://setuptools.pypa.io/en/latest/userguide/development_mode.html) as defined in `pyproject.toml`:
- ```
- pip install -e .
- ```
-4. Follow format and lint checks prior to submitting Pull Requests. Install the `ruff` tool as a common resource somewhere else in your system external to this project.
-  - [`uv tool install ruff`](https://github.com/astral-sh/uv) OR [`pipx install ruff`](https://github.com/pypa/pipx).
-  - [`ruff check` and `ruff check --fix`](https://github.com/astral-sh/ruff?tab=readme-ov-file#usage) any linter warnings generated from your PR diff.
-  - [`ruff format`](https://github.com/astral-sh/ruff?tab=readme-ov-file#usage) any added or modified files in your PR diff.
+2. `make install` and `make test` (and `make clean` for venv resets)
+3. Follow format and lint checks prior to submitting Pull Requests. The recommended `make lint` and `make format` installs and uses [`ruff`](https://github.com/astral-sh/ruff). You can setup your editor/IDE to lint/format automatically, or use our provided `make` helpers:
+  - `make format` - formats your code
+  - `make lint` - shows your lint errors and warnings, but does not auto fix
+  - `make autofix` - formats your code **and** attempts to auto fix lint errors
+  - consult official [`ruff` documentation](https://docs.astral.sh/ruff/) on advanced usages
+
 </details>
 
 ### Generating an image
 
 Run the command `mflux-generate` by specifying a prompt and the model and some optional arguments. For example, here we use a quantized version of the `schnell` model for 2 steps:
 
-```
+```sh
 mflux-generate --model schnell --prompt "Luxury food photograph" --steps 2 --seed 2 -q 8
 ```
 
 This example uses the more powerful `dev` model with 25 time steps:
 
-```
+```sh
 mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2 -q 8
 ```
 
@@ -140,7 +140,7 @@ For more options on how to configure MFLUX, please see [generate.py](src/mflux/g
 
 These numbers are based on the non-quantized `schnell` model, with the configuration provided in the code snippet below.
 To time your machine, run the following:
-```
+```sh
 time mflux-generate \
 --prompt "Luxury food photograph" \
 --model schnell \
@@ -219,7 +219,7 @@ Luxury food photograph of an italian Linguine pasta alle vongole dish with lots 
 MFLUX supports running FLUX in 4-bit or 8-bit quantized mode. Running a quantized version can greatly speed up the
 generation process and reduce the memory consumption by several gigabytes. [Quantized models also take up less disk space](#size-comparisons-for-quantized-models).
 
-```
+```sh
 mflux-generate \
     --model schnell \
     --steps 2 \
@@ -252,7 +252,7 @@ The reason weights sizes are not fully cut in half is because a small number of 
 
 To save a local copy of the quantized weights, run the `mflux-save` command like so:
 
-```
+```sh
 mflux-save \
     --path "/Users/filipstrand/Desktop/schnell_8bit" \
     --model schnell \
@@ -265,7 +265,7 @@ mflux-save \
 
 To generate a new image from the quantized model, simply provide a `--path` to where it was saved:
 
-```
+```sh
 mflux-generate \
     --path "/Users/filipstrand/Desktop/schnell_8bit" \
     --model schnell \
@@ -290,7 +290,7 @@ In other words, you can reclaim the 34GB diskspace (per model) by deleting the f
 MFLUX also supports running a non-quantized model directly from a custom location.
 In the example below, the model is placed in `/Users/filipstrand/Desktop/schnell`:
 
-```
+```sh
 mflux-generate \
     --path "/Users/filipstrand/Desktop/schnell" \
     --model schnell \
@@ -339,7 +339,7 @@ MFLUX support loading trained [LoRA](https://huggingface.co/docs/diffusers/en/tr
 
 The following example [The_Hound](https://huggingface.co/TheLastBen/The_Hound) LoRA from [@TheLastBen](https://github.com/TheLastBen):
 
-```
+```sh
 mflux-generate --prompt "sandor clegane" --model dev --steps 20 --seed 43 -q 8 --lora-paths "sandor_clegane_single_layer.safetensors"
 ```
 
@@ -348,7 +348,7 @@ mflux-generate --prompt "sandor clegane" --model dev --steps 20 --seed 43 -q 8 -
 
 The following example is [Flux_1_Dev_LoRA_Paper-Cutout-Style](https://huggingface.co/Norod78/Flux_1_Dev_LoRA_Paper-Cutout-Style) LoRA from [@Norod78](https://huggingface.co/Norod78):
 
-```
+```sh
 mflux-generate --prompt "pikachu, Paper Cutout Style" --model schnell --steps 4 --seed 43 -q 8 --lora-paths "Flux_1_Dev_LoRA_Paper-Cutout-Style.safetensors"
 ```
 ![image](src/mflux/assets/lora2.jpg)
@@ -361,7 +361,7 @@ mflux-generate --prompt "pikachu, Paper Cutout Style" --model schnell --steps 4 
 
 Multiple LoRAs can be sent in to combine the effects of the individual adapters. The following example combines both of the above LoRAs:
 
-```
+```sh
 mflux-generate \
    --prompt "sandor clegane in a forest, Paper Cutout Style" \
    --model dev \
@@ -399,5 +399,6 @@ To report additional formats, examples or other any suggestions related to LoRA 
 
 ### TODO
 
+- [ ] Establish unit test suite
 - [ ] LoRA fine-tuning
 - [ ] Frontend support (Gradio/Streamlit/Other?)
