@@ -7,24 +7,32 @@ name = "mflux"
 version = "0.2.1"
 description = "A MLX port of FLUX based on the Huggingface Diffusers implementation."
 readme = "README.md"
-authors = [
-    { name = "Filip Strand", email = "strand.filip@gmail.com" }
-]
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Operating System :: MacOS",
-]
+keywords = ["diffusers", "flux", "mlx"]
+authors = [{ name = "Filip Strand", email = "strand.filip@gmail.com" }]
+maintainers = [{ name = "Filip Strand", email = "strand.filip@gmail.com" }]
+requires-python = ">=3.10"
 dependencies = [
+    "huggingface-hub>=0.24.5",
     "mlx>=0.16.0",
-    "numpy>=2.0.0",
+    "numpy>=2.0.1",
+    "opencv-python>=4.10.0",
+    "piexif>=1.1.3",
     "pillow>=10.4.0",
-    "transformers>=4.44.0",
+    "safetensors>=0.4.4",
     "sentencepiece>=0.2.0",
     "torch>=2.3.1",
     "tqdm>=4.66.5",
-    "huggingface-hub>=0.24.5",
-    "safetensors>=0.4.4",
-    "piexif>=1.1.3",
+    "transformers>=4.44.0",
+]
+classifiers = [
+    "Framework :: MLX",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 [project.urls]
@@ -33,6 +41,7 @@ homepage = "https://github.com/filipstrand/mflux"
 [project.scripts]
 mflux-generate = "mflux.generate:main"
 mflux-save = "mflux.save:main"
+mflux-generate-controlnet = "mflux.generate_controlnet:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
