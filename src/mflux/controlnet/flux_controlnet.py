@@ -1,10 +1,15 @@
+import logging
+
+import PIL.Image
 import mlx.core as mx
 from mlx import nn
 from tqdm import tqdm
 
-from mflux.config.config import Config
+from mflux.config.config import ConfigControlnet
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
+from mflux.controlnet.controlnet_util import ControlnetUtil
+from mflux.controlnet.transformer_controlnet import TransformerControlnet
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.transformer.transformer import Transformer
@@ -17,9 +22,12 @@ from mflux.tokenizer.tokenizer_handler import TokenizerHandler
 from mflux.weights.model_saver import ModelSaver
 from mflux.weights.weight_handler import WeightHandler
 
+log = logging.getLogger(__name__)
 
-class Flux1:
+CONTROLNET_ID = "InstantX/FLUX.1-dev-Controlnet-Canny"
 
+
+class Flux1Controlnet:
     def __init__(
             self,
             model_config: ModelConfig,
@@ -27,6 +35,7 @@ class Flux1:
             local_path: str | None = None,
             lora_paths: list[str] | None = None,
             lora_scales: list[float] | None = None,
+            controlnet_path: str | None = None,
     ):
         self.lora_paths = lora_paths
         self.lora_scales = lora_scales
@@ -68,16 +77,45 @@ class Flux1:
         if weights.quantization_level is not None:
             self._set_model_weights(weights)
 
-    def generate_image(self, seed: int, prompt: str, config: Config = Config()) -> GeneratedImage:
+        weights_controlnet, ctrlnet_quantization_level, controlnet_config = WeightHandler.load_controlnet_transformer(controlnet_id=CONTROLNET_ID)
+        self.transformer_controlnet = TransformerControlnet(
+            model_config=model_config,
+            num_blocks=controlnet_config["num_layers"],
+            num_single_blocks=controlnet_config["num_single_layers"],
+        )
+
+        if ctrlnet_quantization_level is None:
+            self.transformer_controlnet.update(weights_controlnet)
+
+        self.bits = None
+        if quantize is not None or ctrlnet_quantization_level is not None:
+            self.bits = ctrlnet_quantization_level if ctrlnet_quantization_level is not None else quantize
+            nn.quantize(self.transformer_controlnet, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 128, group_size=128, bits=self.bits)
+
+        if ctrlnet_quantization_level is not None:
+            self.transformer_controlnet.update(weights_controlnet)
+
+    def generate_image(self, seed: int, prompt: str, control_image: PIL.Image.Image, config: ConfigControlnet = ConfigControlnet()) -> GeneratedImage:
         # Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.num_inference_steps))
+
+        if config.height != control_image.height or config.width != control_image.width:
+            log.warning(f"Control image has different dimensions than the model. Resizing to {config.width}x{config.height}")
+            control_image = control_image.resize((config.width, config.height), PIL.Image.LANCZOS)
 
         # 1. Create the initial latents
         latents = mx.random.normal(
             shape=[1, (config.height // 16) * (config.width // 16), 64],
             key=mx.random.key(seed)
         )
+        control_image = ControlnetUtil.preprocess_canny(control_image)
+        controlnet_cond = ImageUtil.to_array(control_image)
+        controlnet_cong = self.vae.encode(controlnet_cond)
+        # the rescaling in the next line is not in the huggingface code, but without it the images from 
+        # the chosen controlnet model are very bad
+        controlnet_cond = (controlnet_cong / self.vae.scaling_factor) + self.vae.shift_factor
+        controlnet_cond = Flux1Controlnet._pack_latents(controlnet_cond, config.height, config.width)
 
         # 2. Embedd the prompt
         t5_tokens = self.t5_tokenizer.tokenize(prompt)
@@ -86,6 +124,14 @@ class Flux1:
         pooled_prompt_embeds = self.clip_text_encoder.forward(clip_tokens)
 
         for t in time_steps:
+            ctrlnet_block_samples, ctrlnet_single_block_samples = self.transformer_controlnet.forward(
+                t=t,
+                prompt_embeds=prompt_embeds,
+                pooled_prompt_embeds=pooled_prompt_embeds,
+                hidden_states=latents,
+                controlnet_cond=controlnet_cond,
+                config=config,
+            )
             # 3.t Predict the noise
             noise = self.transformer.predict(
                 t=t,
@@ -93,6 +139,8 @@ class Flux1:
                 pooled_prompt_embeds=pooled_prompt_embeds,
                 hidden_states=latents,
                 config=config,
+                controlnet_block_samples=ctrlnet_block_samples,
+                controlnet_single_block_samples=ctrlnet_single_block_samples,
             )
 
             # 4.t Take one denoise step
@@ -103,7 +151,7 @@ class Flux1:
             mx.eval(latents)
 
         # 5. Decode the latent array and return the image
-        latents = Flux1._unpack_latents(latents, config.height, config.width)
+        latents = Flux1Controlnet._unpack_latents(latents, config.height, config.width)
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,
@@ -122,13 +170,13 @@ class Flux1:
         latents = mx.transpose(latents, (0, 3, 1, 4, 2, 5))
         latents = mx.reshape(latents, (1, 16, height // 16 * 2, width // 16 * 2))
         return latents
-
+    
     @staticmethod
-    def from_alias(alias: str, quantize: int | None = None) -> "Flux1":
-        return Flux1(
-            model_config=ModelConfig.from_alias(alias),
-            quantize=quantize,
-        )
+    def _pack_latents(latents: mx.array, height: int, width: int) -> mx.array:
+        latents = mx.reshape(latents, (1, 16, height // 16, 2, width // 16, 2))
+        latents = mx.transpose(latents, (0, 2, 4, 1, 3, 5))
+        latents = mx.reshape(latents, (1, (width // 16) * (height // 16), 64))
+        return latents
 
     def _set_model_weights(self, weights):
         self.vae.update(weights.vae)
@@ -138,3 +186,4 @@ class Flux1:
 
     def save_model(self, base_path: str) -> None:
         ModelSaver.save_model(self, self.bits, base_path)
+        ModelSaver.save_weights(base_path, self.bits, self.transformer_controlnet, "transformer_controlnet")
