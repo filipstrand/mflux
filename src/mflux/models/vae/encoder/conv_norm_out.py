@@ -10,7 +10,7 @@ class ConvNormOut(nn.Module):
             dims=512,
             eps=1e-6,
             affine=True,
-            pytorch_compatible=True
+            pytorch_compatible=True,
         )
 
     def forward(self, input_array: mx.array) -> mx.array:

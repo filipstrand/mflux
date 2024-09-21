@@ -29,13 +29,13 @@ CONTROLNET_ID = "InstantX/FLUX.1-dev-Controlnet-Canny"
 
 class Flux1Controlnet:
     def __init__(
-            self,
-            model_config: ModelConfig,
-            quantize: int | None = None,
-            local_path: str | None = None,
-            lora_paths: list[str] | None = None,
-            lora_scales: list[float] | None = None,
-            controlnet_path: str | None = None,
+        self,
+        model_config: ModelConfig,
+        quantize: int | None = None,
+        local_path: str | None = None,
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
+        controlnet_path: str | None = None,
     ):
         self.lora_paths = lora_paths
         self.lora_scales = lora_scales
@@ -112,7 +112,7 @@ class Flux1Controlnet:
         control_image = ControlnetUtil.preprocess_canny(control_image)
         controlnet_cond = ImageUtil.to_array(control_image)
         controlnet_cong = self.vae.encode(controlnet_cond)
-        # the rescaling in the next line is not in the huggingface code, but without it the images from 
+        # the rescaling in the next line is not in the huggingface code, but without it the images from
         # the chosen controlnet model are very bad
         controlnet_cond = (controlnet_cong / self.vae.scaling_factor) + self.vae.shift_factor
         controlnet_cond = Flux1Controlnet._pack_latents(controlnet_cond, config.height, config.width)
@@ -158,7 +158,7 @@ class Flux1Controlnet:
             seed=seed,
             prompt=prompt,
             quantization=self.bits,
-            generation_time=time_steps.format_dict['elapsed'],
+            generation_time=time_steps.format_dict["elapsed"],
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
             config=config,
@@ -170,7 +170,7 @@ class Flux1Controlnet:
         latents = mx.transpose(latents, (0, 3, 1, 4, 2, 5))
         latents = mx.reshape(latents, (1, 16, height // 16 * 2, width // 16 * 2))
         return latents
-    
+
     @staticmethod
     def _pack_latents(latents: mx.array, height: int, width: int) -> mx.array:
         latents = mx.reshape(latents, (1, 16, height // 16, 2, width // 16, 2))

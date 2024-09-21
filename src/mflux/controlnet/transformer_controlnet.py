@@ -4,19 +4,22 @@ from mlx import nn
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.transformer.embed_nd import EmbedND
-from mflux.models.transformer.joint_transformer_block import JointTransformerBlock
-from mflux.models.transformer.single_transformer_block import SingleTransformerBlock
+from mflux.models.transformer.joint_transformer_block import (
+    JointTransformerBlock,
+)
+from mflux.models.transformer.single_transformer_block import (
+    SingleTransformerBlock,
+)
 from mflux.models.transformer.time_text_embed import TimeTextEmbed
 from mflux.models.transformer.transformer import Transformer
 
 
 class TransformerControlnet(nn.Module):
-
     def __init__(
-            self,
-            model_config: ModelConfig,
-            num_blocks: int,
-            num_single_blocks: int,
+        self,
+        model_config: ModelConfig,
+        num_blocks: int,
+        num_single_blocks: int,
     ):
         super().__init__()
         self.pos_embed = EmbedND()
@@ -33,13 +36,13 @@ class TransformerControlnet(nn.Module):
         self.controlnet_single_blocks = [nn.Linear(3072, 3072) for _ in range(num_single_blocks)]
 
     def forward(
-            self,
-            t: int,
-            prompt_embeds: mx.array,
-            pooled_prompt_embeds: mx.array,
-            hidden_states: mx.array,
-            controlnet_cond: mx.array,
-            config: RuntimeConfig,
+        self,
+        t: int,
+        prompt_embeds: mx.array,
+        pooled_prompt_embeds: mx.array,
+        hidden_states: mx.array,
+        controlnet_cond: mx.array,
+        config: RuntimeConfig,
     ) -> (list[mx.array], list[mx.array]):
         time_step = config.sigmas[t] * config.num_train_steps
         time_step = mx.broadcast_to(time_step, (1,)).astype(config.precision)
@@ -61,7 +64,7 @@ class TransformerControlnet(nn.Module):
                 hidden_states=hidden_states,
                 encoder_hidden_states=encoder_hidden_states,
                 text_embeddings=text_embeddings,
-                rotary_embeddings=image_rotary_emb
+                rotary_embeddings=image_rotary_emb,
             )
             block_samples = block_samples + (hidden_states,)
 
@@ -78,9 +81,9 @@ class TransformerControlnet(nn.Module):
             hidden_states = block.forward(
                 hidden_states=hidden_states,
                 text_embeddings=text_embeddings,
-                rotary_embeddings=image_rotary_emb
+                rotary_embeddings=image_rotary_emb,
             )
-            single_block_samples = single_block_samples + (hidden_states[:, encoder_hidden_states.shape[1]:],)
+            single_block_samples = single_block_samples + (hidden_states[:, encoder_hidden_states.shape[1] :],)
 
         controlnet_single_block_samples = ()
         for single_block_sample, controlnet_block in zip(single_block_samples, self.controlnet_single_blocks):

@@ -5,15 +5,20 @@ from mlx import nn
 
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.models.transformer.ada_layer_norm_continous import AdaLayerNormContinuous
+from mflux.models.transformer.ada_layer_norm_continous import (
+    AdaLayerNormContinuous,
+)
 from mflux.models.transformer.embed_nd import EmbedND
-from mflux.models.transformer.joint_transformer_block import JointTransformerBlock
-from mflux.models.transformer.single_transformer_block import SingleTransformerBlock
+from mflux.models.transformer.joint_transformer_block import (
+    JointTransformerBlock,
+)
+from mflux.models.transformer.single_transformer_block import (
+    SingleTransformerBlock,
+)
 from mflux.models.transformer.time_text_embed import TimeTextEmbed
 
 
 class Transformer(nn.Module):
-
     def __init__(self, model_config: ModelConfig):
         super().__init__()
         self.pos_embed = EmbedND()
@@ -26,14 +31,14 @@ class Transformer(nn.Module):
         self.proj_out = nn.Linear(3072, 64)
 
     def predict(
-            self,
-            t: int,
-            prompt_embeds: mx.array,
-            pooled_prompt_embeds: mx.array,
-            hidden_states: mx.array,
-            config: RuntimeConfig,
-            controlnet_block_samples: list[mx.array] | None = None,
-            controlnet_single_block_samples: list[mx.array] | None = None,
+        self,
+        t: int,
+        prompt_embeds: mx.array,
+        pooled_prompt_embeds: mx.array,
+        hidden_states: mx.array,
+        config: RuntimeConfig,
+        controlnet_block_samples: list[mx.array] | None = None,
+        controlnet_single_block_samples: list[mx.array] | None = None,
     ) -> mx.array:
         time_step = config.sigmas[t] * config.num_train_steps
         time_step = mx.broadcast_to(time_step, (1,)).astype(config.precision)
@@ -51,7 +56,7 @@ class Transformer(nn.Module):
                 hidden_states=hidden_states,
                 encoder_hidden_states=encoder_hidden_states,
                 text_embeddings=text_embeddings,
-                rotary_embeddings=image_rotary_emb
+                rotary_embeddings=image_rotary_emb,
             )
             if controlnet_block_samples is not None and len(controlnet_block_samples) > 0:
                 interval_control = len(self.transformer_blocks) / len(controlnet_block_samples)
@@ -64,7 +69,7 @@ class Transformer(nn.Module):
             hidden_states = block.forward(
                 hidden_states=hidden_states,
                 text_embeddings=text_embeddings,
-                rotary_embeddings=image_rotary_emb
+                rotary_embeddings=image_rotary_emb,
             )
             if controlnet_single_block_samples is not None and len(controlnet_single_block_samples) > 0:
                 interval_control = len(self.single_transformer_blocks) / len(controlnet_single_block_samples)
@@ -74,7 +79,7 @@ class Transformer(nn.Module):
                     + controlnet_single_block_samples[idx // interval_control]
                 )
 
-        hidden_states = hidden_states[:, encoder_hidden_states.shape[1]:, ...]
+        hidden_states = hidden_states[:, encoder_hidden_states.shape[1] :, ...]
         hidden_states = self.norm_out.forward(hidden_states, text_embeddings)
         hidden_states = self.proj_out(hidden_states)
         noise = hidden_states

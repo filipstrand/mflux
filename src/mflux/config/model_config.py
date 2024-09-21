@@ -6,11 +6,11 @@ class ModelConfig(Enum):
     FLUX1_SCHNELL = ("black-forest-labs/FLUX.1-schnell", "schnell", 1000, 256)
 
     def __init__(
-            self,
-            model_name: str,
-            alias: str,
-            num_train_steps: int,
-            max_sequence_length: int,
+        self,
+        model_name: str,
+        alias: str,
+        num_train_steps: int,
+        max_sequence_length: int,
     ):
         self.alias = alias
         self.model_name = model_name

@@ -6,7 +6,6 @@ from mflux.models.vae.decoder.up_sampler import UpSampler
 
 
 class UpBlock3(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.resnets = [

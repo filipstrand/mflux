@@ -5,7 +5,6 @@ from mflux.tokenizer.clip_tokenizer import TokenizerCLIP
 
 
 class CLIPEmbeddings(nn.Module):
-
     def __init__(self, dims: int):
         super().__init__()
         self.position_embedding = nn.Embedding(num_embeddings=TokenizerCLIP.MAX_TOKEN_LENGTH, dims=dims)

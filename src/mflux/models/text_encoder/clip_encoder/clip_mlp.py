@@ -3,7 +3,6 @@ from mlx import nn
 
 
 class CLIPMLP(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.fc1 = nn.Linear(input_dims=768, output_dims=3072)

@@ -4,7 +4,6 @@ import PIL
 
 
 class ControlnetUtil:
-
     @staticmethod
     def preprocess_canny(img: PIL.Image) -> PIL.Image:
         image_to_canny = np.array(img)
