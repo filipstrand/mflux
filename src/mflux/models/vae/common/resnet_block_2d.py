@@ -4,6 +4,7 @@ from mlx import nn
 from mflux.config.config import Config
 
 
+# fmt: off
 class ResnetBlock2D(nn.Module):
     def __init__(
         self,
