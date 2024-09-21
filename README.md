@@ -53,7 +53,7 @@ pip install -U mflux
 3. Follow format and lint checks prior to submitting Pull Requests. The recommended `make lint` and `make format` installs and uses [`ruff`](https://github.com/astral-sh/ruff). You can setup your editor/IDE to lint/format automatically, or use our provided `make` helpers:
   - `make format` - formats your code
   - `make lint` - shows your lint errors and warnings, but does not auto fix
-  - `make autofix` - formats your code **and** attempts to auto fix lint errors
+  - `make check` - via `pre-commit` hooks, formats your code **and** attempts to auto fix lint errors
   - consult official [`ruff` documentation](https://docs.astral.sh/ruff/) on advanced usages
 
 </details>
