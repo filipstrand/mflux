@@ -10,6 +10,7 @@ from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.controlnet.controlnet_util import ControlnetUtil
 from mflux.controlnet.transformer_controlnet import TransformerControlnet
+from mflux.controlnet.weight_handler_controlnet import WeightHandlerControlnet
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.transformer.transformer import Transformer
@@ -79,7 +80,7 @@ class Flux1Controlnet:
         if weights.quantization_level is not None:
             self._set_model_weights(weights)
 
-        weights_controlnet, ctrlnet_quantization_level, controlnet_config = WeightHandler.load_controlnet_transformer(
+        weights_controlnet, ctrlnet_quantization_level, controlnet_config = WeightHandlerControlnet.load_controlnet_transformer(
             controlnet_id=CONTROLNET_ID
         )
         self.transformer_controlnet = TransformerControlnet(
