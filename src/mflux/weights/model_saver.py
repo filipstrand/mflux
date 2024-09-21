@@ -7,7 +7,6 @@ from transformers import CLIPTokenizer, T5Tokenizer
 
 
 class ModelSaver:
-
     @staticmethod
     def save_model(model, bits: int, base_path: str):
         # Save the tokenizers
@@ -32,7 +31,11 @@ class ModelSaver:
         path.mkdir(parents=True, exist_ok=True)
         weights = ModelSaver._split_weights(base_path, dict(tree_flatten(model.parameters())))
         for i, weight in enumerate(weights):
-            mx.save_safetensors(str(path / f"{i}.safetensors"), weight, {"quantization_level": str(bits)})
+            mx.save_safetensors(
+                str(path / f"{i}.safetensors"),
+                weight,
+                {"quantization_level": str(bits)},
+            )
 
     @staticmethod
     def _split_weights(base_path: str, weights: dict, max_file_size_gb: int = 2) -> list:

@@ -2,7 +2,6 @@ from mflux.config.config import Config
 
 
 class WeightUtil:
-
     @staticmethod
     def flatten(params):
         return [(k, v) for p in params for (k, v) in p]

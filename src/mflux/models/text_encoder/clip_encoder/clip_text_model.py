@@ -6,7 +6,6 @@ from mflux.models.text_encoder.clip_encoder.encoder_clip import EncoderCLIP
 
 
 class CLIPTextModel(nn.Module):
-
     def __init__(self, dims: int, num_encoder_layers: int):
         super().__init__()
         self.encoder = EncoderCLIP(num_encoder_layers)

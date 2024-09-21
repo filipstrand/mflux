@@ -11,7 +11,6 @@ from mflux.models.vae.decoder.up_block_4 import UpBlock4
 
 
 class Decoder(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.conv_in = ConvIn()

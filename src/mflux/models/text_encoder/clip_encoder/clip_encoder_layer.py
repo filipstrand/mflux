@@ -6,7 +6,6 @@ from mflux.models.text_encoder.clip_encoder.clip_sdpa_attention import CLIPSdpaA
 
 
 class CLIPEncoderLayer(nn.Module):
-
     def __init__(self, layer: int):
         super().__init__()
         self.self_attn = CLIPSdpaAttention()

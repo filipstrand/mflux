@@ -5,7 +5,6 @@ from mflux.models.vae.common.resnet_block_2d import ResnetBlock2D
 
 
 class DownBlock4(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.resnets = [

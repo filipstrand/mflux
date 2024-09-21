@@ -3,7 +3,6 @@ from mlx import nn
 
 
 class EmbedND(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.dim = 3072
@@ -20,7 +19,7 @@ class EmbedND(nn.Module):
     @staticmethod
     def rope(pos: mx.array, dim: int, theta: float) -> mx.array:
         scale = mx.arange(0, dim, 2, dtype=mx.float32) / dim
-        omega = 1.0 / (theta ** scale)
+        omega = 1.0 / (theta**scale)
         batch_size, seq_length = pos.shape
         pos_expanded = mx.expand_dims(pos, axis=-1)
         omega_expanded = mx.expand_dims(omega, axis=0)
