@@ -1,6 +1,4 @@
 import argparse
-import os
-import sys
 import time
 
 from mflux import Flux1, Config, ModelConfig
