@@ -78,7 +78,7 @@ class LoraUtil:
                     if parentKey not in visited:
                         visited[parentKey] = {}
                     visited[parentKey][splitKey] = weight
-                    if not "weight" in target:
+                    if "weight" not in target:
                         raise ValueError(f"LoRA weights for layer {parentKey} cannot be loaded into the model.")
                     if "lora_A" in visited[parentKey] and "lora_B" in visited[parentKey]:
                         lora_a = visited[parentKey]["lora_A"]

@@ -25,7 +25,6 @@ class LoRAConverter:
     def _load_pytorch_weights(lora_path: str) -> dict:
         state_dict = {}
         with safe_open(lora_path, framework="pt") as f:
-            metadata = f.metadata()
             for k in f.keys():
                 state_dict[k] = f.get_tensor(k)
         return state_dict
