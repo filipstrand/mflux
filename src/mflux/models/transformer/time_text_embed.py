@@ -10,14 +10,18 @@ from mflux.models.transformer.guidance_embedder import GuidanceEmbedder
 
 
 class TimeTextEmbed(nn.Module):
-
     def __init__(self, model_config: ModelConfig):
         super().__init__()
         self.text_embedder = TextEmbedder()
         self.guidance_embedder = GuidanceEmbedder() if model_config == ModelConfig.FLUX1_DEV else None
         self.timestep_embedder = TimestepEmbedder()
 
-    def forward(self, time_step: mx.array, pooled_projection: mx.array, guidance: mx.array) -> mx.array:
+    def forward(
+        self,
+        time_step: mx.array,
+        pooled_projection: mx.array,
+        guidance: mx.array,
+    ) -> mx.array:
         time_steps_proj = self._time_proj(time_step)
         time_steps_emb = self.timestep_embedder.forward(time_steps_proj)
         if self.guidance_embedder is not None:
@@ -37,4 +41,3 @@ class TimeTextEmbed(nn.Module):
         emb = mx.concatenate([mx.sin(emb), mx.cos(emb)], axis=-1)
         emb = mx.concatenate([emb[:, half_dim:], emb[:, :half_dim]], axis=-1)
         return emb
-

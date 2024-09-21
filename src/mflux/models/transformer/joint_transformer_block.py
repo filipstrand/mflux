@@ -7,7 +7,6 @@ from mflux.models.transformer.joint_attention import JointAttention
 
 
 class JointTransformerBlock(nn.Module):
-
     def __init__(self, layer):
         super().__init__()
         self.layer = layer
@@ -20,11 +19,11 @@ class JointTransformerBlock(nn.Module):
         self.norm2_context = nn.LayerNorm(dims=1536, eps=1e-6, affine=False)
 
     def forward(
-            self,
-            hidden_states: mx.array,
-            encoder_hidden_states: mx.array,
-            text_embeddings: mx.array,
-            rotary_embeddings: mx.array
+        self,
+        hidden_states: mx.array,
+        encoder_hidden_states: mx.array,
+        text_embeddings: mx.array,
+        rotary_embeddings: mx.array,
     ) -> (mx.array, mx.array):
         norm_hidden_states, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.norm1.forward(hidden_states, text_embeddings)
 

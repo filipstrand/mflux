@@ -19,14 +19,13 @@ from mflux.weights.weight_handler import WeightHandler
 
 
 class Flux1:
-
     def __init__(
-            self,
-            model_config: ModelConfig,
-            quantize: int | None = None,
-            local_path: str | None = None,
-            lora_paths: list[str] | None = None,
-            lora_scales: list[float] | None = None,
+        self,
+        model_config: ModelConfig,
+        quantize: int | None = None,
+        local_path: str | None = None,
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
     ):
         self.lora_paths = lora_paths
         self.lora_scales = lora_scales
@@ -110,7 +109,7 @@ class Flux1:
             seed=seed,
             prompt=prompt,
             quantization=self.bits,
-            generation_time=time_steps.format_dict['elapsed'],
+            generation_time=time_steps.format_dict["elapsed"],
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
             config=config,

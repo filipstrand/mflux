@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 # This script is based on `convert_flux_lora.py` from `kohya-ss/sd-scripts`.
 # For more info, see: https://github.com/kohya-ss/sd-scripts/blob/sd3/networks/convert_flux_lora.py
 
-class LoRAConverter:
 
+class LoRAConverter:
     @staticmethod
     def load_weights(lora_path: str) -> dict:
         state_dict = LoRAConverter._load_pytorch_weights(lora_path)
@@ -25,7 +25,6 @@ class LoRAConverter:
     def _load_pytorch_weights(lora_path: str) -> dict:
         state_dict = {}
         with safe_open(lora_path, framework="pt") as f:
-            metadata = f.metadata()
             for k in f.keys():
                 state_dict[k] = f.get_tensor(k)
         return state_dict
@@ -38,7 +37,7 @@ class LoRAConverter:
                 source,
                 target,
                 f"lora_unet_double_blocks_{i}_img_attn_proj",
-                f"transformer.transformer_blocks.{i}.attn.to_out.0"
+                f"transformer.transformer_blocks.{i}.attn.to_out.0",
             )
             LoRAConverter._convert_to_diffusers_cat(
                 source,
@@ -54,25 +53,25 @@ class LoRAConverter:
                 source,
                 target,
                 f"lora_unet_double_blocks_{i}_img_mlp_0",
-                f"transformer.transformer_blocks.{i}.ff.net.0.proj"
+                f"transformer.transformer_blocks.{i}.ff.net.0.proj",
             )
             LoRAConverter._convert_to_diffusers(
                 source,
                 target,
                 f"lora_unet_double_blocks_{i}_img_mlp_2",
-                f"transformer.transformer_blocks.{i}.ff.net.2"
+                f"transformer.transformer_blocks.{i}.ff.net.2",
             )
             LoRAConverter._convert_to_diffusers(
                 source,
                 target,
                 f"lora_unet_double_blocks_{i}_img_mod_lin",
-                f"transformer.transformer_blocks.{i}.norm1.linear"
+                f"transformer.transformer_blocks.{i}.norm1.linear",
             )
             LoRAConverter._convert_to_diffusers(
                 source,
                 target,
                 f"lora_unet_double_blocks_{i}_txt_attn_proj",
-                f"transformer.transformer_blocks.{i}.attn.to_add_out"
+                f"transformer.transformer_blocks.{i}.attn.to_add_out",
             )
             LoRAConverter._convert_to_diffusers_cat(
                 source,
@@ -88,19 +87,19 @@ class LoRAConverter:
                 source,
                 target,
                 f"lora_unet_double_blocks_{i}_txt_mlp_0",
-                f"transformer.transformer_blocks.{i}.ff_context.net.0.proj"
+                f"transformer.transformer_blocks.{i}.ff_context.net.0.proj",
             )
             LoRAConverter._convert_to_diffusers(
                 source,
                 target,
                 f"lora_unet_double_blocks_{i}_txt_mlp_2",
-                f"transformer.transformer_blocks.{i}.ff_context.net.2"
+                f"transformer.transformer_blocks.{i}.ff_context.net.2",
             )
             LoRAConverter._convert_to_diffusers(
                 source,
                 target,
                 f"lora_unet_double_blocks_{i}_txt_mod_lin",
-                f"transformer.transformer_blocks.{i}.norm1_context.linear"
+                f"transformer.transformer_blocks.{i}.norm1_context.linear",
             )
 
         for i in range(38):
@@ -120,12 +119,13 @@ class LoRAConverter:
                 source,
                 target,
                 f"lora_unet_single_blocks_{i}_linear2",
-                f"transformer.single_transformer_blocks.{i}.proj_out"
+                f"transformer.single_transformer_blocks.{i}.proj_out",
             )
             LoRAConverter._convert_to_diffusers(
                 source,
-                target, f"lora_unet_single_blocks_{i}_modulation_lin",
-                f"transformer.single_transformer_blocks.{i}.norm.linear"
+                target,
+                f"lora_unet_single_blocks_{i}_modulation_lin",
+                f"transformer.single_transformer_blocks.{i}.norm.linear",
             )
 
         if len(source) > 0:
@@ -133,12 +133,7 @@ class LoRAConverter:
         return target
 
     @staticmethod
-    def _convert_to_diffusers(
-            source: dict,
-            target: dict,
-            source_key: str,
-            target_key: str
-    ):
+    def _convert_to_diffusers(source: dict, target: dict, source_key: str, target_key: str):
         if source_key + ".lora_down.weight" not in source:
             return
         down_weight = source.pop(source_key + ".lora_down.weight")
@@ -160,11 +155,11 @@ class LoRAConverter:
 
     @staticmethod
     def _convert_to_diffusers_cat(
-            source: dict,
-            target: dict,
-            source_key: str,
-            target_keys: list[str],
-            dims=None
+        source: dict,
+        target: dict,
+        source_key: str,
+        target_keys: list[str],
+        dims=None,
     ):
         if source_key + ".lora_down.weight" not in source:
             return
@@ -204,7 +199,12 @@ class LoRAConverter:
                     if j == k:
                         continue
                     is_sparse = is_sparse and torch.all(
-                        up_weight[i: i + dims[j], k * diffusers_rank: (k + 1) * diffusers_rank] == 0)
+                        up_weight[
+                            i : i + dims[j],
+                            k * diffusers_rank : (k + 1) * diffusers_rank,
+                        ]
+                        == 0
+                    )
                 i += dims[j]
             if is_sparse:
                 logger.info(f"weight is sparse: {source_key}")
@@ -220,12 +220,23 @@ class LoRAConverter:
             target.update({k: v for k, v in zip(diffusers_up_keys, torch.split(up_weight, dims, dim=0))})
         else:
             # down_weight is chunked to each split
-            target.update({k: v for k, v in zip(diffusers_down_keys, torch.chunk(down_weight, num_splits, dim=0))})
+            target.update(
+                {
+                    k: v
+                    for k, v in zip(
+                        diffusers_down_keys,
+                        torch.chunk(down_weight, num_splits, dim=0),
+                    )
+                }
+            )
 
             # up_weight is sparse: only non-zero values are copied to each split
             i = 0
             for j in range(len(dims)):
-                target[diffusers_up_keys[j]] = up_weight[i: i + dims[j], j * diffusers_rank: (j + 1) * diffusers_rank].contiguous()
+                target[diffusers_up_keys[j]] = up_weight[
+                    i : i + dims[j],
+                    j * diffusers_rank : (j + 1) * diffusers_rank,
+                ].contiguous()
                 i += dims[j]
 
     @staticmethod

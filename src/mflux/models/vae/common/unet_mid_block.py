@@ -6,13 +6,12 @@ from mflux.models.vae.common.resnet_block_2d import ResnetBlock2D
 
 
 class UnetMidBlock(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.attentions = [Attention()]
         self.resnets = [
             ResnetBlock2D(norm1=512, conv1_in=512, conv1_out=512, norm2=512, conv2_in=512, conv2_out=512),
-            ResnetBlock2D(norm1=512, conv1_in=512, conv1_out=512, norm2=512, conv2_in=512, conv2_out=512)
+            ResnetBlock2D(norm1=512, conv1_in=512, conv1_out=512, norm2=512, conv2_in=512, conv2_out=512),
         ]
 
     def forward(self, input_array: mx.array) -> mx.array:

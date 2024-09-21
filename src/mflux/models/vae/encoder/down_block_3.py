@@ -6,7 +6,6 @@ from mflux.models.vae.encoder.down_sampler import DownSampler
 
 
 class DownBlock3(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.resnets = [
