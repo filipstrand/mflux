@@ -2,9 +2,34 @@
 ![image](src/mflux/assets/logo.png)
 *A MLX port of FLUX based on the Huggingface Diffusers implementation.*
 
+
 ### About
 
 Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black Forest Labs](https://blackforestlabs.ai) locally on your Mac!
+
+### Table of contents
+
+<!-- TOC start (generated with https://github.com/derlin/bitdowntoc) -->
+
+- [Philosophy](#philosophy)
+- [💿 Installation](#-installation)
+- [🖼️ Generating an image](#-generating-an-image)
+  * [📜 Full list of Command-Line Arguments](#-full-list-of-command-line-arguments)
+- [⏱️ Image generation speed (updated)](#-image-generation-speed-updated)
+- [↔️ Equivalent to Diffusers implementation](#-equivalent-to-diffusers-implementation)
+- [🗜️ Quantization](#-quantization)
+  * [📊 Size comparisons for quantized models](#-size-comparisons-for-quantized-models)
+  * [💾 Saving a quantized version to disk](#-saving-a-quantized-version-to-disk)
+  * [💽 Loading and running a quantized version from disk](#-loading-and-running-a-quantized-version-from-disk)
+- [💽 Running a non-quantized model directly from disk](#-running-a-non-quantized-model-directly-from-disk)
+- [🔌 LoRA](#-lora)
+  * [Multi-LoRA](#multi-lora)
+  * [Supported LoRA formats (updated)](#supported-lora-formats-updated)
+- [🕹️ Controlnet](#-controlnet)
+- [🚧 Current limitations](#-current-limitations)
+- [✅ TODO](#-todo)
+
+<!-- TOC end -->
 
 ### Philosophy
 
@@ -17,15 +42,15 @@ All models are implemented from scratch in MLX and only the tokenizers are used 
 [Huggingface Transformers](https://github.com/huggingface/transformers) library. Other than that, there are only minimal dependencies
 like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) for simple image post-processing.
 
-### Models
 
-- [x] FLUX.1-Scnhell
-- [x] FLUX.1-Dev
+### 💿 Installation
+For users, the easiest way to install MFLUX is to use `uv tool`: If you have [installed `uv`](https://github.com/astral-sh/uv?tab=readme-ov-file#installation), simply: 
 
-### Installation
-For users, the easiest way to install MFLUX is to use `uv tool`:
+```sh
+uv tool install mflux
+``` 
 
-If you have [installed `uv`](https://github.com/astral-sh/uv?tab=readme-ov-file#installation), simply: `uv tool install mflux` to get the `mflux-generate` and related command line executables. You can skip to the usage guides below.
+to get the `mflux-generate` and related command line executables. You can skip to the usage guides below.
 
 <details>
 <summary>For the classic way to create a user virtual environment:</summary>
@@ -46,11 +71,19 @@ pip install -U mflux
 <summary>For contributors (click to expand)</summary>
 
 1. Clone the repo:
- ```sh
+```sh
  git clone git@github.com:filipstrand/mflux.git
  ```
-2. `make install` and `make test` (and `make clean` for venv resets)
-3. Follow format and lint checks prior to submitting Pull Requests. The recommended `make lint` and `make format` installs and uses [`ruff`](https://github.com/astral-sh/ruff). You can setup your editor/IDE to lint/format automatically, or use our provided `make` helpers:
+2. Install the application
+
+```sh
+ make install
+ ```
+3. To run the test suite 
+```sh
+ make test
+ ```
+4. Follow format and lint checks prior to submitting Pull Requests. The recommended `make lint` and `make format` installs and uses [`ruff`](https://github.com/astral-sh/ruff). You can setup your editor/IDE to lint/format automatically, or use our provided `make` helpers:
   - `make format` - formats your code
   - `make lint` - shows your lint errors and warnings, but does not auto fix
   - `make check` - via `pre-commit` hooks, formats your code **and** attempts to auto fix lint errors
@@ -58,7 +91,7 @@ pip install -U mflux
 
 </details>
 
-### Generating an image
+### 🖼️ Generating an image
 
 Run the command `mflux-generate` by specifying a prompt and the model and some optional arguments. For example, here we use a quantized version of the `schnell` model for 2 steps:
 
@@ -84,7 +117,7 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 🔒 [FLUX.1-dev currently requires granted access to its Huggingface repo. For troubleshooting, see the issue tracker](https://github.com/filipstrand/mflux/issues/14) 🔒
 
-#### Full list of Command-Line Arguments
+#### 📜 Full list of Command-Line Arguments
 
 - **`--prompt`** (required, `str`): Text description of the image to generate.
 
@@ -111,6 +144,10 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 - **`--lora-scales`** (optional, `[float]`, default: `None`): The scale for each respective [LoRA](#LoRA) (will default to `1.0` if not specified and only one LoRA weight is loaded.)
 
 - **`--metadata`** (optional): Exports a `.json` file containing the metadata for the image with the same name. (Even without this flag, the image metadata is saved and can be viewed using `exiftool image.png`)
+
+- **`--controlnet-image-path`** (required, `str`): Path to the local image used by ControlNet to guide output generation.
+
+- **`--controlnet-strength`** (optional, `float`, default: `0.4`): Degree of influence the control image has on the output. Ranges from `0.0` (no influence) to `1.0` (full influence).
 
 Or, with the correct python environment active, create and run a separate script like the following:
 
@@ -139,7 +176,7 @@ image.save(path="image.png")
 
 For more options on how to configure MFLUX, please see [generate.py](src/mflux/generate.py).
 
-### Image generation speed (updated)
+### ⏱️ Image generation speed (updated)
 
 These numbers are based on the non-quantized `schnell` model, with the configuration provided in the code snippet below.
 To time your machine, run the following:
@@ -168,7 +205,7 @@ time mflux-generate \
 *Note that these numbers includes starting the application from scratch, which means doing model i/o, setting/quantizing weights etc.
 If we assume that the model is already loaded, you can inspect the image metadata using `exiftool image.png` and see the total duration of the denoising loop (excluding text embedding).*
 
-### Equivalent to Diffusers implementation
+### ↔️ Equivalent to Diffusers implementation
 
 There is only a single source of randomness when generating an image: The initial latent array.
 In this implementation, this initial latent is fully deterministically controlled by the input `seed` parameter.
@@ -217,7 +254,7 @@ Luxury food photograph of an italian Linguine pasta alle vongole dish with lots 
 
 ---
 
-### Quantization
+### 🗜️ Quantization
 
 MFLUX supports running FLUX in 4-bit or 8-bit quantized mode. Running a quantized version can greatly speed up the
 generation process and reduce the memory consumption by several gigabytes. [Quantized models also take up less disk space](#size-comparisons-for-quantized-models).
@@ -241,7 +278,7 @@ By selecting the `--quantize` or `-q` flag to be `4`, `8`, or removing it entire
 Image generation times in this example are based on a 2021 M1 Pro (32GB) machine. Even though the images are almost identical, there is a ~2x speedup by
 running the 8-bit quantized version on this particular machine. Unlike the non-quantized version, for the 8-bit version the swap memory usage is drastically reduced and GPU utilization is close to 100% during the whole generation. Results here can vary across different machines.
 
-#### Size comparisons for quantized models
+#### 📊 Size comparisons for quantized models
 
 The model sizes for both `schnell` and `dev` at various quantization levels are as follows:
 
@@ -251,7 +288,7 @@ The model sizes for both `schnell` and `dev` at various quantization levels are 
 
 The reason weights sizes are not fully cut in half is because a small number of weights are not quantized and kept at full precision.
 
-#### Saving a quantized version to disk
+#### 💾 Saving a quantized version to disk
 
 To save a local copy of the quantized weights, run the `mflux-save` command like so:
 
@@ -278,7 +315,7 @@ mflux-save \
 When generating images with a model like this, no LoRA adapter is needed to be specified since
 it is already baked into the saved quantized weights.
 
-#### Loading and running a quantized version from disk
+#### 💽 Loading and running a quantized version from disk
 
 To generate a new image from the quantized model, simply provide a `--path` to where it was saved:
 
@@ -302,7 +339,7 @@ In other words, you can reclaim the 34GB diskspace (per model) by deleting the f
 - [madroid/flux.1-schnell-mflux-4bit](https://huggingface.co/madroid/flux.1-schnell-mflux-4bit)
 - [madroid/flux.1-dev-mflux-4bit](https://huggingface.co/madroid/flux.1-dev-mflux-4bit)
 
-### Running a non-quantized model directly from disk
+### 💽 Running a non-quantized model directly from disk
 
 MFLUX also supports running a non-quantized model directly from a custom location.
 In the example below, the model is placed in `/Users/filipstrand/Desktop/schnell`:
@@ -349,8 +386,9 @@ This mirrors how the resources are placed in the [HuggingFace Repo](https://hugg
 *Huggingface weights, unlike quantized ones exported directly from this project, have to be
 processed a bit differently, which is why we require this structure above.*
 
+---
 
-### LoRA
+### 🔌 LoRA
 
 MFLUX support loading trained [LoRA](https://huggingface.co/docs/diffusers/en/training/lora) adapters (actual training support is coming).
 
@@ -407,14 +445,48 @@ The following table show the current supported formats:
 
 To report additional formats, examples or other any suggestions related to LoRA format support, please see [issue #47](https://github.com/filipstrand/mflux/issues/47).
 
-### Current limitations
+---
+
+### 🕹️ Controlnet
+
+MFLUX has [Controlnet](https://github.com/lllyasviel/ControlNet?tab=readme-ov-file) support for an even more fine-grained control
+of the image generation. By providing a reference image via `--controlnet-image-path` and a strength parameter via `--controlnet-strength`, you can guide the generation toward the reference image.  
+
+```sh
+generate-controlnet \
+   --prompt "A picute..." \
+   --model dev \
+   --steps 20 \
+   --seed 43 \
+   -q 8 \
+   --controlnet-image-path "" \
+   --controlnet-strength ""
+```
+
+[EXAMPLE HERE SHOWING REF, OUTPUT AND EDGE IMAGE]
+
+⚠️ *Note: Controlnet requires an additional one-time download of ~3.58GB of weights from Huggingface. This happens automatically the first time you run the `generate-controlnet` command.
+At the moment, the Controlnet used is [InstantX/FLUX.1-dev-Controlnet-Canny](https://huggingface.co/InstantX/FLUX.1-dev-Controlnet-Canny), which was trained for the `dev` model. 
+It can work well with `schnell`, but performance is not guaranteed.* 
+
+⚠️ *Note: The output can be highly sensitive to the controlnet strength and is very much dependent on the reference image. 
+Too high settings will corrupt the image. A recommended starting point a value like 0.4 and to play around with the strength.*
+
+
+Controlnet can also work well together with [LoRA adapters](#lora). In the example below the same reference image is used as a controlnet input
+with different prompts and LoRA adapters active.
+
+![image](src/mflux/assets/controlnet.jpg)
+
+### 🚧 Current limitations
 
 - Images are generated one by one.
 - Negative prompts not supported.
 - LoRA weights are only supported for the transformer part of the network.
 - Some LoRA adapters does not work.
+- Currently, the supported controlnet is the [canny-only version](https://huggingface.co/InstantX/FLUX.1-dev-Controlnet-Canny). 
 
-### TODO
+### ✅ TODO
 
 - [ ] Establish unit test suite
 - [ ] LoRA fine-tuning
