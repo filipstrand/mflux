@@ -29,13 +29,17 @@ If you have [installed `uv`](https://github.com/astral-sh/uv?tab=readme-ov-file#
 
 <details>
 <summary>For the classic way to create a user virtual environment:</summary>
+
 ```
 mkdir -p mflux && cd mflux && python3 -m venv .venv && source .venv/bin/activate
 ```
+
 This creates and activates a virtual environment in the `mflux` folder. After that, install MFLUX via pip:
+
 ```
 pip install -U mflux
 ```
+
 </details>
 
 <details>
