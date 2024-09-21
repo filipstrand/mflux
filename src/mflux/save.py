@@ -1,6 +1,4 @@
 import argparse
-import os
-import sys
 
 from mflux import Flux1, ModelConfig
 
