@@ -1,13 +1,7 @@
 import argparse
-import os
-import sys
 import time
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from mflux.config.model_config import ModelConfig
-from mflux.config.config import Config
-from mflux.flux.flux import Flux1
+from mflux import Flux1, Config, ModelConfig
 
 
 def main():
