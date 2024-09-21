@@ -12,21 +12,20 @@ log = logging.getLogger(__name__)
 
 
 class GeneratedImage:
-
     def __init__(
-            self,
-            image: PIL.Image.Image,
-            model_config: ModelConfig,
-            seed: int,
-            prompt: str,
-            steps: int,
-            guidance: float | None,
-            precision: mx.Dtype,
-            quantization: int,
-            generation_time: float,
-            lora_paths: list[str],
-            lora_scales: list[float],
-            controlnet_strength: float | None = None,
+        self,
+        image: PIL.Image.Image,
+        model_config: ModelConfig,
+        seed: int,
+        prompt: str,
+        steps: int,
+        guidance: float | None,
+        precision: mx.Dtype,
+        quantization: int,
+        generation_time: float,
+        lora_paths: list[str],
+        lora_scales: list[float],
+        controlnet_strength: float | None = None,
     ):
         self.image = image
         self.model_config = model_config
@@ -61,7 +60,7 @@ class GeneratedImage:
 
             # Optionally save json metadata file
             if export_json_metadata:
-                with open(f"{file_path.with_suffix('.json')}", 'w') as json_file:
+                with open(f"{file_path.with_suffix('.json')}", "w") as json_file:
                     json.dump(self._get_metadata(), json_file, indent=4)
 
             # Embed metadata
@@ -79,33 +78,27 @@ class GeneratedImage:
             metadata_str = str(metadata)
 
             # Convert the string to bytes (using UTF-8 encoding)
-            user_comment_bytes = metadata_str.encode('utf-8')
+            user_comment_bytes = metadata_str.encode("utf-8")
 
             # Define the UserComment tag ID
             USER_COMMENT_TAG_ID = 0x9286
 
             # Create an EXIF dictionary
             exif_dict = {
-                '0th': {},
-                'Exif': {
-                    USER_COMMENT_TAG_ID: user_comment_bytes
-                },
-                'GPS': {},
-                '1st': {},
-                'thumbnail': None
+                "0th": {},
+                "Exif": {USER_COMMENT_TAG_ID: user_comment_bytes},
+                "GPS": {},
+                "1st": {},
+                "thumbnail": None,
             }
 
             # Create a piexif-compatible dictionary structure
-            exif_piexif_dict = {
-                'Exif': {
-                    USER_COMMENT_TAG_ID: user_comment_bytes
-                }
-            }
+            exif_piexif_dict = {"Exif": {USER_COMMENT_TAG_ID: user_comment_bytes}}
 
             # Load the image and embed the EXIF data
             image = PIL.Image.open(path)
             exif_bytes = piexif.dump(exif_piexif_dict)
-            image.info['exif'] = exif_bytes
+            image.info["exif"] = exif_bytes
 
             # Save the image with metadata
             image.save(path, exif=exif_bytes)
@@ -115,15 +108,15 @@ class GeneratedImage:
 
     def _get_metadata(self) -> dict:
         return {
-            'model': str(self.model_config.alias),
-            'seed': str(self.seed),
-            'steps': str(self.steps),
-            'guidance': "None" if self.model_config == ModelConfig.FLUX1_SCHNELL else str(self.guidance),
-            'precision': f"{self.precision}",
-            'quantization': "None" if self.quantization is None else f"{self.quantization} bit",
-            'generation_time': f"{self.generation_time:.2f} seconds",
-            'lora_paths': ', '.join(self.lora_paths) if self.lora_paths else '',
-            'lora_scales': ', '.join([f"{scale:.2f}" for scale in self.lora_scales]) if self.lora_scales else '',
-            'prompt': self.prompt,
-            'controlnet_strength': "None" if self.controlnet_strength is None else f"{self.controlnet_strength:.2f}",
+            "model": str(self.model_config.alias),
+            "seed": str(self.seed),
+            "steps": str(self.steps),
+            "guidance": "None" if self.model_config == ModelConfig.FLUX1_SCHNELL else str(self.guidance),
+            "precision": f"{self.precision}",
+            "quantization": "None" if self.quantization is None else f"{self.quantization} bit",
+            "generation_time": f"{self.generation_time:.2f} seconds",
+            "lora_paths": ", ".join(self.lora_paths) if self.lora_paths else "",
+            "lora_scales": ", ".join([f"{scale:.2f}" for scale in self.lora_scales]) if self.lora_scales else "",
+            "prompt": self.prompt,
+            "controlnet_strength": "None" if self.controlnet_strength is None else f"{self.controlnet_strength:.2f}",
         }

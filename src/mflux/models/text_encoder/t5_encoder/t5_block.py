@@ -6,7 +6,6 @@ from mflux.models.text_encoder.t5_encoder.t5_feed_forward import T5FeedForward
 
 
 class T5Block(nn.Module):
-
     def __init__(self, layer: int):
         super().__init__()
         self.attention = T5Attention()

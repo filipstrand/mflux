@@ -4,10 +4,10 @@ from mflux import Flux1, ModelConfig
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Save a quantized version of Flux.1 to disk.')
-    parser.add_argument('--path', type=str, required=True, help='Local path for loading a model from disk')
-    parser.add_argument('--model', "-m", type=str, required=True, choices=["dev", "schnell"], help='The model to use ("schnell" or "dev").')
-    parser.add_argument('--quantize',  "-q", type=int, choices=[4, 8], default=8, help='Quantize the model (4 or 8, Default is 8)')
+    parser = argparse.ArgumentParser(description="Save a quantized version of Flux.1 to disk.")
+    parser.add_argument("--path", type=str, required=True, help="Local path for loading a model from disk")
+    parser.add_argument("--model", "-m", type=str, required=True, choices=["dev", "schnell"], help="The model to use (\"schnell\" or \"dev\").")
+    parser.add_argument("--quantize", "-q", type=int, choices=[4, 8], default=8, help="Quantize the model (4 or 8, Default is 8)")
 
     args = parser.parse_args()
 
@@ -23,5 +23,5 @@ def main():
     print(f"Model saved at {args.path}\n")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

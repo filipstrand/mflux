@@ -5,4 +5,11 @@ from mflux.controlnet.flux_controlnet import Flux1Controlnet
 from mflux.flux.flux import Flux1
 from mflux.post_processing.image_util import ImageUtil
 
-__all__ = ["Flux1", "Flux1Controlnet", "Config", "ConfigControlnet", "ModelConfig", "ImageUtil"]
+__all__ = [
+    "Flux1",
+    "Flux1Controlnet",
+    "Config",
+    "ConfigControlnet",
+    "ModelConfig",
+    "ImageUtil",
+]

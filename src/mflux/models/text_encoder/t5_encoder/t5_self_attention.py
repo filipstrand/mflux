@@ -5,7 +5,6 @@ from mlx import nn
 
 
 class T5SelfAttention(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.q = nn.Linear(4096, 4096, bias=False)
@@ -64,7 +63,7 @@ class T5SelfAttention(nn.Module):
         ).astype(mx.int32)
         relative_position_if_large = mx.minimum(
             relative_position_if_large,
-            mx.full(relative_position_if_large.shape, num_buckets - 1)
+            mx.full(relative_position_if_large.shape, num_buckets - 1),
         )
 
         relative_buckets += mx.where(is_small, relative_position, relative_position_if_large)

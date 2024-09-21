@@ -9,17 +9,16 @@ from mflux.post_processing.generated_image import GeneratedImage
 
 
 class ImageUtil:
-
     @staticmethod
     def to_image(
-            decoded_latents: mx.array,
-            seed: int,
-            prompt: str,
-            quantization: int,
-            generation_time: float,
-            lora_paths: list[str],
-            lora_scales: list[float],
-            config: RuntimeConfig,
+        decoded_latents: mx.array,
+        seed: int,
+        prompt: str,
+        quantization: int,
+        generation_time: float,
+        lora_paths: list[str],
+        lora_scales: list[float],
+        config: RuntimeConfig,
     ) -> GeneratedImage:
         normalized = ImageUtil._denormalize(decoded_latents)
         normalized_numpy = ImageUtil._to_numpy(normalized)
@@ -73,7 +72,7 @@ class ImageUtil:
         array = mx.transpose(array, (0, 3, 1, 2))
         array = ImageUtil._normalize(array)
         return array
-    
+
     @staticmethod
     def load_image(path: str) -> Image.Image:
         return Image.open(path)
