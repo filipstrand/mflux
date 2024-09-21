@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import mlx.core as mx
 from mlx import nn
 
@@ -77,12 +75,12 @@ class TransformerControlnet(nn.Module):
 
         single_block_samples = ()
         for block in self.single_transformer_blocks:
-            ctrlnet_hidden_states = block.forward(
-                hidden_states=ctrlnet_hidden_states,
+            hidden_states = block.forward(
+                hidden_states=hidden_states,
                 text_embeddings=text_embeddings,
                 rotary_embeddings=image_rotary_emb
             )
-            single_block_samples = single_block_samples + (ctrlnet_hidden_states[:, encoder_hidden_states.shape[1] :],)
+            single_block_samples = single_block_samples + (hidden_states[:, encoder_hidden_states.shape[1]:],)
 
         controlnet_single_block_samples = ()
         for single_block_sample, controlnet_block in zip(single_block_samples, self.controlnet_single_blocks):
