@@ -4,7 +4,6 @@ import sys
 import os
 import argparse
 
-# Voeg dit toe aan het begin van je script, na de imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from mflux.config.model_config import ModelConfig
@@ -13,7 +12,6 @@ from mflux.flux.flux import Flux1
 from mflux.controlnet.flux_controlnet import Flux1Controlnet
 from mflux.post_processing.image_util import ImageUtil
 
-# Voeg deze regel toe aan het begin van je script, na de imports
 LORA_DIR = os.path.join(os.path.dirname(__file__), 'lora')
 
 def get_available_lora_files(lora_dir):
@@ -97,12 +95,16 @@ def save_quantized_model_gradio(model, quantize, save_path):
 
     return f"Model saved at {save_path}"
 
-def simple_generate_image(prompt, height, width, lora_files, lora_scales_str):
+def simple_generate_image(prompt, model, height, width, lora_files, lora_scales_str):
     lora_paths = [os.path.join(LORA_DIR, f) for f in lora_files] if lora_files else None
     lora_scales = [float(s.strip()) for s in lora_scales_str.split(',')] if lora_scales_str else None
 
+    steps = 20 if model == "dev (slow quality)" else 4
+    model_alias = "dev" if model == "dev (slow quality)" else "schnell"
+
     flux = Flux1(
-        model_config=ModelConfig.from_alias("dev"),  # We gebruiken het 'dev' model voor deze simpele generatie
+        model_config=ModelConfig.from_alias(model_alias),
+        quantize=4,
         lora_paths=lora_paths,
         lora_scales=lora_scales
     )
@@ -111,10 +113,10 @@ def simple_generate_image(prompt, height, width, lora_files, lora_scales_str):
         seed=int(time.time()),
         prompt=prompt,
         config=Config(
-            num_inference_steps=20,  # Vast aantal steps
+            num_inference_steps=steps,
             height=height,
             width=width,
-            guidance=7.5,  # Standaard guidance scale
+            guidance=7.5,
         )
     )
 
@@ -125,7 +127,33 @@ def create_ui(lora_dir):
         gr.Image("https://raw.githubusercontent.com/CharafChnioune/mflux/main/src/mflux/assets/logo.png")
 
         with gr.Tabs():
-            with gr.TabItem("Generate"):
+            with gr.TabItem("MFLUX Easy", id=0):
+                with gr.Row():
+                    with gr.Column():
+                        prompt_simple = gr.Textbox(label="Prompt", lines=2)
+                        model_simple = gr.Radio(
+                            choices=["schnell (fast lower quality)", "dev (slow quality)"],
+                            label="Model",
+                            value="schnell (fast lower quality)"
+                        )
+                        height_simple = gr.Number(label="Height", value=512, precision=0)
+                        width_simple = gr.Number(label="Width", value=512, precision=0)
+                        lora_files_simple = gr.Dropdown(
+                            choices=get_available_lora_files(lora_dir),
+                            label="Select LoRA Files",
+                            multiselect=True
+                        )
+                        lora_scales_simple = gr.Textbox(label="LoRA Scales (comma-separated, optional)")
+                        generate_button_simple = gr.Button("Generate Image")
+                    with gr.Column():
+                        output_image_simple = gr.Image(label="Generated Image")
+                generate_button_simple.click(
+                    fn=simple_generate_image,
+                    inputs=[prompt_simple, model_simple, height_simple, width_simple, lora_files_simple, lora_scales_simple],
+                    outputs=output_image_simple
+                )
+
+            with gr.TabItem("Advanced Generate"):
                 with gr.Row():
                     with gr.Column():
                         prompt = gr.Textbox(label="Prompt", lines=2)
@@ -152,6 +180,7 @@ def create_ui(lora_dir):
                     inputs=[prompt, model, seed, height, width, steps, guidance, quantize, path, lora_files, lora_scales, metadata],
                     outputs=output_image
                 )
+
             with gr.TabItem("ControlNet"):
                 with gr.Row():
                     with gr.Column():
@@ -181,6 +210,7 @@ def create_ui(lora_dir):
                     inputs=[prompt_cn, control_image, model_cn, seed_cn, height_cn, width_cn, steps_cn, guidance_cn, controlnet_strength, quantize_cn, path_cn, lora_files_cn, lora_scales_cn, metadata_cn],
                     outputs=output_image_cn
                 )
+
             with gr.TabItem("Quantize Model"):
                 with gr.Row():
                     with gr.Column():
@@ -194,26 +224,6 @@ def create_ui(lora_dir):
                     fn=save_quantized_model_gradio,
                     inputs=[model_quant, quantize_level, save_path],
                     outputs=save_output
-                )
-            with gr.TabItem("Simple Generate"):
-                with gr.Row():
-                    with gr.Column():
-                        prompt_simple = gr.Textbox(label="Prompt", lines=2)
-                        height_simple = gr.Number(label="Height", value=512, precision=0)
-                        width_simple = gr.Number(label="Width", value=512, precision=0)
-                        lora_files_simple = gr.Dropdown(
-                            choices=get_available_lora_files(lora_dir),
-                            label="Select LoRA Files",
-                            multiselect=True
-                        )
-                        lora_scales_simple = gr.Textbox(label="LoRA Scales (comma-separated, optional)")
-                        generate_button_simple = gr.Button("Generate Image")
-                    with gr.Column():
-                        output_image_simple = gr.Image(label="Generated Image")
-                generate_button_simple.click(
-                    fn=simple_generate_image,
-                    inputs=[prompt_simple, height_simple, width_simple, lora_files_simple, lora_scales_simple],
-                    outputs=output_image_simple
                 )
 
         gr.Markdown("**Note:** Ensure all paths and files are correct and that the models are accessible.")
