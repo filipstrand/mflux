@@ -48,7 +48,7 @@ class Flux1:
             local_path=local_path,
             lora_paths=lora_paths,
             lora_scales=lora_scales
-        )
+        )  # fmt: off
 
         # Set the loaded weights if they are not quantized
         if weights.quantization_level is None:
@@ -58,10 +58,12 @@ class Flux1:
         self.bits = None
         if quantize is not None or weights.quantization_level is not None:
             self.bits = weights.quantization_level if weights.quantization_level is not None else quantize
+            # fmt: off
             nn.quantize(self.vae, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=self.bits)
             nn.quantize(self.transformer, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 64, group_size=64, bits=self.bits)
             nn.quantize(self.t5_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=self.bits)
             nn.quantize(self.clip_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=self.bits)
+            # fmt: on
 
         # If loading previously saved quantized weights, the weights must be set after modules have been quantized
         if weights.quantization_level is not None:
@@ -76,7 +78,7 @@ class Flux1:
         latents = mx.random.normal(
             shape=[1, (config.height // 16) * (config.width // 16), 64],
             key=mx.random.key(seed)
-        )
+        )  # fmt: off
 
         # 2. Embedd the prompt
         t5_tokens = self.t5_tokenizer.tokenize(prompt)

@@ -5,6 +5,7 @@ from mflux import Flux1, Config, ModelConfig
 
 
 def main():
+    # fmt: off
     parser = argparse.ArgumentParser(description="Generate an image based on a prompt.")
     parser.add_argument("--prompt", type=str, required=True, help="The textual description of the image to generate.")
     parser.add_argument("--output", type=str, default="image.png", help="The filename for the output image. Default is \"image.png\".")
@@ -19,6 +20,7 @@ def main():
     parser.add_argument("--lora-paths", type=str, nargs="*", default=None, help="Local safetensors for applying LORA from disk")
     parser.add_argument("--lora-scales", type=float, nargs="*", default=None, help="Scaling factor to adjust the impact of LoRA weights on the model. A value of 1.0 applies the LoRA weights as they are.")
     parser.add_argument("--metadata", action="store_true", help="Export image metadata as a JSON file.")
+    # fmt: on
 
     args = parser.parse_args()
 
