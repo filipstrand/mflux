@@ -23,6 +23,14 @@ expect-uv:
 		echo "Please install uv to continue:\n    https://github.com/astral-sh/uv?tab=readme-ov-file#installation"; \
 	fi
 
+# assume reasonably pre-commit is a safe dependency given its wide support (e.g. GitHub Actions integration)
+.PHONY: ensure-pre-commit
+	@if ! /usr/bin/which -s pre-commit; then \
+		echo "pre-commit required for submitting commits before pull requests. Using uv tool to install pre-commit."; \
+		uv tool install pre-commit; \
+	fi
+
+
 # assume reasonably that if user has installed uv, they trust ruff from the same team
 .PHONY: ensure-ruff
 ensure-ruff:
@@ -41,16 +49,18 @@ venv-init: expect-arm64 expect-uv
 
 # Install dependencies
 .PHONY: install
-install: venv-init
-	# 🏗️ Installing dependencies...
+install: venv-init ensure-pre-commit
+	# 🏗️ Installing dependencies and pre-commit hooks...
 	uv pip install -e .
 	# ✅ Dependencies installed.
+	pre-commit install
+	# ✅ Pre-commit hooks installed.
 
 # Run linters
 .PHONY: lint
 lint: ensure-ruff
 	# 🏗️ Running linters, your files will not be mutated.
-	# Use 'make autofix' to auto-apply fixes."
+	# Use 'make check' to auto-apply fixes."
 	ruff check
 	# ✅ Linting complete."
 
@@ -63,15 +73,11 @@ format: ensure-ruff
 	git diff --stat
 	# ✅ Formatting complete. Please review your git diffs, if any.
 
-# Run ruff auto lint and format
-# use || true to force possibly failing format/lint checks to allow rest of make helper to continue
-.PHONY: autofix
-autofix: ensure-ruff
-	# 🏗️ Running linter and formatters on files...
-	@(ruff format --respect-gitignore --target-version py310 || true)
-	# ✅ auto formatting complete
-	@(ruff check --fix || true)
-	# ✅ auto lint fixes complete, check for issues ruff cannot auto fix
+# Run ruff auto lint and format via pre-commit hook
+.PHONY: check
+check: ensure-ruff
+	# 🏗️ Running pre-commit linter and formatters on files...
+	@(pre-commit run --all-files)
 
 # Run tests
 .PHONY: test
@@ -96,7 +102,7 @@ help:
 	@echo "  make install     - Install project dev dependencies"
 	@echo "  make lint        - Run ruff python linter"
 	@echo "  make format      - Run ruff code formatter"
-	@echo "  make autofix     - Run linters auto fixes *and* style formatter"
+	@echo "  make check       - Run linters auto fixes *and* style formatter via pre-commit hook"
 	@echo "  make test        - Run tests"
 	@echo "  make clean       - Remove the virtual environment"
 	@echo "  make help        - Show this help message"

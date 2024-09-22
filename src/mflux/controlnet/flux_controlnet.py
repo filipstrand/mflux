@@ -58,7 +58,7 @@ class Flux1Controlnet:
             local_path=local_path,
             lora_paths=lora_paths,
             lora_scales=lora_scales
-        )
+        )  # fmt: off
 
         # Set the loaded weights if they are not quantized
         if weights.quantization_level is None:
@@ -68,16 +68,20 @@ class Flux1Controlnet:
         self.bits = None
         if quantize is not None or weights.quantization_level is not None:
             self.bits = weights.quantization_level if weights.quantization_level is not None else quantize
+            # fmt: off
             nn.quantize(self.vae, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=self.bits)
             nn.quantize(self.transformer, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 64, group_size=64, bits=self.bits)
             nn.quantize(self.t5_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=self.bits)
             nn.quantize(self.clip_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=self.bits)
+            # fmt: on
 
         # If loading previously saved quantized weights, the weights must be set after modules have been quantized
         if weights.quantization_level is not None:
             self._set_model_weights(weights)
 
-        weights_controlnet, ctrlnet_quantization_level, controlnet_config = WeightHandler.load_controlnet_transformer(controlnet_id=CONTROLNET_ID)
+        weights_controlnet, ctrlnet_quantization_level, controlnet_config = WeightHandler.load_controlnet_transformer(
+            controlnet_id=CONTROLNET_ID
+        )
         self.transformer_controlnet = TransformerControlnet(
             model_config=model_config,
             num_blocks=controlnet_config["num_layers"],
@@ -90,25 +94,29 @@ class Flux1Controlnet:
         self.bits = None
         if quantize is not None or ctrlnet_quantization_level is not None:
             self.bits = ctrlnet_quantization_level if ctrlnet_quantization_level is not None else quantize
+            # fmt: off
             nn.quantize(self.transformer_controlnet, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 128, group_size=128, bits=self.bits)
+            # fmt: on
 
         if ctrlnet_quantization_level is not None:
             self.transformer_controlnet.update(weights_controlnet)
 
-    def generate_image(self, seed: int, prompt: str, control_image: PIL.Image.Image, config: ConfigControlnet = ConfigControlnet()) -> GeneratedImage:
+    def generate_image(self, seed: int, prompt: str, control_image: PIL.Image.Image, config: ConfigControlnet = ConfigControlnet()) -> GeneratedImage:  # fmt: off
         # Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.num_inference_steps))
 
         if config.height != control_image.height or config.width != control_image.width:
-            log.warning(f"Control image has different dimensions than the model. Resizing to {config.width}x{config.height}")
+            log.warning(
+                f"Control image has different dimensions than the model. Resizing to {config.width}x{config.height}"
+            )
             control_image = control_image.resize((config.width, config.height), PIL.Image.LANCZOS)
 
         # 1. Create the initial latents
         latents = mx.random.normal(
             shape=[1, (config.height // 16) * (config.width // 16), 64],
             key=mx.random.key(seed)
-        )
+        )  # fmt: off
         control_image = ControlnetUtil.preprocess_canny(control_image)
         controlnet_cond = ImageUtil.to_array(control_image)
         controlnet_cong = self.vae.encode(controlnet_cond)
