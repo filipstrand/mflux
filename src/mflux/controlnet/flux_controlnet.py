@@ -1,4 +1,5 @@
 import logging
+from typing import TYPE_CHECKING
 
 import mlx.core as mx
 from mlx import nn
@@ -14,13 +15,16 @@ from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.transformer.transformer import Transformer
 from mflux.models.vae.vae import VAE
-from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
 from mflux.tokenizer.clip_tokenizer import TokenizerCLIP
 from mflux.tokenizer.t5_tokenizer import TokenizerT5
 from mflux.tokenizer.tokenizer_handler import TokenizerHandler
 from mflux.weights.model_saver import ModelSaver
 from mflux.weights.weight_handler import WeightHandler
+
+if TYPE_CHECKING:
+    from mflux.post_processing.generated_image import GeneratedImage
+
 
 log = logging.getLogger(__name__)
 
@@ -107,7 +111,7 @@ class Flux1Controlnet:
             control_image_path: str,
             save_control_image_canny: bool = False,
             config: ConfigControlnet = ConfigControlnet()
-    ) -> GeneratedImage:  # fmt: off
+    ) -> "GeneratedImage":  # fmt: off
         # Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.num_inference_steps))

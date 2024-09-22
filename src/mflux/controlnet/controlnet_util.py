@@ -3,9 +3,8 @@ import os
 
 import cv2
 import numpy as np
-import PIL
+import PIL.Image
 
-from mflux import ImageUtil
 
 log = logging.getLogger(__name__)
 
@@ -27,7 +26,9 @@ class ControlnetUtil:
         return img
 
     @staticmethod
-    def save_canny_image(control_image, path: str):
+    def save_canny_image(control_image: PIL.Image, path: str):
+        from mflux import ImageUtil
+
         base, ext = os.path.splitext(path)
         new_filename = f"{base}_controlnet_canny{ext}"
         ImageUtil.save_image(control_image, new_filename)
