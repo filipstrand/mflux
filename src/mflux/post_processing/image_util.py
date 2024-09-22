@@ -87,7 +87,12 @@ class ImageUtil:
         return Image.open(path)
 
     @staticmethod
-    def save(image: PIL.Image.Image, path: str, metadata: dict, export_json_metadata: bool = False) -> None:
+    def save(
+            image: PIL.Image.Image,
+            path: str,
+            metadata: dict | None = None,
+            export_json_metadata: bool = False
+    ) -> None:  # fmt: off
         file_path = Path(path)
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_name = file_path.stem
@@ -111,8 +116,9 @@ class ImageUtil:
                     json.dump(metadata, json_file, indent=4)
 
             # Embed metadata
-            ImageUtil._embed_metadata(metadata, file_path)
-            log.info(f"Metadata embedded successfully at: {file_path}")
+            if metadata is not None:
+                ImageUtil._embed_metadata(metadata, file_path)
+                log.info(f"Metadata embedded successfully at: {file_path}")
         except Exception as e:
             log.error(f"Error saving image: {e}")
 

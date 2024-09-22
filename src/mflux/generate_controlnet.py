@@ -10,6 +10,7 @@ def main():
     parser.add_argument("--prompt", type=str, required=True, help="The textual description of the image to generate.")
     parser.add_argument("--controlnet-image-path", type=str, required=True, help="Local path of the image to use as input for controlnet.")
     parser.add_argument("--controlnet-strength", type=float, default=0.4, help="Controls how strongly the control image influences the output image. A value of 0.0 means no influence. (Default is 0.4)")
+    parser.add_argument("--controlnet-save-canny", action="store_true", help="If set, save the Canny edge detection reference input image.")
     parser.add_argument("--output", type=str, default="image.png", help="The filename for the output image. Default is \"image.png\".")
     parser.add_argument("--model", "-m", type=str, required=True, choices=["dev", "schnell"], help="The model to use (\"schnell\" or \"dev\").")
     parser.add_argument("--seed", type=int, default=None, help="Entropy Seed (Default is time-based random-seed)")
@@ -45,7 +46,9 @@ def main():
     image = flux.generate_image(
         seed=int(time.time()) if args.seed is None else args.seed,
         prompt=args.prompt,
+        output=args.output,
         control_image_path=args.controlnet_image_path,
+        save_control_image_canny=args.controlnet_save_canny,
         config=ConfigControlnet(
             num_inference_steps=args.steps,
             height=args.height,
