@@ -1,3 +1,4 @@
+import importlib
 import json
 import logging
 from pathlib import Path
@@ -25,6 +26,7 @@ class GeneratedImage:
         generation_time: float,
         lora_paths: list[str],
         lora_scales: list[float],
+        controlnet_image_path: str | None = None,
         controlnet_strength: float | None = None,
     ):
         self.image = image
@@ -38,6 +40,7 @@ class GeneratedImage:
         self.generation_time = generation_time
         self.lora_paths = lora_paths
         self.lora_scales = lora_scales
+        self.controlnet_image = controlnet_image_path
         self.controlnet_strength = controlnet_strength
 
     def save(self, path: str, export_json_metadata: bool = False) -> None:
@@ -99,6 +102,7 @@ class GeneratedImage:
 
     def _get_metadata(self) -> dict:
         return {
+            "mflux_version": str(GeneratedImage.get_version()),
             "model": str(self.model_config.alias),
             "seed": str(self.seed),
             "steps": str(self.steps),
@@ -109,5 +113,13 @@ class GeneratedImage:
             "lora_paths": ", ".join(self.lora_paths) if self.lora_paths else "",
             "lora_scales": ", ".join([f"{scale:.2f}" for scale in self.lora_scales]) if self.lora_scales else "",
             "prompt": self.prompt,
+            "controlnet_image": "None" if self.controlnet_image is None else self.controlnet_image,
             "controlnet_strength": "None" if self.controlnet_strength is None else f"{self.controlnet_strength:.2f}",
         }
+
+    @staticmethod
+    def get_version():
+        try:
+            return importlib.metadata.version("mflux")
+        except importlib.metadata.PackageNotFoundError:
+            return "unknown"
