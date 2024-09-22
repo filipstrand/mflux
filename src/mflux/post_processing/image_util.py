@@ -1,11 +1,18 @@
+import json
+import logging
+from pathlib import Path
+
 import PIL
-from PIL import Image
+import PIL.Image
 import mlx.core as mx
 import numpy as np
-
+from PIL import Image
+import piexif
 from mflux.config.config import ConfigControlnet
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.post_processing.generated_image import GeneratedImage
+
+log = logging.getLogger(__name__)
 
 
 class ImageUtil:
@@ -78,3 +85,59 @@ class ImageUtil:
     @staticmethod
     def load_image(path: str) -> Image.Image:
         return Image.open(path)
+
+    @staticmethod
+    def save(image: PIL.Image.Image, path: str, metadata: dict, export_json_metadata: bool = False) -> None:
+        file_path = Path(path)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_name = file_path.stem
+        file_extension = file_path.suffix
+
+        # If a file already exists, create a new name with a counter
+        counter = 1
+        while file_path.exists():
+            new_name = f"{file_name}_{counter}{file_extension}"
+            file_path = file_path.with_name(new_name)
+            counter += 1
+
+        try:
+            # Save image without metadata first
+            image.save(file_path)
+            log.info(f"Image saved successfully at: {file_path}")
+
+            # Optionally save json metadata file
+            if export_json_metadata:
+                with open(f"{file_path.with_suffix('.json')}", "w") as json_file:
+                    json.dump(metadata, json_file, indent=4)
+
+            # Embed metadata
+            ImageUtil._embed_metadata(metadata, file_path)
+            log.info(f"Metadata embedded successfully at: {file_path}")
+        except Exception as e:
+            log.error(f"Error saving image: {e}")
+
+    @staticmethod
+    def _embed_metadata(metadata: dict, path: str) -> None:
+        try:
+            # Convert metadata dictionary to a string
+            metadata_str = str(metadata)
+
+            # Convert the string to bytes (using UTF-8 encoding)
+            user_comment_bytes = metadata_str.encode("utf-8")
+
+            # Define the UserComment tag ID
+            USER_COMMENT_TAG_ID = 0x9286
+
+            # Create a piexif-compatible dictionary structure
+            exif_piexif_dict = {"Exif": {USER_COMMENT_TAG_ID: user_comment_bytes}}
+
+            # Load the image and embed the EXIF data
+            image = PIL.Image.open(path)
+            exif_bytes = piexif.dump(exif_piexif_dict)
+            image.info["exif"] = exif_bytes
+
+            # Save the image with metadata
+            image.save(path, exif=exif_bytes)
+
+        except Exception as e:
+            log.error(f"Error embedding metadata: {e}")
