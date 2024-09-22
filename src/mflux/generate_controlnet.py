@@ -1,7 +1,7 @@
 import argparse
 import time
 
-from mflux import Flux1Controlnet, ConfigControlnet, ModelConfig, ImageUtil
+from mflux import Flux1Controlnet, ConfigControlnet, ModelConfig
 
 
 def main():
@@ -45,7 +45,7 @@ def main():
     image = flux.generate_image(
         seed=int(time.time()) if args.seed is None else args.seed,
         prompt=args.prompt,
-        control_image=ImageUtil.load_image(args.controlnet_image_path),
+        control_image_path=args.controlnet_image_path,
         config=ConfigControlnet(
             num_inference_steps=args.steps,
             height=args.height,
