@@ -264,6 +264,20 @@ mflux-save \
 
 *Note that when saving a quantized version, you will need the original huggingface weights.*
 
+It is also possible to specify [LoRA](#lora) adapters when saving the model, e.g 
+
+```sh
+mflux-save \
+    --path "/Users/filipstrand/Desktop/schnell_8bit" \
+    --model schnell \
+    --quantize 8 \
+    --lora-paths "/path/to/lora.safetensors" \
+    --lora-scales 0.7
+```
+
+When generating images with a model like this, no LoRA adapter is needed to be specified since
+it is already baked into the saved quantized weights.
+
 #### Loading and running a quantized version from disk
 
 To generate a new image from the quantized model, simply provide a `--path` to where it was saved:
