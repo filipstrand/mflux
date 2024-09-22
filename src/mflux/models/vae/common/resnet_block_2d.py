@@ -4,19 +4,19 @@ from mlx import nn
 from mflux.config.config import Config
 
 
+# fmt: off
 class ResnetBlock2D(nn.Module):
-
     def __init__(
-            self,
-            norm1: int,
-            conv1_in: int,
-            conv1_out: int,
-            norm2: int,
-            conv2_in: int,
-            conv2_out: int,
-            conv_shortcut_in: int | None = None,
-            conv_shortcut_out: int | None = None,
-            is_conv_shortcut: bool = False
+        self,
+        norm1: int,
+        conv1_in: int,
+        conv1_out: int,
+        norm2: int,
+        conv2_in: int,
+        conv2_out: int,
+        conv_shortcut_in: int | None = None,
+        conv_shortcut_out: int | None = None,
+        is_conv_shortcut: bool = False,
     ):
         super().__init__()
         self.norm1 = nn.GroupNorm(
@@ -24,14 +24,14 @@ class ResnetBlock2D(nn.Module):
             dims=norm1,
             eps=1e-6,
             affine=True,
-            pytorch_compatible=True
+            pytorch_compatible=True,
         )
         self.norm2 = nn.GroupNorm(
             num_groups=32,
             dims=norm2,
             eps=1e-6,
             affine=True,
-            pytorch_compatible=True
+            pytorch_compatible=True,
         )
         self.conv1 = nn.Conv2d(
             in_channels=conv1_in,

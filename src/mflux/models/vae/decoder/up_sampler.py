@@ -4,7 +4,6 @@ from mlx import nn
 
 
 class UpSampler(nn.Module):
-
     def __init__(self, conv_in: int, conv_out: int):
         super().__init__()
         self.conv = nn.Conv2d(

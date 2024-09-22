@@ -8,13 +8,13 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 
 ### Philosophy
 
-MFLUX is a line-by-line port of the FLUX implementation in the [Huggingface Diffusers](https://github.com/huggingface/diffusers) library to [Apple MLX](https://github.com/ml-explore/mlx). 
+MFLUX is a line-by-line port of the FLUX implementation in the [Huggingface Diffusers](https://github.com/huggingface/diffusers) library to [Apple MLX](https://github.com/ml-explore/mlx).
 MFLUX is purposefully kept minimal and explicit - Network architectures are hardcoded and no config files are used
-except for the tokenizers. The aim is to have a tiny codebase with the single purpose of expressing these models 
+except for the tokenizers. The aim is to have a tiny codebase with the single purpose of expressing these models
 (thereby avoiding too many abstractions). While MFLUX priorities readability over generality and performance, [it can still be quite fast](#image-generation-speed-updated), [and even faster quantized](#quantization).
 
-All models are implemented from scratch in MLX and only the tokenizers are used via the 
-[Huggingface Transformers](https://github.com/huggingface/transformers) library. Other than that, there are only minimal dependencies 
+All models are implemented from scratch in MLX and only the tokenizers are used via the
+[Huggingface Transformers](https://github.com/huggingface/transformers) library. Other than that, there are only minimal dependencies
 like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) for simple image post-processing.
 
 ### Models
@@ -23,44 +23,58 @@ like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) f
 - [x] FLUX.1-Dev
 
 ### Installation
-For users, the easiest way to install MFLUX is via pip:
-   ```
-   pip install -U mflux
-   ```
+For users, the easiest way to install MFLUX is to use `uv tool`:
+
+If you have [installed `uv`](https://github.com/astral-sh/uv?tab=readme-ov-file#installation), simply: `uv tool install mflux` to get the `mflux-generate` and related command line executables. You can skip to the usage guides below.
+
+<details>
+<summary>For the classic way to create a user virtual environment:</summary>
+
+```
+mkdir -p mflux && cd mflux && python3 -m venv .venv && source .venv/bin/activate
+```
+
+This creates and activates a virtual environment in the `mflux` folder. After that, install MFLUX via pip:
+
+```
+pip install -U mflux
+```
+
+</details>
+
 <details>
 <summary>For contributors (click to expand)</summary>
 
 1. Clone the repo:
- ```
+ ```sh
  git clone git@github.com:filipstrand/mflux.git
  ```
-2. Navigate to the project and set up a virtual environment:
- ```
- cd mflux && python3 -m venv .venv && source .venv/bin/activate
- ```
-3. Install the required dependencies:
- ```
- pip install -r requirements.txt
- ```
+2. `make install` and `make test` (and `make clean` for venv resets)
+3. Follow format and lint checks prior to submitting Pull Requests. The recommended `make lint` and `make format` installs and uses [`ruff`](https://github.com/astral-sh/ruff). You can setup your editor/IDE to lint/format automatically, or use our provided `make` helpers:
+  - `make format` - formats your code
+  - `make lint` - shows your lint errors and warnings, but does not auto fix
+  - `make check` - via `pre-commit` hooks, formats your code **and** attempts to auto fix lint errors
+  - consult official [`ruff` documentation](https://docs.astral.sh/ruff/) on advanced usages
+
 </details>
 
 ### Generating an image
 
 Run the command `mflux-generate` by specifying a prompt and the model and some optional arguments. For example, here we use a quantized version of the `schnell` model for 2 steps:
 
-```
+```sh
 mflux-generate --model schnell --prompt "Luxury food photograph" --steps 2 --seed 2 -q 8
 ```
 
 This example uses the more powerful `dev` model with 25 time steps:
 
-```
+```sh
 mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2 -q 8
 ```
 
 ⚠️ *If the specific model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell or Dev model respectively). See the [quantization](#quantization) section for running compressed versions of the model.* ⚠️
 
-*By default, model files are downloaded to the `.cache` folder within your home directory. For example, in my setup, the path looks like this:* 
+*By default, model files are downloaded to the `.cache` folder within your home directory. For example, in my setup, the path looks like this:*
 
 ```
 /Users/filipstrand/.cache/huggingface/hub/models--black-forest-labs--FLUX.1-dev
@@ -68,9 +82,9 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 *To change this default behavior, you can do so by modifying the `HF_HOME` environment variable. For more details on how to adjust this setting, please refer to the [Hugging Face documentation](https://huggingface.co/docs/huggingface_hub/en/package_reference/environment_variables)*.
 
-🔒 [FLUX.1-dev currently requires granted access to its Huggingface repo. For troubleshooting, see the issue tracker](https://github.com/filipstrand/mflux/issues/14) 🔒 
+🔒 [FLUX.1-dev currently requires granted access to its Huggingface repo. For troubleshooting, see the issue tracker](https://github.com/filipstrand/mflux/issues/14) 🔒
 
-#### Full list of Command-Line Arguments 
+#### Full list of Command-Line Arguments
 
 - **`--prompt`** (required, `str`): Text description of the image to generate.
 
@@ -95,20 +109,19 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 - **`--lora-paths`** (optional, `[str]`, default: `None`): The paths to the [LoRA](#LoRA) weights.
 
 - **`--lora-scales`** (optional, `[float]`, default: `None`): The scale for each respective [LoRA](#LoRA) (will default to `1.0` if not specified and only one LoRA weight is loaded.)
- 
+
 - **`--metadata`** (optional): Exports a `.json` file containing the metadata for the image with the same name. (Even without this flag, the image metadata is saved and can be viewed using `exiftool image.png`)
 
 Or, with the correct python environment active, create and run a separate script like the following:
 
 ```python
-from mflux.flux.flux import Flux1
-from mflux.config.config import Config
+from mflux import Flux1, Config
 
 # Load the model
 flux = Flux1.from_alias(
    alias="schnell",  # "schnell" or "dev"
    quantize=8,       # 4 or 8
-)  
+)
 
 # Generate an image
 image = flux.generate_image(
@@ -128,9 +141,9 @@ For more options on how to configure MFLUX, please see [generate.py](src/mflux/g
 
 ### Image generation speed (updated)
 
-These numbers are based on the non-quantized `schnell` model, with the configuration provided in the code snippet below. 
+These numbers are based on the non-quantized `schnell` model, with the configuration provided in the code snippet below.
 To time your machine, run the following:
-```
+```sh
 time mflux-generate \
 --prompt "Luxury food photograph" \
 --model schnell \
@@ -152,20 +165,20 @@ time mflux-generate \
 | 2021 M1 Pro (32GB) | @filipstrand                                                                                                                | ~160s         |                           |
 | 2023 M2 Max (32GB) | @filipstrand                                                                                                                | ~70s          |                           |
 
-*Note that these numbers includes starting the application from scratch, which means doing model i/o, setting/quantizing weights etc. 
+*Note that these numbers includes starting the application from scratch, which means doing model i/o, setting/quantizing weights etc.
 If we assume that the model is already loaded, you can inspect the image metadata using `exiftool image.png` and see the total duration of the denoising loop (excluding text embedding).*
 
-### Equivalent to Diffusers implementation 
+### Equivalent to Diffusers implementation
 
-There is only a single source of randomness when generating an image: The initial latent array. 
-In this implementation, this initial latent is fully deterministically controlled by the input `seed` parameter. 
+There is only a single source of randomness when generating an image: The initial latent array.
+In this implementation, this initial latent is fully deterministically controlled by the input `seed` parameter.
 However, if we were to import a fixed instance of this latent array saved from the Diffusers implementation, then MFLUX will produce an identical image to the Diffusers implementation (assuming a fixed prompt and using the default parameter settings in the Diffusers setup).
 
 
-The images below illustrate this equivalence. 
-In all cases the Schnell model was run for 2 time steps. 
-The Diffusers implementation ran in CPU mode. 
-The precision for MFLUX can be set in the [Config](src/mflux/config/config.py) class. 
+The images below illustrate this equivalence.
+In all cases the Schnell model was run for 2 time steps.
+The Diffusers implementation ran in CPU mode.
+The precision for MFLUX can be set in the [Config](src/mflux/config/config.py) class.
 There is typically a noticeable but very small difference in the final image when switching between 16bit and 32bit precision.
 
 ---
@@ -204,12 +217,12 @@ Luxury food photograph of an italian Linguine pasta alle vongole dish with lots 
 
 ---
 
-### Quantization 
+### Quantization
 
 MFLUX supports running FLUX in 4-bit or 8-bit quantized mode. Running a quantized version can greatly speed up the
-generation process and reduce the memory consumption by several gigabytes. [Quantized models also take up less disk space](#size-comparisons-for-quantized-models). 
+generation process and reduce the memory consumption by several gigabytes. [Quantized models also take up less disk space](#size-comparisons-for-quantized-models).
 
-```
+```sh
 mflux-generate \
     --model schnell \
     --steps 2 \
@@ -217,7 +230,7 @@ mflux-generate \
     --quantize 8 \
     --height 1920 \
     --width 1024 \
-    --prompt "Tranquil pond in a bamboo forest at dawn, the sun is barely starting to peak over the horizon, panda practices Tai Chi near the edge of the pond, atmospheric perspective through the mist of morning dew, sunbeams, its movements are graceful and fluid — creating a sense of harmony and balance, the pond’s calm waters reflecting the scene, inviting a sense of meditation and connection with nature, style of Howard Terpning and Jessica Rossier" 
+    --prompt "Tranquil pond in a bamboo forest at dawn, the sun is barely starting to peak over the horizon, panda practices Tai Chi near the edge of the pond, atmospheric perspective through the mist of morning dew, sunbeams, its movements are graceful and fluid — creating a sense of harmony and balance, the pond’s calm waters reflecting the scene, inviting a sense of meditation and connection with nature, style of Howard Terpning and Jessica Rossier"
 ```
 ![image](src/mflux/assets/comparison6.jpg)
 
@@ -228,7 +241,7 @@ By selecting the `--quantize` or `-q` flag to be `4`, `8`, or removing it entire
 Image generation times in this example are based on a 2021 M1 Pro (32GB) machine. Even though the images are almost identical, there is a ~2x speedup by
 running the 8-bit quantized version on this particular machine. Unlike the non-quantized version, for the 8-bit version the swap memory usage is drastically reduced and GPU utilization is close to 100% during the whole generation. Results here can vary across different machines.
 
-#### Size comparisons for quantized models 
+#### Size comparisons for quantized models
 
 The model sizes for both `schnell` and `dev` at various quantization levels are as follows:
 
@@ -242,7 +255,7 @@ The reason weights sizes are not fully cut in half is because a small number of 
 
 To save a local copy of the quantized weights, run the `mflux-save` command like so:
 
-```
+```sh
 mflux-save \
     --path "/Users/filipstrand/Desktop/schnell_8bit" \
     --model schnell \
@@ -251,11 +264,25 @@ mflux-save \
 
 *Note that when saving a quantized version, you will need the original huggingface weights.*
 
+It is also possible to specify [LoRA](#lora) adapters when saving the model, e.g 
+
+```sh
+mflux-save \
+    --path "/Users/filipstrand/Desktop/schnell_8bit" \
+    --model schnell \
+    --quantize 8 \
+    --lora-paths "/path/to/lora.safetensors" \
+    --lora-scales 0.7
+```
+
+When generating images with a model like this, no LoRA adapter is needed to be specified since
+it is already baked into the saved quantized weights.
+
 #### Loading and running a quantized version from disk
 
-To generate a new image from the quantized model, simply provide a `--path` to where it was saved: 
+To generate a new image from the quantized model, simply provide a `--path` to where it was saved:
 
-```
+```sh
 mflux-generate \
     --path "/Users/filipstrand/Desktop/schnell_8bit" \
     --model schnell \
@@ -263,28 +290,33 @@ mflux-generate \
     --seed 2 \
     --height 1920 \
     --width 1024 \
-    --prompt "Tranquil pond in a bamboo forest at dawn, the sun is barely starting to peak over the horizon, panda practices Tai Chi near the edge of the pond, atmospheric perspective through the mist of morning dew, sunbeams, its movements are graceful and fluid — creating a sense of harmony and balance, the pond’s calm waters reflecting the scene, inviting a sense of meditation and connection with nature, style of Howard Terpning and Jessica Rossier" 
+    --prompt "Tranquil pond in a bamboo forest at dawn, the sun is barely starting to peak over the horizon, panda practices Tai Chi near the edge of the pond, atmospheric perspective through the mist of morning dew, sunbeams, its movements are graceful and fluid — creating a sense of harmony and balance, the pond’s calm waters reflecting the scene, inviting a sense of meditation and connection with nature, style of Howard Terpning and Jessica Rossier"
 ```
 
 *Note: When loading a quantized model from disk, there is no need to pass in `-q` flag, since we can infer this from the weight metadata.*
 
-*Also Note: Once we have a local model (quantized [or not](#running-a-non-quantized-model-directly-from-disk)) specified via the `--path` argument, the huggingface cache models are not required to launch the model*. 
+*Also Note: Once we have a local model (quantized [or not](#running-a-non-quantized-model-directly-from-disk)) specified via the `--path` argument, the huggingface cache models are not required to launch the model.
+In other words, you can reclaim the 34GB diskspace (per model) by deleting the full 16-bit model from the [Huggingface cache](#generating-an-image) if you choose.*
+
+*If you don't want to download the full models and quantize them yourself, the 4-bit weights are available here for a direct download:*
+- [madroid/flux.1-schnell-mflux-4bit](https://huggingface.co/madroid/flux.1-schnell-mflux-4bit)
+- [madroid/flux.1-dev-mflux-4bit](https://huggingface.co/madroid/flux.1-dev-mflux-4bit)
 
 ### Running a non-quantized model directly from disk
 
-MFLUX also supports running a non-quantized model directly from a custom location.  
+MFLUX also supports running a non-quantized model directly from a custom location.
 In the example below, the model is placed in `/Users/filipstrand/Desktop/schnell`:
 
-```
+```sh
 mflux-generate \
     --path "/Users/filipstrand/Desktop/schnell" \
     --model schnell \
     --steps 2 \
     --seed 2 \
-    --prompt "Luxury food photograph" 
+    --prompt "Luxury food photograph"
 ```
 
-Note that the `--model` flag must be set when loading a model from disk. 
+Note that the `--model` flag must be set when loading a model from disk.
 
 Also note that unlike when using the typical `alias` way of initializing the model (which internally handles that the required resources are downloaded),
 when loading a model directly from disk, we require the downloaded models to look like the following:
@@ -315,16 +347,16 @@ when loading a model directly from disk, we require the downloaded models to loo
 ```
 This mirrors how the resources are placed in the [HuggingFace Repo](https://huggingface.co/black-forest-labs/FLUX.1-schnell/tree/main) for FLUX.1.
 *Huggingface weights, unlike quantized ones exported directly from this project, have to be
-processed a bit differently, which is why we require this structure above.* 
+processed a bit differently, which is why we require this structure above.*
 
 
 ### LoRA
 
 MFLUX support loading trained [LoRA](https://huggingface.co/docs/diffusers/en/training/lora) adapters (actual training support is coming).
 
-The following example [The_Hound](https://huggingface.co/TheLastBen/The_Hound) LoRA from [@TheLastBen](https://github.com/TheLastBen): 
+The following example [The_Hound](https://huggingface.co/TheLastBen/The_Hound) LoRA from [@TheLastBen](https://github.com/TheLastBen):
 
-```
+```sh
 mflux-generate --prompt "sandor clegane" --model dev --steps 20 --seed 43 -q 8 --lora-paths "sandor_clegane_single_layer.safetensors"
 ```
 
@@ -333,7 +365,7 @@ mflux-generate --prompt "sandor clegane" --model dev --steps 20 --seed 43 -q 8 -
 
 The following example is [Flux_1_Dev_LoRA_Paper-Cutout-Style](https://huggingface.co/Norod78/Flux_1_Dev_LoRA_Paper-Cutout-Style) LoRA from [@Norod78](https://huggingface.co/Norod78):
 
-```
+```sh
 mflux-generate --prompt "pikachu, Paper Cutout Style" --model schnell --steps 4 --seed 43 -q 8 --lora-paths "Flux_1_Dev_LoRA_Paper-Cutout-Style.safetensors"
 ```
 ![image](src/mflux/assets/lora2.jpg)
@@ -346,7 +378,7 @@ mflux-generate --prompt "pikachu, Paper Cutout Style" --model schnell --steps 4 
 
 Multiple LoRAs can be sent in to combine the effects of the individual adapters. The following example combines both of the above LoRAs:
 
-```
+```sh
 mflux-generate \
    --prompt "sandor clegane in a forest, Paper Cutout Style" \
    --model dev \
@@ -358,16 +390,32 @@ mflux-generate \
 ```
 ![image](src/mflux/assets/lora3.jpg)
 
-Just to see the difference, this image displays the four cases: One of having both adapters fully active, partially active and no LoRA at all. 
-The example above also show the usage of `--lora-scales` flag. 
+Just to see the difference, this image displays the four cases: One of having both adapters fully active, partially active and no LoRA at all.
+The example above also show the usage of `--lora-scales` flag.
+
+#### Supported LoRA formats (updated)
+
+Since different fine-tuning services can use different implementations of FLUX, the corresponding
+LoRA weights trained on these services can be different from one another. The aim of MFLUX is to support the most common ones.
+The following table show the current supported formats:
+
+| Supported | Name      | Example                                                                                                  | Notes                               |
+|-----------|-----------|----------------------------------------------------------------------------------------------------------|-------------------------------------|
+| ✅        | BFL       | [civitai - Impressionism](https://civitai.com/models/545264/impressionism-sdxl-pony-flux)                | Many things on civitai seem to work |
+| ✅        | Diffusers | [Flux_1_Dev_LoRA_Paper-Cutout-Style](https://huggingface.co/Norod78/Flux_1_Dev_LoRA_Paper-Cutout-Style/) |                                     |
+| ❌        | XLabs-AI  | [flux-RealismLora](https://huggingface.co/XLabs-AI/flux-RealismLora/tree/main)                           |                                     |
+
+To report additional formats, examples or other any suggestions related to LoRA format support, please see [issue #47](https://github.com/filipstrand/mflux/issues/47).
 
 ### Current limitations
 
 - Images are generated one by one.
 - Negative prompts not supported.
 - LoRA weights are only supported for the transformer part of the network.
+- Some LoRA adapters does not work.
 
 ### TODO
 
+- [ ] Establish unit test suite
 - [ ] LoRA fine-tuning
 - [ ] Frontend support (Gradio/Streamlit/Other?)

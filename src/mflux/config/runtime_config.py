@@ -1,13 +1,12 @@
 import mlx.core as mx
 import numpy as np
 
-from mflux.config.config import Config
+from mflux.config.config import Config, ConfigControlnet
 from mflux.config.model_config import ModelConfig
 
 
 class RuntimeConfig:
-
-    def __init__(self, config: Config, model_config: ModelConfig):
+    def __init__(self, config: Config | ConfigControlnet, model_config: ModelConfig):
         self.config = config
         self.model_config = model_config
         self.sigmas = self._create_sigmas(config, model_config)
@@ -35,6 +34,13 @@ class RuntimeConfig:
     @property
     def num_train_steps(self) -> int:
         return self.model_config.num_train_steps
+
+    @property
+    def controlnet_strength(self) -> float:
+        if isinstance(self.config, ConfigControlnet):
+            return self.config.controlnet_strength
+        else:
+            raise NotImplementedError("Controlnet conditioning scale is only available for ConfigControlnet")
 
     @staticmethod
     def _create_sigmas(config, model) -> mx.array:

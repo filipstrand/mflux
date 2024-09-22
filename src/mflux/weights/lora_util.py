@@ -6,9 +6,12 @@ log = logging.getLogger(__name__)
 
 
 class LoraUtil:
-
     @staticmethod
-    def apply_loras(transformer: dict, lora_files: list[str], lora_scales: list[float] | None = None) -> None:
+    def apply_loras(
+        transformer: dict,
+        lora_files: list[str],
+        lora_scales: list[float] | None = None,
+    ) -> None:
         lora_scales = LoraUtil._validate_lora_scales(lora_files, lora_scales)
 
         for lora_file, lora_scale in zip(lora_files, lora_scales):
@@ -28,10 +31,8 @@ class LoraUtil:
 
     @staticmethod
     def _apply_lora(transformer: dict, lora_file: str, lora_scale: float) -> None:
-        if lora_scale < 0.0 or lora_scale > 1.0:
-            raise Exception(f"Invalid scale {lora_scale} provided for {lora_file}. Valid Range [0.0 - 1.0] ")
-
         from mflux.weights.weight_handler import WeightHandler
+
         lora_transformer, _ = WeightHandler.load_transformer(lora_path=lora_file)
         LoraUtil._apply_transformer(transformer, lora_transformer, lora_scale)
 
@@ -57,14 +58,14 @@ class LoraUtil:
                     visiting.append(splitKey)
                 else:
                     parentKey = ".".join(visiting)
-                    if parentKey in visited and 'lora_A' in visited[parentKey] and 'lora_B' in visited[parentKey]:
+                    if parentKey in visited and "lora_A" in visited[parentKey] and "lora_B" in visited[parentKey]:
                         continue
                     if not splitKey.startswith("lora_"):
                         visiting.append(splitKey)
                         parentKey = ".".join(visiting)
                         if splitKey == "net":
-                            target['net'] = list({})
-                            target = target['net']
+                            target["net"] = list({})
+                            target = target["net"]
                         elif splitKey == "0":
                             target.append({})
                             target = target[0]
@@ -77,11 +78,11 @@ class LoraUtil:
                     if parentKey not in visited:
                         visited[parentKey] = {}
                     visited[parentKey][splitKey] = weight
-                    if not 'weight' in target:
+                    if "weight" not in target:
                         raise ValueError(f"LoRA weights for layer {parentKey} cannot be loaded into the model.")
-                    if 'lora_A' in visited[parentKey] and 'lora_B' in visited[parentKey]:
-                        lora_a = visited[parentKey]['lora_A']
-                        lora_b = visited[parentKey]['lora_B']
-                        transWeight = target['weight']
+                    if "lora_A" in visited[parentKey] and "lora_B" in visited[parentKey]:
+                        lora_a = visited[parentKey]["lora_A"]
+                        lora_b = visited[parentKey]["lora_B"]
+                        transWeight = target["weight"]
                         weight = transWeight + lora_scale * (lora_b @ lora_a)
-                        target['weight'] = weight
+                        target["weight"] = weight

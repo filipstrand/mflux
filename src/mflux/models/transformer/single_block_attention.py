@@ -15,11 +15,7 @@ class SingleBlockAttention(nn.Module):
         self.norm_q = nn.RMSNorm(128)
         self.norm_k = nn.RMSNorm(128)
 
-    def forward(
-            self,
-            hidden_states: mx.array,
-            image_rotary_emb: mx.array
-    ) -> (mx.array, mx.array):
+    def forward(self, hidden_states: mx.array, image_rotary_emb: mx.array) -> (mx.array, mx.array):
         query = self.to_q(hidden_states)
         key = self.to_k(hidden_states)
         value = self.to_v(hidden_states)
@@ -35,7 +31,10 @@ class SingleBlockAttention(nn.Module):
 
         hidden_states = SingleBlockAttention.attention(query, key, value)
         hidden_states = mx.transpose(hidden_states, (0, 2, 1, 3))
-        hidden_states = mx.reshape(hidden_states, (self.batch_size, -1, self.num_heads * self.head_dimension))
+        hidden_states = mx.reshape(
+            hidden_states,
+            (self.batch_size, -1, self.num_heads * self.head_dimension),
+        )
 
         return hidden_states
 
@@ -44,7 +43,7 @@ class SingleBlockAttention(nn.Module):
         scale = 1 / mx.sqrt(query.shape[-1])
         scores = (query * scale) @ key.transpose(0, 1, 3, 2)
         attn = mx.softmax(scores, axis=-1)
-        hidden_states = (attn @ value)
+        hidden_states = attn @ value
         return hidden_states
 
     @staticmethod

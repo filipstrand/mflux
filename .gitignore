@@ -13,3 +13,5 @@
 *.pyc
 *.safetensors
 *.json
+
+*.egg-info

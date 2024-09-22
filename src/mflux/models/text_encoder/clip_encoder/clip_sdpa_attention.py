@@ -36,7 +36,7 @@ class CLIPSdpaAttention(nn.Module):
         scores = (query * scale) @ key.transpose(0, 1, 3, 2)
         scores = scores + mask
         attn = mx.softmax(scores, axis=-1)
-        hidden_states = (attn @ value)
+        hidden_states = attn @ value
         return hidden_states
 
     @staticmethod
