@@ -3,7 +3,6 @@ import importlib
 import PIL.Image
 import mlx.core as mx
 
-from mflux import ImageUtil
 from mflux.config.model_config import ModelConfig
 
 
@@ -39,6 +38,8 @@ class GeneratedImage:
         self.controlnet_strength = controlnet_strength
 
     def save(self, path: str, export_json_metadata: bool = False) -> None:
+        from mflux import ImageUtil
+
         ImageUtil.save_image(self.image, path, self._get_metadata(), export_json_metadata)
 
     def _get_metadata(self) -> dict:
