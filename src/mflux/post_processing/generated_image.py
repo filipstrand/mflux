@@ -39,7 +39,7 @@ class GeneratedImage:
         self.controlnet_strength = controlnet_strength
 
     def save(self, path: str, export_json_metadata: bool = False) -> None:
-        ImageUtil.save(self.image, path, self._get_metadata(), export_json_metadata)
+        ImageUtil.save_image(self.image, path, self._get_metadata(), export_json_metadata)
 
     def _get_metadata(self) -> dict:
         return {

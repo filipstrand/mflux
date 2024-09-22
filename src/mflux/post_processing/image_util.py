@@ -87,7 +87,7 @@ class ImageUtil:
         return Image.open(path)
 
     @staticmethod
-    def save(
+    def save_image(
             image: PIL.Image.Image,
             path: str,
             metadata: dict | None = None,

@@ -30,4 +30,4 @@ class ControlnetUtil:
     def save_canny_image(control_image, path: str):
         base, ext = os.path.splitext(path)
         new_filename = f"{base}_controlnet_canny{ext}"
-        ImageUtil.save(control_image, new_filename)
+        ImageUtil.save_image(control_image, new_filename)
