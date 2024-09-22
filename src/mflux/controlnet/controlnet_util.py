@@ -1,8 +1,11 @@
 import logging
+import os
 
 import cv2
 import numpy as np
 import PIL
+
+from mflux import ImageUtil
 
 log = logging.getLogger(__name__)
 
@@ -22,3 +25,9 @@ class ControlnetUtil:
             log.warning(f"Control image has different dimensions than the model. Resizing to {width}x{height}")
             img = img.resize((width, height), PIL.Image.LANCZOS)
         return img
+
+    @staticmethod
+    def save_canny_image(control_image, path: str):
+        base, ext = os.path.splitext(path)
+        new_filename = f"{base}_controlnet_canny{ext}"
+        ImageUtil.save(control_image, new_filename)

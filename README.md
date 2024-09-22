@@ -149,6 +149,8 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--controlnet-strength`** (optional, `float`, default: `0.4`): Degree of influence the control image has on the output. Ranges from `0.0` (no influence) to `1.0` (full influence).
 
+- **`--controlnet-save-canny`** (optional, bool, default: False): If set, saves the Canny edge detection reference image used by ControlNet.
+
 Or, with the correct python environment active, create and run a separate script like the following:
 
 ```python
