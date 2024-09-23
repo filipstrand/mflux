@@ -43,6 +43,7 @@ homepage = "https://github.com/filipstrand/mflux"
 mflux-generate = "mflux.generate:main"
 mflux-save = "mflux.save:main"
 mflux-generate-controlnet = "mflux.generate_controlnet:main"
+mflux-webui = "mflux.ui.gradio.webui:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
