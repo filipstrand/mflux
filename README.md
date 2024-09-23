@@ -451,21 +451,26 @@ To report additional formats, examples or other any suggestions related to LoRA 
 
 ### 🕹️ Controlnet
 
-MFLUX has [Controlnet](https://github.com/lllyasviel/ControlNet?tab=readme-ov-file) support for an even more fine-grained control
+MFLUX has [Controlnet](https://huggingface.co/docs/diffusers/en/using-diffusers/controlnet) support for an even more fine-grained control
 of the image generation. By providing a reference image via `--controlnet-image-path` and a strength parameter via `--controlnet-strength`, you can guide the generation toward the reference image.  
 
 ```sh
-generate-controlnet \
-   --prompt "A picute..." \
-   --model dev \
-   --steps 20 \
-   --seed 43 \
-   -q 8 \
-   --controlnet-image-path "" \
-   --controlnet-strength ""
+mflux-generate-controlnet \
+  --prompt "A comic strip with a joker in a purple suit" \
+  --model dev \
+  --steps 20 \
+  --seed 1727047657 \
+  --height 1066 \
+  --width 692 \
+  -q 8 \
+  --lora-paths "Dark Comic - s0_8 g4.safetensors" \
+  --controlnet-image-path "reference.png" \
+  --controlnet-strength 0.5 \
+  --controlnet-save-canny
 ```
+![image](src/mflux/assets/controlnet1.jpg)
 
-[EXAMPLE HERE SHOWING REF, OUTPUT AND EDGE IMAGE]
+*This example combines the controlnet reference image with the LoRA [Dark Comic Flux](https://civitai.com/models/742916/dark-comic-flux)*.
 
 ⚠️ *Note: Controlnet requires an additional one-time download of ~3.58GB of weights from Huggingface. This happens automatically the first time you run the `generate-controlnet` command.
 At the moment, the Controlnet used is [InstantX/FLUX.1-dev-Controlnet-Canny](https://huggingface.co/InstantX/FLUX.1-dev-Controlnet-Canny), which was trained for the `dev` model. 
@@ -478,7 +483,7 @@ Too high settings will corrupt the image. A recommended starting point a value l
 Controlnet can also work well together with [LoRA adapters](#lora). In the example below the same reference image is used as a controlnet input
 with different prompts and LoRA adapters active.
 
-![image](src/mflux/assets/controlnet.jpg)
+![image](src/mflux/assets/controlnet2.jpg)
 
 ### 🚧 Current limitations
 
