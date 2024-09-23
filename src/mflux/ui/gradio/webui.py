@@ -145,7 +145,7 @@ def simple_generate_image(prompt, model, height, width, lora_files, lora_scales_
 
 def create_ui(lora_dir):
     with gr.Blocks() as demo:
-        gr.Image("https://raw.githubusercontent.com/CharafChnioune/mflux/main/src/mflux/assets/logo.png")
+        gr.Image("https://raw.githubusercontent.com/CharafChnioune/mflux/main/src/mflux/assets/logo.png", height=100)
 
         with gr.Tabs():
             with gr.TabItem("MFLUX Easy", id=0):
