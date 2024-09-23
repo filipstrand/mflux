@@ -13,11 +13,11 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 
 - [Philosophy](#philosophy)
 - [💿 Installation](#-installation)
-- [🖼️ Generating an image](#-generating-an-image)
+- [🖼️ Generating an image](#%EF%B8%8F-generating-an-image)
   * [📜 Full list of Command-Line Arguments](#-full-list-of-command-line-arguments)
-- [⏱️ Image generation speed (updated)](#-image-generation-speed-updated)
-- [↔️ Equivalent to Diffusers implementation](#-equivalent-to-diffusers-implementation)
-- [🗜️ Quantization](#-quantization)
+- [⏱️ Image generation speed (updated)](#%EF%B8%8F-image-generation-speed-updated)
+- [↔️ Equivalent to Diffusers implementation](#%EF%B8%8F-equivalent-to-diffusers-implementation)
+- [🗜️ Quantization](#%EF%B8%8F-quantization)
   * [📊 Size comparisons for quantized models](#-size-comparisons-for-quantized-models)
   * [💾 Saving a quantized version to disk](#-saving-a-quantized-version-to-disk)
   * [💽 Loading and running a quantized version from disk](#-loading-and-running-a-quantized-version-from-disk)
@@ -25,7 +25,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 - [🔌 LoRA](#-lora)
   * [Multi-LoRA](#multi-lora)
   * [Supported LoRA formats (updated)](#supported-lora-formats-updated)
-- [🕹️ Controlnet](#-controlnet)
+- [🕹️ Controlnet](#%EF%B8%8F-controlnet)
 - [🚧 Current limitations](#-current-limitations)
 - [✅ TODO](#-todo)
 
@@ -36,7 +36,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 MFLUX is a line-by-line port of the FLUX implementation in the [Huggingface Diffusers](https://github.com/huggingface/diffusers) library to [Apple MLX](https://github.com/ml-explore/mlx).
 MFLUX is purposefully kept minimal and explicit - Network architectures are hardcoded and no config files are used
 except for the tokenizers. The aim is to have a tiny codebase with the single purpose of expressing these models
-(thereby avoiding too many abstractions). While MFLUX priorities readability over generality and performance, [it can still be quite fast](#image-generation-speed-updated), [and even faster quantized](#quantization).
+(thereby avoiding too many abstractions). While MFLUX priorities readability over generality and performance, [it can still be quite fast](#%EF%B8%8F-image-generation-speed-updated), [and even faster quantized](#%EF%B8%8F-quantization).
 
 All models are implemented from scratch in MLX and only the tokenizers are used via the
 [Huggingface Transformers](https://github.com/huggingface/transformers) library. Other than that, there are only minimal dependencies
@@ -105,7 +105,7 @@ This example uses the more powerful `dev` model with 25 time steps:
 mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2 -q 8
 ```
 
-⚠️ *If the specific model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell or Dev model respectively). See the [quantization](#quantization) section for running compressed versions of the model.* ⚠️
+⚠️ *If the specific model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell or Dev model respectively). See the [quantization](#%EF%B8%8F-quantization) section for running compressed versions of the model.* ⚠️
 
 *By default, model files are downloaded to the `.cache` folder within your home directory. For example, in my setup, the path looks like this:*
 
@@ -137,11 +137,11 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--path`** (optional, `str`, default: `None`): Path to a local model on disk.
 
-- **`--quantize`** or **`-q`** (optional, `int`, default: `None`): [Quantization](#quantization) (choose between `4` or `8`).
+- **`--quantize`** or **`-q`** (optional, `int`, default: `None`): [Quantization](#%EF%B8%8F-quantization) (choose between `4` or `8`).
 
-- **`--lora-paths`** (optional, `[str]`, default: `None`): The paths to the [LoRA](#LoRA) weights.
+- **`--lora-paths`** (optional, `[str]`, default: `None`): The paths to the [LoRA](#-LoRA) weights.
 
-- **`--lora-scales`** (optional, `[float]`, default: `None`): The scale for each respective [LoRA](#LoRA) (will default to `1.0` if not specified and only one LoRA weight is loaded.)
+- **`--lora-scales`** (optional, `[float]`, default: `None`): The scale for each respective [LoRA](#-LoRA) (will default to `1.0` if not specified and only one LoRA weight is loaded.)
 
 - **`--metadata`** (optional): Exports a `.json` file containing the metadata for the image with the same name. (Even without this flag, the image metadata is saved and can be viewed using `exiftool image.png`)
 
@@ -259,7 +259,7 @@ Luxury food photograph of an italian Linguine pasta alle vongole dish with lots 
 ### 🗜️ Quantization
 
 MFLUX supports running FLUX in 4-bit or 8-bit quantized mode. Running a quantized version can greatly speed up the
-generation process and reduce the memory consumption by several gigabytes. [Quantized models also take up less disk space](#size-comparisons-for-quantized-models).
+generation process and reduce the memory consumption by several gigabytes. [Quantized models also take up less disk space](#-size-comparisons-for-quantized-models).
 
 ```sh
 mflux-generate \
@@ -273,7 +273,7 @@ mflux-generate \
 ```
 ![image](src/mflux/assets/comparison6.jpg)
 
-*In this example, weights are quantized at **runtime** - this is convenient if you don't want to [save a quantized copy of the weights to disk](#saving-a-quantized-version-to-disk), but still want to benefit from the potential speedup and RAM reduction quantization might bring.*
+*In this example, weights are quantized at **runtime** - this is convenient if you don't want to [save a quantized copy of the weights to disk](#-saving-a-quantized-version-to-disk), but still want to benefit from the potential speedup and RAM reduction quantization might bring.*
 
 
 By selecting the `--quantize` or `-q` flag to be `4`, `8`, or removing it entirely, we get all 3 images above. As can be seen, there is very little difference between the images (especially between the 8-bit, and the non-quantized result).
@@ -303,7 +303,7 @@ mflux-save \
 
 *Note that when saving a quantized version, you will need the original huggingface weights.*
 
-It is also possible to specify [LoRA](#lora) adapters when saving the model, e.g 
+It is also possible to specify [LoRA](#-lora) adapters when saving the model, e.g 
 
 ```sh
 mflux-save \
@@ -334,8 +334,8 @@ mflux-generate \
 
 *Note: When loading a quantized model from disk, there is no need to pass in `-q` flag, since we can infer this from the weight metadata.*
 
-*Also Note: Once we have a local model (quantized [or not](#running-a-non-quantized-model-directly-from-disk)) specified via the `--path` argument, the huggingface cache models are not required to launch the model.
-In other words, you can reclaim the 34GB diskspace (per model) by deleting the full 16-bit model from the [Huggingface cache](#generating-an-image) if you choose.*
+*Also Note: Once we have a local model (quantized [or not](#-running-a-non-quantized-model-directly-from-disk)) specified via the `--path` argument, the huggingface cache models are not required to launch the model.
+In other words, you can reclaim the 34GB diskspace (per model) by deleting the full 16-bit model from the [Huggingface cache](#%EF%B8%8F-generating-an-image) if you choose.*
 
 *If you don't want to download the full models and quantize them yourself, the 4-bit weights are available here for a direct download:*
 - [madroid/flux.1-schnell-mflux-4bit](https://huggingface.co/madroid/flux.1-schnell-mflux-4bit)
@@ -480,7 +480,7 @@ It can work well with `schnell`, but performance is not guaranteed.*
 Too high settings will corrupt the image. A recommended starting point a value like 0.4 and to play around with the strength.*
 
 
-Controlnet can also work well together with [LoRA adapters](#lora). In the example below the same reference image is used as a controlnet input
+Controlnet can also work well together with [LoRA adapters](#-lora). In the example below the same reference image is used as a controlnet input
 with different prompts and LoRA adapters active.
 
 ![image](src/mflux/assets/controlnet2.jpg)
