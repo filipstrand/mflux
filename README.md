@@ -28,6 +28,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 - [🕹️ Controlnet](#%EF%B8%8F-controlnet)
 - [🚧 Current limitations](#-current-limitations)
 - [✅ TODO](#-todo)
+- [License](#license)
 
 <!-- TOC end -->
 
@@ -498,3 +499,7 @@ with different prompts and LoRA adapters active.
 - [ ] Establish unit test suite
 - [ ] LoRA fine-tuning
 - [ ] Frontend support (Gradio/Streamlit/Other?)
+
+### License
+
+This project is licensed under the [MIT License](LICENSE).
