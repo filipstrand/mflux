@@ -109,7 +109,7 @@ class Flux1Controlnet:
             prompt: str,
             output: str,
             control_image_path: str,
-            save_control_image_canny: bool = False,
+            controlnet_save_canny: bool = False,
             config: ConfigControlnet = ConfigControlnet()
     ) -> "GeneratedImage":  # fmt: off
         # Create a new runtime config based on the model type and input parameters
@@ -120,7 +120,7 @@ class Flux1Controlnet:
         control_image = ImageUtil.load_image(control_image_path)
         control_image = ControlnetUtil.scale_image(config.height, config.width, control_image)
         control_image = ControlnetUtil.preprocess_canny(control_image)
-        if save_control_image_canny:
+        if controlnet_save_canny:
             ControlnetUtil.save_canny_image(control_image, output)
         controlnet_cond = ImageUtil.to_array(control_image)
         controlnet_cond = self.vae.encode(controlnet_cond)
