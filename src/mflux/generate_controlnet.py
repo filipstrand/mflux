@@ -47,7 +47,7 @@ def main():
         seed=int(time.time()) if args.seed is None else args.seed,
         prompt=args.prompt,
         output=args.output,
-        control_image_path=args.controlnet_image_path,
+        controlnet_image_path=args.controlnet_image_path,
         controlnet_save_canny=args.controlnet_save_canny,
         config=ConfigControlnet(
             num_inference_steps=args.steps,

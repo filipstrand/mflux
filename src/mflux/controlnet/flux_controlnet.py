@@ -108,7 +108,7 @@ class Flux1Controlnet:
             seed: int,
             prompt: str,
             output: str,
-            control_image_path: str,
+            controlnet_image_path: str,
             controlnet_save_canny: bool = False,
             config: ConfigControlnet = ConfigControlnet()
     ) -> "GeneratedImage":  # fmt: off
@@ -117,7 +117,7 @@ class Flux1Controlnet:
         time_steps = tqdm(range(config.num_inference_steps))
 
         # Embedd the controlnet reference image
-        control_image = ImageUtil.load_image(control_image_path)
+        control_image = ImageUtil.load_image(controlnet_image_path)
         control_image = ControlnetUtil.scale_image(config.height, config.width, control_image)
         control_image = ControlnetUtil.preprocess_canny(control_image)
         if controlnet_save_canny:
@@ -180,7 +180,7 @@ class Flux1Controlnet:
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
             config=config,
-            controlnet_image_path=control_image_path,
+            controlnet_image_path=controlnet_image_path,
         )
 
     @staticmethod
