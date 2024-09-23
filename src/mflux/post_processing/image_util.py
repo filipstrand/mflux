@@ -1,7 +1,7 @@
+import typing as t
 import json
 import logging
 from pathlib import Path
-
 import PIL
 import PIL.Image
 import mlx.core as mx
@@ -46,6 +46,17 @@ class ImageUtil:
             controlnet_image_path=controlnet_image_path,
             controlnet_strength=config.controlnet_strength if isinstance(config.config, ConfigControlnet) else None,
         )
+
+    def to_composite_image(generated_images: t.List[GeneratedImage]) -> Image:
+        # stitch horizontally
+        total_width = sum(gen_img.image.width for gen_img in generated_images)
+        max_height = max(gen_img.image.height for gen_img in generated_images)
+        composite_img = Image.new("RGB", (total_width, max_height))
+        current_x = 0
+        for index, gen_img in enumerate(generated_images):
+            composite_img.paste(gen_img.image, (current_x, 0))
+            current_x += gen_img.image.width
+        return composite_img
 
     @staticmethod
     def _denormalize(images: mx.array) -> mx.array:
@@ -119,7 +130,7 @@ class ImageUtil:
             if metadata is not None:
                 ImageUtil._embed_metadata(metadata, file_path)
                 log.info(f"Metadata embedded successfully at: {file_path}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             log.error(f"Error saving image: {e}")
 
     @staticmethod
@@ -145,5 +156,5 @@ class ImageUtil:
             # Save the image with metadata
             image.save(path, exif=exif_bytes)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             log.error(f"Error embedding metadata: {e}")

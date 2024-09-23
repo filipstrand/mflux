@@ -1,10 +1,12 @@
 import mlx.core as mx
+from pathlib import Path
 from mlx import nn
 from tqdm import tqdm
 
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
+from mflux.exceptions import StopImageGenerationException
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.transformer.transformer import Transformer
@@ -69,7 +71,7 @@ class Flux1:
         if weights.quantization_level is not None:
             self._set_model_weights(weights)
 
-    def generate_image(self, seed: int, prompt: str, config: Config = Config()) -> GeneratedImage:
+    def generate_image(self, seed: int, prompt: str, config: Config = Config(), stepwise_output_dir: Path = None, stepwise_composite_only=False) -> GeneratedImage:  # fmt: off
         # Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.num_inference_steps))
@@ -86,22 +88,54 @@ class Flux1:
         prompt_embeds = self.t5_text_encoder.forward(t5_tokens)
         pooled_prompt_embeds = self.clip_text_encoder.forward(clip_tokens)
 
+        step_wise_images = []
+        if stepwise_output_dir:
+            stepwise_output_dir.mkdir(parents=True, exist_ok=True)
         for t in time_steps:
-            # 3.t Predict the noise
-            noise = self.transformer.predict(
-                t=t,
-                prompt_embeds=prompt_embeds,
-                pooled_prompt_embeds=pooled_prompt_embeds,
-                hidden_states=latents,
-                config=config,
-            )
+            try:
+                # 3.t Predict the noise
+                noise = self.transformer.predict(
+                    t=t,
+                    prompt_embeds=prompt_embeds,
+                    pooled_prompt_embeds=pooled_prompt_embeds,
+                    hidden_states=latents,
+                    config=config,
+                )
 
-            # 4.t Take one denoise step
-            dt = config.sigmas[t + 1] - config.sigmas[t]
-            latents += noise * dt
+                # 4.t Take one denoise step
+                dt = config.sigmas[t + 1] - config.sigmas[t]
+                latents += noise * dt
 
-            # Evaluate to enable progress tracking
-            mx.eval(latents)
+                # Evaluate to enable progress tracking
+                mx.eval(latents)
+
+                if stepwise_output_dir:
+                    stepwise_decoded = self.vae.decode(Flux1._unpack_latents(latents, config.height, config.width))
+                    # performance todo: Pillow mostly uses CPU,
+                    # can try to improve image generation performance by offloading
+                    # stepwise image processing to the CPU via threading
+                    stepwise_img = ImageUtil.to_image(
+                        decoded_latents=stepwise_decoded,
+                        seed=seed,
+                        prompt=prompt,
+                        quantization=self.bits,
+                        generation_time=time_steps.format_dict["elapsed"],
+                        lora_paths=self.lora_paths,
+                        lora_scales=self.lora_scales,
+                        config=config,
+                    )
+                    step_wise_images.append(stepwise_img)
+                    if not stepwise_composite_only:
+                        stepwise_img.save(
+                            path=stepwise_output_dir / f"seed_{seed}_step{t+1}of{len(time_steps)}.png",
+                            export_json_metadata=False,
+                        )
+            except KeyboardInterrupt:  # noqa: PERF203
+                raise StopImageGenerationException(f"Stopping image generation at step {t+1}/{len(time_steps)}")
+            finally:
+                if step_wise_images and stepwise_output_dir:
+                    composite_img = ImageUtil.to_composite_image(step_wise_images)
+                    composite_img.save(stepwise_output_dir / f"seed_{seed}_composite.png")
 
         # 5. Decode the latent array and return the image
         latents = Flux1._unpack_latents(latents, config.height, config.width)
