@@ -1,6 +1,6 @@
 import logging
+from typing import TYPE_CHECKING
 
-import PIL.Image
 import mlx.core as mx
 from mlx import nn
 from tqdm import tqdm
@@ -10,17 +10,21 @@ from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.controlnet.controlnet_util import ControlnetUtil
 from mflux.controlnet.transformer_controlnet import TransformerControlnet
+from mflux.controlnet.weight_handler_controlnet import WeightHandlerControlnet
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.transformer.transformer import Transformer
 from mflux.models.vae.vae import VAE
-from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
 from mflux.tokenizer.clip_tokenizer import TokenizerCLIP
 from mflux.tokenizer.t5_tokenizer import TokenizerT5
 from mflux.tokenizer.tokenizer_handler import TokenizerHandler
 from mflux.weights.model_saver import ModelSaver
 from mflux.weights.weight_handler import WeightHandler
+
+if TYPE_CHECKING:
+    from mflux.post_processing.generated_image import GeneratedImage
+
 
 log = logging.getLogger(__name__)
 
@@ -79,51 +83,55 @@ class Flux1Controlnet:
         if weights.quantization_level is not None:
             self._set_model_weights(weights)
 
-        weights_controlnet, ctrlnet_quantization_level, controlnet_config = WeightHandler.load_controlnet_transformer(
+        weights_controlnet, controlnet_quantization_level, controlnet_config = WeightHandlerControlnet.load_controlnet_transformer(
             controlnet_id=CONTROLNET_ID
-        )
+        )  # fmt: off
         self.transformer_controlnet = TransformerControlnet(
             model_config=model_config,
             num_blocks=controlnet_config["num_layers"],
             num_single_blocks=controlnet_config["num_single_layers"],
         )
 
-        if ctrlnet_quantization_level is None:
+        if controlnet_quantization_level is None:
             self.transformer_controlnet.update(weights_controlnet)
 
         self.bits = None
-        if quantize is not None or ctrlnet_quantization_level is not None:
-            self.bits = ctrlnet_quantization_level if ctrlnet_quantization_level is not None else quantize
-            # fmt: off
-            nn.quantize(self.transformer_controlnet, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 128, group_size=128, bits=self.bits)
-            # fmt: on
+        if quantize is not None or controlnet_quantization_level is not None:
+            self.bits = controlnet_quantization_level if controlnet_quantization_level is not None else quantize
+            nn.quantize(self.transformer_controlnet, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 128, group_size=128, bits=self.bits)  # fmt: off
 
-        if ctrlnet_quantization_level is not None:
+        if controlnet_quantization_level is not None:
             self.transformer_controlnet.update(weights_controlnet)
 
-    def generate_image(self, seed: int, prompt: str, control_image: PIL.Image.Image, config: ConfigControlnet = ConfigControlnet()) -> GeneratedImage:  # fmt: off
+    def generate_image(
+            self,
+            seed: int,
+            prompt: str,
+            output: str,
+            controlnet_image_path: str,
+            controlnet_save_canny: bool = False,
+            config: ConfigControlnet = ConfigControlnet()
+    ) -> "GeneratedImage":  # fmt: off
         # Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.num_inference_steps))
 
-        if config.height != control_image.height or config.width != control_image.width:
-            log.warning(
-                f"Control image has different dimensions than the model. Resizing to {config.width}x{config.height}"
-            )
-            control_image = control_image.resize((config.width, config.height), PIL.Image.LANCZOS)
+        # Embedd the controlnet reference image
+        control_image = ImageUtil.load_image(controlnet_image_path)
+        control_image = ControlnetUtil.scale_image(config.height, config.width, control_image)
+        control_image = ControlnetUtil.preprocess_canny(control_image)
+        if controlnet_save_canny:
+            ControlnetUtil.save_canny_image(control_image, output)
+        controlnet_cond = ImageUtil.to_array(control_image)
+        controlnet_cond = self.vae.encode(controlnet_cond)
+        controlnet_cond = (controlnet_cond / self.vae.scaling_factor) + self.vae.shift_factor
+        controlnet_cond = Flux1Controlnet._pack_latents(controlnet_cond, config.height, config.width)
 
         # 1. Create the initial latents
         latents = mx.random.normal(
             shape=[1, (config.height // 16) * (config.width // 16), 64],
             key=mx.random.key(seed)
         )  # fmt: off
-        control_image = ControlnetUtil.preprocess_canny(control_image)
-        controlnet_cond = ImageUtil.to_array(control_image)
-        controlnet_cong = self.vae.encode(controlnet_cond)
-        # the rescaling in the next line is not in the huggingface code, but without it the images from
-        # the chosen controlnet model are very bad
-        controlnet_cond = (controlnet_cong / self.vae.scaling_factor) + self.vae.shift_factor
-        controlnet_cond = Flux1Controlnet._pack_latents(controlnet_cond, config.height, config.width)
 
         # 2. Embedd the prompt
         t5_tokens = self.t5_tokenizer.tokenize(prompt)
@@ -132,7 +140,8 @@ class Flux1Controlnet:
         pooled_prompt_embeds = self.clip_text_encoder.forward(clip_tokens)
 
         for t in time_steps:
-            ctrlnet_block_samples, ctrlnet_single_block_samples = self.transformer_controlnet.forward(
+            # Compute controlnet samples
+            controlnet_block_samples, controlnet_single_block_samples = self.transformer_controlnet.forward(
                 t=t,
                 prompt_embeds=prompt_embeds,
                 pooled_prompt_embeds=pooled_prompt_embeds,
@@ -140,6 +149,7 @@ class Flux1Controlnet:
                 controlnet_cond=controlnet_cond,
                 config=config,
             )
+
             # 3.t Predict the noise
             noise = self.transformer.predict(
                 t=t,
@@ -147,8 +157,8 @@ class Flux1Controlnet:
                 pooled_prompt_embeds=pooled_prompt_embeds,
                 hidden_states=latents,
                 config=config,
-                controlnet_block_samples=ctrlnet_block_samples,
-                controlnet_single_block_samples=ctrlnet_single_block_samples,
+                controlnet_block_samples=controlnet_block_samples,
+                controlnet_single_block_samples=controlnet_single_block_samples,
             )
 
             # 4.t Take one denoise step
@@ -170,6 +180,7 @@ class Flux1Controlnet:
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
             config=config,
+            controlnet_image_path=controlnet_image_path,
         )
 
     @staticmethod
