@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mflux"
-version = "0.2.1"
+version = "0.3.0"
 description = "A MLX port of FLUX based on the Huggingface Diffusers implementation."
 readme = "README.md"
 keywords = ["diffusers", "flux", "mlx"]
@@ -26,7 +26,6 @@ dependencies = [
     "transformers>=4.44.0,<5.0",
 ]
 classifiers = [
-    "Framework :: MLX",
     "Intended Audience :: Developers",
     "Operating System :: MacOS",
     "Programming Language :: Python :: 3",
