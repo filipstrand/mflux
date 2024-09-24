@@ -48,7 +48,7 @@ like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) f
 For users, the easiest way to install MFLUX is to use `uv tool`: If you have [installed `uv`](https://github.com/astral-sh/uv?tab=readme-ov-file#installation), simply: 
 
 ```sh
-uv tool install mflux
+uv tool install --upgrade mflux
 ``` 
 
 to get the `mflux-generate` and related command line executables. You can skip to the usage guides below.
