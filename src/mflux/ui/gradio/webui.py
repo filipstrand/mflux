@@ -3,7 +3,6 @@ import time
 import sys
 import os
 import argparse
-from pathlib import Path
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -12,37 +11,30 @@ from mflux.config.config import Config, ConfigControlnet
 from mflux.flux.flux import Flux1
 from mflux.controlnet.flux_controlnet import Flux1Controlnet
 
-LORA_DIR = os.environ.get("MFLUX_LORA_DIR", os.path.join(os.path.dirname(__file__), "..", "..", "lora"))
+LORA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "lora")
 
-flux_cache = {}
-
-def get_or_create_flux(model, quantize, path, lora_paths, lora_scales, is_controlnet=False):
-    key = (model, quantize, path, tuple(lora_paths), tuple(lora_scales), is_controlnet)
-    if key not in flux_cache:
-        FluxClass = Flux1Controlnet if is_controlnet else Flux1
-        flux_cache[key] = FluxClass(
-            model_config=ModelConfig.from_alias(model),
-            quantize=quantize,
-            local_path=path,
-            lora_paths=lora_paths,
-            lora_scales=lora_scales,
-        )
-    return flux_cache[key]
 
 def get_available_lora_files(lora_dir):
-    return list(Path(lora_dir).rglob("*.safetensors"))
+    return [f for f in os.listdir(lora_dir) if f.endswith(".safetensors")]
+
 
 def generate_image_gradio(
     prompt, model, seed, height, width, steps, guidance, quantize, path, lora_files, lora_scales_str, metadata
 ):
-    lora_paths = lora_files
+    lora_paths = [os.path.join(LORA_DIR, f) for f in lora_files] if lora_files else None
     lora_scales = [float(s.strip()) for s in lora_scales_str.split(",")] if lora_scales_str else None
 
     seed = None if seed == "" else int(seed)
     quantize = None if quantize == "None" else int(quantize)
     steps = None if steps == "" else int(steps)
 
-    flux = get_or_create_flux(model, quantize, path if path else None, lora_paths, lora_scales)
+    flux = Flux1(
+        model_config=ModelConfig.from_alias(model),
+        quantize=quantize,
+        local_path=path if path else None,
+        lora_paths=lora_paths,
+        lora_scales=lora_scales,
+    )
 
     if steps is None:
         steps = 4 if model == "schnell" else 14
@@ -59,6 +51,7 @@ def generate_image_gradio(
     )
 
     return image.image
+
 
 def generate_image_controlnet_gradio(
     prompt,
@@ -77,36 +70,41 @@ def generate_image_controlnet_gradio(
     metadata,
     save_canny,
 ):
-    lora_paths = lora_files
+    lora_paths = [os.path.join(LORA_DIR, f) for f in lora_files] if lora_files else None
     lora_scales = [float(s.strip()) for s in lora_scales_str.split(",")] if lora_scales_str else None
 
     seed = None if seed == "" else int(seed)
     quantize = None if quantize == "None" else int(quantize)
     steps = None if steps == "" else int(steps)
 
-    flux = get_or_create_flux(model, quantize, path if path else None, lora_paths, lora_scales, is_controlnet=True)
+    flux = Flux1Controlnet(
+        model_config=ModelConfig.from_alias(model),
+        quantize=quantize,
+        local_path=path if path else None,
+        lora_paths=lora_paths,
+        lora_scales=lora_scales,
+    )
 
     if steps is None:
         steps = 4 if model == "schnell" else 14
 
-    try:
-        image = flux.generate_image(
-            seed=int(time.time()) if seed is None else seed,
-            prompt=prompt,
-            output="temp_output.png",  # Tijdelijke output voor save_canny
-            control_image=control_image,
-            controlnet_save_canny=save_canny,
-            config=ConfigControlnet(
-                num_inference_steps=steps,
-                height=height,
-                width=width,
-                guidance=guidance,
-                controlnet_strength=controlnet_strength,
-            ),
-        )
-        return image.image, "Image generated successfully!"
-    except Exception as e:
-        return None, f"Error generating image: {str(e)}"
+    control_image_pil = control_image
+    image = flux.generate_image(
+        seed=int(time.time()) if seed is None else seed,
+        prompt=prompt,
+        control_image=control_image_pil,
+        config=ConfigControlnet(
+            num_inference_steps=steps,
+            height=height,
+            width=width,
+            guidance=guidance,
+            controlnet_strength=controlnet_strength,
+            save_canny=save_canny,
+        ),
+    )
+
+    return image.image
+
 
 def save_quantized_model_gradio(model, quantize, save_path):
     quantize = int(quantize)
@@ -119,12 +117,17 @@ def save_quantized_model_gradio(model, quantize, save_path):
 
     return f"Model saved at {save_path}"
 
+
 def simple_generate_image(prompt, model, height, width, lora_files, lora_scales_str):
+    lora_paths = [os.path.join(LORA_DIR, f) for f in lora_files] if lora_files else None
     lora_scales = [float(s.strip()) for s in lora_scales_str.split(",")] if lora_scales_str else None
+
     steps = 20 if model == "dev (slow quality)" else 4
     model_alias = "dev" if model == "dev (slow quality)" else "schnell"
 
-    flux = get_or_create_flux(model_alias, 4, None, lora_files, lora_scales)
+    flux = Flux1(
+        model_config=ModelConfig.from_alias(model_alias), quantize=4, lora_paths=lora_paths, lora_scales=lora_scales
+    )
 
     image = flux.generate_image(
         seed=int(time.time()),
@@ -138,6 +141,7 @@ def simple_generate_image(prompt, model, height, width, lora_files, lora_scales_
     )
 
     return image.image
+
 
 def create_ui(lora_dir):
     with gr.Blocks() as demo:
@@ -237,7 +241,6 @@ def create_ui(lora_dir):
                         generate_button_cn = gr.Button("Generate Image")
                     with gr.Column():
                         output_image_cn = gr.Image(label="Generated Image")
-                        output_message_cn = gr.Textbox(label="Status")
                 generate_button_cn.click(
                     fn=generate_image_controlnet_gradio,
                     inputs=[
@@ -257,7 +260,7 @@ def create_ui(lora_dir):
                         metadata_cn,
                         save_canny,
                     ],
-                    outputs=[output_image_cn, output_message_cn],
+                    outputs=output_image_cn,
                 )
 
                 gr.Markdown("""
@@ -287,6 +290,7 @@ def create_ui(lora_dir):
         gr.Markdown("**Note:** Ensure all paths and files are correct and that the models are accessible.")
 
     return demo
+
 
 def main():
     parser = argparse.ArgumentParser(description="MFlux Gradio Web UI")
