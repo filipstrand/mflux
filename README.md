@@ -15,6 +15,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 - [💿 Installation](#-installation)
 - [🖼️ Generating an image](#%EF%B8%8F-generating-an-image)
   * [📜 Full list of Command-Line Arguments](#-full-list-of-command-line-arguments)
+- [🖥️ Using the Graphical User Interface](#%EF%B8%8F-using-the-graphical-user-interface)
 - [⏱️ Image generation speed (updated)](#%EF%B8%8F-image-generation-speed-updated)
 - [↔️ Equivalent to Diffusers implementation](#%EF%B8%8F-equivalent-to-diffusers-implementation)
 - [🗜️ Quantization](#%EF%B8%8F-quantization)
@@ -179,6 +180,29 @@ image.save(path="image.png")
 
 For more options on how to configure MFLUX, please see [generate.py](src/mflux/generate.py).
 
+### 🖥️ Using the Graphical User Interface
+
+MFLUX now includes a graphical user interface (GUI) built with Gradio. To start the GUI, follow these steps:
+
+1. Ensure you have MFLUX installed and your environment is set up correctly.
+
+2. Run the following command in your terminal:
+
+```sh
+mflux-webui
+```
+
+3. Once the server starts, you'll see a URL in the console output. Open this URL in your web browser to access the MFLUX GUI.
+
+The GUI provides an easy-to-use interface for:
+- Generating images with FLUX models
+- Applying LoRA adapters
+- Using ControlNet for guided image generation
+- Adjusting various parameters like model type, steps, seed, and quantization
+- Quantizing and saving models
+
+You can perform all the operations available in the command-line interface through this user-friendly GUI.
+
 ### ⏱️ Image generation speed (updated)
 
 These numbers are based on the non-quantized `schnell` model, with the configuration provided in the code snippet below.
@@ -241,7 +265,6 @@ photorealistic, lotr, A tiny red dragon curled up asleep inside a nest, (Soft Fo
 ![image](src/mflux/assets/comparison3.jpg)
 
 ---
-
 
 ```
 A weathered fisherman in his early 60s stands on the deck of his boat, gazing out at a stormy sea. He has a thick, salt-and-pepper beard, deep-set blue eyes, and skin tanned and creased from years of sun exposure. He's wearing a yellow raincoat and hat, with water droplets clinging to the fabric. Behind him, dark clouds loom ominously, and waves crash against the side of the boat. The overall atmosphere is one of tension and respect for the power of nature.
