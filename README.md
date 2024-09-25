@@ -29,6 +29,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 - [🕹️ Controlnet](#%EF%B8%8F-controlnet)
 - [🚧 Current limitations](#-current-limitations)
 - [✅ TODO](#-todo)
+- [License](#license)
 
 <!-- TOC end -->
 
@@ -48,7 +49,7 @@ like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) f
 For users, the easiest way to install MFLUX is to use `uv tool`: If you have [installed `uv`](https://github.com/astral-sh/uv?tab=readme-ov-file#installation), simply: 
 
 ```sh
-uv tool install mflux
+uv tool install --upgrade mflux
 ``` 
 
 to get the `mflux-generate` and related command line executables. You can skip to the usage guides below.
@@ -521,3 +522,7 @@ with different prompts and LoRA adapters active.
 - [ ] Establish unit test suite
 - [ ] LoRA fine-tuning
 - [ ] Frontend support (Gradio/Streamlit/Other?)
+
+### License
+
+This project is licensed under the [MIT License](LICENSE).
