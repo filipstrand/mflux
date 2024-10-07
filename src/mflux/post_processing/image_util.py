@@ -1,7 +1,7 @@
 import typing as t
 import json
 import logging
-from pathlib import Path
+import pathlib
 import PIL
 import PIL.Image
 import mlx.core as mx
@@ -47,6 +47,7 @@ class ImageUtil:
             controlnet_strength=config.controlnet_strength if isinstance(config.config, ConfigControlnet) else None,
         )
 
+    @staticmethod
     def to_composite_image(generated_images: t.List[GeneratedImage]) -> Image:
         # stitch horizontally
         total_width = sum(gen_img.image.width for gen_img in generated_images)
@@ -100,11 +101,11 @@ class ImageUtil:
     @staticmethod
     def save_image(
             image: PIL.Image.Image,
-            path: str,
+            path: t.Union[str, pathlib.Path],
             metadata: dict | None = None,
             export_json_metadata: bool = False
     ) -> None:  # fmt: off
-        file_path = Path(path)
+        file_path = pathlib.Path(path)
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_name = file_path.stem
         file_extension = file_path.suffix

@@ -3,11 +3,11 @@ class MFluxException(Exception):
 
 
 class ImageSavingException(MFluxException):
-    """error ocurred while attempting to save image to storage."""
+    """error occurred while attempting to save image to storage."""
 
 
 class MetadataEmbedException(MFluxException):
-    """error ocurred while attempting to embed metadata in image"""
+    """error occurred while attempting to embed metadata in image"""
 
 
 class MFluxUserException(MFluxException):
