@@ -27,37 +27,39 @@ class ImageGeneratorControlnetTestHelper:
         controlnet_image_path = str(ImageGeneratorTestHelper.resolve_path(controlnet_image_path))
         lora_paths = [str(ImageGeneratorTestHelper.resolve_path(p)) for p in lora_paths] if lora_paths else None
 
-        # given
-        flux = Flux1Controlnet(
-            model_config=model_config,
-            quantize=8,
-            lora_paths=lora_paths,
-            lora_scales=lora_scales,
-        )
+        try:
+            # given
+            flux = Flux1Controlnet(
+                model_config=model_config,
+                quantize=8,
+                lora_paths=lora_paths,
+                lora_scales=lora_scales,
+            )
 
-        # when
-        image = flux.generate_image(
-            seed=seed,
-            prompt=prompt,
-            output=str(output_image_path),
-            controlnet_image_path=controlnet_image_path,
-            controlnet_save_canny=False,
-            config=ConfigControlnet(
-                num_inference_steps=steps,
-                height=768,
-                width=493,
-                controlnet_strength=controlnet_strength,
-            ),
-        )
-        image.save(path=output_image_path)
+            # when
+            image = flux.generate_image(
+                seed=seed,
+                prompt=prompt,
+                output=str(output_image_path),
+                controlnet_image_path=controlnet_image_path,
+                controlnet_save_canny=False,
+                config=ConfigControlnet(
+                    num_inference_steps=steps,
+                    height=768,
+                    width=493,
+                    controlnet_strength=controlnet_strength,
+                ),
+            )
+            image.save(path=output_image_path)
 
-        # then
-        np.testing.assert_array_equal(
-            np.array(Image.open(output_image_path)),
-            np.array(Image.open(reference_image_path)),
-            err_msg="Generated image doesn't match reference image",
-        )
+            # then
+            np.testing.assert_array_equal(
+                np.array(Image.open(output_image_path)),
+                np.array(Image.open(reference_image_path)),
+                err_msg="Generated image doesn't match reference image",
+            )
 
-        # cleanup
-        if os.path.exists(output_image_path):
-            os.remove(output_image_path)
+        finally:
+            # cleanup
+            if os.path.exists(output_image_path):
+                os.remove(output_image_path)

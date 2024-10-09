@@ -24,36 +24,38 @@ class ImageGeneratorTestHelper:
         output_image_path = ImageGeneratorTestHelper.resolve_path(output_image_path)
         lora_paths = [str(ImageGeneratorTestHelper.resolve_path(p)) for p in lora_paths] if lora_paths else None
 
-        # given
-        flux = Flux1(
-            model_config=model_config,
-            quantize=8,
-            lora_paths=lora_paths,
-            lora_scales=lora_scales
-        )  # fmt: off
+        try:
+            # given
+            flux = Flux1(
+                model_config=model_config,
+                quantize=8,
+                lora_paths=lora_paths,
+                lora_scales=lora_scales
+            )  # fmt: off
 
-        # when
-        image = flux.generate_image(
-            seed=seed,
-            prompt=prompt,
-            config=Config(
-                num_inference_steps=steps,
-                height=341,
-                width=768,
-            ),
-        )
-        image.save(path=output_image_path)
+            # when
+            image = flux.generate_image(
+                seed=seed,
+                prompt=prompt,
+                config=Config(
+                    num_inference_steps=steps,
+                    height=341,
+                    width=768,
+                ),
+            )
+            image.save(path=output_image_path)
 
-        # then
-        np.testing.assert_array_equal(
-            np.array(Image.open(output_image_path)),
-            np.array(Image.open(reference_image_path)),
-            err_msg="Generated image doesn't match reference image",
-        )
+            # then
+            np.testing.assert_array_equal(
+                np.array(Image.open(output_image_path)),
+                np.array(Image.open(reference_image_path)),
+                err_msg="Generated image doesn't match reference image",
+            )
 
-        # cleanup
-        if os.path.exists(output_image_path):
-            os.remove(output_image_path)
+        finally:
+            # cleanup
+            if os.path.exists(output_image_path):
+                os.remove(output_image_path)
 
     @staticmethod
     def resolve_path(path) -> Path:
