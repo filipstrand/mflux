@@ -1,5 +1,6 @@
 import importlib
-
+import pathlib
+import typing as t
 import PIL.Image
 import mlx.core as mx
 
@@ -37,7 +38,7 @@ class GeneratedImage:
         self.controlnet_image = controlnet_image_path
         self.controlnet_strength = controlnet_strength
 
-    def save(self, path: str, export_json_metadata: bool = False) -> None:
+    def save(self, path: t.Union[str, pathlib.Path], export_json_metadata: bool = False) -> None:
         from mflux import ImageUtil
 
         ImageUtil.save_image(self.image, path, self._get_metadata(), export_json_metadata)
