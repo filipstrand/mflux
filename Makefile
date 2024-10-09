@@ -2,6 +2,7 @@
 
 PYTHON_VERSION = 3.11
 VENV_DIR = .venv
+PYTHON = $(VENV_DIR)/bin/python
 
 # Default target
 .PHONY: all
@@ -37,6 +38,14 @@ ensure-ruff:
 	@if ! /usr/bin/which -s ruff; then \
 		echo "ruff required for code linting and formatting. Using uv tool to install ruff."; \
 		uv tool install ruff; \
+	fi
+
+# ensure pytest is available
+.PHONY: ensure-pytest
+ensure-pytest:
+	@if ! $(PYTHON) -c "import pytest" 2>/dev/null; then \
+		echo "pytest required for testing. Installing pytest..."; \
+		uv pip install pytest; \
 	fi
 
 # Create virtual environment with uv
@@ -81,10 +90,9 @@ check: ensure-ruff
 
 # Run tests
 .PHONY: test
-test:
+test: ensure-pytest
 	# 🏗️ Running tests...
-	# mock success stub for future test suite 😜
-	@true
+	$(PYTHON) -m pytest
 	# ✅ Tests completed
 
 # Clean up
