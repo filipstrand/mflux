@@ -46,13 +46,13 @@ def main():
         image = flux.generate_image(
             seed=int(time.time()) if args.seed is None else args.seed,
             prompt=args.prompt,
+            stepwise_output_dir=Path(args.stepwise_image_output_dir) if args.stepwise_image_output_dir else None,
             config=Config(
                 num_inference_steps=args.steps,
                 height=args.height,
                 width=args.width,
                 guidance=args.guidance,
             ),
-            stepwise_output_dir=Path(args.stepwise_image_output_dir) if args.stepwise_image_output_dir else None,
         )
 
         # Save the image
