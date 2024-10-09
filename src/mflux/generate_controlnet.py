@@ -1,7 +1,8 @@
 import argparse
 import time
+from pathlib import Path
 
-from mflux import Flux1Controlnet, ConfigControlnet, ModelConfig
+from mflux import Flux1Controlnet, ConfigControlnet, ModelConfig, StopImageGenerationException
 
 
 def main():
@@ -17,6 +18,7 @@ def main():
     parser.add_argument("--height", type=int, default=1024, help="Image height (Default is 1024)")
     parser.add_argument("--width", type=int, default=1024, help="Image width (Default is 1024)")
     parser.add_argument("--steps", type=int, default=None, help="Inference Steps")
+    parser.add_argument('--stepwise-image-output-dir', type=str, default=None, help='Output dir to write step-wise images and their final composite image to.')
     parser.add_argument("--guidance", type=float, default=3.5, help="Guidance Scale (Default is 3.5)")
     parser.add_argument("--quantize",  "-q", type=int, choices=[4, 8], default=None, help="Quantize the model (4 or 8, Default is None)")
     parser.add_argument("--path", type=str, default=None, help="Local path for loading a model from disk")
@@ -42,24 +44,28 @@ def main():
         lora_scales=args.lora_scales,
     )
 
-    # Generate an image
-    image = flux.generate_image(
-        seed=int(time.time()) if args.seed is None else args.seed,
-        prompt=args.prompt,
-        output=args.output,
-        controlnet_image_path=args.controlnet_image_path,
-        controlnet_save_canny=args.controlnet_save_canny,
-        config=ConfigControlnet(
-            num_inference_steps=args.steps,
-            height=args.height,
-            width=args.width,
-            guidance=args.guidance,
-            controlnet_strength=args.controlnet_strength,
-        ),
-    )
+    try:
+        # Generate an image
+        image = flux.generate_image(
+            seed=int(time.time()) if args.seed is None else args.seed,
+            prompt=args.prompt,
+            output=args.output,
+            controlnet_image_path=args.controlnet_image_path,
+            controlnet_save_canny=args.controlnet_save_canny,
+            config=ConfigControlnet(
+                num_inference_steps=args.steps,
+                height=args.height,
+                width=args.width,
+                guidance=args.guidance,
+                controlnet_strength=args.controlnet_strength,
+            ),
+            stepwise_output_dir=Path(args.stepwise_image_output_dir) if args.stepwise_image_output_dir else None,
+        )
 
-    # Save the image
-    image.save(path=args.output, export_json_metadata=args.metadata)
+        # Save the image
+        image.save(path=args.output, export_json_metadata=args.metadata)
+    except StopImageGenerationException as stop_exc:
+        print(stop_exc)
 
 
 if __name__ == "__main__":

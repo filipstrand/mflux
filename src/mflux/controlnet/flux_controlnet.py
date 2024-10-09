@@ -1,16 +1,16 @@
 import logging
-from typing import TYPE_CHECKING
-
 import mlx.core as mx
 from mlx import nn
+from pathlib import Path
 from tqdm import tqdm
-
+from typing import TYPE_CHECKING
 from mflux.config.config import ConfigControlnet
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.controlnet.controlnet_util import ControlnetUtil
 from mflux.controlnet.transformer_controlnet import TransformerControlnet
 from mflux.controlnet.weight_handler_controlnet import WeightHandlerControlnet
+from mflux.exceptions import StopImageGenerationException
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.transformer.transformer import Transformer
@@ -110,7 +110,9 @@ class Flux1Controlnet:
             output: str,
             controlnet_image_path: str,
             controlnet_save_canny: bool = False,
-            config: ConfigControlnet = ConfigControlnet()
+            config: ConfigControlnet = ConfigControlnet(),
+            stepwise_output_dir: Path = None,
+            stepwise_composite_only=False
     ) -> "GeneratedImage":  # fmt: off
         # Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
@@ -139,34 +141,68 @@ class Flux1Controlnet:
         prompt_embeds = self.t5_text_encoder.forward(t5_tokens)
         pooled_prompt_embeds = self.clip_text_encoder.forward(clip_tokens)
 
+        step_wise_images = []
+        if stepwise_output_dir:
+            stepwise_output_dir.mkdir(parents=True, exist_ok=True)
         for t in time_steps:
-            # Compute controlnet samples
-            controlnet_block_samples, controlnet_single_block_samples = self.transformer_controlnet.forward(
-                t=t,
-                prompt_embeds=prompt_embeds,
-                pooled_prompt_embeds=pooled_prompt_embeds,
-                hidden_states=latents,
-                controlnet_cond=controlnet_cond,
-                config=config,
-            )
+            try:
+                # Compute controlnet samples
+                controlnet_block_samples, controlnet_single_block_samples = self.transformer_controlnet.forward(
+                    t=t,
+                    prompt_embeds=prompt_embeds,
+                    pooled_prompt_embeds=pooled_prompt_embeds,
+                    hidden_states=latents,
+                    controlnet_cond=controlnet_cond,
+                    config=config,
+                )
 
-            # 3.t Predict the noise
-            noise = self.transformer.predict(
-                t=t,
-                prompt_embeds=prompt_embeds,
-                pooled_prompt_embeds=pooled_prompt_embeds,
-                hidden_states=latents,
-                config=config,
-                controlnet_block_samples=controlnet_block_samples,
-                controlnet_single_block_samples=controlnet_single_block_samples,
-            )
+                # 3.t Predict the noise
+                noise = self.transformer.predict(
+                    t=t,
+                    prompt_embeds=prompt_embeds,
+                    pooled_prompt_embeds=pooled_prompt_embeds,
+                    hidden_states=latents,
+                    config=config,
+                    controlnet_block_samples=controlnet_block_samples,
+                    controlnet_single_block_samples=controlnet_single_block_samples,
+                )
 
-            # 4.t Take one denoise step
-            dt = config.sigmas[t + 1] - config.sigmas[t]
-            latents += noise * dt
+                # 4.t Take one denoise step
+                dt = config.sigmas[t + 1] - config.sigmas[t]
+                latents += noise * dt
 
-            # Evaluate to enable progress tracking
-            mx.eval(latents)
+                # Evaluate to enable progress tracking
+                mx.eval(latents)
+
+                if stepwise_output_dir:
+                    stepwise_decoded = self.vae.decode(
+                        Flux1Controlnet._unpack_latents(latents, config.height, config.width)
+                    )
+                    # performance todo: Pillow mostly uses CPU,
+                    # can try to improve image generation performance by offloading
+                    # stepwise image processing to the CPU via threading
+                    stepwise_img = ImageUtil.to_image(
+                        decoded_latents=stepwise_decoded,
+                        seed=seed,
+                        prompt=prompt,
+                        quantization=self.bits,
+                        generation_time=time_steps.format_dict["elapsed"],
+                        lora_paths=self.lora_paths,
+                        lora_scales=self.lora_scales,
+                        config=config,
+                    )
+                    step_wise_images.append(stepwise_img)
+                    if not stepwise_composite_only:
+                        stepwise_img.save(
+                            path=stepwise_output_dir / f"seed_{seed}_step{t+1}of{len(time_steps)}.png",
+                            export_json_metadata=False,
+                        )
+            except KeyboardInterrupt:  # noqa: PERF203
+                raise StopImageGenerationException(f"Stopping image generation at step {t+1}/{len(time_steps)}")
+            finally:
+                if step_wise_images and stepwise_output_dir:
+                    composite_img = ImageUtil.to_composite_image(step_wise_images)
+                    composite_img.save(stepwise_output_dir / f"seed_{seed}_composite.png")
 
         # 5. Decode the latent array and return the image
         latents = Flux1Controlnet._unpack_latents(latents, config.height, config.width)
