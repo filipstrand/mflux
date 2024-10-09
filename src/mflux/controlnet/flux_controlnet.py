@@ -118,7 +118,7 @@ class Flux1Controlnet:
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.num_inference_steps))
 
-        # Embedd the controlnet reference image
+        # Embed the controlnet reference image
         control_image = ImageUtil.load_image(controlnet_image_path)
         control_image = ControlnetUtil.scale_image(config.height, config.width, control_image)
         control_image = ControlnetUtil.preprocess_canny(control_image)
@@ -135,7 +135,7 @@ class Flux1Controlnet:
             key=mx.random.key(seed)
         )  # fmt: off
 
-        # 2. Embedd the prompt
+        # 2. Embed the prompt
         t5_tokens = self.t5_tokenizer.tokenize(prompt)
         clip_tokens = self.clip_tokenizer.tokenize(prompt)
         prompt_embeds = self.t5_text_encoder.forward(t5_tokens)

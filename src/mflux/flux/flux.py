@@ -82,7 +82,7 @@ class Flux1:
             key=mx.random.key(seed)
         )  # fmt: off
 
-        # 2. Embedd the prompt
+        # 2. Embed the prompt
         t5_tokens = self.t5_tokenizer.tokenize(prompt)
         clip_tokens = self.clip_tokenizer.tokenize(prompt)
         prompt_embeds = self.t5_text_encoder.forward(t5_tokens)
