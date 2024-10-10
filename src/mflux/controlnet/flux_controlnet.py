@@ -1,9 +1,11 @@
 import logging
+from pathlib import Path
+from typing import TYPE_CHECKING
+
 import mlx.core as mx
 from mlx import nn
-from pathlib import Path
 from tqdm import tqdm
-from typing import TYPE_CHECKING
+
 from mflux.config.config import ConfigControlnet
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
@@ -183,7 +185,7 @@ class Flux1Controlnet:
                 # Evaluate to enable progress tracking
                 mx.eval(latents)
 
-            except KeyboardInterrupt:
+            except KeyboardInterrupt:  # noqa: PERF203
                 stepwise_handler.handle_interruption()
                 raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(time_steps)}")
 

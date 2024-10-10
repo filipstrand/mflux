@@ -1,7 +1,7 @@
 import math
 
-from mlx import nn
 import mlx.core as mx
+from mlx import nn
 
 
 class T5DenseReluDense(nn.Module):

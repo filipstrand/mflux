@@ -2,7 +2,6 @@ import mlx.core as mx
 from mlx import nn
 
 from mflux.models.vae.common.unet_mid_block import UnetMidBlock
-
 from mflux.models.vae.encoder.conv_in import ConvIn
 from mflux.models.vae.encoder.conv_norm_out import ConvNormOut
 from mflux.models.vae.encoder.conv_out import ConvOut

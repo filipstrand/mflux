@@ -2,7 +2,7 @@ import argparse
 import time
 from pathlib import Path
 
-from mflux import Flux1, Config, ModelConfig, StopImageGenerationException
+from mflux import Config, Flux1, ModelConfig, StopImageGenerationException
 
 
 def main():

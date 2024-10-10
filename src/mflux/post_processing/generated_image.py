@@ -1,8 +1,9 @@
 import importlib
 import pathlib
 import typing as t
-import PIL.Image
+
 import mlx.core as mx
+import PIL.Image
 
 from mflux.config.model_config import ModelConfig
 
