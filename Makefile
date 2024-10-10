@@ -26,6 +26,7 @@ expect-uv:
 
 # assume reasonably pre-commit is a safe dependency given its wide support (e.g. GitHub Actions integration)
 .PHONY: ensure-pre-commit
+ensure-pre-commit:
 	@if ! /usr/bin/which -s pre-commit; then \
 		echo "pre-commit required for submitting commits before pull requests. Using uv tool to install pre-commit."; \
 		uv tool install pre-commit; \
