@@ -1,0 +1,5 @@
+# this is the config file for typos-cli, part of "pre-commit run"
+# use "typos --dump-config" to disocver other configs to override
+
+[default]
+extend-ignore-identifiers-re = ["EmbedND", "embed_nd", "alle"]

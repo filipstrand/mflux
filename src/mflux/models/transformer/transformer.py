@@ -5,7 +5,7 @@ from mlx import nn
 
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.models.transformer.ada_layer_norm_continous import (
+from mflux.models.transformer.ada_layer_norm_continuous import (
     AdaLayerNormContinuous,
 )
 from mflux.models.transformer.embed_nd import EmbedND
