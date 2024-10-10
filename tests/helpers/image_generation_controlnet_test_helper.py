@@ -3,7 +3,7 @@ import os
 import numpy as np
 from PIL import Image
 
-from mflux import ModelConfig, Flux1Controlnet, ConfigControlnet
+from mflux import ConfigControlnet, Flux1Controlnet, ModelConfig
 from tests.helpers.image_generation_test_helper import ImageGeneratorTestHelper
 
 

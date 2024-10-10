@@ -1,12 +1,13 @@
 import math
-from mlx import nn
+
 import mlx.core as mx
+from mlx import nn
 
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
+from mflux.models.transformer.guidance_embedder import GuidanceEmbedder
 from mflux.models.transformer.text_embedder import TextEmbedder
 from mflux.models.transformer.timestep_embedder import TimestepEmbedder
-from mflux.models.transformer.guidance_embedder import GuidanceEmbedder
 
 
 class TimeTextEmbed(nn.Module):

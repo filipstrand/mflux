@@ -62,7 +62,7 @@ respect-gitignore = true
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`) codes by default.
 # Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
 # McCabe complexity (`C901`) by default.
-select = ["BLE", "E4", "E7", "E9", "F", "ICN", "LOG", "PERF", "W"]
+select = ["BLE", "E4", "E7", "E9", "F", "I", "ICN", "LOG", "PERF", "W"]
 ignore = []
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
@@ -103,3 +103,19 @@ docstring-code-line-length = "dynamic"
 testpaths = ["tests"]
 python_files = "test_*.py"
 addopts = "-v"
+
+# https://docs.astral.sh/ruff/settings/#lintisort
+[tool.ruff.lint.isort]
+case-sensitive = false
+combine-as-imports = true
+force-wrap-aliases = true
+from-first = false
+known-first-party = ["src"]
+relative-imports-order = "furthest-to-closest"
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder",
+]
