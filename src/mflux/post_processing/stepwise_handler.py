@@ -1,10 +1,22 @@
 from pathlib import Path
+from dataclasses import dataclass
 
 import mlx.core as mx
 
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.post_processing.array_util import ArrayUtil
+from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
+
+
+@dataclass
+class StepwiseOutput:
+    image: GeneratedImage
+    image_path: Path
+    time_step: int
+
+    def __str__(self):
+        return f"Stepwise output: time_step={self.time_step} image_path={self.image_path}"
 
 
 class StepwiseHandler:
@@ -45,9 +57,10 @@ class StepwiseHandler:
             self.step_wise_images.append(stepwise_img)
 
             stepwise_img.save(
-                path=self.output_dir / f"seed_{self.seed}_step{step + 1}of{len(self.time_steps)}.png",
+                path=(image_path := self.output_dir / f"seed_{self.seed}_step{step + 1}of{len(self.time_steps)}.png"),
                 export_json_metadata=False,
             )
+            return StepwiseOutput(image=stepwise_img, image_path=image_path, time_step=step)
 
     def handle_interruption(self):
         if self.step_wise_images:

@@ -80,6 +80,7 @@ class Flux1:
         prompt: str,
         config: Config = Config(),
         stepwise_output_dir: Path = None,
+        stepwise_yield: bool = False,
     ) -> GeneratedImage:
         # Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
@@ -121,10 +122,12 @@ class Flux1:
                 latents += noise * dt
 
                 # Handle stepwise output if enabled
-                stepwise_handler.process_step(t, latents)
+                stepwise_output = stepwise_handler.process_step(t, latents)
 
                 # Evaluate to enable progress tracking
                 mx.eval(latents)
+                if stepwise_yield:
+                    yield stepwise_output
 
             except KeyboardInterrupt:
                 stepwise_handler.handle_interruption()
