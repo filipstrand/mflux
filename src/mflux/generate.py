@@ -15,7 +15,7 @@ def main():
     parser.add_argument("--height", type=int, default=1024, help="Image height (Default is 1024)")
     parser.add_argument("--width", type=int, default=1024, help="Image width (Default is 1024)")
     parser.add_argument("--steps", type=int, default=None, help="Inference Steps")
-    parser.add_argument('--stepwise-image-output-dir', type=str, default=None, help='Output dir to write step-wise images and their final composite image to.')
+    parser.add_argument('--stepwise-image-output-dir', type=str, default=None, help='[EXPERIMENTAL] Output dir to write step-wise images and their final composite image to. This feature may change in future versions.')
     parser.add_argument("--guidance", type=float, default=3.5, help="Guidance Scale (Default is 3.5)")
     parser.add_argument("--quantize",  "-q", type=int, choices=[4, 8], default=None, help="Quantize the model (4 or 8, Default is None)")
     parser.add_argument("--path", type=str, default=None, help="Local path for loading a model from disk")
