@@ -127,7 +127,7 @@ class Flux1Controlnet:
             output_dir=stepwise_output_dir,
         )
 
-        # Embedd the controlnet reference image
+        # Embed the controlnet reference image
         control_image = ImageUtil.load_image(controlnet_image_path)
         control_image = ControlnetUtil.scale_image(config.height, config.width, control_image)
         control_image = ControlnetUtil.preprocess_canny(control_image)
