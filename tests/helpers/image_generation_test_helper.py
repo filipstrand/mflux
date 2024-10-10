@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from mflux import Flux1, Config, ModelConfig
+from mflux import Config, Flux1, ModelConfig
 
 
 class ImageGeneratorTestHelper:

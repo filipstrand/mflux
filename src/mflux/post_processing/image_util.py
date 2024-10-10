@@ -1,13 +1,15 @@
-import typing as t
 import json
 import logging
 import pathlib
-import PIL
-import PIL.Image
+import typing as t
+
 import mlx.core as mx
 import numpy as np
-from PIL import Image
 import piexif
+import PIL
+import PIL.Image
+from PIL import Image
+
 from mflux.config.config import ConfigControlnet
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.post_processing.generated_image import GeneratedImage

@@ -5,7 +5,6 @@ import cv2
 import numpy as np
 import PIL.Image
 
-
 log = logging.getLogger(__name__)
 
 
