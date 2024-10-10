@@ -10,12 +10,14 @@ from mflux.config.runtime_config import RuntimeConfig
 from mflux.controlnet.controlnet_util import ControlnetUtil
 from mflux.controlnet.transformer_controlnet import TransformerControlnet
 from mflux.controlnet.weight_handler_controlnet import WeightHandlerControlnet
-from mflux.exceptions import StopImageGenerationException
+from mflux.error.exceptions import StopImageGenerationException
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.transformer.transformer import Transformer
 from mflux.models.vae.vae import VAE
+from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.image_util import ImageUtil
+from mflux.post_processing.stepwise_handler import StepwiseHandler
 from mflux.tokenizer.clip_tokenizer import TokenizerCLIP
 from mflux.tokenizer.t5_tokenizer import TokenizerT5
 from mflux.tokenizer.tokenizer_handler import TokenizerHandler
@@ -112,11 +114,18 @@ class Flux1Controlnet:
             controlnet_save_canny: bool = False,
             config: ConfigControlnet = ConfigControlnet(),
             stepwise_output_dir: Path = None,
-            stepwise_composite_only=False
     ) -> "GeneratedImage":  # fmt: off
         # Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.num_inference_steps))
+        stepwise_handler = StepwiseHandler(
+            flux=self,
+            config=config,
+            seed=seed,
+            prompt=prompt,
+            time_steps=time_steps,
+            output_dir=stepwise_output_dir,
+        )
 
         # Embedd the controlnet reference image
         control_image = ImageUtil.load_image(controlnet_image_path)
@@ -127,7 +136,7 @@ class Flux1Controlnet:
         controlnet_cond = ImageUtil.to_array(control_image)
         controlnet_cond = self.vae.encode(controlnet_cond)
         controlnet_cond = (controlnet_cond / self.vae.scaling_factor) + self.vae.shift_factor
-        controlnet_cond = Flux1Controlnet._pack_latents(controlnet_cond, config.height, config.width)
+        controlnet_cond = ArrayUtil.pack_latents(controlnet_cond, config.height, config.width)
 
         # 1. Create the initial latents
         latents = mx.random.normal(
@@ -135,15 +144,12 @@ class Flux1Controlnet:
             key=mx.random.key(seed)
         )  # fmt: off
 
-        # 2. Embedd the prompt
+        # 2. Embed the prompt
         t5_tokens = self.t5_tokenizer.tokenize(prompt)
         clip_tokens = self.clip_tokenizer.tokenize(prompt)
         prompt_embeds = self.t5_text_encoder.forward(t5_tokens)
         pooled_prompt_embeds = self.clip_text_encoder.forward(clip_tokens)
 
-        step_wise_images = []
-        if stepwise_output_dir:
-            stepwise_output_dir.mkdir(parents=True, exist_ok=True)
         for t in time_steps:
             try:
                 # Compute controlnet samples
@@ -171,41 +177,18 @@ class Flux1Controlnet:
                 dt = config.sigmas[t + 1] - config.sigmas[t]
                 latents += noise * dt
 
+                # Handle stepwise output if enabled
+                stepwise_handler.process_step(t, latents)
+
                 # Evaluate to enable progress tracking
                 mx.eval(latents)
 
-                if stepwise_output_dir:
-                    stepwise_decoded = self.vae.decode(
-                        Flux1Controlnet._unpack_latents(latents, config.height, config.width)
-                    )
-                    # performance todo: Pillow mostly uses CPU,
-                    # can try to improve image generation performance by offloading
-                    # stepwise image processing to the CPU via threading
-                    stepwise_img = ImageUtil.to_image(
-                        decoded_latents=stepwise_decoded,
-                        seed=seed,
-                        prompt=prompt,
-                        quantization=self.bits,
-                        generation_time=time_steps.format_dict["elapsed"],
-                        lora_paths=self.lora_paths,
-                        lora_scales=self.lora_scales,
-                        config=config,
-                    )
-                    step_wise_images.append(stepwise_img)
-                    if not stepwise_composite_only:
-                        stepwise_img.save(
-                            path=stepwise_output_dir / f"seed_{seed}_step{t+1}of{len(time_steps)}.png",
-                            export_json_metadata=False,
-                        )
-            except KeyboardInterrupt:  # noqa: PERF203
-                raise StopImageGenerationException(f"Stopping image generation at step {t+1}/{len(time_steps)}")
-            finally:
-                if step_wise_images and stepwise_output_dir:
-                    composite_img = ImageUtil.to_composite_image(step_wise_images)
-                    composite_img.save(stepwise_output_dir / f"seed_{seed}_composite.png")
+            except KeyboardInterrupt:
+                stepwise_handler.handle_interruption()
+                raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(time_steps)}")
 
         # 5. Decode the latent array and return the image
-        latents = Flux1Controlnet._unpack_latents(latents, config.height, config.width)
+        latents = ArrayUtil.unpack_latents(latents, config.height, config.width)
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,
@@ -218,20 +201,6 @@ class Flux1Controlnet:
             config=config,
             controlnet_image_path=controlnet_image_path,
         )
-
-    @staticmethod
-    def _unpack_latents(latents: mx.array, height: int, width: int) -> mx.array:
-        latents = mx.reshape(latents, (1, height // 16, width // 16, 16, 2, 2))
-        latents = mx.transpose(latents, (0, 3, 1, 4, 2, 5))
-        latents = mx.reshape(latents, (1, 16, height // 16 * 2, width // 16 * 2))
-        return latents
-
-    @staticmethod
-    def _pack_latents(latents: mx.array, height: int, width: int) -> mx.array:
-        latents = mx.reshape(latents, (1, 16, height // 16, 2, width // 16, 2))
-        latents = mx.transpose(latents, (0, 2, 4, 1, 3, 5))
-        latents = mx.reshape(latents, (1, (width // 16) * (height // 16), 64))
-        return latents
 
     def _set_model_weights(self, weights):
         self.vae.update(weights.vae)

@@ -496,7 +496,6 @@ with different prompts and LoRA adapters active.
 
 ### ✅ TODO
 
-- [ ] Establish unit test suite
 - [ ] LoRA fine-tuning
 - [ ] Frontend support (Gradio/Streamlit/Other?)
 
