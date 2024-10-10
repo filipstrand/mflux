@@ -52,6 +52,7 @@ def main():
             output=args.output,
             controlnet_image_path=args.controlnet_image_path,
             controlnet_save_canny=args.controlnet_save_canny,
+            stepwise_output_dir=Path(args.stepwise_image_output_dir) if args.stepwise_image_output_dir else None,
             config=ConfigControlnet(
                 num_inference_steps=args.steps,
                 height=args.height,
@@ -59,7 +60,6 @@ def main():
                 guidance=args.guidance,
                 controlnet_strength=args.controlnet_strength,
             ),
-            stepwise_output_dir=Path(args.stepwise_image_output_dir) if args.stepwise_image_output_dir else None,
         )
 
         # Save the image
