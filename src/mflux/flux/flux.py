@@ -8,7 +8,6 @@ from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.error.exceptions import StopImageGenerationException
-from mflux.post_processing.stepwise_handler import StepwiseHandler
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.transformer.transformer import Transformer
@@ -16,6 +15,7 @@ from mflux.models.vae.vae import VAE
 from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
+from mflux.post_processing.stepwise_handler import StepwiseHandler
 from mflux.tokenizer.clip_tokenizer import TokenizerCLIP
 from mflux.tokenizer.t5_tokenizer import TokenizerT5
 from mflux.tokenizer.tokenizer_handler import TokenizerHandler
@@ -126,7 +126,7 @@ class Flux1:
                 # Evaluate to enable progress tracking
                 mx.eval(latents)
 
-            except KeyboardInterrupt:
+            except KeyboardInterrupt:  # noqa: PERF203
                 stepwise_handler.handle_interruption()
                 raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(time_steps)}")
 

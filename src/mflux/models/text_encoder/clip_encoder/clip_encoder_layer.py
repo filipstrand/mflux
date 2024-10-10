@@ -1,5 +1,5 @@
-from mlx import nn
 import mlx.core as mx
+from mlx import nn
 
 from mflux.models.text_encoder.clip_encoder.clip_mlp import CLIPMLP
 from mflux.models.text_encoder.clip_encoder.clip_sdpa_attention import CLIPSdpaAttention
