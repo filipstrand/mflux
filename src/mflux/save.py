@@ -1,18 +1,11 @@
-import argparse
-
 from mflux import Flux1, ModelConfig
+from mflux.ui.cli.parsers import CommandLineParser
 
 
 def main():
-    # fmt: off
-    parser = argparse.ArgumentParser(description="Save a quantized version of Flux.1 to disk.")
-    parser.add_argument("--path", type=str, required=True, help="Local path for loading a model from disk")
-    parser.add_argument("--model", "-m", type=str, required=True, choices=["dev", "schnell"], help="The model to use (\"schnell\" or \"dev\").")
-    parser.add_argument("--quantize", "-q", type=int, choices=[4, 8], default=8, help="Quantize the model (4 or 8, Default is 8)")
-    parser.add_argument("--lora-paths", type=str, nargs="*", default=None, help="Local safetensors for applying LORA from disk")
-    parser.add_argument("--lora-scales", type=float, nargs="*", default=None, help="Scaling factor to adjust the impact of LoRA weights on the model. A value of 1.0 applies the LoRA weights as they are.")
-    # fmt: on
-
+    parser = CommandLineParser(description="Save a quantized version of Flux.1 to disk.")  # fmt: off
+    parser.add_model_arguments()
+    parser.add_lora_arguments()
     args = parser.parse_args()
 
     print(f"Saving model {args.model} with quantization level {args.quantize}\n")
