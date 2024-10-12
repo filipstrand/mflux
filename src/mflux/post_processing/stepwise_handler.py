@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import mlx.core as mx
+import tqdm
 
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.post_processing.array_util import ArrayUtil
@@ -14,7 +15,7 @@ class StepwiseHandler:
         config: RuntimeConfig,
         seed: int,
         prompt: str,
-        time_steps,
+        time_steps: tqdm.std.tqdm,
         output_dir: Path | None = None,
     ):
         self.flux = flux
@@ -28,7 +29,12 @@ class StepwiseHandler:
         if self.output_dir:
             self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    def process_step(self, step: int, latents: mx.array):
+    def save_composite(self):
+        if self.step_wise_images:
+            composite_img = ImageUtil.to_composite_image(self.step_wise_images)
+            composite_img.save(self.output_dir / f"seed_{self.seed}_composite.png")
+
+    def process_step(self, gen_step: int, latents: mx.array):
         if self.output_dir:
             unpack_latents = ArrayUtil.unpack_latents(latents, self.config.height, self.config.width)
             stepwise_decoded = self.flux.vae.decode(unpack_latents)
@@ -45,11 +51,10 @@ class StepwiseHandler:
             self.step_wise_images.append(stepwise_img)
 
             stepwise_img.save(
-                path=self.output_dir / f"seed_{self.seed}_step{step + 1}of{len(self.time_steps)}.png",
+                path=self.output_dir / f"seed_{self.seed}_step{gen_step}of{len(self.time_steps)}.png",
                 export_json_metadata=False,
             )
+            self.save_composite()
 
     def handle_interruption(self):
-        if self.step_wise_images:
-            composite_img = ImageUtil.to_composite_image(self.step_wise_images)
-            composite_img.save(self.output_dir / f"seed_{self.seed}_composite.png")
+        self.save_composite()
