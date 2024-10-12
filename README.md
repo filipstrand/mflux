@@ -496,8 +496,12 @@ with different prompts and LoRA adapters active.
 
 ### ✅ TODO
 
-- [ ] LoRA fine-tuning
+- [ ] LoRA fine-tuning (now also in [mlx-examples](https://github.com/ml-explore/mlx-examples/pull/1028) for reference)
 - [ ] Frontend support (Gradio/Streamlit/Other?)
+- [ ] [ComfyUI](https://github.com/filipstrand/mflux/issues/56) support?
+- [ ] [Image2Image](https://github.com/filipstrand/mflux/pull/16) support (upcoming)
+- [ ] Support for [PuLID](https://github.com/ToTheBeginning/PuLID)
+- [ ] Support for [depth based controlnet](https://huggingface.co/InstantX/SD3-Controlnet-Depth) via [ml-depth-pro](https://github.com/apple/ml-depth-pro) or similar?
 
 ### License
 
