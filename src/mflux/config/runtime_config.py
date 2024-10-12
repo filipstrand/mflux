@@ -1,15 +1,25 @@
+import logging
+import typing as t
+
 import mlx.core as mx
 import numpy as np
 
 from mflux.config.config import Config, ConfigControlnet
 from mflux.config.model_config import ModelConfig
+from mflux.post_processing.array_util import ArrayUtil
+from mflux.post_processing.image_util import ImageUtil
+
+logger = logging.getLogger(__name__)
+
+VAE: t.TypeAlias = "mflux.models.vae.vae.VAE"  # noqa: F821
 
 
 class RuntimeConfig:
-    def __init__(self, config: Config | ConfigControlnet, model_config: ModelConfig):
+    def __init__(self, config: Config | ConfigControlnet, model_config: ModelConfig, vae: VAE):
         self.config = config
         self.model_config = model_config
         self.sigmas = self._create_sigmas(config, model_config)
+        self.vae = vae
 
     @property
     def height(self) -> int:
@@ -18,6 +28,10 @@ class RuntimeConfig:
     @property
     def width(self) -> int:
         return self.config.width
+
+    @property
+    def seed(self) -> int:
+        return self.config.seed
 
     @property
     def guidance(self) -> float:
@@ -34,6 +48,40 @@ class RuntimeConfig:
     @property
     def num_train_steps(self) -> int:
         return self.model_config.num_train_steps
+
+    @property
+    def init_time_step(self) -> int:
+        if self.config.init_image is None:
+            # text to image, always begin at time step 0
+            return 0
+        else:
+            # we skip to the time step as informed by the init_image_strength
+            # the higher the strength number, the more time steps we skip
+            strength = max(0.0, min(1.0, self.config.init_image_strength))
+            # if the strength is too small to even influence the image
+            # help the user round up so the init_image has influence at step 1
+            t = max(1, int(self.num_inference_steps * strength))
+            return t
+
+    @property
+    def init_latents(self) -> mx.array:
+        noise = mx.random.normal(
+            shape=[1, (self.height // 16) * (self.width // 16), 64],
+            key=mx.random.key(self.seed)
+        )  # fmt: off
+        if self.config.init_image is not None:
+            user_image = ImageUtil.load_image(self.config.init_image).convert("RGB")
+            latents = ArrayUtil.pack_latents(
+                self.vae.encode(ImageUtil.to_array(ImageUtil.scale_to_dimensions(user_image, self.width, self.height))),
+                self.width,
+                self.height,
+            )
+            sigmas_for_init_image_strength = self.sigmas[self.init_time_step]
+            latents_adjusted = latents * (1.0 - sigmas_for_init_image_strength)
+            noise_adjusted = noise * sigmas_for_init_image_strength
+            return latents_adjusted + noise_adjusted
+        else:
+            return noise
 
     @property
     def controlnet_strength(self) -> float:

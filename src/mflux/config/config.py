@@ -1,4 +1,6 @@
 import logging
+import time
+from pathlib import Path
 
 import mlx.core as mx
 
@@ -14,6 +16,9 @@ class Config:
         width: int = 1024,
         height: int = 1024,
         guidance: float = 4.0,
+        init_image: Path | None = None,
+        init_image_strength: float | None = None,
+        seed: float | None = None,
     ):
         if width % 16 != 0 or height % 16 != 0:
             log.warning("Width and height should be multiples of 16. Rounding down.")
@@ -21,6 +26,9 @@ class Config:
         self.height = 16 * (height // 16)
         self.num_inference_steps = num_inference_steps
         self.guidance = guidance
+        self.init_image = init_image
+        self.init_image_strength = init_image_strength
+        self.seed = seed or int(time.time())
 
 
 class ConfigControlnet(Config):
