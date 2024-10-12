@@ -82,8 +82,12 @@ class Flux1:
         stepwise_output_dir: Path = None,
     ) -> GeneratedImage:
         # Create a new runtime config based on the model type and input parameters
-        config = RuntimeConfig(config, self.model_config)
-        time_steps = tqdm(range(config.num_inference_steps))
+        config = RuntimeConfig(config, self.model_config, self.vae)
+
+        # 1. Create the initial latents: text-to-image and image-to-image
+        latents = config.init_latents
+        time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
+
         stepwise_handler = StepwiseHandler(
             flux=self,
             config=config,
@@ -93,19 +97,13 @@ class Flux1:
             output_dir=stepwise_output_dir,
         )
 
-        # 1. Create the initial latents
-        latents = mx.random.normal(
-            shape=[1, (config.height // 16) * (config.width // 16), 64],
-            key=mx.random.key(seed)
-        )  # fmt: off
-
         # 2. Embed the prompt
         t5_tokens = self.t5_tokenizer.tokenize(prompt)
         clip_tokens = self.clip_tokenizer.tokenize(prompt)
         prompt_embeds = self.t5_text_encoder.forward(t5_tokens)
         pooled_prompt_embeds = self.clip_text_encoder.forward(clip_tokens)
 
-        for t in time_steps:
+        for gen_step, t in enumerate(time_steps, 1):
             try:
                 # 3.t Predict the noise
                 noise = self.transformer.predict(
@@ -121,7 +119,7 @@ class Flux1:
                 latents += noise * dt
 
                 # Handle stepwise output if enabled
-                stepwise_handler.process_step(t, latents)
+                stepwise_handler.process_step(gen_step, latents)
 
                 # Evaluate to enable progress tracking
                 mx.eval(latents)
