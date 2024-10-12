@@ -24,11 +24,11 @@ def main():
     )
 
     try:
-        # Generate an image
-        image = flux.generate_image(
+        image_gen_steps = flux.generate_image(
             seed=int(time.time()) if args.seed is None else args.seed,
             prompt=args.prompt,
             stepwise_output_dir=Path(args.stepwise_image_output_dir) if args.stepwise_image_output_dir else None,
+            stepwise_yield=True,
             config=Config(
                 num_inference_steps=args.steps,
                 height=args.height,
@@ -36,12 +36,20 @@ def main():
                 guidance=args.guidance,
             ),
         )
-
-        # Save the image
+        while True:
+            stepwise_output = next(image_gen_steps)
+            print(f"Stepwise output: {stepwise_output}")
+    except StopIteration as e:
+        # Save the image returned after the stepwise iterations
+        image = e.value
+        print(f"Image Generator returned final image: {image}")
         image.save(path=args.output, export_json_metadata=args.metadata)
     except StopImageGenerationException as stop_exc:
         print(stop_exc)
 
 
 if __name__ == "__main__":
+    import logging
+
+    logging.setLevel(logging.INFO)
     main()
