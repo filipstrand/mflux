@@ -6,15 +6,14 @@ import typing as t
 import mlx.core as mx
 import numpy as np
 import piexif
-import PIL
 import PIL.Image
-from PIL import Image
 
 from mflux.config.config import ConfigControlnet
-from mflux.config.runtime_config import RuntimeConfig
 from mflux.post_processing.generated_image import GeneratedImage
 
 log = logging.getLogger(__name__)
+
+RuntimeConfig: t.TypeAlias = "mflux.config.runtime_config.RuntimeConfig"  # noqa: F821
 
 
 class ImageUtil:
@@ -50,11 +49,11 @@ class ImageUtil:
         )
 
     @staticmethod
-    def to_composite_image(generated_images: t.List[GeneratedImage]) -> Image:
+    def to_composite_image(generated_images: t.List[GeneratedImage]) -> PIL.Image.Image:
         # stitch horizontally
         total_width = sum(gen_img.image.width for gen_img in generated_images)
         max_height = max(gen_img.image.height for gen_img in generated_images)
-        composite_img = Image.new("RGB", (total_width, max_height))
+        composite_img = PIL.Image.new("RGB", (total_width, max_height))
         current_x = 0
         for index, gen_img in enumerate(generated_images):
             composite_img.paste(gen_img.image, (current_x, 0))
@@ -97,8 +96,21 @@ class ImageUtil:
         return array
 
     @staticmethod
-    def load_image(path: str) -> Image.Image:
-        return Image.open(path)
+    def load_image(path: str) -> PIL.Image.Image:
+        return PIL.Image.open(path)
+
+    @staticmethod
+    def scale_to_dimensions(
+        image: PIL.Image.Image,
+        target_width: float,
+        target_height: float,
+    ):
+        # for now, naively resize the user image to the output image size
+        # todo: consider alt strategies: cropping / resize+padding
+        if (image.width, image.height) != (target_width, target_height):
+            return image.resize((target_width, target_height), PIL.Image.LANCZOS)
+        else:
+            return image
 
     @staticmethod
     def save_image(

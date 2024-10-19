@@ -27,6 +27,10 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--seed", type=int, default=None, help="Entropy Seed (Default is time-based random-seed)")
         self._add_image_generator_common_arguments()
 
+    def add_image_to_image_arguments(self, required=False) -> None:
+        self.add_argument("--init-image", type=Path, required=required, help="Local path to init image")
+        self.add_argument("--init-image-strength", type=float, required=False, default=ui_defaults.INIT_IMAGE_STRENGTH, help=f"Controls how strongly the init image influences the output image. A value of 0.0 means no influence. (Default is {ui_defaults.INIT_IMAGE_STRENGTH})")
+
     def add_batch_image_generator_arguments(self) -> None:
         self.add_argument("--prompts-file", type=Path, required=True, help="Local path for a file that holds a batch of prompts.")
         self.add_argument("--global-seed", type=int, default=None, help="Entropy Seed (used for all prompts in the batch)")
