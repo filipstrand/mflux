@@ -131,7 +131,7 @@ class Flux1Controlnet:
 
         # Embed the controlnet reference image
         control_image = ImageUtil.load_image(controlnet_image_path)
-        control_image = ImageUtil.scale_to_dimensions(control_image, config.height, config.width)
+        control_image = ControlnetUtil.scale_image(config.height, config.width, control_image)
         control_image = ControlnetUtil.preprocess_canny(control_image)
         if controlnet_save_canny:
             ControlnetUtil.save_canny_image(control_image, output)
