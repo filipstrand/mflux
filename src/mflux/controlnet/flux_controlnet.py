@@ -13,6 +13,7 @@ from mflux.controlnet.controlnet_util import ControlnetUtil
 from mflux.controlnet.transformer_controlnet import TransformerControlnet
 from mflux.controlnet.weight_handler_controlnet import WeightHandlerControlnet
 from mflux.error.exceptions import StopImageGenerationException
+from mflux.latent_creator.latent_creator import LatentCreator
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.transformer.transformer import Transformer
@@ -141,10 +142,7 @@ class Flux1Controlnet:
         controlnet_cond = ArrayUtil.pack_latents(controlnet_cond, config.height, config.width)
 
         # 1. Create the initial latents
-        latents = mx.random.normal(
-            shape=[1, (config.height // 16) * (config.width // 16), 64],
-            key=mx.random.key(seed)
-        )  # fmt: off
+        latents = LatentCreator.create(seed=seed, height=config.height, width=config.width)
 
         # 2. Embed the prompt
         t5_tokens = self.t5_tokenizer.tokenize(prompt)
