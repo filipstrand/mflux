@@ -1,5 +1,4 @@
 import logging
-import typing as t
 
 import mlx.core as mx
 import numpy as np
@@ -8,8 +7,6 @@ from mflux.config.config import Config, ConfigControlnet
 from mflux.config.model_config import ModelConfig
 
 logger = logging.getLogger(__name__)
-
-VAE: t.TypeAlias = "mflux.models.vae.vae.VAE"  # noqa: F821
 
 
 class RuntimeConfig:
