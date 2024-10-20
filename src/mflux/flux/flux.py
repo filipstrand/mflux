@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Union
 
 import mlx.core as mx
 from mlx import nn
@@ -74,6 +75,27 @@ class Flux1:
         if weights.quantization_level is not None:
             self._set_model_weights(weights)
 
+    def create_initial_latents(self, seed: int, config: Config, init_image_path: Union[str | Path | None] = None):
+        noise = mx.random.normal(
+            shape=[1, (config.height // 16) * (config.width // 16), 64],
+            key=mx.random.key(seed)
+        )  # fmt: off
+        if init_image_path is not None:
+            user_image = ImageUtil.load_image(init_image_path).convert("RGB")
+            latents = ArrayUtil.pack_latents(
+                self.vae.encode(
+                    ImageUtil.to_array(ImageUtil.scale_to_dimensions(user_image, config.width, config.height))
+                ),
+                config.width,
+                config.height,
+            )
+            sigmas_for_init_image_strength = config.sigmas[config.init_time_step]
+            latents_adjusted = latents * (1.0 - sigmas_for_init_image_strength)
+            noise_adjusted = noise * sigmas_for_init_image_strength
+            return latents_adjusted + noise_adjusted
+        else:
+            return noise
+
     def generate_image(
         self,
         seed: int,
@@ -82,10 +104,12 @@ class Flux1:
         stepwise_output_dir: Path = None,
     ) -> GeneratedImage:
         # Create a new runtime config based on the model type and input parameters
-        config = RuntimeConfig(config, self.model_config, self.vae)
+        config = RuntimeConfig(config, self.model_config)
 
         # 1. Create the initial latents: text-to-image and image-to-image
-        latents = config.init_latents
+        # todo: the nested config.config and confusing Config relations
+        #       should be refactored to bring more clarity
+        latents = self.create_initial_latents(seed, config, config.config.init_image_path)
         time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
 
         stepwise_handler = StepwiseHandler(
