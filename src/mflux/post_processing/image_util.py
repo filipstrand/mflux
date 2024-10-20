@@ -28,6 +28,8 @@ class ImageUtil:
         lora_scales: list[float],
         config: RuntimeConfig,
         controlnet_image_path: str | None = None,
+        init_image_path: str | None = None,
+        init_image_strength: float | None = None,
     ) -> GeneratedImage:
         normalized = ImageUtil._denormalize(decoded_latents)
         normalized_numpy = ImageUtil._to_numpy(normalized)
@@ -44,6 +46,8 @@ class ImageUtil:
             generation_time=generation_time,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
+            init_image_path=init_image_path,
+            init_image_strength=init_image_strength,
             controlnet_image_path=controlnet_image_path,
             controlnet_strength=config.controlnet_strength if isinstance(config.config, ConfigControlnet) else None,
         )

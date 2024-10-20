@@ -45,11 +45,11 @@ like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) f
 
 
 ### 💿 Installation
-For users, the easiest way to install MFLUX is to use `uv tool`: If you have [installed `uv`](https://github.com/astral-sh/uv?tab=readme-ov-file#installation), simply: 
+For users, the easiest way to install MFLUX is to use `uv tool`: If you have [installed `uv`](https://github.com/astral-sh/uv?tab=readme-ov-file#installation), simply:
 
 ```sh
 uv tool install --upgrade mflux
-``` 
+```
 
 to get the `mflux-generate` and related command line executables. You can skip to the usage guides below.
 
@@ -80,7 +80,7 @@ pip install -U mflux
 ```sh
  make install
  ```
-3. To run the test suite 
+3. To run the test suite
 ```sh
  make test
  ```
@@ -151,6 +151,76 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 - **`--controlnet-strength`** (optional, `float`, default: `0.4`): Degree of influence the control image has on the output. Ranges from `0.0` (no influence) to `1.0` (full influence).
 
 - **`--controlnet-save-canny`** (optional, bool, default: False): If set, saves the Canny edge detection reference image used by ControlNet.
+
+- **`--config-from-metadata`** or **`-C`** (optional, `str`): [EXPERIMENTAL] Path to a prior file saved via `--metadata`, or a compatible handcrafted config file adhering to the expected args schema.
+
+<details>
+<summary>parameters supported by config files</summary>
+
+#### How configs are used
+
+- all config properties are optional and applied to the image generation if applicable
+- invalid or incompatible properties will be ignored
+
+#### Config schema
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "seed": {
+      "type": ["integer", "null"]
+    },
+    "steps": {
+      "type": ["integer", "null"]
+    },
+    "guidance": {
+      "type": ["number", "null"]
+    },
+    "quantize": {
+      "type": ["null", "string"]
+    },
+    "lora_paths": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "string"
+      }
+    },
+    "lora_scales": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "number"
+      }
+    },
+    "prompt": {
+      "type": ["string", "null"]
+    }
+  }
+}
+```
+
+#### Example
+
+```json
+{
+  "model": "dev",
+  "seed": 42,
+  "steps": 8,
+  "guidance": 3.0,
+  "quantize": 4,
+  "lora_paths": [
+    "/some/path1/to/subject.safetensors",
+    "/some/path2/to/style.safetensors"
+  ],
+  "lora_scales": [
+    0.8,
+    0.4
+  ],
+  "prompt": "award winning modern art, MOMA"
+}
+```
+</details>
 
 Or, with the correct python environment active, create and run a separate script like the following:
 
@@ -304,7 +374,7 @@ mflux-save \
 
 *Note that when saving a quantized version, you will need the original huggingface weights.*
 
-It is also possible to specify [LoRA](#-lora) adapters when saving the model, e.g 
+It is also possible to specify [LoRA](#-lora) adapters when saving the model, e.g
 
 ```sh
 mflux-save \
@@ -453,7 +523,7 @@ To report additional formats, examples or other any suggestions related to LoRA 
 ### 🕹️ Controlnet
 
 MFLUX has [Controlnet](https://huggingface.co/docs/diffusers/en/using-diffusers/controlnet) support for an even more fine-grained control
-of the image generation. By providing a reference image via `--controlnet-image-path` and a strength parameter via `--controlnet-strength`, you can guide the generation toward the reference image.  
+of the image generation. By providing a reference image via `--controlnet-image-path` and a strength parameter via `--controlnet-strength`, you can guide the generation toward the reference image.
 
 ```sh
 mflux-generate-controlnet \
@@ -474,10 +544,10 @@ mflux-generate-controlnet \
 *This example combines the controlnet reference image with the LoRA [Dark Comic Flux](https://civitai.com/models/742916/dark-comic-flux)*.
 
 ⚠️ *Note: Controlnet requires an additional one-time download of ~3.58GB of weights from Huggingface. This happens automatically the first time you run the `generate-controlnet` command.
-At the moment, the Controlnet used is [InstantX/FLUX.1-dev-Controlnet-Canny](https://huggingface.co/InstantX/FLUX.1-dev-Controlnet-Canny), which was trained for the `dev` model. 
-It can work well with `schnell`, but performance is not guaranteed.* 
+At the moment, the Controlnet used is [InstantX/FLUX.1-dev-Controlnet-Canny](https://huggingface.co/InstantX/FLUX.1-dev-Controlnet-Canny), which was trained for the `dev` model.
+It can work well with `schnell`, but performance is not guaranteed.*
 
-⚠️ *Note: The output can be highly sensitive to the controlnet strength and is very much dependent on the reference image. 
+⚠️ *Note: The output can be highly sensitive to the controlnet strength and is very much dependent on the reference image.
 Too high settings will corrupt the image. A recommended starting point a value like 0.4 and to play around with the strength.*
 
 
@@ -492,7 +562,15 @@ with different prompts and LoRA adapters active.
 - Negative prompts not supported.
 - LoRA weights are only supported for the transformer part of the network.
 - Some LoRA adapters does not work.
-- Currently, the supported controlnet is the [canny-only version](https://huggingface.co/InstantX/FLUX.1-dev-Controlnet-Canny). 
+- Currently, the supported controlnet is the [canny-only version](https://huggingface.co/InstantX/FLUX.1-dev-Controlnet-Canny).
+
+### Workflow Tips
+
+- To hide the model fetching status progress bars, `export HF_HUB_DISABLE_PROGRESS_BARS=1`
+- Use config files to save complex job parameters in a file instead of passing many `--args`
+- Set up shell aliases for required args examples:
+  - shortcut for dev model: `alias mflux-dev='mflux-generate --model dev'`
+  - shortcut for schnell model *and* always save metadata: `alias mflux-schnell='mflux-generate --model schnell --metadata'`
 
 ### ✅ TODO
 
