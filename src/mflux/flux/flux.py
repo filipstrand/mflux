@@ -139,6 +139,8 @@ class Flux1:
             generation_time=time_steps.format_dict["elapsed"],
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
+            init_image_path=config.init_image_path,
+            init_image_strength=config.init_image_strength,
             config=config,
         )
 

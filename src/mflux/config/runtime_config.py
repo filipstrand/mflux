@@ -40,6 +40,14 @@ class RuntimeConfig:
         return self.model_config.num_train_steps
 
     @property
+    def init_image_path(self) -> int:
+        return self.config.init_image_path
+
+    @property
+    def init_image_strength(self) -> int:
+        return self.config.init_image_strength
+
+    @property
     def init_time_step(self) -> int:
         if self.config.init_image_path is None:
             # text to image, always begin at time step 0
