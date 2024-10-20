@@ -4,7 +4,7 @@ from mflux.ui.cli.parsers import CommandLineParser
 
 def main():
     parser = CommandLineParser(description="Save a quantized version of Flux.1 to disk.")  # fmt: off
-    parser.add_model_arguments()
+    parser.add_model_arguments(path_type="save")
     parser.add_lora_arguments()
     args = parser.parse_args()
 
