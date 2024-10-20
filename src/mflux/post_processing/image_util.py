@@ -96,14 +96,14 @@ class ImageUtil:
         return array
 
     @staticmethod
-    def load_image(path: str) -> PIL.Image.Image:
+    def load_image(path: str | pathlib.Path) -> PIL.Image.Image:
         return PIL.Image.open(path)
 
     @staticmethod
     def scale_to_dimensions(
         image: PIL.Image.Image,
-        target_width: float,
-        target_height: float,
+        target_width: int,
+        target_height: int,
     ):
         # for now, naively resize the user image to the output image size
         # todo: consider alt strategies: cropping / resize+padding
