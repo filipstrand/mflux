@@ -35,9 +35,8 @@ def main():
                 height=args.height,
                 width=args.width,
                 guidance=args.guidance,
-                init_image=args.init_image,
-                init_image_strength=args.init_image_strength,
-                seed=args.seed
+                init_image_path=args.init_image_path,
+                init_image_strength=args.init_image_strength
             ),
         )
 
