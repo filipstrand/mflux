@@ -16,6 +16,10 @@ class ImageGeneratorTestHelper:
         prompt: str,
         steps: int,
         seed: int,
+        height: int = None,
+        width: int = None,
+        init_image_path: str | None = None,
+        init_image_strength: float | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
     ):
@@ -32,15 +36,16 @@ class ImageGeneratorTestHelper:
                 lora_paths=lora_paths,
                 lora_scales=lora_scales
             )  # fmt: off
-
             # when
             image = flux.generate_image(
                 seed=seed,
                 prompt=prompt,
                 config=Config(
                     num_inference_steps=steps,
-                    height=341,
-                    width=768,
+                    init_image_path=ImageGeneratorTestHelper.resolve_path(init_image_path),
+                    init_image_strength=init_image_strength,
+                    height=height,
+                    width=width,
                 ),
             )
             image.save(path=output_image_path)
@@ -49,7 +54,7 @@ class ImageGeneratorTestHelper:
             np.testing.assert_array_equal(
                 np.array(Image.open(output_image_path)),
                 np.array(Image.open(reference_image_path)),
-                err_msg="Generated image doesn't match reference image",
+                err_msg=f"Generated image doesn't match reference image. Check {output_image_path} vs {reference_image_path}",
             )
 
         finally:
@@ -59,4 +64,6 @@ class ImageGeneratorTestHelper:
 
     @staticmethod
     def resolve_path(path) -> Path:
+        if path is None:
+            return None
         return Path(__file__).parent.parent / "resources" / path
