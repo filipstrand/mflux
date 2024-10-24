@@ -50,4 +50,4 @@ class DreamBoothLoss:
         latents_t_1_predicted = latents_t + noise * dt
 
         # The loss is the squared difference between our 'reference' latents_t_1 and the predicted one
-        return (latents_t_1_predicted - latents_t_1).square().mean()
+        return 1000 * (latents_t_1_predicted - latents_t_1).square().mean()
