@@ -17,7 +17,6 @@ def main():
             width=1024,
             height=1024,
             guidance=4.0,
-            training_seed=0,
         ),
     )
     flux = Flux1(model_config=runtime_config.model_config, quantize=8)
