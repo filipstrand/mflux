@@ -1,3 +1,4 @@
+import mlx.core as mx
 from mlx import nn
 
 from mflux import Config, Flux1, ModelConfig
@@ -40,6 +41,7 @@ def main():
     # Training loop
     for t, batch in enumerate(dataset, 1):
         loss, grads = train_step_function(batch)
+        mx.eval(loss)
         optimizer.update(flux, grads)
         DreamBoothUtil.track_progress(loss, t)
         DreamBoothUtil.save_incrementally(flux, t)
