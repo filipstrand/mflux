@@ -37,7 +37,7 @@ def main():
     )  # fmt: off
 
     # Training loop
-    num_epochs = 10
+    num_epochs = 100
     steps_per_epoch = 100
     batch_size = 1
     global_step = 0
