@@ -12,6 +12,8 @@ class LoRALinear(nn.Module):
         scale: float = 1.0,
     ):
         output_dims, input_dims = linear.weight.shape
+        if isinstance(linear, nn.QuantizedLinear):
+            input_dims *= 32 // linear.bits
         lora_lin = LoRALinear(
             input_dims=input_dims,
             output_dims=output_dims,
@@ -38,11 +40,9 @@ class LoRALinear(nn.Module):
             low=-scale,
             high=scale,
             shape=(input_dims, r),
-            key=mx.random.key(seed=5),
         )
         self.lora_b = mx.random.uniform(
             shape=(r, output_dims),
-            key=mx.random.key(seed=18)
         )  # fmt: off
 
     def __call__(self, x):

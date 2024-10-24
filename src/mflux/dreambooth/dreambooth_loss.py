@@ -22,7 +22,6 @@ class DreamBoothLoss:
                 low=0,
                 high=config.num_inference_steps,
                 shape=[],
-                key=mx.random.key(seed=config.config.training_seed)
             )
         )  # fmt: off
 
@@ -30,7 +29,6 @@ class DreamBoothLoss:
         pure_noise = mx.random.normal(
             shape=example.encoded_image_latents.shape,
             dtype=Config.precision,
-            key=mx.random.key(seed=config.config.training_seed)
         )  # fmt: off
 
         # Via linear interpolation, produce two latent arrays at time t and t+1

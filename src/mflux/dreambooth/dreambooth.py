@@ -21,7 +21,7 @@ def main():
             training_seed=0,
         ),
     )
-    flux = Flux1(model_config=runtime_config.model_config, quantize=None)
+    flux = Flux1(model_config=runtime_config.model_config, quantize=8)
     flux.freeze()
     flux.set_lora_layer()
 
