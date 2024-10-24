@@ -27,7 +27,11 @@ class DreamBoothLoss:
         )  # fmt: off
 
         # generate pure noise
-        pure_noise = mx.random.normal(example.encoded_image_latents.shape, dtype=Config.precision)
+        pure_noise = mx.random.normal(
+            shape=example.encoded_image_latents.shape,
+            dtype=Config.precision,
+            key=mx.random.key(seed=config.config.training_seed)
+        )  # fmt: off
 
         # Via linear interpolation, produce two latent arrays at time t and t+1
         latents_t = (1 - config.sigmas[t]) * example.encoded_image_latents + config.sigmas[t] * pure_noise

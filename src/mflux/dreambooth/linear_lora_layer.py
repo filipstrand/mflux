@@ -38,8 +38,12 @@ class LoRALinear(nn.Module):
             low=-scale,
             high=scale,
             shape=(input_dims, r),
+            key=mx.random.key(seed=5),
         )
-        self.lora_b = mx.random.uniform(shape=(r, output_dims))
+        self.lora_b = mx.random.uniform(
+            shape=(r, output_dims),
+            key=mx.random.key(seed=18)
+        )  # fmt: off
 
     def __call__(self, x):
         adapter = self.scale * mx.matmul(self.lora_a, self.lora_b)
