@@ -5,7 +5,7 @@ import mlx.core as mx
 import PIL.Image
 from mlx import nn
 
-from mflux import Config, Flux1, ImageUtil
+from mflux import Flux1, ImageUtil
 from mflux.post_processing.array_util import ArrayUtil
 
 
@@ -77,7 +77,6 @@ class FineTuningDataset:
         scaled_user_image = ImageUtil.scale_to_dimensions(image, target_width=1024, target_height=1024)
         encoded = vae.encode(ImageUtil.to_array(scaled_user_image))
         latents = ArrayUtil.pack_latents(encoded, width=1024, height=1024)
-        latents = latents.astype(Config.precision)
         return latents
 
     def __iter__(self):
