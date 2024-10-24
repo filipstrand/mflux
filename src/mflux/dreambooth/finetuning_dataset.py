@@ -6,28 +6,9 @@ import PIL.Image
 from mlx import nn
 
 from mflux import Flux1, ImageUtil
+from mflux.dreambooth.finetuning_batch_example import Example
+from mflux.dreambooth.finetuning_dataset_iterator import DatasetIterator
 from mflux.post_processing.array_util import ArrayUtil
-
-
-class Example:
-    def __init__(
-        self,
-        prompt: str,
-        image: PIL.Image.Image,
-        encoded_image: mx.array,
-        prompt_embeds: mx.array,
-        pooled_prompt_embeds: mx.array,
-    ):
-        self.prompt = prompt
-        self.image = image
-        self.encoded_image_latents = encoded_image
-        self.prompt_embeds = prompt_embeds
-        self.pooled_prompt_embeds = pooled_prompt_embeds
-
-
-class Batch:
-    def __init__(self, examples: list[Example]):
-        self.examples = examples
 
 
 class FineTuningDataset:
@@ -49,6 +30,9 @@ class FineTuningDataset:
     def prepare_dataset(self, flux: Flux1) -> None:
         examples = self.create_examples(flux, self.raw_data)
         self.prepared_dataset = examples
+
+    def get_iterator(self, batch_size: int = 1) -> iter:
+        return iter(DatasetIterator(self, batch_size=batch_size))
 
     def create_examples(self, flux: Flux1, raw_data: list[dict[str, str]]) -> list[Example]:
         examples = []
@@ -78,14 +62,3 @@ class FineTuningDataset:
         encoded = vae.encode(ImageUtil.to_array(scaled_user_image))
         latents = ArrayUtil.pack_latents(encoded, width=1024, height=1024)
         return latents
-
-    def __iter__(self):
-        self.index = 0
-        return self
-
-    def __next__(self) -> Batch:
-        if self.index >= len(self.prepared_dataset):
-            raise StopIteration
-        item = self.prepared_dataset[self.index]
-        self.index += 1
-        return Batch(examples=[item])

@@ -1,4 +1,3 @@
-import mlx.core as mx
 from mlx import nn
 
 from mflux import Config, Flux1, ModelConfig
@@ -39,15 +38,26 @@ def main():
     )  # fmt: off
 
     # Training loop
-    for t, batch in enumerate(dataset, 1):
-        loss, grads = train_step_function(batch)
-        mx.eval(loss)
-        optimizer.update(flux, grads)
-        DreamBoothUtil.track_progress(loss, t)
-        DreamBoothUtil.save_incrementally(flux, t)
+    num_epochs = 10
+    steps_per_epoch = 100
+    batch_size = 1
+    global_step = 0
+    for epoch in range(num_epochs):
+        dataset_iterator = dataset.get_iterator(batch_size)
+
+        for step in range(steps_per_epoch):
+            batch = next(dataset_iterator)
+            loss, grads = train_step_function(batch)
+            optimizer.update(flux, grads)
+
+            global_step += 1
+            DreamBoothUtil.track_progress(loss, global_step)
+            DreamBoothUtil.save_incrementally(flux, global_step)
+
+        print(f"Completed epoch {epoch + 1}/{num_epochs}")
 
     # Save the final adapter
-    DreamBoothUtil.save_adapter(flux, t)
+    DreamBoothUtil.save_adapter(flux, global_step)
 
 
 if __name__ == "__main__":

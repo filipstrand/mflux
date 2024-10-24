@@ -2,7 +2,8 @@ import mlx.core as mx
 
 from mflux import Config, Flux1
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.dreambooth.finetuning_dataset import Batch, Example
+from mflux.dreambooth.finetuning_batch_example import Batch
+from mflux.dreambooth.finetuning_dataset import Example
 
 
 class DreamBoothLoss:

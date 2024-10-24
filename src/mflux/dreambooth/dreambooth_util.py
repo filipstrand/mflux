@@ -10,7 +10,6 @@ class DreamBoothUtil:
     @staticmethod
     def track_progress(loss: mx.float16, t: int) -> None:
         print(f"Loss: {loss}")
-        pass
 
     @staticmethod
     def save_incrementally(flux: Flux1, t: int) -> None:
