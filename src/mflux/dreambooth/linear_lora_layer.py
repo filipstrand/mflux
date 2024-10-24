@@ -8,7 +8,7 @@ class LoRALinear(nn.Module):
     @staticmethod
     def from_linear(
         linear: nn.Linear,
-        r: int = 8,
+        r: int = 16,
         scale: float = 1.0,
     ):
         output_dims, input_dims = linear.weight.shape
@@ -39,9 +39,9 @@ class LoRALinear(nn.Module):
             high=scale,
             shape=(input_dims, r),
         )
-        self.lora_b = mx.zeros(shape=(r, output_dims))
+        self.lora_b = mx.random.uniform(shape=(r, output_dims))
 
     def __call__(self, x):
-        y = self.linear(x)
-        z = self.lora_a @ self.lora_b
-        return y + (self.scale * z).astype(x.dtype)
+        adapter = self.scale * mx.matmul(self.lora_a, self.lora_b)
+        adapter = adapter[None].astype(x.dtype)
+        return self.linear(x) + mx.matmul(x, adapter)
