@@ -2,8 +2,12 @@ from enum import Enum
 
 
 class ModelConfig(Enum):
+    # ==== black-forest-labs official models =====
     FLUX1_DEV = ("black-forest-labs/FLUX.1-dev", "dev", 1000, 512)
     FLUX1_SCHNELL = ("black-forest-labs/FLUX.1-schnell", "schnell", 1000, 256)
+    # ==== third party compatible models - best effort compatibility =====
+    # https://huggingface.co/Freepik/flux.1-lite-8B-alpha distilled from dev
+    FLUX1_FREEPIK_LITE_8B_ALPHA = ("Freepik/flux.1-lite-8B-alpha", "freepik-lite-8b-alpha", 1000, 512)
 
     def __init__(
         self,
