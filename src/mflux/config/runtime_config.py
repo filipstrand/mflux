@@ -44,7 +44,7 @@ class RuntimeConfig:
         return self.config.init_image_path
 
     @property
-    def init_image_strength(self) -> int:
+    def init_image_strength(self) -> float:
         return self.config.init_image_strength
 
     @property
