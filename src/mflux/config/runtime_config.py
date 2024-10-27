@@ -40,7 +40,7 @@ class RuntimeConfig:
         return self.model_config.num_train_steps
 
     @property
-    def init_image_path(self) -> int:
+    def init_image_path(self) -> str:
         return self.config.init_image_path
 
     @property
