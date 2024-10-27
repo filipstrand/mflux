@@ -22,11 +22,13 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
   * [💾 Saving a quantized version to disk](#-saving-a-quantized-version-to-disk)
   * [💽 Loading and running a quantized version from disk](#-loading-and-running-a-quantized-version-from-disk)
 - [💽 Running a non-quantized model directly from disk](#-running-a-non-quantized-model-directly-from-disk)
+- [🎨 Image-to-Image](#-image-to-image)
 - [🔌 LoRA](#-lora)
   * [Multi-LoRA](#multi-lora)
   * [Supported LoRA formats (updated)](#supported-lora-formats-updated)
 - [🕹️ Controlnet](#%EF%B8%8F-controlnet)
 - [🚧 Current limitations](#-current-limitations)
+- [💡Workflow tips](#workflow-tips)
 - [✅ TODO](#-todo)
 - [License](#license)
 
@@ -151,6 +153,10 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 - **`--controlnet-strength`** (optional, `float`, default: `0.4`): Degree of influence the control image has on the output. Ranges from `0.0` (no influence) to `1.0` (full influence).
 
 - **`--controlnet-save-canny`** (optional, bool, default: False): If set, saves the Canny edge detection reference image used by ControlNet.
+
+- **`--init-image-path`** (optional, `str`, default: `None`): Local path to the initial image for image-to-image generation.
+
+- **`--init-image-strength`** (optional, `float`, default: `0.4`): Controls how strongly the initial image influences the output image. A value of `0.0` means no influence. (Default is `0.4`)
 
 - **`--config-from-metadata`** or **`-C`** (optional, `str`): [EXPERIMENTAL] Path to a prior file saved via `--metadata`, or a compatible handcrafted config file adhering to the expected args schema.
 
@@ -461,6 +467,37 @@ processed a bit differently, which is why we require this structure above.*
 
 ---
 
+### 🎨 Image-to-Image
+
+One way to condition the image generation is by starting from an existing image and let MFLUX produce new variations.
+Use the `--init-image-path` flag to specify the reference image, and the `--init-image-strength` to control how much the reference 
+image should guide the generation. For example, given the reference image below, the following command produced the first
+image using the  [Sketching](https://civitai.com/models/803456/sketching?modelVersionId=898364) LoRA: 
+
+```sh
+mflux-generate \
+--prompt "sketching of an Eiffel architecture, masterpiece, best quality. The site is lit by lighting professionals, creating a subtle illumination effect. Ink on paper with very fine touches with colored markers, (shadings:1.1), loose lines, Schematic, Conceptual, Abstract, Gestural. Quick sketches to explore ideas and concepts." \
+--init-image-path "reference.png" \
+--init-image-strength 0.3 \
+--lora-paths Architectural_Sketching.safetensors \
+--lora-scales 1.0 \
+--model dev \
+--steps 20 \
+--seed 43 \
+--guidance 4.0 \
+--quantize 8 \
+--height 1024 \
+--width 1024
+```
+
+Like with [Controlnet](#-controlnet), this technique combines well with [LoRA](#-lora) adapters:
+
+![image](src/mflux/assets/img2img.jpg)
+
+In the examples above the following LoRAs are used [Sketching](https://civitai.com/models/803456/sketching?modelVersionId=898364), [Animation Shot](https://civitai.com/models/883914/animation-shot-flux-xl-ponyrealism) and [flux-film-camera](https://civitai.com/models/874708?modelVersionId=979175) are used.
+
+
+
 ### 🔌 LoRA
 
 MFLUX support loading trained [LoRA](https://huggingface.co/docs/diffusers/en/training/lora) adapters (actual training support is coming).
@@ -564,7 +601,7 @@ with different prompts and LoRA adapters active.
 - Some LoRA adapters does not work.
 - Currently, the supported controlnet is the [canny-only version](https://huggingface.co/InstantX/FLUX.1-dev-Controlnet-Canny).
 
-### Workflow Tips
+### 💡Workflow Tips
 
 - To hide the model fetching status progress bars, `export HF_HUB_DISABLE_PROGRESS_BARS=1`
 - Use config files to save complex job parameters in a file instead of passing many `--args`
