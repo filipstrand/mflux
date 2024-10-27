@@ -17,9 +17,9 @@ class CommandLineParser(argparse.ArgumentParser):
         self.supports_image_to_image = False
         self.supports_lora = False
 
-    def add_model_arguments(self, path_type: t.Literal["load", "save"] = "load") -> None:
+    def add_model_arguments(self, path_type: t.Literal["load", "save"] = "load", require_model_arg: bool = True) -> None:
 
-        self.add_argument("--model", "-m", type=str, required=True, choices=ui_defaults.MODEL_CHOICES, help=f"The model to use ({' or '.join(ui_defaults.MODEL_CHOICES)}).")
+        self.add_argument("--model", "-m", type=str, required=require_model_arg, choices=ui_defaults.MODEL_CHOICES, help=f"The model to use ({' or '.join(ui_defaults.MODEL_CHOICES)}).")
 
         if path_type == "load":
             self.add_argument("--path", type=str, default=None, help="Local path for loading a model from disk")
@@ -74,10 +74,14 @@ class CommandLineParser(argparse.ArgumentParser):
     def parse_args(self, **kwargs) -> argparse.Namespace:
         namespace = super().parse_args()
         if hasattr(namespace, "path") and namespace.path is not None and namespace.model is None:
-            namespace.error("--model must be specified when using --path")
+            self.error("--model must be specified when using --path")
 
         if getattr(namespace, "config_from_metadata", False):
             prior_gen_metadata = json.load(namespace.config_from_metadata.open("rt"))
+
+            if namespace.model is None:
+                # when not provided by CLI flag, find it in the config file
+                namespace.model = prior_gen_metadata.get("model", None)
 
             if namespace.prompt is None:
                 namespace.prompt = prior_gen_metadata.get("prompt", None)
@@ -118,8 +122,11 @@ class CommandLineParser(argparse.ArgumentParser):
                     namespace.controlnet_image_path = prior_gen_metadata.get("controlnet_image_path", None)
                 if namespace.controlnet_strength == self.get_default("controlnet_strength") and (cnet_strength_from_metadata := prior_gen_metadata.get("controlnet_strength", None)):
                     namespace.controlnet_strength = cnet_strength_from_metadata
+                if namespace.controlnet_save_canny == self.get_default("controlnet_save_canny") and (cnet_canny_from_metadata := prior_gen_metadata.get("controlnet_save_canny", None)):
+                    namespace.controlnet_save_canny = cnet_canny_from_metadata
 
-
+        if namespace.model is None:
+            self.error("--model / -m must be provided, or 'model' must be specified in the config file.")
 
         if self.supports_image_generation and namespace.prompt is None:
             # not supplied by CLI and not supplied by metadata config file
