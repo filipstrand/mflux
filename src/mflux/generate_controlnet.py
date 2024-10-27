@@ -7,9 +7,9 @@ from mflux.ui.cli.parsers import CommandLineParser
 
 def main():
     parser = CommandLineParser(description="Generate an image based on a prompt and a controlnet reference image.")  # fmt: off
-    parser.add_model_arguments()
+    parser.add_model_arguments(require_model_arg=True)
     parser.add_lora_arguments()
-    parser.add_image_generator_arguments(supports_metadata_config=True)
+    parser.add_image_generator_arguments(supports_metadata_config=False)
     parser.add_controlnet_arguments()
     parser.add_output_arguments()
     args = parser.parse_args()
