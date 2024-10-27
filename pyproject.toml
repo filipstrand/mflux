@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mflux"
-version = "0.3.0"
+version = "0.4.0"
 description = "A MLX port of FLUX based on the Huggingface Diffusers implementation."
 readme = "README.md"
 keywords = ["diffusers", "flux", "mlx"]
@@ -37,7 +37,8 @@ classifiers = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0.0,<9.0"
+    "pytest>=8.3.0,<9.0",
+    "pytest-timer>=1.0,<2.0",
 ]
 
 [project.urls]
@@ -102,7 +103,7 @@ docstring-code-line-length = "dynamic"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
-addopts = "-v"
+addopts = "-v --exitfirst --failed-first --showlocals --tb=long --full-trace"
 
 # https://docs.astral.sh/ruff/settings/#lintisort
 [tool.ruff.lint.isort]
