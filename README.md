@@ -496,7 +496,7 @@ Like with [Controlnet](#-controlnet), this technique combines well with [LoRA](#
 
 In the examples above the following LoRAs are used [Sketching](https://civitai.com/models/803456/sketching?modelVersionId=898364), [Animation Shot](https://civitai.com/models/883914/animation-shot-flux-xl-ponyrealism) and [flux-film-camera](https://civitai.com/models/874708?modelVersionId=979175) are used.
 
-
+---
 
 ### 🔌 LoRA
 
