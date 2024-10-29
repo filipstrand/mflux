@@ -15,7 +15,7 @@ class ConvNormOut(nn.Module):
             pytorch_compatible=True,
         )
 
-    def forward(self, input_array: mx.array) -> mx.array:
+    def __call__(self, input_array: mx.array) -> mx.array:
         input_array = mx.transpose(input_array, (0, 2, 3, 1))
         hidden_states = self.norm(input_array.astype(mx.float32)).astype(Config.precision)
         return mx.transpose(hidden_states, (0, 3, 1, 2))

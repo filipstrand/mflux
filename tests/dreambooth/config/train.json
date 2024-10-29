@@ -1,0 +1,60 @@
+{
+  "model": "dev",
+  "seed": 42,
+  "steps": 2,
+  "guidance": 3.0,
+  "quantize": 4,
+  "width": 128,
+  "height": 128,
+  "training_loop": {
+    "num_epochs": 1,
+    "batch_size": 1,
+    "iterator_state": 0
+  },
+  "optimizer": {
+    "name": "AdamW",
+    "learning_rate": 1e-4
+  },
+  "save": {
+    "output_path": "~/Desktop/train",
+    "checkpoint_frequency": 50
+  },
+  "lora_layers": {
+    "single_transformer_blocks": {
+      "block_range": {
+        "start": 0,
+        "end": 38
+      },
+      "layer_types": [
+        "proj_out",
+        "proj_mlp",
+        "attn.to_q",
+        "attn.to_k",
+        "attn.to_v"
+      ],
+      "lora_rank": 4
+    }
+  },
+  "examples": [
+    {
+      "image": "../../../src/mflux/dreambooth/_example/images/01.jpeg",
+      "prompt": "photo of sks dog"
+    },
+    {
+      "image": "../../../src/mflux/dreambooth/_example/images/02.jpeg",
+      "prompt": "photo of sks dog"
+    },
+    {
+      "image": "../../../src/mflux/dreambooth/_example/images/03.jpeg",
+      "prompt": "photo of sks dog"
+    },
+    {
+      "image": "../../../src/mflux/dreambooth/_example/images/04.jpeg",
+      "prompt": "photo of sks dog"
+    },
+    {
+      "image": "../../../src/mflux/dreambooth/_example/images/05.jpeg",
+      "prompt": "photo of sks dog"
+    }
+  ]
+}

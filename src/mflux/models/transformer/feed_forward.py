@@ -9,7 +9,7 @@ class FeedForward(nn.Module):
         self.linear2 = nn.Linear(12288, 3072)
         self.activation_function = activation_function
 
-    def forward(self, hidden_states: mx.array) -> mx.array:
+    def __call__(self, hidden_states: mx.array) -> mx.array:
         hidden_states = self.linear1(hidden_states)
         hidden_states = self.activation_function(hidden_states)
         hidden_states = self.linear2(hidden_states)

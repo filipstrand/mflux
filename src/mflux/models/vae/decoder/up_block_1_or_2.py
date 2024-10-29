@@ -15,12 +15,12 @@ class UpBlock1Or2(nn.Module):
         ]
         self.upsamplers = [UpSampler(conv_in=512, conv_out=512)]
 
-    def forward(self, input_array: mx.array) -> mx.array:
-        hidden_states = self.resnets[0].forward(input_array)
-        hidden_states = self.resnets[1].forward(hidden_states)
-        hidden_states = self.resnets[2].forward(hidden_states)
+    def __call__(self, input_array: mx.array) -> mx.array:
+        hidden_states = self.resnets[0](input_array)
+        hidden_states = self.resnets[1](hidden_states)
+        hidden_states = self.resnets[2](hidden_states)
 
         if self.upsamplers is not None:
-            hidden_states = self.upsamplers[0].forward(hidden_states)
+            hidden_states = self.upsamplers[0](hidden_states)
 
         return hidden_states

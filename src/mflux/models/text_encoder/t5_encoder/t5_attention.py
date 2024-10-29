@@ -13,8 +13,8 @@ class T5Attention(nn.Module):
         self.SelfAttention = T5SelfAttention()
         self.layer_norm = T5LayerNorm()
 
-    def forward(self, hidden_states: mx.array) -> mx.array:
-        normed_hidden_states = self.layer_norm.forward(hidden_states)
-        attention_output = self.SelfAttention.forward(normed_hidden_states)
+    def __call__(self, hidden_states: mx.array) -> mx.array:
+        normed_hidden_states = self.layer_norm(hidden_states)
+        attention_output = self.SelfAttention(normed_hidden_states)
         hidden_states = hidden_states + attention_output
         return hidden_states

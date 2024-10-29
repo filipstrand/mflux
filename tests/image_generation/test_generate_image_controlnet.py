@@ -1,5 +1,5 @@
 from mflux import ModelConfig
-from tests.helpers.image_generation_controlnet_test_helper import ImageGeneratorControlnetTestHelper
+from tests.image_generation.helpers.image_generation_controlnet_test_helper import ImageGeneratorControlnetTestHelper
 
 
 class TestImageGeneratorControlnet:

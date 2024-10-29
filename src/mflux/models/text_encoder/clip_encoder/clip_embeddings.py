@@ -10,7 +10,7 @@ class CLIPEmbeddings(nn.Module):
         self.position_embedding = nn.Embedding(num_embeddings=TokenizerCLIP.MAX_TOKEN_LENGTH, dims=dims)
         self.token_embedding = nn.Embedding(num_embeddings=49408, dims=dims)
 
-    def forward(self, tokens: mx.array) -> mx.array:
+    def __call__(self, tokens: mx.array) -> mx.array:
         seq_length = tokens.shape[-1]
         position_ids = mx.arange(0, seq_length).reshape(1, seq_length)
         inputs_embeds = self.token_embedding(tokens)

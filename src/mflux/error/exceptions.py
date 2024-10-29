@@ -16,3 +16,7 @@ class MFluxUserException(MFluxException):
 
 class StopImageGenerationException(MFluxUserException):
     """user has requested to stop a image generation in progress."""
+
+
+class StopTrainingException(MFluxUserException):
+    """user has requested to stop the training process in progress."""
