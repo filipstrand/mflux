@@ -14,8 +14,8 @@ class UnetMidBlock(nn.Module):
             ResnetBlock2D(norm1=512, conv1_in=512, conv1_out=512, norm2=512, conv2_in=512, conv2_out=512),
         ]
 
-    def forward(self, input_array: mx.array) -> mx.array:
-        hidden_states = self.resnets[0].forward(input_array)
-        hidden_states = self.attentions[0].forward(hidden_states)
-        hidden_states = self.resnets[1].forward(hidden_states)
+    def __call__(self, input_array: mx.array) -> mx.array:
+        hidden_states = self.resnets[0](input_array)
+        hidden_states = self.attentions[0](hidden_states)
+        hidden_states = self.resnets[1](hidden_states)
         return hidden_states

@@ -14,7 +14,7 @@ class CLIPSdpaAttention(nn.Module):
         self.v_proj = nn.Linear(input_dims=768, output_dims=768)
         self.out_proj = nn.Linear(input_dims=768, output_dims=768)
 
-    def forward(self, hidden_states: mx.array, causal_attention_mask: mx.array) -> mx.array:
+    def __call__(self, hidden_states: mx.array, causal_attention_mask: mx.array) -> mx.array:
         query = self.q_proj(hidden_states)
         key = self.k_proj(hidden_states)
         value = self.v_proj(hidden_states)

@@ -11,8 +11,8 @@ class T5Block(nn.Module):
         self.attention = T5Attention()
         self.ff = T5FeedForward()
 
-    def forward(self, hidden_states: mx.array) -> mx.array:
-        hidden_states = self.attention.forward(hidden_states)
-        hidden_states = self.ff.forward(hidden_states)
+    def __call__(self, hidden_states: mx.array) -> mx.array:
+        hidden_states = self.attention(hidden_states)
+        hidden_states = self.ff(hidden_states)
         outputs = hidden_states
         return outputs
