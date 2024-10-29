@@ -37,5 +37,5 @@ class ConfigControlnet(Config):
         guidance: float = 4.0,
         controlnet_strength: float = 1.0,
     ):
-        super().__init__(num_inference_steps, width, height, guidance)
+        super().__init__(num_inference_steps=num_inference_steps, width=width, height=height, guidance=guidance)
         self.controlnet_strength = controlnet_strength

@@ -72,7 +72,7 @@ class RuntimeConfig:
     def _create_sigmas(config, model) -> mx.array:
         sigmas = RuntimeConfig._create_sigmas_values(config.num_inference_steps)
         if model == ModelConfig.FLUX1_DEV:
-            sigmas = RuntimeConfig._shift_sigmas(sigmas, config.width, config.height)
+            sigmas = RuntimeConfig._shift_sigmas(sigmas=sigmas, width=config.width, height=config.height)
         return sigmas
 
     @staticmethod
