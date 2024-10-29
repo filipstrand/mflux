@@ -63,7 +63,7 @@ class ImageGeneratorTestHelper:
                 os.remove(output_image_path)
 
     @staticmethod
-    def resolve_path(path) -> Path:
+    def resolve_path(path) -> Path | None:
         if path is None:
             return None
         return Path(__file__).parent.parent / "resources" / path
