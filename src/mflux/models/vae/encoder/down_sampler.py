@@ -12,7 +12,7 @@ class DownSampler(nn.Module):
             stride=(2, 2),
         )
 
-    def forward(self, input_array: mx.array) -> mx.array:
+    def __call__(self, input_array: mx.array) -> mx.array:
         hidden_states = mx.pad(input_array, ((0, 0), (0, 0), (0, 1), (0, 1)))
         hidden_states = mx.transpose(hidden_states, (0, 2, 3, 1))
         hidden_state = self.conv(hidden_states)

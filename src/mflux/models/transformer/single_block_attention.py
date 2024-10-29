@@ -15,7 +15,7 @@ class SingleBlockAttention(nn.Module):
         self.norm_q = nn.RMSNorm(128)
         self.norm_k = nn.RMSNorm(128)
 
-    def forward(self, hidden_states: mx.array, image_rotary_emb: mx.array) -> (mx.array, mx.array):
+    def __call__(self, hidden_states: mx.array, image_rotary_emb: mx.array) -> (mx.array, mx.array):
         query = self.to_q(hidden_states)
         key = self.to_k(hidden_states)
         value = self.to_v(hidden_states)

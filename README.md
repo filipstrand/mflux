@@ -26,6 +26,13 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 - [🔌 LoRA](#-lora)
   * [Multi-LoRA](#multi-lora)
   * [Supported LoRA formats (updated)](#supported-lora-formats-updated)
+- [🎛️ Dreambooth fine-tuning](#-dreambooth-fine-tuning)
+  * [Training configuration](#training-configuration)
+  * [Training example](#training-example)
+  * [Resuming a training run](#resuming-a-training-run)
+  * [Configuration details](#configuration-details)
+  * [Memory issues](#memory-issues)
+  * [Misc](#misc)
 - [🕹️ Controlnet](#%EF%B8%8F-controlnet)
 - [🚧 Current limitations](#-current-limitations)
 - [💡Workflow tips](#workflow-tips)
@@ -588,6 +595,140 @@ To report additional formats, examples or other any suggestions related to LoRA 
 
 ---
 
+### 🎛 Dreambooth fine-tuning
+
+As of release 5.0, MFLUX has support for fine-tuning your own LoRA adapters using the [Dreambooth](https://dreambooth.github.io) technique.
+
+![image](src/mflux/assets/dreambooth.jpg)
+
+*This example shows the MFLUX training progression of the [included training example](#training-example) which is based on the [DreamBooth Dataset](https://github.com/google/dreambooth), also used in the [mlx-examples repo](https://github.com/ml-explore/mlx-examples/tree/main/flux#finetuning).*
+
+#### Training configuration
+
+To describe a training run, you need to provide a [training configuration](src/mflux/dreambooth/_example/train.json) file which specifies the details such as
+what training data to use and various parameters. To try it out, one of the easiest ways is to start from the 
+provided [example configuration](src/mflux/dreambooth/_example/train.json) and simply use your own dataset and prompts by modifying the `examples` section of the json file.
+
+#### Training example
+
+A complete example ([training configuration](src/mflux/dreambooth/_example/train.json) + [dataset](src/mflux/dreambooth/_example/images)) is provided in this repository. To start a training run, go to the project folder `cd mflux`, and simply run:
+
+```sh
+mflux-train --train-config src/mflux/dreambooth/_example/train.json
+```
+
+By default, this will train an adapter with images of size `512x512` with a batch size of 1 and can take up to several hours to fully complete depending on your machine.
+If this task is too computationally demanding, see the section on [memory issues](#memory-issues) for tips on how to speed things up and what tradeoffs exists.
+
+During training, MFLUX will output training checkpoints with artifacts (weights, states) according to what is specified in the configuration file.
+As specified in the file `train.json`, these files will be placed in a folder on the Desktop called `~/Desktop/train`, but this can of course be changed to any other path by adjusting the configuration. 
+All training artifacts will be saved as self-contained zip file, which can later be pointed to [resume an existing training run](#resuming-a-training-run).
+To find the LoRA weights, simply unzip and look for the `adapter` safetensors file and [use it as you would with a regular downloaded LoRA adapter](#-lora).
+
+#### Resuming a training run
+
+The training process will continue to run until each training example has been used `num_epochs` times. 
+For various reasons however, the user might choose to interrupt the process.
+To resume training for a given checkpoint, say `0001000_checkpoint.zip`, simply run: 
+
+```sh
+mflux-train --train-checkpoint 0001000_checkpoint.zip
+```
+
+There are two nice properties of the training procedure: 
+
+- Fully deterministic (given a specified `seed` in the training configuration)
+- The complete training state (including optimizer state) is saved at each checkpoint.
+
+Because of these, MFLUX has the ability to resume a training run from a previous checkpoint and have the results
+be *exactly* identical to a training run which was never interrupted in the first place.
+
+*⚠️ Note: Everything but the dataset itself is contained within this zipfile, as the dataset can be quite large.
+The zip file will contain configuration files which point to the original dataset, so make sure that it is in the same place when resuming training*.
+
+*⚠️ Note: One current limitation is that a training run can only be resumed if it has not yet been completed. 
+In other words, only checkpoints that represents an interrupted training-run can be resumed and run until completion.*
+
+#### Configuration details
+
+Currently, MFLUX supports fine-tuning only for the transformer part of the model.
+In the training configuration, under `lora_layers`, you can specify which layers you want to train. The available ones are: 
+
+- `transformer_blocks`:
+  - `attn.to_q`
+  - `attn.to_k`
+  - `attn.to_v`
+  - `attn.add_q_proj`
+  - `attn.add_k_proj`
+  - `attn.add_v_proj`
+  - `attn.to_out`
+  - `attn.to_add_out`
+  - `ff.linear1`
+  - `ff.linear2`
+  - `ff_context.linear1`
+  - `ff_context.linear2`
+- `single_transformer_blocks`:
+  - `proj_out`
+  - `proj_mlp`
+  - `attn.to_q`
+  - `attn.to_k`
+  - `attn.to_v`
+
+The `block_range` under the respective layer category specifies which blocks to train.
+The maximum range available for the different layer categories are:
+
+- `transformer_blocks`:
+  - `start: 0`
+  - `end: 19`
+- `single_transformer_blocks`:
+  - `start: 0`
+  - `end: 38`
+
+*⚠️ Note: As the joint transformer blocks (`transformer_blocks`) - are placed earlier on in the sequence of computations, they will require more resources to train.
+In other words, training later layers, such as only the `single_transformer_blocks` should be faster. However, training too few / only later layers might result in a faster but unsuccessful training.*
+
+*Under the `examples` section, there is an argument called `"path"` which specified where the images are located. This path is relative to the config file itself.*
+
+#### Memory issues
+
+Depending on the configuration of the training setup, fine-tuning can be quite memory intensive.
+In the worst case, if your Mac runs out of memory it might freeze completely and crash!
+
+To avoid this, consider some of the following strategies to reduce memory requirements by adjusting the parameters in the training configuration:
+
+- Use a quantized based model by setting `"quantize": 4` or `"quantize": 8`
+- For the `layer_types`, consider skipping some of the trainable layers (e.g. by not including `proj_out` etc.)
+- Use a lower `rank` value for the LoRA matrices.
+- Don't train all the  `38` layers from `single_transformer_blocks` or all of the `19` layers from `transformer_blocks`  
+- Use a smaller batch size, for example `"batch_size": 1`
+- Make sure your Mac is not busy with other background tasks that holds memory.
+
+Applying some of these strategies, like how [train.json](src/mflux/dreambooth/_example/train.json) is set up by default,
+will allow a 32GB M1 Pro to perform a successful fine-tuning run. 
+Note, however, that reducing the trainable parameters might lead to worse performance.
+ 
+
+*Additional techniques such as gradient checkpoint and other strategies might be implemented in the future.* 
+
+#### Misc
+
+This feature is currently v1 and can be considered a bit experimental. Interfaces might change (configuration file setup etc.)
+The aim is to also gradually expand the scope of this feature with alternatives techniques, data augmentation etc.
+
+- As with loading external LoRA adapters, the MFLUX training currently only supports training the transformer part of the network.
+- Sometimes, a model trained with the `dev` model might actually work better when applied to the `schnell` weights.
+- Currently, all training images are assumed to be in the resolution specified in the configuration file.
+- Loss curve can be a bit misleading/hard to read, sometimes it conveys little improvement over time, but actual image samples shows the real progress.
+- When plotting the loss during training, we label it as "validation loss" but is actually only the first 10 elements of the training examples for now. Future updates should support user inputs of separate validation images.
+- Training also works with the original model as quantized!
+- [For the curious, a motivation for the loss function can be found at here](src/mflux/dreambooth/optimization/_loss_derivation/dreambooth_loss.pdf).
+- Two great resources that heavily inspired this feature are the: 
+  - The fine-tuning script in [mlx-examples](https://github.com/ml-explore/mlx-examples/tree/main/flux#finetuning)
+  - The original fine-tuning script in [Diffusers](https://huggingface.co/docs/diffusers/v0.11.0/en/training/dreambooth)
+
+
+---
+
 ### 🕹️ Controlnet
 
 MFLUX has [Controlnet](https://huggingface.co/docs/diffusers/en/using-diffusers/controlnet) support for an even more fine-grained control
@@ -631,6 +772,7 @@ with different prompts and LoRA adapters active.
 - LoRA weights are only supported for the transformer part of the network.
 - Some LoRA adapters does not work.
 - Currently, the supported controlnet is the [canny-only version](https://huggingface.co/InstantX/FLUX.1-dev-Controlnet-Canny).
+- Dreambooth training currently does not support sending in training parameters as flags.
 
 ### 💡Workflow Tips
 
@@ -642,14 +784,14 @@ with different prompts and LoRA adapters active.
 
 ### ✅ TODO
 
-- [ ] LoRA fine-tuning (in progress, see [DreamBooth support #83](https://github.com/filipstrand/mflux/pull/83))
+- [ ] [FLUX.1 Tools](https://blackforestlabs.ai/flux-1-tools/)
 
 ### 🔬 Cool research / features to support 
 - [ ] [PuLID](https://github.com/ToTheBeginning/PuLID)
 - [ ] [depth based controlnet](https://huggingface.co/InstantX/SD3-Controlnet-Depth) via [ml-depth-pro](https://github.com/apple/ml-depth-pro) or similar?
 - [ ] [RF-Inversion](https://github.com/filipstrand/mflux/issues/91)
 - [ ] [In-Context LoRA](https://github.com/ali-vilab/In-Context-LoRA)
-- [ ] [FLUX.1 Tools](https://blackforestlabs.ai/flux-1-tools/)
+
 
 ### 🌱‍ Related projects
 

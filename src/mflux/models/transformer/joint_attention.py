@@ -22,7 +22,7 @@ class JointAttention(nn.Module):
         self.norm_added_q = nn.RMSNorm(128)
         self.norm_added_k = nn.RMSNorm(128)
 
-    def forward(
+    def __call__(
         self,
         hidden_states: mx.array,
         encoder_hidden_states: mx.array,

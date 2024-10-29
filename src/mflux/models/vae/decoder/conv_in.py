@@ -13,6 +13,6 @@ class ConvIn(nn.Module):
             padding=1,
         )
 
-    def forward(self, input_array: mx.array) -> mx.array:
+    def __call__(self, input_array: mx.array) -> mx.array:
         input_array = mx.transpose(input_array, (0, 2, 3, 1))
         return mx.transpose(self.conv2d(input_array), (0, 3, 1, 2))

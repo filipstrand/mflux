@@ -13,7 +13,7 @@ class Attention(nn.Module):
         self.to_v = nn.Linear(512, 512)
         self.to_out = [nn.Linear(512, 512)]
 
-    def forward(self, input_array: mx.array) -> mx.array:
+    def __call__(self, input_array: mx.array) -> mx.array:
         input_array = mx.transpose(input_array, (0, 2, 3, 1))
 
         B, H, W, C = input_array.shape

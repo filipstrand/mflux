@@ -17,17 +17,17 @@ class TimeTextEmbed(nn.Module):
         self.guidance_embedder = GuidanceEmbedder() if model_config == ModelConfig.FLUX1_DEV else None
         self.timestep_embedder = TimestepEmbedder()
 
-    def forward(
+    def __call__(
         self,
         time_step: mx.array,
         pooled_projection: mx.array,
         guidance: mx.array,
     ) -> mx.array:
         time_steps_proj = self._time_proj(time_step)
-        time_steps_emb = self.timestep_embedder.forward(time_steps_proj)
+        time_steps_emb = self.timestep_embedder(time_steps_proj)
         if self.guidance_embedder is not None:
-            time_steps_emb += self.guidance_embedder.forward(self._time_proj(guidance))
-        pooled_projections = self.text_embedder.forward(pooled_projection)
+            time_steps_emb += self.guidance_embedder(self._time_proj(guidance))
+        pooled_projections = self.text_embedder(pooled_projection)
         conditioning = time_steps_emb + pooled_projections
         return conditioning.astype(Config.precision)
 
