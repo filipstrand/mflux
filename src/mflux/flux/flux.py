@@ -129,7 +129,7 @@ class Flux1:
                 raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(time_steps)}")
 
         # 5. Decode the latent array and return the image
-        latents = ArrayUtil.unpack_latents(latents, config.height, config.width)
+        latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,

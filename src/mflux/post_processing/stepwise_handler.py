@@ -36,7 +36,7 @@ class StepwiseHandler:
 
     def process_step(self, gen_step: int, latents: mx.array):
         if self.output_dir:
-            unpack_latents = ArrayUtil.unpack_latents(latents, self.config.height, self.config.width)
+            unpack_latents = ArrayUtil.unpack_latents(latents=latents, height=self.config.height, width=self.config.width)  # fmt: off
             stepwise_decoded = self.flux.vae.decode(unpack_latents)
             stepwise_img = ImageUtil.to_image(
                 decoded_latents=stepwise_decoded,

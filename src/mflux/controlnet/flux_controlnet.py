@@ -139,7 +139,7 @@ class Flux1Controlnet:
         controlnet_cond = ImageUtil.to_array(control_image)
         controlnet_cond = self.vae.encode(controlnet_cond)
         controlnet_cond = (controlnet_cond / self.vae.scaling_factor) + self.vae.shift_factor
-        controlnet_cond = ArrayUtil.pack_latents(controlnet_cond, config.height, config.width)
+        controlnet_cond = ArrayUtil.pack_latents(latents=controlnet_cond, height=config.height, width=config.width)
 
         # 1. Create the initial latents
         latents = LatentCreator.create(seed=seed, height=config.height, width=config.width)
@@ -188,7 +188,7 @@ class Flux1Controlnet:
                 raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(time_steps)}")
 
         # 5. Decode the latent array and return the image
-        latents = ArrayUtil.unpack_latents(latents, config.height, config.width)
+        latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,

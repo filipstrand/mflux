@@ -108,9 +108,7 @@ class ImageUtil:
         image: PIL.Image.Image,
         target_width: int,
         target_height: int,
-    ):
-        # for now, naively resize the user image to the output image size
-        # todo: consider alt strategies: cropping / resize+padding
+    ) -> PIL.Image.Image:
         if (image.width, image.height) != (target_width, target_height):
             return image.resize((target_width, target_height), PIL.Image.LANCZOS)
         else:
