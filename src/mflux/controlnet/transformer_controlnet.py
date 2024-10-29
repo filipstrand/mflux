@@ -54,7 +54,7 @@ class TransformerControlnet(nn.Module):
         text_embeddings = self.time_text_embed.forward(time_step, pooled_prompt_embeds, guidance)
         encoder_hidden_states = self.context_embedder(prompt_embeds)
         txt_ids = Transformer.prepare_text_ids(seq_len=prompt_embeds.shape[1])
-        img_ids = Transformer.prepare_latent_image_ids(config.height, config.width)
+        img_ids = Transformer.prepare_latent_image_ids(height=config.height, width=config.width)
         ids = mx.concatenate((txt_ids, img_ids), axis=1)
         image_rotary_emb = self.pos_embed.forward(ids)
 
