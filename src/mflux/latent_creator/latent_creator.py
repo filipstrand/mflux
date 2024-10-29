@@ -36,9 +36,13 @@ class LatentCreator:
         else:
             # Image2Image
             user_image = ImageUtil.load_image(runtime_conf.config.init_image_path).convert("RGB")
-            scaled_user_image = ImageUtil.scale_to_dimensions(user_image, runtime_conf.width, runtime_conf.height)
+            scaled_user_image = ImageUtil.scale_to_dimensions(
+                image=user_image,
+                target_width=runtime_conf.width,
+                target_height=runtime_conf.height,
+            )
             encoded = vae.encode(ImageUtil.to_array(scaled_user_image))
-            latents = ArrayUtil.pack_latents(encoded, runtime_conf.height, runtime_conf.width)
+            latents = ArrayUtil.pack_latents(latents=encoded, height=runtime_conf.height, width=runtime_conf.width)
             sigma = runtime_conf.sigmas[runtime_conf.init_time_step]
             return LatentCreator.add_noise_by_interpolation(
                 clean=latents,
