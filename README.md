@@ -56,6 +56,16 @@ uv tool install --upgrade mflux
 to get the `mflux-generate` and related command line executables. You can skip to the usage guides below.
 
 <details>
+<summary>For Python 3.13 dev preview</summary>
+```sh
+uv venv --python 3.13
+python -V  # e.g. Python 3.13.0rc2
+source .venv/bin/activate
+uv pip install --pre --extra-index-url https://download.pytorch.org/whl/nightly -e .
+```
+</details>
+
+<details>
 <summary>For the classic way to create a user virtual environment:</summary>
 
 ```
