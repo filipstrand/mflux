@@ -56,6 +56,24 @@ uv tool install --upgrade mflux
 to get the `mflux-generate` and related command line executables. You can skip to the usage guides below.
 
 <details>
+<summary>For Python 3.13 dev preview</summary>
+
+The [T5 encoder](https://huggingface.co/docs/transformers/en/model_doc/t5) is dependent on [sentencepiece](https://pypi.org/project/sentencepiece/), which does not have a installable wheel artifact for Python 3.13 as of Nov 2024. Until Google [publishes a 3.13 wheel](https://pypi.org/project/sentencepiece/), you need to build your own wheel with [official build instructions](https://github.com/google/sentencepiece/blob/master/python/README.md#build-and-install-sentencepiece) or for your convenience use a `.whl` pre-built by contributor @anthonywu. The steps below should work for most developers though your system may vary.
+
+```sh
+uv venv --python 3.13
+python -V  # e.g. Python 3.13.0rc2
+source .venv/bin/activate
+
+# for your convenience, you can use the contributor wheel
+uv pip install https://github.com/anthonywu/sentencepiece/releases/download/0.2.1-py13dev/sentencepiece-0.2.1-cp313-cp313-macosx_11_0_arm64.whl
+
+# enable the pytorch nightly 
+uv pip install --pre --extra-index-url https://download.pytorch.org/whl/nightly -e .
+```
+</details>
+
+<details>
 <summary>For the classic way to create a user virtual environment:</summary>
 
 ```
