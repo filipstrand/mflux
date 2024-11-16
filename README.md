@@ -289,18 +289,19 @@ time mflux-generate \
 --width 1024
 ```
 
-| Device             | User                                                                                                                         | Reported Time | Notes                     |
-|--------------------|------------------------------------------------------------------------------------------------------------------------------|---------------|---------------------------|
-| M3 Max             | [@karpathy](https://gist.github.com/awni/a67d16d50f0f492d94a10418e0592bde?permalink_comment_id=5153531#gistcomment-5153531)  | ~20s          |                           |
-| M2 Ultra           | [@awni](https://x.com/awnihannun/status/1823515121827897385)                                                                 | <15s          |                           |
-| 2023 M2 Max (96GB) | [@explorigin](https://github.com/filipstrand/mflux/issues/6)                                                                 | ~25s          |                           |
-| 2021 M1 Pro (16GB) | [@qw-in](https://github.com/filipstrand/mflux/issues/7)                                                                      | ~175s         | Might freeze your mac     |
-| 2023 M3 Pro (36GB) | [@kush-gupt](https://github.com/filipstrand/mflux/issues/11)                                                                 | ~80s          |                           |
-| 2020 M1 (8GB)      | [@mbvillaverde](https://github.com/filipstrand/mflux/issues/13)                                                              | ~335s         | With resolution 512 x 512 |
-| 2022 M1 MAX (64GB) | [@BosseParra](https://x.com/BosseParra/status/1826191780812877968)                                                           | ~55s          |                           |
-| 2023 M2 Pro (32GB) | [@leekichko](https://github.com/filipstrand/mflux/issues/85)                                                                 | ~54s          |                           |
-| 2021 M1 Pro (32GB) | @filipstrand                                                                                                                 | ~160s         |                           |
-| 2023 M2 Max (32GB) | @filipstrand                                                                                                                 | ~70s          |                           |
+| Device             | User                                                                                                                               | Reported Time | Notes                     |
+|--------------------|------------------------------------------------------------------------------------------------------------------------------------|---------------|---------------------------|
+| M4 Max             | [@ivanfioravanti](https://gist.github.com/awni/a67d16d50f0f492d94a10418e0592bde?permalink_comment_id=5153531#gistcomment-5153531)  | ~19s          |                           |
+| M3 Max             | [@karpathy](https://gist.github.com/awni/a67d16d50f0f492d94a10418e0592bde?permalink_comment_id=5153531#gistcomment-5153531)        | ~20s          |                           |
+| M2 Ultra           | [@awni](https://x.com/awnihannun/status/1823515121827897385)                                                                       | <15s          |                           |
+| 2023 M2 Max (96GB) | [@explorigin](https://github.com/filipstrand/mflux/issues/6)                                                                       | ~25s          |                           |
+| 2021 M1 Pro (16GB) | [@qw-in](https://github.com/filipstrand/mflux/issues/7)                                                                            | ~175s         | Might freeze your mac     |
+| 2023 M3 Pro (36GB) | [@kush-gupt](https://github.com/filipstrand/mflux/issues/11)                                                                       | ~80s          |                           |
+| 2020 M1 (8GB)      | [@mbvillaverde](https://github.com/filipstrand/mflux/issues/13)                                                                    | ~335s         | With resolution 512 x 512 |
+| 2022 M1 MAX (64GB) | [@BosseParra](https://x.com/BosseParra/status/1826191780812877968)                                                                 | ~55s          |                           |
+| 2023 M2 Pro (32GB) | [@leekichko](https://github.com/filipstrand/mflux/issues/85)                                                                       | ~54s          |                           |
+| 2021 M1 Pro (32GB) | @filipstrand                                                                                                                       | ~160s         |                           |
+| 2023 M2 Max (32GB) | @filipstrand                                                                                                                       | ~70s          |                           |
 
 *Note that these numbers includes starting the application from scratch, which means doing model i/o, setting/quantizing weights etc.
 If we assume that the model is already loaded, you can inspect the image metadata using `exiftool image.png` and see the total duration of the denoising loop (excluding text embedding).*
