@@ -15,6 +15,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Configure additional swap space
+        run: |
+          sudo diskutil erasevolume HFS+ "swap" $(sudo hdiutil attach -nomount ram://8388608) # Creates 4GB swap
+          sudo swapon /dev/disk$(diskutil list | grep swap | awk '{print $1}' | tr -d '*')      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
