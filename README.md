@@ -289,6 +289,11 @@ time mflux-generate \
 --width 1024
 ```
 
+To find out the spec of your machine (including number of CPU cores, GPU cores, and memory, run the following command:
+```sh
+system_profiler SPHardwareDataType SPDisplaysDataType
+```
+
 | Device      | M-series            | User                                                                                                                              | Reported Time | Notes                     |
 |-------------|---------------------|-----------------------------------------------------------------------------------------------------------------------------------|---------------|---------------------------|
 | Mac Studio  | 2023 M2 Ultra       | [@awni](https://x.com/awnihannun/status/1823515121827897385)                                                                      | <15s          |                           |
