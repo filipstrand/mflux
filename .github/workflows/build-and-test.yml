@@ -10,7 +10,7 @@ on:
 jobs:
   test:
     name: Build and Test
-    runs-on: macos-latest-xlarge
+    runs-on: macos-latest-large
 
     steps:
       - uses: actions/checkout@v4
