@@ -17,8 +17,9 @@ jobs:
 
       - name: Configure additional swap space
         run: |
-          sudo diskutil erasevolume HFS+ "swap" $(sudo hdiutil attach -nomount ram://8388608) # Creates 4GB swap
-          sudo swapon /dev/disk$(diskutil list | grep swap | awk '{print $1}' | tr -d '*')      
+           sudo dd if=/dev/zero of=/private/var/vm/swapfile bs=1024m count=4
+           sudo chmod 0600 /private/var/vm/swapfile
+           sudo dynamic_pager -F /private/var/vm/swapfile      
 
       - name: Set up Python
         uses: actions/setup-python@v5
