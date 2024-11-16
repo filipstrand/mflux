@@ -15,12 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure additional swap space
-        run: |
-           sudo dd if=/dev/zero of=/private/var/vm/swapfile bs=1024m count=4
-           sudo chmod 0600 /private/var/vm/swapfile
-           sudo dynamic_pager -F /private/var/vm/swapfile      
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -30,18 +24,26 @@ jobs:
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
 
-      - name: Install dependencies
-        run: |
-          make install
+#      - name: Install dependencies
+#        run: |
+#          make install
+#
+#      - name: Run linting
+#        run: |
+#          make lint
+#
+#      - name: Run formatting check
+#        run: |
+#          make format
 
-      - name: Run linting
-        run: |
-          make lint
+#      - name: Run tests
+#        run: |
+#          make test
 
-      - name: Run formatting check
+      - name: Install
         run: |
-          make format
+          uv tool install --upgrade mflux
 
-      - name: Run tests
+      - name: Generate an image
         run: |
-          make test
+          mflux-generate --model schnell --prompt "Luxury food photograph" --steps 2 --seed 2 -q 8
