@@ -2,8 +2,8 @@ from enum import Enum
 
 
 class ModelConfig(Enum):
-    FLUX1_DEV = ("black-forest-labs/FLUX.1-dev", "dev", 1000, 512)
-    FLUX1_SCHNELL = ("black-forest-labs/FLUX.1-schnell", "schnell", 1000, 256)
+    FLUX1_DEV = ("madroid/flux.1-dev-mflux-4bit", "dev", 1000, 512)
+    FLUX1_SCHNELL = ("madroid/flux.1-schnell-mflux-4bit ", "schnell", 1000, 256)
 
     def __init__(
         self,
