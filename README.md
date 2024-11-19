@@ -647,7 +647,8 @@ with different prompts and LoRA adapters active.
 ### 🔬 Cool research / features to support 
 - [ ] [PuLID](https://github.com/ToTheBeginning/PuLID)
 - [ ] [depth based controlnet](https://huggingface.co/InstantX/SD3-Controlnet-Depth) via [ml-depth-pro](https://github.com/apple/ml-depth-pro) or similar?
-- [ ] [RF-Inversion](https://github.com/filipstrand/mflux/issues/91) 
+- [ ] [RF-Inversion](https://github.com/filipstrand/mflux/issues/91)
+- [ ] [In-Context LoRA](https://github.com/ali-vilab/In-Context-LoRA)
 
 ### 🌱‍ Related projects
 
