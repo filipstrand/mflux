@@ -649,6 +649,7 @@ with different prompts and LoRA adapters active.
 - [ ] [depth based controlnet](https://huggingface.co/InstantX/SD3-Controlnet-Depth) via [ml-depth-pro](https://github.com/apple/ml-depth-pro) or similar?
 - [ ] [RF-Inversion](https://github.com/filipstrand/mflux/issues/91)
 - [ ] [In-Context LoRA](https://github.com/ali-vilab/In-Context-LoRA)
+- [ ] [FLUX.1 Tools](https://blackforestlabs.ai/flux-1-tools/)
 
 ### 🌱‍ Related projects
 
