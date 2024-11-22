@@ -1,27 +1,65 @@
-from enum import Enum
+from dataclasses import dataclass
+from typing import Literal
 
 
-class ModelConfig(Enum):
-    FLUX1_DEV = ("black-forest-labs/FLUX.1-dev", "dev", 1000, 512)
-    FLUX1_SCHNELL = ("black-forest-labs/FLUX.1-schnell", "schnell", 1000, 256)
+class ModelConfigError(ValueError):
+    pass
 
-    def __init__(
-        self,
-        model_name: str,
-        alias: str,
-        num_train_steps: int,
-        max_sequence_length: int,
-    ):
-        self.alias = alias
-        self.model_name = model_name
-        self.num_train_steps = num_train_steps
-        self.max_sequence_length = max_sequence_length
+
+DEFAULT_TRAIN_STEPS = 1000
+
+
+@dataclass
+class ModelAttrs:
+    model_name: str
+    num_train_steps: int
+    max_sequence_length: int
+    supports_guidance: bool
+
+
+DefaultModelConfigs = {
+    "dev": ModelAttrs(
+        model_name="black-forest-labs/FLUX.1-dev",
+        num_train_steps=DEFAULT_TRAIN_STEPS,
+        max_sequence_length=512,
+        supports_guidance=True,
+    ),
+    "schnell": ModelAttrs(
+        model_name="black-forest-labs/FLUX.1-schnell",
+        num_train_steps=DEFAULT_TRAIN_STEPS,
+        max_sequence_length=256,
+        supports_guidance=False,
+    ),
+}
+
+
+class ModelConfig:
+    # keep these class members to be backwards compatible with < 0.5.0 ModelConfig Enum implementation
+    FLUX1_DEV = DefaultModelConfigs["dev"]
+    FLUX1_SCHNELL = DefaultModelConfigs["schnell"]
 
     @staticmethod
-    def from_alias(alias: str) -> "ModelConfig":
-        try:
-            for model in ModelConfig:
-                if model.alias == alias:
-                    return model
-        except KeyError:
-            raise ValueError(f"'{alias}' is not a valid model")
+    def from_alias(alias: str, base_model: Literal["dev", "schnell"] | None = None) -> ModelAttrs:
+        if alias in DefaultModelConfigs:
+            return DefaultModelConfigs[alias]
+
+        if all(["dev" not in alias, "schnell" not in alias, base_model is None]):
+            raise ModelConfigError(
+                "Cannot infer base model and max_sequence_length "
+                f"from model reference: {alias!r}. "
+                "Please specify --base-model [dev | schnell]"
+            )
+
+        if base_model == "dev" or "dev" in alias:
+            supports_guidance = True
+            max_sequence_length = 512
+        elif base_model == "schnell" or "schnell" in alias:
+            supports_guidance = False
+            max_sequence_length = 256
+
+        return ModelAttrs(
+            alias,  # actually this arg is model_name
+            DEFAULT_TRAIN_STEPS,
+            max_sequence_length,
+            supports_guidance,
+        )
