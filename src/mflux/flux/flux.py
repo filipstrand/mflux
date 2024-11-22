@@ -145,11 +145,14 @@ class Flux1:
         )
 
     @staticmethod
-    def from_alias(alias: str, quantize: int | None = None) -> "Flux1":
+    def from_name(model_name: str, quantize: int | None = None) -> "Flux1":
         return Flux1(
-            model_config=ModelConfig.from_alias(alias),
+            model_config=ModelConfig.from_name(model_name),
             quantize=quantize,
         )
+
+    # maintain old `from_alias` function name for backwards compatibility in user code and docs
+    from_alias = from_name
 
     def _set_model_weights(self, weights):
         self.vae.update(weights.vae)
