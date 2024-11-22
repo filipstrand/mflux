@@ -16,6 +16,13 @@ class ModelAttrs:
     max_sequence_length: int
     supports_guidance: bool
 
+    @property
+    def alias(self):
+        # maintain compatibility with < 0.4.0 behavior
+        # where alias is the name of an official model
+        if self.model_name.startswith("black-forest-labs/FLUX.1-"):
+            return self.model_name[len("black-forest-labs/FLUX.1-"):].lower()
+
 
 DefaultModelConfigs = {
     "dev": ModelAttrs(
