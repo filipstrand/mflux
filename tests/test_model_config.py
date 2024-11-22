@@ -29,7 +29,7 @@ def test_bfl_schnell():
     assert model_attrs.supports_guidance is False
 
 
-def test_comunity_dev_implicit_base_model():
+def test_community_dev_implicit_base_model():
     model_attrs = ModelConfig.from_name("acme-lab/some-awesome-dev-model")
     assert model_attrs.max_sequence_length == 512
     assert model_attrs.supports_guidance is True
@@ -41,7 +41,7 @@ def test_community_schnell_implicit_base_model():
     assert model_attrs.supports_guidance is False
 
 
-def test_comunity_dev_explicit_base_model():
+def test_community_dev_explicit_base_model():
     model_attrs = ModelConfig.from_name("acme-lab/some-awesome-model", base_model="dev")
     assert model_attrs.max_sequence_length == 512
     assert model_attrs.supports_guidance is True
