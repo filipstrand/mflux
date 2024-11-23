@@ -115,6 +115,7 @@ def test_model_arg_in_file(mflux_generate_parser, mflux_generate_minimal_argv, b
         args = mflux_generate_parser.parse_args()
         assert args.model == "schnell"
 
+
 def test_base_model_arg_in_file(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):
     metadata_file = temp_dir / "model.json"
     with metadata_file.open("wt") as m:
@@ -132,6 +133,7 @@ def test_base_model_arg_in_file(mflux_generate_parser, mflux_generate_minimal_ar
         assert args.model == "some-lab/some-model"
         # override metadata base model with CLI --base-model
         assert args.base_model == "schnell"
+
 
 def test_prompt_arg(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):
     metadata_file = temp_dir / "prompt.json"

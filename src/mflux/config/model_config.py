@@ -91,7 +91,7 @@ class ModelConfig:
             DEFAULT_TRAIN_STEPS,
             max_sequence_length,
             supports_guidance,
-            base_model
+            base_model,
         )
 
     # maintain old `from_alias` function name for backwards compatibility in user code and docs

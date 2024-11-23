@@ -1,6 +1,6 @@
 import pytest
 
-from mflux.config.model_config import ModelConfig, ModelConfigError, InvalidBaseModel
+from mflux.config.model_config import InvalidBaseModel, ModelConfig, ModelConfigError
 
 
 def test_from_alias_function_redirect():

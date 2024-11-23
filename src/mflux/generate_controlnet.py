@@ -16,7 +16,7 @@ def main():
 
     # Load the model
     flux = Flux1Controlnet(
-        model_config=ModelConfig.from_name(args.model),
+        model_config=ModelConfig.from_name(args.model, base_model=args.base_model),
         quantize=args.quantize,
         local_path=args.path,
         lora_paths=args.lora_paths,
