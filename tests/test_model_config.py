@@ -4,6 +4,8 @@ from mflux.config.model_config import InvalidBaseModel, ModelConfig, ModelConfig
 
 
 def test_from_alias_function_redirect():
+    # backwards compatibility for when user follows older docs
+    # but is using a newer mflux version >= 0.5
     assert ModelConfig.from_alias == ModelLookup.from_name
 
 
