@@ -5,7 +5,7 @@ from mlx import nn
 from tqdm import tqdm
 
 from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
+from mflux.config.model_config import ModelConfig, ModelLookup
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.error.exceptions import StopImageGenerationException
 from mflux.latent_creator.latent_creator import LatentCreator
@@ -147,7 +147,7 @@ class Flux1:
     @staticmethod
     def from_name(model_name: str, quantize: int | None = None) -> "Flux1":
         return Flux1(
-            model_config=ModelConfig.from_name(model_name),
+            model_config=ModelLookup.from_name(model_name),
             quantize=quantize,
         )
 

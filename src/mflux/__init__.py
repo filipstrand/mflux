@@ -11,6 +11,7 @@ __all__ = [
     "Config",
     "ConfigControlnet",
     "ModelConfig",
+    "ModelLookup",
     "ImageUtil",
     "StopImageGenerationException",
 ]

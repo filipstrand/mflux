@@ -15,7 +15,7 @@ class InvalidBaseModel(ModelConfigError):
 
 
 @dataclass
-class ModelAttrs:
+class ModelConfig:
     model_name: str
     num_train_steps: int
     max_sequence_length: int
@@ -32,14 +32,14 @@ class ModelAttrs:
 
 
 DefaultModelConfigs = {
-    "dev": ModelAttrs(
+    "dev": ModelConfig(
         model_name="black-forest-labs/FLUX.1-dev",
         num_train_steps=DEFAULT_TRAIN_STEPS,
         max_sequence_length=KNOWN_SEQUENCE_LENGTH_BY_BASE_MODEL["dev"],
         supports_guidance=True,
         base_model=None,
     ),
-    "schnell": ModelAttrs(
+    "schnell": ModelConfig(
         model_name="black-forest-labs/FLUX.1-schnell",
         num_train_steps=DEFAULT_TRAIN_STEPS,
         max_sequence_length=KNOWN_SEQUENCE_LENGTH_BY_BASE_MODEL["schnell"],
@@ -49,16 +49,12 @@ DefaultModelConfigs = {
 }
 
 
-class ModelConfig:
-    # keep these class members to be backwards compatible with < 0.5.0 ModelConfig Enum implementation
-    FLUX1_DEV = DefaultModelConfigs["dev"]
-    FLUX1_SCHNELL = DefaultModelConfigs["schnell"]
-
+class ModelLookup:
     @staticmethod
     def from_name(
         alias: str,
         base_model: Literal["dev", "schnell"] | None = None,
-    ) -> ModelAttrs:
+    ) -> ModelConfig:
         if alias in DefaultModelConfigs:
             return DefaultModelConfigs[alias]
 
@@ -86,7 +82,7 @@ class ModelConfig:
             supports_guidance = False
             max_sequence_length = KNOWN_SEQUENCE_LENGTH_BY_BASE_MODEL["schnell"]
 
-        return ModelAttrs(
+        return ModelConfig(
             alias,  # actually this arg is model_name
             DEFAULT_TRAIN_STEPS,
             max_sequence_length,
@@ -94,5 +90,9 @@ class ModelConfig:
             base_model,
         )
 
-    # maintain old `from_alias` function name for backwards compatibility in user code and docs
-    from_alias = from_name
+
+# maintain old `ModelConfig.from_alias` function name for backwards compatibility in user code and docs
+ModelConfig.from_alias = ModelLookup.from_name
+# keep these class members to be backwards compatible with < 0.5.0 ModelConfig Enum implementation
+ModelConfig.FLUX1_DEV = DefaultModelConfigs["dev"]
+ModelConfig.FLUX1_SCHNELL = DefaultModelConfigs["schnell"]
