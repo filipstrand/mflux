@@ -43,10 +43,10 @@ class DreamBoothInitializer:
         )
 
         # Create the optimizer
-        optimizer = Optimizer.from_spec(training_spec.optimizer)
+        optimizer = Optimizer.from_spec(training_spec)
 
         # Create the LoRA layers by matching them against the corresponding Flux layers
-        lora_layers = LoRALayers.from_spec(flux=flux, lora_layers_spec=training_spec.lora_layers)
+        lora_layers = LoRALayers.from_spec(flux=flux, training_spec=training_spec)
 
         # Prepare the fine-tuning dataset and create the iterator
         dataset = Dataset.prepare_dataset(

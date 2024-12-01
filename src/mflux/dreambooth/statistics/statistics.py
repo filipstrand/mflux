@@ -1,10 +1,12 @@
 import datetime
 import json
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from mflux.dreambooth.state.zip_util import ZipUtil
 
 if TYPE_CHECKING:
     from mflux.dreambooth.state.training_spec import TrainingSpec
-    from mflux.dreambooth.state.training_state import TrainingState
 
 
 class Statistics:
@@ -21,11 +23,12 @@ class Statistics:
         if training_spec.statistics.state_path is None:
             return Statistics()
 
-        with open(training_spec.statistics.state_path, "r") as f:
-            data = json.load(f)
-
         stats = Statistics()
-
+        data = ZipUtil.unzip(
+            zip_path=training_spec.checkpoint_path,
+            filename=training_spec.statistics.state_path,
+            loader=lambda x: json.load(open(x, "r")),
+        )
         for entry in data:
             stats.steps.append(entry["step"])
             stats.losses.append(entry["loss"])
@@ -38,7 +41,7 @@ class Statistics:
         self.losses.append(loss)
         self.times.append(datetime.datetime.now())
 
-    def update_loss_file(self, training_spec: "TrainingSpec", training_state: "TrainingState") -> None:
+    def save(self, path: Path) -> None:
         loss_entries = [
             {
                 "step": step,
@@ -48,5 +51,5 @@ class Statistics:
             for step, loss, time in zip(self.steps, self.losses, self.times)
         ]  # fmt: off
 
-        with open(training_state.get_loss_file_path(training_spec), "w", encoding="utf-8") as file:
+        with open(path, "w", encoding="utf-8") as file:
             json.dump(loss_entries, file, indent=4)

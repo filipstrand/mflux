@@ -46,7 +46,6 @@ class DreamBooth:
                 validation_batch = training_state.iterator.get_validation_batch()
                 validation_loss = DreamBoothLoss.compute_loss(flux, runtime_config, validation_batch)
                 training_state.statistics.append_values(step=training_state.iterator.num_iterations, loss=validation_loss)  # fmt: off
-                training_state.statistics.update_loss_file(training_spec=training_spec, training_state=training_state)
                 Plotter.update_loss_plot(training_spec=training_spec, training_state=training_state)
                 del validation_loss
 

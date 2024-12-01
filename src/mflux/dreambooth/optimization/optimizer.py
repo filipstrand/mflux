@@ -6,7 +6,8 @@ import mlx.optimizers
 import mlx.optimizers as optim
 from mlx.utils import tree_flatten, tree_unflatten
 
-from mflux.dreambooth.state.training_spec import OptimizerSpec
+from mflux.dreambooth.state.training_spec import TrainingSpec
+from mflux.dreambooth.state.zip_util import ZipUtil
 
 
 class Optimizers(Enum):
@@ -40,14 +41,18 @@ class Optimizer:
         mx.save_safetensors(str(path), dict(state))
 
     @staticmethod
-    def from_spec(optimizer_spec: OptimizerSpec) -> "Optimizer":
-        opt = Optimizers.from_alias(optimizer_spec.name)
+    def from_spec(training_spec: TrainingSpec) -> "Optimizer":
+        opt = Optimizers.from_alias(training_spec.optimizer.name)
         # noinspection PyCallingNonCallable
-        opt = opt(learning_rate=optimizer_spec.learning_rate)
+        opt = opt(learning_rate=training_spec.optimizer.learning_rate)
 
         # Load from state if present in the spec
-        if optimizer_spec.state_path is not None:
-            state = tree_unflatten(list(mx.load(optimizer_spec.state_path).items()))
+        if training_spec.optimizer.state_path is not None:
+            state = ZipUtil.unzip(
+                zip_path=training_spec.checkpoint_path,
+                filename=training_spec.optimizer.state_path,
+                loader=lambda x: tree_unflatten(list(mx.load(x).items())),
+            )
             opt.state = state
 
         return Optimizer(opt)

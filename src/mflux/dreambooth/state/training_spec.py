@@ -5,6 +5,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import List
 
+from mflux.dreambooth.state.zip_util import ZipUtil
+
 
 @dataclass
 class ExampleSpec:
@@ -12,12 +14,14 @@ class ExampleSpec:
     prompt: str
 
     @classmethod
-    def create(cls, param: dict[str, str], base_path: str) -> "ExampleSpec":
+    def create(cls, param: dict[str, str], absolute_or_relative_path: str, base_path: Path) -> "ExampleSpec":
         image_path = Path(param["image"])
 
         # If the path is not absolute, resolve it relative to the base path
-        if not image_path.is_absolute():
-            image_path = Path(base_path).parent / image_path
+        if not Path(absolute_or_relative_path).is_absolute():
+            image_path = Path(base_path).parent / absolute_or_relative_path / image_path
+        else:
+            image_path = Path(absolute_or_relative_path) / image_path
 
         return cls(
             image=image_path,
@@ -107,42 +111,47 @@ class TrainingSpec:
 
     @staticmethod
     def _from_config(path: str, new_folder: bool = True) -> "TrainingSpec":
-        now = datetime.datetime.now()
-
         with open(Path(path), "r") as f:
             data = json.load(f)
 
-        # Parse nested structures first
-        examples = [ExampleSpec.create(ex, path) for ex in data["examples"]]
-        training_loop = TrainingLoopSpec(**data["training_loop"])
-        optimizer = OptimizerSpec(**data["optimizer"])
+        return TrainingSpec.from_conf(data, path, new_folder)
+
+    @staticmethod
+    def from_conf(config: dict, config_path: str | None, new_folder: bool = True) -> "TrainingSpec":
+        absolute_config_path = None if config_path is None else Path(config_path).absolute()
+        absolute_or_relative_path = config["examples"]["path"]
+        examples = [ExampleSpec.create(ex, absolute_or_relative_path, absolute_config_path) for ex in config["examples"]["images"]]  # fmt: off
+        training_loop = TrainingLoopSpec(**config["training_loop"])
+        optimizer = OptimizerSpec(**config["optimizer"])
         saver = SaveSpec(
-            checkpoint_frequency=data["save"]["checkpoint_frequency"],
-            output_path=TrainingSpec._resolve_output_path(data["save"]["output_path"], now, new_folder),
+            checkpoint_frequency=config["save"]["checkpoint_frequency"],
+            output_path=TrainingSpec._resolve_output_path(config["save"]["output_path"], new_folder),
         )
         instrumentation = (
-            None if data.get("instrumentation", None) is None else InstrumentationSpec(**data["instrumentation"])
+            None if config.get("instrumentation", None) is None else InstrumentationSpec(**config["instrumentation"])
         )
-        statistics = StatisticsSpec() if data.get("statistics", None) is None else StatisticsSpec(**data["statistics"])
+        statistics = (
+            StatisticsSpec() if config.get("statistics", None) is None else StatisticsSpec(**config["statistics"])
+        )
 
         # Parse LoraLayers structure
-        block_range = BlockRange(**data["lora_layers"]["single_transformer_blocks"]["block_range"])
+        block_range = BlockRange(**config["lora_layers"]["single_transformer_blocks"]["block_range"])
         single_transformer_blocks = SingleTransformerBlocks(
             block_range=block_range,
-            layer_types=data["lora_layers"]["single_transformer_blocks"]["layer_types"],
-            lora_rank=data["lora_layers"]["single_transformer_blocks"]["lora_rank"],
+            layer_types=config["lora_layers"]["single_transformer_blocks"]["layer_types"],
+            lora_rank=config["lora_layers"]["single_transformer_blocks"]["lora_rank"],
         )
         lora_layers = LoraLayersSpec(single_transformer_blocks=single_transformer_blocks)
 
         # Create the training specification
         return TrainingSpec(
-            model=data["model"],
-            seed=data["seed"],
-            steps=data["steps"],
-            guidance=data["guidance"],
-            quantize=data["quantize"],
-            width=data["width"],
-            height=data["height"],
+            model=config["model"],
+            seed=config["seed"],
+            steps=config["steps"],
+            guidance=config["guidance"],
+            quantize=config["quantize"],
+            width=config["width"],
+            height=config["height"],
             training_loop=training_loop,
             optimizer=optimizer,
             saver=saver,
@@ -150,7 +159,7 @@ class TrainingSpec:
             lora_layers=lora_layers,
             statistics=statistics,
             examples=examples,
-            config_path=path,
+            config_path=None if absolute_config_path is None else str(absolute_config_path),
         )
 
     def to_json(self) -> str:
@@ -171,9 +180,9 @@ class TrainingSpec:
         return obj
 
     @staticmethod
-    def _resolve_output_path(path: str, now: datetime, new_folder: bool) -> str:
+    def _resolve_output_path(path: str, new_folder: bool) -> str:
         requested_path = os.path.expanduser(path)
-        now_str = now.strftime("%Y%m%d_%H%M%S")
+        now_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
         if new_folder and os.path.exists(requested_path):
             requested_path = f"{requested_path}_{now_str}"
@@ -183,13 +192,13 @@ class TrainingSpec:
 
     @staticmethod
     def _from_checkpoint(path: str, new_folder: bool) -> "TrainingSpec":
-        with open(Path(path), "r") as f:
-            checkpoint = json.load(f)
-
-        config_path = checkpoint["config"]
-        spec = TrainingSpec._from_config(config_path, new_folder)
-        spec.optimizer.state_path = checkpoint["optimizer"]
-        spec.lora_layers.state_path = checkpoint["adapter"]
-        spec.training_loop.iterator_state_path = checkpoint["iterator"]
-        spec.statistics.state_path = checkpoint["statistics"]
+        checkpoint = ZipUtil.unzip(path, "checkpoint.json", lambda x: json.load(open(x, "r")))
+        config = ZipUtil.unzip(path, checkpoint["files"]["config"], lambda x: json.load(open(x, "r")))
+        spec = TrainingSpec.from_conf(config, None, new_folder)
+        spec.optimizer.state_path = checkpoint["files"]["optimizer"]
+        spec.lora_layers.state_path = checkpoint["files"]["lora_adapter"]
+        spec.training_loop.iterator_state_path = checkpoint["files"]["iterator"]
+        spec.statistics.state_path = checkpoint["files"]["loss"]
+        spec.checkpoint_path = path
+        spec.config_path = None
         return spec

@@ -8,8 +8,7 @@
   "height": 128,
   "training_loop": {
     "num_epochs": 1,
-    "batch_size": 1,
-    "iterator_state": 0
+    "batch_size": 1
   },
   "optimizer": {
     "name": "AdamW",
@@ -35,26 +34,29 @@
       "lora_rank": 4
     }
   },
-  "examples": [
-    {
-      "image": "../../../src/mflux/dreambooth/_example/images/01.jpeg",
-      "prompt": "photo of sks dog"
-    },
-    {
-      "image": "../../../src/mflux/dreambooth/_example/images/02.jpeg",
-      "prompt": "photo of sks dog"
-    },
-    {
-      "image": "../../../src/mflux/dreambooth/_example/images/03.jpeg",
-      "prompt": "photo of sks dog"
-    },
-    {
-      "image": "../../../src/mflux/dreambooth/_example/images/04.jpeg",
-      "prompt": "photo of sks dog"
-    },
-    {
-      "image": "../../../src/mflux/dreambooth/_example/images/05.jpeg",
-      "prompt": "photo of sks dog"
-    }
-  ]
+  "examples": {
+    "path": "../../../src/mflux/dreambooth/_example/images/",
+    "images": [
+        {
+          "image": "01.jpeg",
+          "prompt": "photo of sks dog"
+        },
+        {
+          "image": "02.jpeg",
+          "prompt": "photo of sks dog"
+        },
+        {
+          "image": "03.jpeg",
+          "prompt": "photo of sks dog"
+        },
+        {
+          "image": "04.jpeg",
+          "prompt": "photo of sks dog"
+        },
+        {
+          "image": "05.jpeg",
+          "prompt": "photo of sks dog"
+        }
+      ]
+  }
 }

@@ -7,6 +7,7 @@ from typing import Any
 from mflux.dreambooth.dataset.batch import Batch
 from mflux.dreambooth.dataset.dataset import Dataset
 from mflux.dreambooth.state.training_spec import TrainingSpec
+from mflux.dreambooth.state.zip_util import ZipUtil
 
 
 class Iterator:
@@ -47,7 +48,8 @@ class Iterator:
     def from_spec(training_spec: TrainingSpec, dataset: Dataset) -> "Iterator":
         if training_spec.training_loop.iterator_state_path is not None:
             return Iterator.from_json(
-                filepath=training_spec.training_loop.iterator_state_path,
+                training_spec=training_spec,
+                iterator_path=training_spec.training_loop.iterator_state_path,
                 dataset=dataset,
             )
 
@@ -137,10 +139,12 @@ class Iterator:
             json.dump(self.to_dict(), f, indent=4)
 
     @classmethod
-    def from_json(cls, filepath: str, dataset: Dataset) -> "Iterator":
-        """Load iterator state from a JSON file."""
-        with open(filepath, "r") as f:
-            data = json.load(f)
+    def from_json(cls, training_spec: TrainingSpec, iterator_path: str, dataset: Dataset) -> "Iterator":
+        data = ZipUtil.unzip(
+            zip_path=training_spec.checkpoint_path,
+            filename=iterator_path,
+            loader=lambda x: json.load(open(x, "r"))
+        )  # fmt: off
         return cls.from_dict(data, dataset)
 
     def get_validation_batch(self) -> Batch:

@@ -6,7 +6,8 @@ from mlx import nn
 from mlx.utils import tree_flatten, tree_unflatten
 
 from mflux.dreambooth.lora_layers.linear_lora_layer import LoRALinear
-from mflux.dreambooth.state.training_spec import LoraLayersSpec, TrainingSpec
+from mflux.dreambooth.state.training_spec import TrainingSpec
+from mflux.dreambooth.state.zip_util import ZipUtil
 from mflux.post_processing.generated_image import GeneratedImage
 
 if TYPE_CHECKING:
@@ -18,8 +19,8 @@ class LoRALayers:
         self.layers = lora_layers
 
     @staticmethod
-    def from_spec(flux: "Flux1", lora_layers_spec: LoraLayersSpec) -> "LoRALayers":
-        block_spec = lora_layers_spec.single_transformer_blocks
+    def from_spec(flux: "Flux1", training_spec: TrainingSpec) -> "LoRALayers":
+        block_spec = training_spec.lora_layers.single_transformer_blocks
         start = block_spec.block_range.start
         end = block_spec.block_range.end
 
@@ -46,8 +47,12 @@ class LoRALayers:
                 mx.eval(lora_layers)
 
         # Load from state if present in the spec
-        if lora_layers_spec.state_path is not None:
-            lora_weights = tree_unflatten(list(mx.load(lora_layers_spec.state_path).items()))
+        if training_spec.lora_layers.state_path is not None:
+            lora_weights = ZipUtil.unzip(
+                zip_path=training_spec.checkpoint_path,
+                filename=training_spec.lora_layers.state_path,
+                loader=lambda x: tree_unflatten(list(mx.load(x).items())),
+            )
             weights = lora_weights["transformer"]["single_transformer_blocks"]
             for k in lora_layers.keys():
                 parts = k.split(".")
