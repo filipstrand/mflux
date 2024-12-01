@@ -1,4 +1,5 @@
 from pathlib import Path
+from random import Random
 
 import mlx.core as mx
 
@@ -22,5 +23,6 @@ class Example:
 
 
 class Batch:
-    def __init__(self, examples: list[Example]):
+    def __init__(self, examples: list[Example], rng: Random):
+        self.rng = rng
         self.examples = examples

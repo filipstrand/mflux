@@ -29,7 +29,7 @@ class Iterator:
         self.total_examples = dataset.size()
         self.num_epochs = num_epochs
         self.seed = seed
-        self._rng = random.Random(seed)
+        self.rng = random.Random(seed)
 
         self._position = position
         self._epoch = epoch
@@ -37,7 +37,7 @@ class Iterator:
         self.start_date_time = start_date_time or datetime.datetime.now()
 
         if rng_state is not None:
-            self._rng.setstate(rng_state)
+            self.rng.setstate(rng_state)
 
         if current_permutation is not None:
             self._current_permutation = current_permutation
@@ -62,7 +62,7 @@ class Iterator:
 
     def _initialize_permutation(self):
         self._current_permutation = list(range(self.total_examples))
-        self._rng.shuffle(self._current_permutation)
+        self.rng.shuffle(self._current_permutation)
 
     def __iter__(self):
         return self
@@ -99,7 +99,7 @@ class Iterator:
         # Get examples using indices
         examples = [self.dataset.examples[i] for i in batch_indices]
 
-        return Batch(examples=examples)
+        return Batch(examples=examples, rng=self.rng)
 
     def to_dict(self) -> dict[str, Any]:
         """Returns the current state as a dictionary."""
@@ -108,7 +108,7 @@ class Iterator:
             "epoch": self._epoch,
             "num_iterations": self.num_iterations,
             "current_permutation": self._current_permutation,
-            "rng_state": list(self._rng.getstate()),
+            "rng_state": list(self.rng.getstate()),
             "batch_size": self.batch_size,
             "num_epochs": self.num_epochs,
             "start_date_time": self.start_date_time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -150,8 +150,9 @@ class Iterator:
     def get_validation_batch(self) -> Batch:
         examples = self.dataset.examples
         if len(examples) > 10:
-            return Batch(examples=examples[0:10])
-        return Batch(examples=examples)
+            examples = examples[0:10]
+
+        return Batch(examples=examples, rng=self.rng)
 
     def total_number_of_steps(self) -> int:
         return self.total_examples * self.num_epochs
