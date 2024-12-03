@@ -15,11 +15,15 @@ class ZipUtil:
             raise ValueError("The file_loader must be a callable (e.g., a function or lambda).")
 
         with ZipFile(zip_path, "r") as zipf:
-            if filename not in zipf.namelist():
+            # Normalize files names in the archive by stripping folders
+            namelist = {os.path.basename(name): name for name in zipf.namelist()}
+
+            if filename not in namelist:
                 raise FileNotFoundError(f"File '{filename}' not found in the ZIP archive.")
 
-            # Read the file's data
-            file_data = zipf.read(filename)
+            # Use the full path to extract the correct file
+            archive_filename = namelist[filename]
+            file_data = zipf.read(archive_filename)
 
             # Create a temporary file to store the extracted content
             temp_file = tempfile.NamedTemporaryFile(suffix=f".{filename.split('.')[-1]}", delete=False)
