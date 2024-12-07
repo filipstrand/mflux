@@ -59,14 +59,14 @@ class LoRALayers:
                 if len(parts) == 4:
                     layer_number = int(parts[-2])
                     module = parts[-1]
-                    lora_layers[k].lora_a = weights[layer_number][module]["lora_a"]
-                    lora_layers[k].lora_b = weights[layer_number][module]["lora_b"]
+                    lora_layers[k].lora_A = weights[layer_number][module]["lora_A"]
+                    lora_layers[k].lora_B = weights[layer_number][module]["lora_B"]
                 if len(parts) == 5:
                     layer_number = int(parts[-3])
                     module = parts[-2]
                     name = parts[-1]
-                    lora_layers[k].lora_a = weights[layer_number][module][name]["lora_a"]
-                    lora_layers[k].lora_b = weights[layer_number][module][name]["lora_b"]
+                    lora_layers[k].lora_A = weights[layer_number][module][name]["lora_A"]
+                    lora_layers[k].lora_B = weights[layer_number][module][name]["lora_B"]
 
         return LoRALayers(lora_layers)
 

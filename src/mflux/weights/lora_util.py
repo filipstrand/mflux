@@ -1,5 +1,6 @@
 import logging
 
+import mlx.core
 from mlx.utils import tree_flatten
 
 log = logging.getLogger(__name__)
@@ -33,11 +34,11 @@ class LoraUtil:
     def _apply_lora(transformer: dict, lora_file: str, lora_scale: float) -> None:
         from mflux.weights.weight_handler import WeightHandler
 
-        lora_transformer, _ = WeightHandler.load_transformer(lora_path=lora_file)
-        LoraUtil._apply_transformer(transformer, lora_transformer, lora_scale)
+        lora_transformer, _, mflux = WeightHandler.load_transformer(lora_path=lora_file)
+        LoraUtil._apply_transformer(transformer, lora_transformer, lora_scale, mflux)
 
     @staticmethod
-    def _apply_transformer(transformer: dict, lora_transformer: dict, lora_scale: float) -> None:
+    def _apply_transformer(transformer: dict, lora_transformer: dict, lora_scale: float, mflux: str | None) -> None:
         lora_weights = tree_flatten(lora_transformer)
         visited = {}
 
@@ -84,5 +85,8 @@ class LoraUtil:
                         lora_a = visited[parentKey]["lora_A"]
                         lora_b = visited[parentKey]["lora_B"]
                         transWeight = target["weight"]
-                        weight = transWeight + lora_scale * (lora_b @ lora_a)
+                        if mflux:
+                            weight = transWeight + lora_scale * mlx.core.transpose(lora_a @ lora_b)
+                        else:
+                            weight = transWeight + lora_scale * (lora_b @ lora_a)
                         target["weight"] = weight
