@@ -108,6 +108,7 @@ class LoRALayers:
             dict(tree_flatten(weights)),
             metadata={
                 "mflux_version": GeneratedImage.get_version(),
+                "quantize": str(training_spec.quantize),
                 "single_transformer_blocks": str(training_spec.lora_layers.single_transformer_blocks),
             },
         )
