@@ -147,13 +147,13 @@ class Flux1Controlnet:
         # 2. Embed the prompt
         t5_tokens = self.t5_tokenizer.tokenize(prompt)
         clip_tokens = self.clip_tokenizer.tokenize(prompt)
-        prompt_embeds = self.t5_text_encoder.forward(t5_tokens)
-        pooled_prompt_embeds = self.clip_text_encoder.forward(clip_tokens)
+        prompt_embeds = self.t5_text_encoder(t5_tokens)
+        pooled_prompt_embeds = self.clip_text_encoder(clip_tokens)
 
         for t in time_steps:
             try:
                 # Compute controlnet samples
-                controlnet_block_samples, controlnet_single_block_samples = self.transformer_controlnet.forward(
+                controlnet_block_samples, controlnet_single_block_samples = self.transformer_controlnet(
                     t=t,
                     prompt_embeds=prompt_embeds,
                     pooled_prompt_embeds=pooled_prompt_embeds,

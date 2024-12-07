@@ -25,7 +25,7 @@ class WeightHandler:
         self.transformer, self.quantization_level = WeightHandler.load_transformer(root_path=root_path)
 
         if lora_paths:
-            LoraUtil.apply_loras(self.transformer, lora_paths, lora_scales)
+            self.quantization_level = LoraUtil.apply_loras(self.transformer, lora_paths, lora_scales)
 
     @staticmethod
     def load_clip_encoder(root_path: Path) -> (dict, int):
@@ -119,12 +119,17 @@ class WeightHandler:
                 weight = list(mx.load(str(file)).items())
                 weights.extend(weight)
 
+        mflux_version = None
         if lora_path and root_path is None:
-            weight = list(mx.load(lora_path).items())
+            load = mx.load(lora_path, return_metadata=True)
+            weight = list(load[0].items())
+            if len(load) > 1:
+                quantization_level = load[1].get("quantize", None)
+                mflux_version = load[1].get("mflux_version", None)
             weights.extend(weight)
 
         # Non huggingface weights (i.e. ones exported from this project) don't need any reshaping.
-        if quantization_level is not None:
+        if quantization_level is not None or mflux_version is not None:
             return tree_unflatten(weights), quantization_level
 
         # Huggingface weights needs to be reshaped

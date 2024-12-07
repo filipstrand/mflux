@@ -11,11 +11,14 @@ class LoraUtil:
         transformer: dict,
         lora_files: list[str],
         lora_scales: list[float] | None = None,
-    ) -> None:
+    ) -> int:
         lora_scales = LoraUtil._validate_lora_scales(lora_files, lora_scales)
 
+        quantization_level = None
         for lora_file, lora_scale in zip(lora_files, lora_scales):
-            LoraUtil._apply_lora(transformer, lora_file, lora_scale)
+            quantization_level = LoraUtil._apply_lora(transformer, lora_file, lora_scale)
+
+        return quantization_level
 
     @staticmethod
     def _validate_lora_scales(lora_files: list[str], lora_scales: list[float]) -> list[float]:
@@ -30,11 +33,12 @@ class LoraUtil:
         return lora_scales
 
     @staticmethod
-    def _apply_lora(transformer: dict, lora_file: str, lora_scale: float) -> None:
+    def _apply_lora(transformer: dict, lora_file: str, lora_scale: float) -> int:
         from mflux.weights.weight_handler import WeightHandler
 
-        lora_transformer, _ = WeightHandler.load_transformer(lora_path=lora_file)
+        lora_transformer, quantization_level = WeightHandler.load_transformer(lora_path=lora_file)
         LoraUtil._apply_transformer(transformer, lora_transformer, lora_scale)
+        return quantization_level
 
     @staticmethod
     def _apply_transformer(transformer: dict, lora_transformer: dict, lora_scale: float) -> None:

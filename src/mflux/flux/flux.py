@@ -7,6 +7,7 @@ from tqdm import tqdm
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
+from mflux.dreambooth.lora_layers.lora_layers import LoRALayers
 from mflux.error.exceptions import StopImageGenerationException
 from mflux.latent_creator.latent_creator import LatentCreator
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
@@ -24,7 +25,7 @@ from mflux.weights.model_saver import ModelSaver
 from mflux.weights.weight_handler import WeightHandler
 
 
-class Flux1:
+class Flux1(nn.Module):
     def __init__(
         self,
         model_config: ModelConfig,
@@ -33,6 +34,7 @@ class Flux1:
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
     ):
+        super().__init__()
         self.lora_paths = lora_paths
         self.lora_scales = lora_scales
         self.model_config = model_config
@@ -100,8 +102,8 @@ class Flux1:
         # 2. Embed the prompt
         t5_tokens = self.t5_tokenizer.tokenize(prompt)
         clip_tokens = self.clip_tokenizer.tokenize(prompt)
-        prompt_embeds = self.t5_text_encoder.forward(t5_tokens)
-        pooled_prompt_embeds = self.clip_text_encoder.forward(clip_tokens)
+        prompt_embeds = self.t5_text_encoder(t5_tokens)
+        pooled_prompt_embeds = self.clip_text_encoder(clip_tokens)
 
         for gen_step, t in enumerate(time_steps, 1):
             try:
@@ -159,3 +161,13 @@ class Flux1:
 
     def save_model(self, base_path: str) -> None:
         ModelSaver.save_model(self, self.bits, base_path)
+
+    def freeze(self, **kwargs):
+        self.vae.freeze()
+        self.transformer.freeze()
+        self.t5_text_encoder.freeze()
+        self.clip_text_encoder.freeze()
+
+    def set_lora_layers(self, lora_layers: LoRALayers) -> None:
+        for layer_path, lora_layer in lora_layers.layers.items():
+            LoRALayers.set_nested_attr(self, layer_path, lora_layer)

@@ -13,7 +13,7 @@ class T5SelfAttention(nn.Module):
         self.relative_attention_bias = nn.Embedding(32, 64)
         self.o = nn.Linear(4096, 4096, bias=False)
 
-    def forward(self, hidden_states: mx.array) -> mx.array:
+    def __call__(self, hidden_states: mx.array) -> mx.array:
         query_states = T5SelfAttention.shape(self.q(hidden_states))
         key_states = T5SelfAttention.shape(self.k(hidden_states))
         value_states = T5SelfAttention.shape(self.v(hidden_states))
