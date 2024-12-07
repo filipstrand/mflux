@@ -20,7 +20,7 @@
   },
   "instrumentation": {
     "plot_frequency": 1,
-    "generate_image_frequency": 5,
+    "generate_image_frequency": 25,
     "validation_prompt": "photo of sks dog"
   },
   "lora_layers": {
