@@ -12,7 +12,7 @@ CHECKPOINT_4 = "tests/dreambooth/tmp/_checkpoints/0000004_checkpoint.zip"
 CHECKPOINT_5 = "tests/dreambooth/tmp/_checkpoints/0000005_checkpoint.zip"
 
 
-class TestTrainDreamBooth:
+class TestResumeTraining:
     def test_resume_training(self):
         try:
             # Given: A small training run from scratch for 5 steps (as described in the config)...
@@ -34,8 +34,8 @@ class TestTrainDreamBooth:
                 loader=lambda x: dict(mx.load(x).items()),
             )
             # ...and deleting the outputs past step 3 to be sure we regenerate them after this...
-            TestTrainDreamBooth.delete_file(CHECKPOINT_4)
-            TestTrainDreamBooth.delete_file(CHECKPOINT_5)
+            TestResumeTraining.delete_file(CHECKPOINT_4)
+            TestResumeTraining.delete_file(CHECKPOINT_5)
 
             # When: Resuming the training from step 3...
             flux, runtime_config, training_spec, training_state = DreamBoothInitializer.initialize(
@@ -65,7 +65,7 @@ class TestTrainDreamBooth:
                     assert mx.array_equal(array1, array2)
         finally:
             # cleanup
-            TestTrainDreamBooth.delete_folder("tests/dreambooth/tmp")
+            TestResumeTraining.delete_folder("tests/dreambooth/tmp")
 
     @staticmethod
     def delete_file(path: str) -> None:
