@@ -38,3 +38,19 @@ class ZipUtil:
                 # Cleanup the temporary file
                 if os.path.exists(temp_file.name):
                     os.remove(temp_file.name)
+
+    @staticmethod
+    def extract_all(zip_path: str | Path, output_dir: str | Path):
+        zip_path = Path(zip_path)
+        output_dir = Path(output_dir)
+
+        if not zip_path.exists():
+            raise FileNotFoundError(f"ZIP file not found at: {zip_path}")
+
+        if not output_dir.exists():
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+        with ZipFile(zip_path, "r") as zipf:
+            zipf.extractall(output_dir)
+
+        print(f"All files have been extracted to: {output_dir}")
