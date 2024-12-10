@@ -1,8 +1,11 @@
+from pathlib import Path
+
 import numpy as np
 
 from mflux import Config, Flux1, ModelConfig
 from mflux.dreambooth.dreambooth import DreamBooth
 from mflux.dreambooth.dreambooth_initializer import DreamBoothInitializer
+from mflux.dreambooth.lora_layers.lora_layers import LoRALayers
 from mflux.dreambooth.state.zip_util import ZipUtil
 from tests.dreambooth.test_resume_training import TestResumeTraining
 
@@ -43,9 +46,10 @@ class TestTrainAndLoadWeights:
             flux = Flux1(
                 model_config=ModelConfig.FLUX1_DEV,
                 quantize=4,
-                lora_paths=[LORA_FILE],
-                lora_scales=[1.0]
             )  # fmt: off
+            lora = LoRALayers.from_file(Path(LORA_FILE), flux)
+            flux.set_lora_layers(lora)
+
             # ...and generating the same image from that
             image2 = flux.generate_image(
                 seed=42,
