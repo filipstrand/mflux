@@ -22,19 +22,19 @@ class WeightHandler:
         self.clip_encoder, _ = WeightHandler.load_clip_encoder(root_path=root_path)
         self.t5_encoder, _ = WeightHandler.load_t5_encoder(root_path=root_path)
         self.vae, _ = WeightHandler.load_vae(root_path=root_path)
-        self.transformer, self.quantization_level = WeightHandler.load_transformer(root_path=root_path)
+        self.transformer, self.quantization_level, mflux = WeightHandler.load_transformer(root_path=root_path)
 
         if lora_paths:
             LoraUtil.apply_loras(self.transformer, lora_paths, lora_scales)
 
     @staticmethod
     def load_clip_encoder(root_path: Path) -> (dict, int):
-        weights, quantization_level = WeightHandler._get_weights("text_encoder", root_path)
+        weights, quantization_level, _ = WeightHandler._get_weights("text_encoder", root_path)
         return weights, quantization_level
 
     @staticmethod
     def load_t5_encoder(root_path: Path) -> (dict, int):
-        weights, quantization_level = WeightHandler._get_weights("text_encoder_2", root_path)
+        weights, quantization_level, _ = WeightHandler._get_weights("text_encoder_2", root_path)
 
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
         if quantization_level is not None:
@@ -61,7 +61,7 @@ class WeightHandler:
 
     @staticmethod
     def load_transformer(root_path: Path | None = None, lora_path: str | None = None) -> (dict, int):
-        weights, quantization_level = WeightHandler._get_weights("transformer", root_path, lora_path)
+        weights, quantization_level, mflux = WeightHandler._get_weights("transformer", root_path, lora_path)
 
         if lora_path:
             if "transformer" not in weights:
@@ -70,7 +70,7 @@ class WeightHandler:
 
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
         if quantization_level is not None:
-            return weights, quantization_level
+            return weights, quantization_level, mflux
 
         # Reshape and process the huggingface weights
         if "transformer_blocks" in weights:
@@ -85,11 +85,11 @@ class WeightHandler:
                         "linear1": block["ff_context"]["net"][0]["proj"],
                         "linear2": block["ff_context"]["net"][2],
                     }
-        return weights, quantization_level
+        return weights, quantization_level, mflux
 
     @staticmethod
     def load_vae(root_path: Path) -> (dict, int):
-        weights, quantization_level = WeightHandler._get_weights("vae", root_path)
+        weights, quantization_level, _ = WeightHandler._get_weights("vae", root_path)
 
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
         if quantization_level is not None:
@@ -109,7 +109,7 @@ class WeightHandler:
         model_name: str,
         root_path: Path | None = None,
         lora_path: str | None = None,
-    ) -> (dict, int):
+    ) -> (dict, int, str):
         weights = []
         quantization_level = None
 
@@ -119,19 +119,23 @@ class WeightHandler:
                 weight = list(mx.load(str(file)).items())
                 weights.extend(weight)
 
+        mflux_version = None
         if lora_path and root_path is None:
-            weight = list(mx.load(lora_path).items())
+            load = mx.load(lora_path, return_metadata=True)
+            weight = list(load[0].items())
+            if len(load) > 1:
+                mflux_version = load[1].get("mflux_version", None)
             weights.extend(weight)
 
         # Non huggingface weights (i.e. ones exported from this project) don't need any reshaping.
         if quantization_level is not None:
-            return tree_unflatten(weights), quantization_level
+            return tree_unflatten(weights), quantization_level, mflux_version
 
         # Huggingface weights needs to be reshaped
         weights = [WeightUtil.reshape_weights(k, v) for k, v in weights]
         weights = WeightUtil.flatten(weights)
         unflatten = tree_unflatten(weights)
-        return unflatten, quantization_level
+        return unflatten, quantization_level, mflux_version
 
     @staticmethod
     def _download_or_get_cached_weights(repo_id: str) -> Path:

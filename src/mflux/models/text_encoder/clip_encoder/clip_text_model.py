@@ -12,10 +12,10 @@ class CLIPTextModel(nn.Module):
         self.embeddings = CLIPEmbeddings(dims)
         self.final_layer_norm = nn.LayerNorm(dims=768)
 
-    def forward(self, tokens: mx.array) -> (mx.array, mx.array):
-        hidden_states = self.embeddings.forward(tokens)
+    def __call__(self, tokens: mx.array) -> (mx.array, mx.array):
+        hidden_states = self.embeddings(tokens)
         causal_attention_mask = CLIPTextModel.create_causal_attention_mask(hidden_states.shape)
-        encoder_outputs = self.encoder.forward(hidden_states, causal_attention_mask)
+        encoder_outputs = self.encoder(hidden_states, causal_attention_mask)
         last_hidden_state = self.final_layer_norm(encoder_outputs)
         pooled_output = last_hidden_state[0, mx.argmax(tokens, axis=-1)]
         return pooled_output

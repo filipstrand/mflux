@@ -14,7 +14,7 @@ class DownBlock4(nn.Module):
         ]
         # fmt: on
 
-    def forward(self, input_array: mx.array) -> mx.array:
-        hidden_states = self.resnets[0].forward(input_array)
-        hidden_states = self.resnets[1].forward(hidden_states)
+    def __call__(self, input_array: mx.array) -> mx.array:
+        hidden_states = self.resnets[0](input_array)
+        hidden_states = self.resnets[1](hidden_states)
         return hidden_states
