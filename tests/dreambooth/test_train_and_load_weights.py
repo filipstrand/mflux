@@ -1,5 +1,4 @@
-from pathlib import Path
-
+import mlx
 import numpy as np
 
 from mflux import Config, Flux1, ModelConfig
@@ -47,7 +46,7 @@ class TestTrainAndLoadWeights:
                 model_config=ModelConfig.FLUX1_DEV,
                 quantize=4,
             )  # fmt: off
-            lora = LoRALayers.from_file(Path(LORA_FILE), flux)
+            lora = LoRALayers.from_transformer_template(mlx.core.load(str(LORA_FILE)), flux.transformer)
             flux.set_lora_layers(lora)
 
             # ...and generating the same image from that
@@ -70,3 +69,28 @@ class TestTrainAndLoadWeights:
         finally:
             # cleanup
             TestResumeTraining.delete_folder("tests/dreambooth/tmp")
+
+    def test_1111(self):
+        flux = Flux1(
+            model_config=ModelConfig.FLUX1_DEV,
+            quantize=4,
+            lora_paths=["/Users/filipstrand/Desktop/0000005_adapter.safetensors"]
+            # lora_paths=["/Users/filipstrand/Desktop/a.safetensors"]
+            # lora_paths=["/Users/filipstrand/Desktop/b.safetensors"]
+        )  # fmt: off
+
+        print("hej")
+
+    def test_2222(self):
+        flux = Flux1(
+            model_config=ModelConfig.FLUX1_DEV,
+            quantize=4,
+        )  # fmt: off
+        lora = LoRALayers.from_transformer_template(
+            mlx.core.load(str("/Users/filipstrand/Desktop/0000005_adapter.safetensors")), flux
+        )
+        # lora = LoRALayers.from_file(mlx.core.load(str("/Users/filipstrand/Desktop/a.safetensors")), flux)
+        # lora = LoRALayers.from_file(mlx.core.load(str("/Users/filipstrand/Desktop/b.safetensors")), flux)
+        flux.set_lora_layers(lora)
+
+        print("hej")

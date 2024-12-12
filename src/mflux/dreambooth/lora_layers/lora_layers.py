@@ -71,78 +71,66 @@ class LoRALayers:
         return LoRALayers(lora_layers)
 
     @classmethod
-    def from_file(cls, path: Path, flux: "Flux1") -> "LoRALayers":
-        # Load the weights from safetensors
-        weights = mx.load(str(path))
-
-        # Analyze the weights to identify LoRA layers
+    def from_transformer_template(cls, weights: dict, transformer: nn.Module) -> "LoRALayers":
         lora_layers = {}
-
-        # Convert from flat dictionary to nested structure
-        # nested_weights = tree_unflatten(list(weights.items()))
-
-        # Identify LoRA layers from the weights structure
         for key in weights.keys():
-            # Look for lora_A keys to identify LoRA layers
             if key.endswith(".lora_A"):
-                # Extract the base path by removing ".lora_A"
                 base_path = key[: -len(".lora_A")]
-
-                # Get the original layer from flux
                 parts = base_path.split(".")
-                try:
-                    if len(parts) == 4:  # Direct attribute
-                        block_idx = int(parts[2])
-                        module_name = parts[3]
-                        original_layer = getattr(flux.transformer.single_transformer_blocks[block_idx], module_name)
-                    elif len(parts) == 5:  # Nested attribute
-                        block_idx = int(parts[2])
-                        module_name = parts[3]
-                        attr_name = parts[4]
-                        block = flux.transformer.single_transformer_blocks[block_idx]
-                        module = getattr(block, module_name)
-                        original_layer = getattr(module, attr_name)
 
-                    # Create LoRA layer
-                    lora_A = weights[f"{base_path}.lora_A"]
-                    # Infer rank from the shape of lora_A
-                    rank = lora_A.shape[1]
-
-                    lora_layer = LoRALinear.from_linear(linear=original_layer, r=rank)
-
-                    # Set the weights
-                    lora_layer.lora_A = weights[f"{base_path}.lora_A"]
-                    lora_layer.lora_B = weights[f"{base_path}.lora_B"]
-
-                    # Store the layer
-                    lora_layers[base_path] = lora_layer
-
-                except (AttributeError, IndexError) as e:
-                    print(f"Warning: Could not load LoRA layer for path {base_path}: {e}")
+                if parts[1] == "transformer_blocks":
                     continue
+
+                if parts[1] == "single_transformer_blocks":
+                    LoRALayers.handle_single_transformer_blocks(
+                        weights=weights,
+                        transformer=transformer,
+                        lora_layers=lora_layers,
+                        base_path=base_path,
+                    )
 
         return cls(lora_layers)
 
+    @classmethod
+    def handle_single_transformer_blocks(cls, weights: dict, transformer: nn.Module, lora_layers: dict, base_path: str):
+        parts = base_path.split(".")
+        if len(parts) == 4:
+            block_idx = int(parts[2])
+            module_name = parts[3]
+            original_layer = getattr(transformer.single_transformer_blocks[block_idx], module_name)
+        elif len(parts) == 5:
+            block_idx = int(parts[2])
+            module_name = parts[3]
+            attr_name = parts[4]
+            block = transformer.single_transformer_blocks[block_idx]
+            module = getattr(block, module_name)
+            original_layer = getattr(module, attr_name)
+
+        # Create LoRA layer
+        lora_A = weights[f"{base_path}.lora_A"]
+        rank = lora_A.shape[1]
+        lora_layer = LoRALinear.from_linear(linear=original_layer, r=rank)
+
+        # Set the weights
+        lora_layer.lora_A = weights[f"{base_path}.lora_A"]
+        lora_layer.lora_B = weights[f"{base_path}.lora_B"]
+
+        # Store the layer
+        lora_layers[base_path] = lora_layer
+
     @staticmethod
-    def set_nested_attr(flux, attr_path, value):
-        # Split the path and remove the first part ('transformer')
-        parts = attr_path.split(".")
-
-        # Start from the transformer
-        current = flux.transformer
-
-        # Navigate to the correct block
-        block_num = int(parts[2])  # The block number is the third part
-        current = current.single_transformer_blocks[block_num]
-
-        # Handle the remaining parts (e.g., 'proj_out' or 'attn.to_q')
-        remaining_path = ".".join(parts[3:])
-        if "." in remaining_path:  # Handle nested attributes like 'attn.to_q'
-            attr_parent, attr_name = remaining_path.split(".")
-            current = getattr(current, attr_parent)
-            setattr(current, attr_name, value)
-        else:  # Handle direct attributes like 'proj_out'
-            setattr(current, remaining_path, value)
+    def set_single_transformer_block(single_transformer_block, dictionary: dict):
+        for key, val in dictionary.items():
+            if key == "attn":
+                single_transformer_block[key]["to_q"] = val["to_q"]
+                single_transformer_block[key]["to_k"] = val["to_k"]
+                single_transformer_block[key]["to_v"] = val["to_v"]
+            elif key == "norm":
+                single_transformer_block[key]["linear"] = val
+            elif key == "proj_mlp" or key == "proj_out":
+                single_transformer_block[key] = val
+            else:
+                raise Exception("Could not set LoRA weights")
 
     @staticmethod
     def _get_nested_attr(obj, attr_path):
