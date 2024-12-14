@@ -37,14 +37,14 @@ class WeightUtil:
 
         if weights.meta_data.quantization_level is None and quantize_arg is not None:
             bits = quantize_arg
-            QuantizationUtil.quantize_model(vae, transformer, t5_text_encoder, clip_text_encoder, bits, weights)  # fmt:off
             WeightUtil._set_model_weights(weights, vae, transformer, t5_text_encoder, clip_text_encoder)
+            QuantizationUtil.quantize_model(vae, transformer, t5_text_encoder, clip_text_encoder, bits, weights)  # fmt:off
             return bits
 
         if weights.meta_data.quantization_level is not None:
             bits = weights.meta_data.quantization_level
-            WeightUtil._set_model_weights(weights, vae, transformer, t5_text_encoder, clip_text_encoder)
             QuantizationUtil.quantize_model(vae, transformer, t5_text_encoder, clip_text_encoder, bits, weights)  # fmt:off
+            WeightUtil._set_model_weights(weights, vae, transformer, t5_text_encoder, clip_text_encoder)
             return bits
 
         raise Exception("Error setting weights")
