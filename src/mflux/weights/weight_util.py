@@ -61,14 +61,14 @@ class WeightUtil:
 
         if weights.meta_data.quantization_level is None and quantize_arg is not None:
             bits = quantize_arg
-            QuantizationUtil.quantize_controlnet(bits, weights, transformer_controlnet)
             transformer_controlnet.update(weights.controlnet_transformer)
+            QuantizationUtil.quantize_controlnet(bits, weights, transformer_controlnet)
             return bits
 
         if weights.meta_data.quantization_level is not None:
             bits = weights.meta_data.quantization_level
-            transformer_controlnet.update(weights.controlnet_transformer)
             QuantizationUtil.quantize_controlnet(bits, weights, transformer_controlnet)
+            transformer_controlnet.update(weights.controlnet_transformer)
             return bits
 
     @staticmethod

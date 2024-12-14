@@ -1,4 +1,3 @@
-import json
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -50,7 +49,6 @@ class Flux1Controlnet:
         self.lora_paths = lora_paths
         self.lora_scales = lora_scales
         self.model_config = model_config
-        controlnet_config = json.load(open(controlnet_path / "config.json"))
 
         # Load and initialize the tokenizers from disk, huggingface cache, or download from huggingface
         tokenizers = TokenizerHandler(model_config.model_name, self.model_config.max_sequence_length, local_path)
@@ -60,7 +58,6 @@ class Flux1Controlnet:
         # Initialize the models
         self.vae = VAE()
         self.transformer = Transformer(model_config)
-        self.transformer_controlnet = TransformerControlnet(model_config=model_config, num_blocks=controlnet_config["num_layers"], num_single_blocks=controlnet_config["num_single_layers"])  # fmt:off
         self.t5_text_encoder = T5Encoder()
         self.clip_text_encoder = CLIPEncoder()
 
@@ -77,6 +74,7 @@ class Flux1Controlnet:
 
         # Set Controlnet weights
         weights_controlnet = WeightHandlerControlnet.load_controlnet_transformer(controlnet_id=CONTROLNET_ID)
+        self.transformer_controlnet = TransformerControlnet(model_config=model_config, num_blocks=weights_controlnet.config["num_layers"], num_single_blocks=weights_controlnet.config["num_single_layers"])  # fmt:off
         WeightUtil.set_controlnet_weights_and_quantize(
             quantize_arg=quantize,
             weights=weights_controlnet,

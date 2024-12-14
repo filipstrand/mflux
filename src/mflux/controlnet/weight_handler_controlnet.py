@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import mlx.core as mx
@@ -9,9 +10,10 @@ from mflux.weights.weight_util import WeightUtil
 
 
 class WeightHandlerControlnet:
-    def __init__(self, meta_data: MetaData, controlnet_transformer: dict | None = None):
+    def __init__(self, meta_data: MetaData, config: dict, controlnet_transformer: dict | None = None):
         self.meta_data = meta_data
         self.controlnet_transformer = controlnet_transformer
+        self.config = config
 
     @staticmethod
     def load_controlnet_transformer(controlnet_id: str) -> "WeightHandlerControlnet":
@@ -19,9 +21,11 @@ class WeightHandlerControlnet:
         file = next(controlnet_path.glob("diffusion_pytorch_model.safetensors"))
         quantization_level = mx.load(str(file), return_metadata=True)[1].get("quantization_level")
         weights = list(mx.load(str(file)).items())
+        config = json.load(open(controlnet_path / "config.json"))
 
         if quantization_level is not None:
             return WeightHandlerControlnet(
+                config=config,
                 controlnet_transformer=tree_unflatten(weights),
                 meta_data=MetaData(quantization_level=quantization_level),
             )
@@ -33,8 +37,10 @@ class WeightHandlerControlnet:
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
         if quantization_level is not None:
             return WeightHandlerControlnet(
-                controlnet_transformer=weights, meta_data=MetaData(quantization_level=quantization_level)
-            )
+                config=config,
+                controlnet_transformer=weights,
+                meta_data=MetaData(quantization_level=quantization_level)
+            )  # fmt:off
 
         # Reshape and process the huggingface weights
         if "transformer_blocks" in weights:
@@ -50,5 +56,7 @@ class WeightHandlerControlnet:
                     }
 
         return WeightHandlerControlnet(
-            controlnet_transformer=weights, meta_data=MetaData(quantization_level=quantization_level)
-        )
+            config=config,
+            controlnet_transformer=weights,
+            meta_data=MetaData(quantization_level=quantization_level)
+        )  # fmt:off
