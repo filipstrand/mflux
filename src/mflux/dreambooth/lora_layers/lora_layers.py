@@ -44,7 +44,6 @@ class LoRALayers:
                 # Store the layer with its path
                 layer_path = f"transformer.single_transformer_blocks.{i}.{layer_type}"
                 lora_layers[layer_path] = lora_layer
-                mx.eval(lora_layers)
 
         # Load from state if present in the spec
         if training_spec.lora_layers.state_path is not None:
@@ -120,8 +119,6 @@ class LoRALayers:
         rank = lora_A.shape[1]
         lora_layer = LoRALinear.from_linear(linear=original_layer, r=rank)
 
-        mx.eval(lora_layer)
-
         # Set the weights
         lora_layer.lora_A = weights[f"{base_path}.lora_A"]
         lora_layer.lora_B = weights[f"{base_path}.lora_B"]
@@ -163,7 +160,7 @@ class LoRALayers:
                 transformer_block[key]["to_q"] = val["to_q"]
                 transformer_block[key]["to_k"] = val["to_k"]
                 transformer_block[key]["to_v"] = val["to_v"]
-                transformer_block[key]["to_out"] = [val["to_out"]]
+                transformer_block[key]["to_out"] = val["to_out"]
                 transformer_block[key]["add_q_proj"] = val["add_q_proj"]
                 transformer_block[key]["add_k_proj"] = val["add_k_proj"]
                 transformer_block[key]["add_v_proj"] = val["add_v_proj"]
@@ -172,7 +169,7 @@ class LoRALayers:
                 transformer_block[key]["linear1"] = val["linear1"]
                 transformer_block[key]["linear2"] = val["linear2"]
             elif key == "norm1" or key == "norm1_context":
-                transformer_block[key]["linear"] = val
+                transformer_block[key]["linear"] = val["linear"]
             else:
                 raise Exception("Could not set LoRA weights")
 
@@ -184,7 +181,7 @@ class LoRALayers:
                 single_transformer_block[key]["to_k"] = val["to_k"]
                 single_transformer_block[key]["to_v"] = val["to_v"]
             elif key == "norm":
-                single_transformer_block[key]["linear"] = val
+                single_transformer_block[key]["linear"] = val["linear"]
             elif key == "proj_mlp" or key == "proj_out":
                 single_transformer_block[key] = val
             else:

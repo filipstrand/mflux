@@ -25,6 +25,7 @@ from mflux.tokenizer.t5_tokenizer import TokenizerT5
 from mflux.tokenizer.tokenizer_handler import TokenizerHandler
 from mflux.weights.model_saver import ModelSaver
 from mflux.weights.weight_handler import WeightHandler
+from mflux.weights.weight_handler_lora import WeightHandlerLoRA
 from mflux.weights.weight_util import WeightUtil
 
 if TYPE_CHECKING:
@@ -71,6 +72,10 @@ class Flux1Controlnet:
             t5_text_encoder=self.t5_text_encoder,
             clip_text_encoder=self.clip_text_encoder,
         )
+
+        # Set LoRA weights
+        lora_weights = WeightHandlerLoRA.load_lora_weights(transformer=self.transformer, lora_files=lora_paths, lora_scales=lora_scales)  # fmt:off
+        WeightHandlerLoRA.set_lora_weights(transformer=self.transformer, loras=lora_weights)
 
         # Set Controlnet weights
         weights_controlnet = WeightHandlerControlnet.load_controlnet_transformer(controlnet_id=CONTROLNET_ID)

@@ -49,5 +49,5 @@ class LoRALinear(nn.Module):
 
     def __call__(self, x):
         base_out = self.linear(x)
-        lora_out = mx.matmul(mx.matmul(x, self.lora_A), self.lora_B)
+        lora_out = mx.matmul(x, mx.transpose(self.lora_B @ self.lora_A))
         return base_out + self.scale * lora_out
