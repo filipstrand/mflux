@@ -79,7 +79,12 @@ class LoRALayers:
                 parts = base_path.split(".")
 
                 if parts[1] == "transformer_blocks":
-                    continue
+                    LoRALayers.handle_transformer_blocks(
+                        weights=weights,
+                        transformer=transformer,
+                        lora_layers=lora_layers,
+                        base_path=base_path,
+                    )
 
                 if parts[1] == "single_transformer_blocks":
                     LoRALayers.handle_single_transformer_blocks(
@@ -90,6 +95,39 @@ class LoRALayers:
                     )
 
         return cls(lora_layers)
+
+    @classmethod
+    def handle_transformer_blocks(cls, weights: dict, transformer: nn.Module, lora_layers: dict, base_path: str):
+        parts = base_path.split(".")
+        if len(parts) == 5:
+            block_idx = int(parts[2])
+            module_name = parts[3]
+            attr_name = parts[4]
+            block = transformer.transformer_blocks[block_idx]
+            module = getattr(block, module_name)
+            original_layer = getattr(module, attr_name)
+        elif len(parts) == 6:
+            block_idx = int(parts[2])
+            module_name = parts[3]
+            attr_name = parts[4]
+            block = transformer.transformer_blocks[block_idx]
+            module = getattr(block, module_name)
+            original_layer = getattr(module, attr_name)
+            original_layer = original_layer[0]  # Special case here
+
+        # Create LoRA layer
+        lora_A = weights[f"{base_path}.lora_A"]
+        rank = lora_A.shape[1]
+        lora_layer = LoRALinear.from_linear(linear=original_layer, r=rank)
+
+        mx.eval(lora_layer)
+
+        # Set the weights
+        lora_layer.lora_A = weights[f"{base_path}.lora_A"]
+        lora_layer.lora_B = weights[f"{base_path}.lora_B"]
+
+        # Store the layer
+        lora_layers[base_path] = lora_layer
 
     @classmethod
     def handle_single_transformer_blocks(cls, weights: dict, transformer: nn.Module, lora_layers: dict, base_path: str):
@@ -117,6 +155,26 @@ class LoRALayers:
 
         # Store the layer
         lora_layers[base_path] = lora_layer
+
+    @staticmethod
+    def set_transformer_block(transformer_block, dictionary: dict):
+        for key, val in dictionary.items():
+            if key == "attn":
+                transformer_block[key]["to_q"] = val["to_q"]
+                transformer_block[key]["to_k"] = val["to_k"]
+                transformer_block[key]["to_v"] = val["to_v"]
+                transformer_block[key]["to_out"] = [val["to_out"]]
+                transformer_block[key]["add_q_proj"] = val["add_q_proj"]
+                transformer_block[key]["add_k_proj"] = val["add_k_proj"]
+                transformer_block[key]["add_v_proj"] = val["add_v_proj"]
+                transformer_block[key]["to_add_out"] = val["to_add_out"]
+            elif key == "ff" or key == "ff_context":
+                transformer_block[key]["linear1"] = val["linear1"]
+                transformer_block[key]["linear2"] = val["linear2"]
+            elif key == "norm1" or key == "norm1_context":
+                transformer_block[key]["linear"] = val
+            else:
+                raise Exception("Could not set LoRA weights")
 
     @staticmethod
     def set_single_transformer_block(single_transformer_block, dictionary: dict):

@@ -69,7 +69,10 @@ class WeightHandlerLoRA:
         # Handle transformer_blocks
         transformer_blocks = transformer.get("transformer_blocks", [])
         for i, weights in enumerate(transformer_blocks):
-            pass
+            LoRALayers.set_transformer_block(
+                transformer_block=transformer_module.transformer_blocks[i],
+                dictionary=weights
+            )  # fmt:off
 
         # Handle single_transformer_blocks
         single_transformer_blocks = transformer["single_transformer_blocks"]
