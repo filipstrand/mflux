@@ -1,10 +1,8 @@
-import mlx
 import numpy as np
 
 from mflux import Config, Flux1, ModelConfig
 from mflux.dreambooth.dreambooth import DreamBooth
 from mflux.dreambooth.dreambooth_initializer import DreamBoothInitializer
-from mflux.dreambooth.lora_layers.lora_layers import LoRALayers
 from mflux.dreambooth.state.zip_util import ZipUtil
 from tests.dreambooth.test_resume_training import TestResumeTraining
 
@@ -17,18 +15,18 @@ class TestTrainAndLoadWeights:
     def test_train_and_load_weights(self):
         try:
             # Given: A small training run from scratch for 5 steps (as described in the config)...
-            flux, runtime_config, training_spec, training_state = DreamBoothInitializer.initialize(
+            fluxA, runtime_config, training_spec, training_state = DreamBoothInitializer.initialize(
                 config_path="tests/dreambooth/config/train.json",
                 checkpoint_path=None
             )  # fmt:off
             DreamBooth.train(
-                flux=flux,
+                flux=fluxA,
                 runtime_config=runtime_config,
                 training_spec=training_spec,
                 training_state=training_state
             )  # fmt: off
             # ...we generate an image with the flux instance with the trained weights
-            image1 = flux.generate_image(
+            image1 = fluxA.generate_image(
                 seed=42,
                 prompt="test",
                 config=Config(
@@ -37,20 +35,20 @@ class TestTrainAndLoadWeights:
                     width=128,
                 ),
             )
-            del flux, runtime_config, training_spec, training_state
+            del fluxA, runtime_config, training_spec, training_state
             # unzip so that LoRA adapter can be read later...
             ZipUtil.extract_all(zip_path=CHECKPOINT, output_dir=OUTPUT_DIR)
 
             # When: Loading a new Flux instance with the trained LoRA...
-            flux = Flux1(
+            fluxB = Flux1(
                 model_config=ModelConfig.FLUX1_DEV,
                 quantize=4,
+                lora_paths=[LORA_FILE],
+                lora_scales=[1.0],
             )  # fmt: off
-            lora = LoRALayers.transformer_dict_from_template(mlx.core.load(str(LORA_FILE)), flux.transformer)
-            flux.set_lora_layers(lora)
 
             # ...and generating the same image from that
-            image2 = flux.generate_image(
+            image2 = fluxB.generate_image(
                 seed=42,
                 prompt="test",
                 config=Config(
@@ -69,28 +67,3 @@ class TestTrainAndLoadWeights:
         finally:
             # cleanup
             TestResumeTraining.delete_folder("tests/dreambooth/tmp")
-
-    def test_1111(self):
-        flux = Flux1(
-            model_config=ModelConfig.FLUX1_DEV,
-            quantize=4,
-            lora_paths=["/Users/filipstrand/Desktop/0000005_adapter.safetensors"]
-            # lora_paths=["/Users/filipstrand/Desktop/a.safetensors"]
-            # lora_paths=["/Users/filipstrand/Desktop/b.safetensors"]
-        )  # fmt: off
-
-        print("hej")
-
-    def test_2222(self):
-        flux = Flux1(
-            model_config=ModelConfig.FLUX1_DEV,
-            quantize=4,
-        )  # fmt: off
-        lora = LoRALayers.transformer_dict_from_template(
-            mlx.core.load(str("/Users/filipstrand/Desktop/0000005_adapter.safetensors")), flux
-        )
-        # lora = LoRALayers.from_file(mlx.core.load(str("/Users/filipstrand/Desktop/a.safetensors")), flux)
-        # lora = LoRALayers.from_file(mlx.core.load(str("/Users/filipstrand/Desktop/b.safetensors")), flux)
-        flux.set_lora_layers(lora)
-
-        print("hej")
