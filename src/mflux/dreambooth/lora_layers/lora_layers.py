@@ -188,7 +188,8 @@ class LoRALayers:
 
     def save(self, path: Path, training_spec: TrainingSpec) -> None:
         weights = {}
-        for entry in tree_flatten(self.layers.weight_handlers[0].transformer):
+        weight_handler = self.layers.weight_handlers[0]  # We can safely assume a single handler when training
+        for entry in tree_flatten(weight_handler.transformer):
             name = entry[0]
             weight = entry[1]
             if name.endswith(".lora_A") or name.endswith(".lora_B"):
