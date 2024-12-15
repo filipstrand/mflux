@@ -139,22 +139,24 @@ class WeightHandler:
         model_name: str,
         root_path: Path | None = None,
         lora_path: str | None = None,
-    ) -> (dict, int):
+    ) -> (dict, int, str):
         weights = []
         quantization_level = None
         mflux_version = None
 
         if root_path is not None:
             for file in sorted(root_path.glob(model_name + "/*.safetensors")):
-                quantization_level = mx.load(str(file), return_metadata=True)[1].get("quantization_level")
-                weight = list(mx.load(str(file)).items())
+                data = mx.load(str(file), return_metadata=True)
+                weight = list(data[0].items())
+                if len(data) > 1:
+                    quantization_level = data[1].get("quantization_level")
                 weights.extend(weight)
 
         if lora_path and root_path is None:
-            load = mx.load(lora_path, return_metadata=True)
-            weight = list(load[0].items())
-            if len(load) > 1:
-                mflux_version = load[1].get("mflux_version", None)
+            data = mx.load(lora_path, return_metadata=True)
+            weight = list(data[0].items())
+            if len(data) > 1:
+                mflux_version = data[1].get("mflux_version", None)
             weights.extend(weight)
 
         # Non huggingface weights (i.e. ones exported from this project) don't need any reshaping.
