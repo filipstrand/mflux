@@ -39,12 +39,12 @@ class LoRALinear(nn.Module):
         self.lora_A = mx.random.uniform(
             low=-scale,
             high=scale,
-            shape=(input_dims, r),
+            shape=(r, input_dims),
         )
         self.lora_B = mx.random.uniform(
             low=-scale,
             high=scale,
-            shape=(r, output_dims),
+            shape=(output_dims, r),
         )
 
     def __call__(self, x):

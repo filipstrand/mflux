@@ -23,8 +23,8 @@ class WeightHandlerLoRA:
                 weights = dict(tree_flatten(weights))
                 weights = {key.removesuffix(".weight"): value for key, value in weights.items()}
                 weights = {f"transformer.{key}": value for key, value in weights.items()}
-                lora_transformer = LoRALayers.from_transformer_template(weights, transformer)
-                transformer_weights = tree_unflatten(list(lora_transformer.layers.items()))["transformer"]
+                lora_transformer_dict = LoRALayers.transformer_dict_from_template(weights, transformer)
+                transformer_weights = tree_unflatten(list(lora_transformer_dict.items()))["transformer"]
                 weights = WeightHandler(
                     clip_encoder=None,
                     t5_encoder=None,
@@ -44,10 +44,9 @@ class WeightHandlerLoRA:
     @staticmethod
     def set_lora_weights(transformer: nn.Module, loras: "WeightHandlerLoRA") -> None:
         if loras.weight_handlers:
-            lora = loras.weight_handlers[0]
-            WeightHandlerLoRA._set_lora_layers(
+            WeightHandlerLoRA.set_lora_layers(
                 transformer_module=transformer,
-                lora_layers=LoRALayers(lora_layers=lora)
+                lora_layers=LoRALayers(weights=loras)
             )  # fmt:off
 
     @staticmethod
@@ -63,8 +62,8 @@ class WeightHandlerLoRA:
         return lora_scales
 
     @staticmethod
-    def _set_lora_layers(transformer_module: nn.Module, lora_layers: LoRALayers) -> None:
-        transformer = lora_layers.layers.transformer
+    def set_lora_layers(transformer_module: nn.Module, lora_layers: LoRALayers) -> None:
+        transformer = lora_layers.layers.weight_handlers[0].transformer
 
         # Handle transformer_blocks
         transformer_blocks = transformer.get("transformer_blocks", [])
@@ -75,7 +74,7 @@ class WeightHandlerLoRA:
             )  # fmt:off
 
         # Handle single_transformer_blocks
-        single_transformer_blocks = transformer["single_transformer_blocks"]
+        single_transformer_blocks = transformer.get("single_transformer_blocks", [])
         for i, weights in enumerate(single_transformer_blocks):
             LoRALayers.set_single_transformer_block(
                 single_transformer_block=transformer_module.single_transformer_blocks[i],

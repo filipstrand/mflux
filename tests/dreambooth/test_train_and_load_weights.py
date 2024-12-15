@@ -46,7 +46,7 @@ class TestTrainAndLoadWeights:
                 model_config=ModelConfig.FLUX1_DEV,
                 quantize=4,
             )  # fmt: off
-            lora = LoRALayers.from_transformer_template(mlx.core.load(str(LORA_FILE)), flux.transformer)
+            lora = LoRALayers.transformer_dict_from_template(mlx.core.load(str(LORA_FILE)), flux.transformer)
             flux.set_lora_layers(lora)
 
             # ...and generating the same image from that
@@ -86,7 +86,7 @@ class TestTrainAndLoadWeights:
             model_config=ModelConfig.FLUX1_DEV,
             quantize=4,
         )  # fmt: off
-        lora = LoRALayers.from_transformer_template(
+        lora = LoRALayers.transformer_dict_from_template(
             mlx.core.load(str("/Users/filipstrand/Desktop/0000005_adapter.safetensors")), flux
         )
         # lora = LoRALayers.from_file(mlx.core.load(str("/Users/filipstrand/Desktop/a.safetensors")), flux)

@@ -1,76 +1,68 @@
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import mlx
 import mlx.core as mx
 from mlx import nn
-from mlx.utils import tree_flatten, tree_unflatten
+from mlx.utils import tree_flatten
 
 from mflux.dreambooth.lora_layers.linear_lora_layer import LoRALinear
 from mflux.dreambooth.state.training_spec import TrainingSpec
 from mflux.dreambooth.state.zip_util import ZipUtil
 from mflux.post_processing.generated_image import GeneratedImage
+from mflux.weights.weight_handler import MetaData, WeightHandler
 
 if TYPE_CHECKING:
     from mflux import Flux1
+    from mflux.weights.weight_handler_lora import WeightHandlerLoRA
 
 
 class LoRALayers:
-    def __init__(self, lora_layers: dict[str, nn.Module]):
-        self.layers = lora_layers
+    def __init__(self, weights: "WeightHandlerLoRA"):
+        self.layers = weights
 
     @staticmethod
     def from_spec(flux: "Flux1", training_spec: TrainingSpec) -> "LoRALayers":
-        block_spec = training_spec.lora_layers.single_transformer_blocks
-        start = block_spec.block_range.start
-        end = block_spec.block_range.end
-
-        lora_layers = {}
-
-        # Iterate through the specified blocks
-        for i in range(start, end):
-            block = flux.transformer.single_transformer_blocks[i]
-
-            # For each specified layer type in the config
-            for layer_type in block_spec.layer_types:
-                # Get the original layer
-                original_layer = LoRALayers._get_nested_attr(block, layer_type)
-
-                # Create the LoRA version of the layer
-                lora_layer = LoRALinear.from_linear(
-                    linear=original_layer,
-                    r=block_spec.lora_rank,
-                )
-
-                # Store the layer with its path
-                layer_path = f"transformer.single_transformer_blocks.{i}.{layer_type}"
-                lora_layers[layer_path] = lora_layer
-
-        # Load from state if present in the spec
         if training_spec.lora_layers.state_path is not None:
-            lora_weights = ZipUtil.unzip(
+            # Load from state if present in the spec
+            weights = ZipUtil.unzip(
                 zip_path=training_spec.checkpoint_path,
                 filename=training_spec.lora_layers.state_path,
-                loader=lambda x: tree_unflatten(list(mx.load(x).items())),
+                loader=lambda x: WeightHandlerLoRA.load_lora_weights(
+                    transformer=flux.transformer, lora_files=[x], lora_scales=[1.0]
+                ),
             )
-            weights = lora_weights["transformer"]["single_transformer_blocks"]
-            for k in lora_layers.keys():
-                parts = k.split(".")
-                if len(parts) == 4:
-                    layer_number = int(parts[-2])
-                    module = parts[-1]
-                    lora_layers[k].lora_A = weights[layer_number][module]["lora_A"]
-                    lora_layers[k].lora_B = weights[layer_number][module]["lora_B"]
-                if len(parts) == 5:
-                    layer_number = int(parts[-3])
-                    module = parts[-2]
-                    name = parts[-1]
-                    lora_layers[k].lora_A = weights[layer_number][module][name]["lora_A"]
-                    lora_layers[k].lora_B = weights[layer_number][module][name]["lora_B"]
+            return LoRALayers(weights=weights)
+        else:
+            # Construct the LoRA weights from the spec
+            block_spec = training_spec.lora_layers.single_transformer_blocks
+            start = block_spec.block_range.start
+            end = block_spec.block_range.end
 
-        return LoRALayers(lora_layers)
+            lora_layers = {}
+            for i in range(start, end):
+                block = flux.transformer.single_transformer_blocks[i]
 
-    @classmethod
-    def from_transformer_template(cls, weights: dict, transformer: nn.Module) -> "LoRALayers":
+                for layer_type in block_spec.layer_types:
+                    original_layer = LoRALayers._get_nested_attr(block, layer_type)
+                    lora_layer = LoRALinear.from_linear(
+                        linear=original_layer,
+                        r=block_spec.lora_rank,
+                    )
+                    layer_path = f"transformer.single_transformer_blocks.{i}.{layer_type}"
+                    lora_layers[layer_path] = lora_layer
+
+            weights = WeightHandler(
+                meta_data=MetaData(is_mflux=True),
+                transformer=mlx.utils.tree_unflatten(list(lora_layers.items()))['transformer'],
+            )  # fmt:off
+            from mflux.weights.weight_handler_lora import WeightHandlerLoRA
+
+            weights = WeightHandlerLoRA(weight_handlers=[weights])
+            return LoRALayers(weights=weights)
+
+    @staticmethod
+    def transformer_dict_from_template(weights: dict, transformer: nn.Module) -> dict:
         lora_layers = {}
         for key in weights.keys():
             if key.endswith(".lora_A"):
@@ -93,7 +85,7 @@ class LoRALayers:
                         base_path=base_path,
                     )
 
-        return cls(lora_layers)
+        return lora_layers
 
     @classmethod
     def handle_transformer_blocks(cls, weights: dict, transformer: nn.Module, lora_layers: dict, base_path: str):
@@ -196,7 +188,7 @@ class LoRALayers:
 
     def save(self, path: Path, training_spec: TrainingSpec) -> None:
         weights = {}
-        for key, val in self.layers.items():
+        for key, val in self.layers.weight_handlers[0].items():
             weights[key] = val.trainable_parameters()
 
         mx.save_safetensors(

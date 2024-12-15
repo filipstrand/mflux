@@ -7,6 +7,7 @@ from mflux.dreambooth.optimization.dreambooth_loss import DreamBoothLoss
 from mflux.dreambooth.state.training_spec import TrainingSpec
 from mflux.dreambooth.state.training_state import TrainingState
 from mflux.dreambooth.statistics.plotter import Plotter
+from mflux.weights.weight_handler_lora import WeightHandlerLoRA
 
 
 class DreamBooth:
@@ -19,7 +20,10 @@ class DreamBooth:
     ):  # fmt:off
         # Freeze the model and assign the LoRA layers to the model
         flux.freeze()
-        flux.set_lora_layers(training_state.lora_layers)
+        WeightHandlerLoRA.set_lora_layers(
+            transformer_module=flux.transformer,
+            lora_layers=training_state.lora_layers
+        )  # fmt:off
 
         # Define loss computation as a function of a batch 'b'
         train_step_function = nn.value_and_grad(
