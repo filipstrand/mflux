@@ -14,11 +14,10 @@ from mflux.weights.weight_handler import MetaData, WeightHandler
 
 if TYPE_CHECKING:
     from mflux import Flux1
-    from mflux.weights.weight_handler_lora import WeightHandlerLoRA
 
 
 class LoRALayers:
-    def __init__(self, weights: "WeightHandlerLoRA"):
+    def __init__(self, weights: "WeightHandler"):
         self.layers = weights
 
     @staticmethod
@@ -34,7 +33,7 @@ class LoRALayers:
                     transformer=flux.transformer, lora_files=[x], lora_scales=[1.0]
                 ),
             )
-            return LoRALayers(weights=weights)
+            return LoRALayers(weights=weights[0])
         else:
             # Construct the LoRA weights from the spec
             block_spec = training_spec.lora_layers.single_transformer_blocks
@@ -58,9 +57,6 @@ class LoRALayers:
                 meta_data=MetaData(is_mflux=True),
                 transformer=mlx.utils.tree_unflatten(list(lora_layers.items()))['transformer'],
             )  # fmt:off
-            from mflux.weights.weight_handler_lora import WeightHandlerLoRA
-
-            weights = WeightHandlerLoRA(weight_handlers=[weights])
             return LoRALayers(weights=weights)
 
     @staticmethod
@@ -92,20 +88,14 @@ class LoRALayers:
     @classmethod
     def handle_transformer_blocks(cls, weights: dict, transformer: nn.Module, lora_layers: dict, base_path: str):
         parts = base_path.split(".")
-        if len(parts) == 5:
-            block_idx = int(parts[2])
-            module_name = parts[3]
-            attr_name = parts[4]
-            block = transformer.transformer_blocks[block_idx]
-            module = getattr(block, module_name)
-            original_layer = getattr(module, attr_name)
-        elif len(parts) == 6:
-            block_idx = int(parts[2])
-            module_name = parts[3]
-            attr_name = parts[4]
-            block = transformer.transformer_blocks[block_idx]
-            module = getattr(block, module_name)
-            original_layer = getattr(module, attr_name)
+        block_idx = int(parts[2])
+        module_name = parts[3]
+        attr_name = parts[4]
+        block = transformer.transformer_blocks[block_idx]
+        module = getattr(block, module_name)
+        original_layer = getattr(module, attr_name)
+
+        if len(parts) == 6:
             original_layer = original_layer[0]  # Special case here
 
         # Create LoRA layer
@@ -123,13 +113,11 @@ class LoRALayers:
     @classmethod
     def handle_single_transformer_blocks(cls, weights: dict, transformer: nn.Module, lora_layers: dict, base_path: str):
         parts = base_path.split(".")
+        block_idx = int(parts[2])
+        module_name = parts[3]
         if len(parts) == 4:
-            block_idx = int(parts[2])
-            module_name = parts[3]
             original_layer = getattr(transformer.single_transformer_blocks[block_idx], module_name)
         elif len(parts) == 5:
-            block_idx = int(parts[2])
-            module_name = parts[3]
             attr_name = parts[4]
             block = transformer.single_transformer_blocks[block_idx]
             module = getattr(block, module_name)

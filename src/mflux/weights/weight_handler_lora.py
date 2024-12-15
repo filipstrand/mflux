@@ -14,7 +14,7 @@ class WeightHandlerLoRA:
         transformer: nn.Module,
         lora_files: list[str],
         lora_scales: list[float] | None = None,
-    ) -> "WeightHandlerLoRA":
+    ) -> list["WeightHandler"]:
         lora_weights = []
         if lora_files:
             lora_scales = WeightHandlerLoRA._validate_lora_scales(lora_files, lora_scales)
@@ -39,15 +39,44 @@ class WeightHandlerLoRA:
                 )
                 lora_weights.append(weights)
 
-        return WeightHandlerLoRA(weight_handlers=lora_weights)
+        return lora_weights
 
     @staticmethod
-    def set_lora_weights(transformer: nn.Module, loras: "WeightHandlerLoRA") -> None:
-        if loras.weight_handlers:
+    def set_lora_weights(transformer: nn.Module, loras: list["WeightHandler"]) -> None:
+        if loras:
+            merged_weights = WeightHandlerLoRA.merge_lora_weights(
+                transformer_module=transformer,
+                loras=loras
+            )  # fmt:off
             WeightHandlerLoRA.set_lora_layers(
                 transformer_module=transformer,
-                lora_layers=LoRALayers(weights=loras)
+                lora_layers=LoRALayers(weights=merged_weights)
             )  # fmt:off
+
+    @staticmethod
+    def merge_lora_weights(transformer_module: nn.Module, loras: list["WeightHandler"]) -> "WeightHandler":
+        merged_dict = {}
+        for lora_idx, lora in enumerate(loras):
+            flattened = tree_flatten(lora.transformer)
+            for name, value in flattened:
+                if name.endswith(".lora_A") or name.endswith(".lora_B"):
+                    if name not in merged_dict:
+                        merged_dict[name] = lora.meta_data.scale * value
+                    else:
+                        merged_dict[name] += lora.meta_data.scale * value
+
+        merged_dict = {f"transformer.{key}": value for key, value in merged_dict.items()}
+        lora_transformer_dict = LoRALayers.transformer_dict_from_template(merged_dict, transformer_module)
+        transformer_lora_weights = tree_unflatten(list(lora_transformer_dict.items()))["transformer"]
+
+        arbitrary_lora = loras[0]
+        return WeightHandler(
+            meta_data=arbitrary_lora.meta_data,
+            clip_encoder=arbitrary_lora.clip_encoder,
+            t5_encoder=arbitrary_lora.t5_encoder,
+            vae=arbitrary_lora.vae,
+            transformer=transformer_lora_weights,
+        )
 
     @staticmethod
     def _validate_lora_scales(lora_files: list[str], lora_scales: list[float]) -> list[float]:
@@ -63,7 +92,7 @@ class WeightHandlerLoRA:
 
     @staticmethod
     def set_lora_layers(transformer_module: nn.Module, lora_layers: LoRALayers) -> None:
-        transformer = lora_layers.layers.weight_handlers[0].transformer
+        transformer = lora_layers.layers.transformer
 
         # Handle transformer_blocks
         transformer_blocks = transformer.get("transformer_blocks", [])

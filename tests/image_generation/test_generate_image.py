@@ -43,6 +43,20 @@ class TestImageGenerator:
             lora_scales=[1.0],
         )
 
+    def test_image_generation_dev_multiple_loras(self):
+        ImageGeneratorTestHelper.assert_matches_reference_image(
+            reference_image_path="reference_dev_lora_multiple.png",
+            output_image_path=TestImageGenerator.OUTPUT_IMAGE_FILENAME,
+            model_config=ModelConfig.FLUX1_DEV,
+            steps=15,
+            seed=42,
+            height=341,
+            width=768,
+            prompt="Renaissance painting, mkym this is made of wool, burger",
+            lora_paths=["FLUX-dev-lora-MiaoKa-Yarn-World.safetensors", "Flux_-_Renaissance_art_style.safetensors"],
+            lora_scales=[0.5, 0.5],
+        )
+
     def test_image_generation_dev_image_to_image(self):
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_dev_image_to_image_result.png",
