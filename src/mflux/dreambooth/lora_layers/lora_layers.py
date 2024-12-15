@@ -60,7 +60,7 @@ class LoRALayers:
             return LoRALayers(weights=weights)
 
     @staticmethod
-    def transformer_dict_from_template(weights: dict, transformer: nn.Module) -> dict:
+    def transformer_dict_from_template(weights: dict, transformer: nn.Module, scale: float) -> dict:
         lora_layers = {}
         for key in weights.keys():
             if key.endswith(".lora_A"):
@@ -70,6 +70,7 @@ class LoRALayers:
                 if parts[1] == "transformer_blocks":
                     LoRALayers.handle_transformer_blocks(
                         weights=weights,
+                        scale=scale,
                         transformer=transformer,
                         lora_layers=lora_layers,
                         base_path=base_path,
@@ -78,6 +79,7 @@ class LoRALayers:
                 if parts[1] == "single_transformer_blocks":
                     LoRALayers.handle_single_transformer_blocks(
                         weights=weights,
+                        scale=scale,
                         transformer=transformer,
                         lora_layers=lora_layers,
                         base_path=base_path,
@@ -85,8 +87,10 @@ class LoRALayers:
 
         return lora_layers
 
-    @classmethod
-    def handle_transformer_blocks(cls, weights: dict, transformer: nn.Module, lora_layers: dict, base_path: str):
+    @staticmethod
+    def handle_transformer_blocks(
+        weights: dict, scale: float, transformer: nn.Module, lora_layers: dict, base_path: str
+    ):
         parts = base_path.split(".")
         block_idx = int(parts[2])
         module_name = parts[3]
@@ -101,7 +105,7 @@ class LoRALayers:
         # Create LoRA layer
         lora_A = weights[f"{base_path}.lora_A"]
         rank = lora_A.shape[1]
-        lora_layer = LoRALinear.from_linear(linear=original_layer, r=rank)
+        lora_layer = LoRALinear.from_linear(linear=original_layer, r=rank, scale=scale)
 
         # Set the weights
         lora_layer.lora_A = weights[f"{base_path}.lora_A"]
@@ -110,8 +114,10 @@ class LoRALayers:
         # Store the layer
         lora_layers[base_path] = lora_layer
 
-    @classmethod
-    def handle_single_transformer_blocks(cls, weights: dict, transformer: nn.Module, lora_layers: dict, base_path: str):
+    @staticmethod
+    def handle_single_transformer_blocks(
+        weights: dict, scale: float, transformer: nn.Module, lora_layers: dict, base_path: str
+    ):
         parts = base_path.split(".")
         block_idx = int(parts[2])
         module_name = parts[3]
@@ -126,7 +132,7 @@ class LoRALayers:
         # Create LoRA layer
         lora_A = weights[f"{base_path}.lora_A"]
         rank = lora_A.shape[1]
-        lora_layer = LoRALinear.from_linear(linear=original_layer, r=rank)
+        lora_layer = LoRALinear.from_linear(linear=original_layer, r=rank, scale=scale)
 
         # Set the weights
         lora_layer.lora_A = weights[f"{base_path}.lora_A"]

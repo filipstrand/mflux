@@ -54,7 +54,7 @@ class TestImageGenerator:
             width=768,
             prompt="Renaissance painting, mkym this is made of wool, burger",
             lora_paths=["FLUX-dev-lora-MiaoKa-Yarn-World.safetensors", "Flux_-_Renaissance_art_style.safetensors"],
-            lora_scales=[0.5, 0.5],
+            lora_scales=[0.4, 0.6],
         )
 
     def test_image_generation_dev_image_to_image(self):

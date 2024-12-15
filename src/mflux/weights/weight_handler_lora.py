@@ -1,6 +1,8 @@
 import mlx.nn as nn
 from mlx.utils import tree_flatten, tree_unflatten
 
+from mflux.dreambooth.lora_layers.fused_linear_lora_layer import FusedLoRALinear
+from mflux.dreambooth.lora_layers.linear_lora_layer import LoRALinear
 from mflux.dreambooth.lora_layers.lora_layers import LoRALayers
 from mflux.weights.weight_handler import MetaData, WeightHandler
 
@@ -23,7 +25,7 @@ class WeightHandlerLoRA:
                 weights = dict(tree_flatten(weights))
                 weights = {key.removesuffix(".weight"): value for key, value in weights.items()}
                 weights = {f"transformer.{key}": value for key, value in weights.items()}
-                lora_transformer_dict = LoRALayers.transformer_dict_from_template(weights, transformer)
+                lora_transformer_dict = LoRALayers.transformer_dict_from_template(weights, transformer, lora_scale)
                 transformer_weights = tree_unflatten(list(lora_transformer_dict.items()))["transformer"]
                 weights = WeightHandler(
                     clip_encoder=None,
@@ -44,39 +46,60 @@ class WeightHandlerLoRA:
     @staticmethod
     def set_lora_weights(transformer: nn.Module, loras: list["WeightHandler"]) -> None:
         if loras:
-            merged_weights = WeightHandlerLoRA.merge_lora_weights(
-                transformer_module=transformer,
-                loras=loras
-            )  # fmt:off
+            fused_weights = WeightHandlerLoRA._fuse_lora_dicts(loras[0].transformer, loras[1].transformer)
+            fused_weights = WeightHandler(
+                meta_data=MetaData(),
+                clip_encoder=None,
+                t5_encoder=None,
+                vae=None,
+                transformer=fused_weights,
+            )
+
             WeightHandlerLoRA.set_lora_layers(
                 transformer_module=transformer,
-                lora_layers=LoRALayers(weights=merged_weights)
+                lora_layers=LoRALayers(weights=fused_weights)
             )  # fmt:off
 
     @staticmethod
-    def merge_lora_weights(transformer_module: nn.Module, loras: list["WeightHandler"]) -> "WeightHandler":
-        merged_dict = {}
-        for lora_idx, lora in enumerate(loras):
-            flattened = tree_flatten(lora.transformer)
-            for name, value in flattened:
-                if name.endswith(".lora_A") or name.endswith(".lora_B"):
-                    if name not in merged_dict:
-                        merged_dict[name] = lora.meta_data.scale * value
-                    else:
-                        merged_dict[name] += lora.meta_data.scale * value
+    def _fuse_lora_dicts(dict1: dict, dict2: dict) -> dict:
+        fused_dict = {}
 
-        merged_dict = {f"transformer.{key}": value for key, value in merged_dict.items()}
-        lora_transformer_dict = LoRALayers.transformer_dict_from_template(merged_dict, transformer_module)
-        transformer_lora_weights = tree_unflatten(list(lora_transformer_dict.items()))["transformer"]
+        for key in dict1.keys():
+            if key not in dict2:
+                raise ValueError(f"Key {key} is missing in the second dictionary.")
 
-        arbitrary_lora = loras[0]
-        return WeightHandler(
-            meta_data=arbitrary_lora.meta_data,
-            clip_encoder=arbitrary_lora.clip_encoder,
-            t5_encoder=arbitrary_lora.t5_encoder,
-            vae=arbitrary_lora.vae,
-            transformer=transformer_lora_weights,
-        )
+            value1 = dict1[key]
+            value2 = dict2[key]
+
+            # Recursively handle nested dictionaries
+            if (
+                isinstance(value1, dict)
+                and isinstance(value2, dict)
+                and not isinstance(value1, LoRALinear)
+                and not isinstance(value2, LoRALinear)
+            ):
+                fused_dict[key] = WeightHandlerLoRA._fuse_lora_dicts(value1, value2)
+
+            # Handle LoRALinear layers
+            elif isinstance(value1, LoRALinear) and isinstance(value2, LoRALinear):
+                fused_layer = FusedLoRALinear(base_linear=value1.linear, loras=[value1, value2])
+                fused_dict[key] = fused_layer
+
+            # Handle lists
+            elif isinstance(value1, list) and isinstance(value2, list):
+                if len(value1) != len(value2):
+                    raise ValueError(f"Lists for key {key} have different lengths.")
+                fused_dict[key] = [
+                    WeightHandlerLoRA._fuse_lora_dicts({str(idx): v1}, {str(idx): v2})[str(idx)]
+                    if isinstance(v1, (dict, LoRALinear)) and isinstance(v2, (dict, LoRALinear))
+                    else v1  # Or apply other rules for non-LoRALinear types
+                    for idx, (v1, v2) in enumerate(zip(value1, value2))
+                ]
+
+            else:
+                raise ValueError(f"Incompatible types for key {key}: {type(value1)} and {type(value2)}.")
+
+        return fused_dict
 
     @staticmethod
     def _validate_lora_scales(lora_files: list[str], lora_scales: list[float]) -> list[float]:
