@@ -16,17 +16,17 @@ class TestResumeTraining:
     def test_resume_training(self):
         try:
             # Given: A small training run from scratch for 5 steps (as described in the config)...
-            flux, runtime_config, training_spec, training_state = DreamBoothInitializer.initialize(
+            fluxA, runtime_config, training_spec, training_state = DreamBoothInitializer.initialize(
                 config_path="tests/dreambooth/config/train.json",
                 checkpoint_path=None
             )  # fmt:off
             DreamBooth.train(
-                flux=flux,
+                flux=fluxA,
                 runtime_config=runtime_config,
                 training_spec=training_spec,
                 training_state=training_state
             )  # fmt: off
-            del flux, runtime_config, training_spec, training_state
+            del fluxA, runtime_config, training_spec, training_state
             # ...where we can inspect the training state after 5 runs...
             adapter_after_5_steps = ZipUtil.unzip(
                 zip_path=CHECKPOINT_5,
@@ -38,17 +38,17 @@ class TestResumeTraining:
             TestResumeTraining.delete_file(CHECKPOINT_5)
 
             # When: Resuming the training from step 3...
-            flux, runtime_config, training_spec, training_state = DreamBoothInitializer.initialize(
+            fluxB, runtime_config, training_spec, training_state = DreamBoothInitializer.initialize(
                 config_path=None,
                 checkpoint_path=CHECKPOINT_3
             )  # fmt:off
             DreamBooth.train(
-                flux=flux,
+                flux=fluxB,
                 runtime_config=runtime_config,
                 training_spec=training_spec,
                 training_state=training_state
             )  # fmt: off
-            del flux, runtime_config, training_spec, training_state
+            del fluxB, runtime_config, training_spec, training_state
             # ...where we can inspect the training state after 2 additions runs...
             adapter_after_5_steps_resumed = ZipUtil.unzip(
                 zip_path=CHECKPOINT_5,

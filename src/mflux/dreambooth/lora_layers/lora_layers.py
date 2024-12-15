@@ -25,6 +25,8 @@ class LoRALayers:
     def from_spec(flux: "Flux1", training_spec: TrainingSpec) -> "LoRALayers":
         if training_spec.lora_layers.state_path is not None:
             # Load from state if present in the spec
+            from mflux.weights.weight_handler_lora import WeightHandlerLoRA
+
             weights = ZipUtil.unzip(
                 zip_path=training_spec.checkpoint_path,
                 filename=training_spec.lora_layers.state_path,
