@@ -188,9 +188,13 @@ class LoRALayers:
 
     def save(self, path: Path, training_spec: TrainingSpec) -> None:
         weights = {}
-        for key, val in self.layers.weight_handlers[0].items():
-            weights[key] = val.trainable_parameters()
+        for entry in tree_flatten(self.layers.weight_handlers[0].transformer):
+            name = entry[0]
+            weight = entry[1]
+            if name.endswith(".lora_A") or name.endswith(".lora_B"):
+                weights[name] = weight
 
+        weights = {"transformer": weights}
         mx.save_safetensors(
             str(path),
             dict(tree_flatten(weights)),

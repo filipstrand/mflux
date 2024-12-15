@@ -59,12 +59,12 @@ class WeightHandler:
 
     @staticmethod
     def _load_clip_encoder(root_path: Path) -> (dict, int):
-        weights, quantization_level = WeightHandler._get_weights("text_encoder", root_path)
+        weights, quantization_level, _ = WeightHandler._get_weights("text_encoder", root_path)
         return weights, quantization_level
 
     @staticmethod
     def _load_t5_encoder(root_path: Path) -> (dict, int):
-        weights, quantization_level = WeightHandler._get_weights("text_encoder_2", root_path)
+        weights, quantization_level, _ = WeightHandler._get_weights("text_encoder_2", root_path)
 
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
         if quantization_level is not None:
@@ -91,7 +91,7 @@ class WeightHandler:
 
     @staticmethod
     def load_transformer(root_path: Path | None = None, lora_path: str | None = None) -> (dict, int):
-        weights, quantization_level = WeightHandler._get_weights("transformer", root_path, lora_path)
+        weights, quantization_level, mflux_version = WeightHandler._get_weights("transformer", root_path, lora_path)
 
         if lora_path:
             if "transformer" not in weights:
@@ -99,7 +99,7 @@ class WeightHandler:
             weights = weights["transformer"]
 
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
-        if quantization_level is not None:
+        if quantization_level or mflux_version:
             return weights, quantization_level
 
         # Reshape and process the huggingface weights
@@ -119,7 +119,7 @@ class WeightHandler:
 
     @staticmethod
     def _load_vae(root_path: Path) -> (dict, int):
-        weights, quantization_level = WeightHandler._get_weights("vae", root_path)
+        weights, quantization_level, _ = WeightHandler._get_weights("vae", root_path)
 
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
         if quantization_level is not None:
@@ -142,6 +142,7 @@ class WeightHandler:
     ) -> (dict, int):
         weights = []
         quantization_level = None
+        mflux_version = None
 
         if root_path is not None:
             for file in sorted(root_path.glob(model_name + "/*.safetensors")):
@@ -149,24 +150,22 @@ class WeightHandler:
                 weight = list(mx.load(str(file)).items())
                 weights.extend(weight)
 
-        mflux_version = None
         if lora_path and root_path is None:
             load = mx.load(lora_path, return_metadata=True)
             weight = list(load[0].items())
             if len(load) > 1:
-                quantization_level = load[1].get("quantize", None)
                 mflux_version = load[1].get("mflux_version", None)
             weights.extend(weight)
 
         # Non huggingface weights (i.e. ones exported from this project) don't need any reshaping.
         if quantization_level is not None or mflux_version is not None:
-            return tree_unflatten(weights), quantization_level
+            return tree_unflatten(weights), quantization_level, mflux_version
 
         # Huggingface weights needs to be reshaped
         weights = [WeightUtil.reshape_weights(k, v) for k, v in weights]
         weights = WeightUtil.flatten(weights)
         unflatten = tree_unflatten(weights)
-        return unflatten, quantization_level
+        return unflatten, quantization_level, mflux_version
 
     @staticmethod
     def _download_or_get_cached_weights(repo_id: str) -> Path:
