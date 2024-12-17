@@ -46,7 +46,8 @@ class WeightHandlerLoRA:
     @staticmethod
     def set_lora_weights(transformer: nn.Module, loras: list["WeightHandler"]) -> None:
         if loras:
-            fused_weights = WeightHandlerLoRA._fuse_lora_dicts(loras[0].transformer, loras[1].transformer)
+            lora_transformer_weights = [lora.transformer for lora in loras]
+            fused_weights = WeightHandlerLoRA._fuse_multiple_lora_dicts(lora_transformer_weights)
             fused_weights = WeightHandler(
                 meta_data=MetaData(),
                 clip_encoder=None,
@@ -61,43 +62,61 @@ class WeightHandlerLoRA:
             )  # fmt:off
 
     @staticmethod
-    def _fuse_lora_dicts(dict1: dict, dict2: dict) -> dict:
+    def _fuse_multiple_lora_dicts(dicts: list[dict]) -> dict:
+        if not dicts:
+            raise ValueError("No dictionaries provided for fusion.")
+        if len(dicts) == 1:
+            return dicts[0]
+
+        # Collect all unique keys across all dictionaries
+        all_keys = set().union(*dicts)
         fused_dict = {}
 
-        for key in dict1.keys():
-            if key not in dict2:
-                raise ValueError(f"Key {key} is missing in the second dictionary.")
+        for key in all_keys:
+            # Get all values for this key, filtering out dictionaries that don't have it
+            values = [d[key] for d in dicts if key in d]
 
-            value1 = dict1[key]
-            value2 = dict2[key]
+            # Skip if no values found (shouldn't happen due to how we collect keys)
+            if not values:
+                continue
 
-            # Recursively handle nested dictionaries
-            if (
-                isinstance(value1, dict)
-                and isinstance(value2, dict)
-                and not isinstance(value1, LoRALinear)
-                and not isinstance(value2, LoRALinear)
-            ):
-                fused_dict[key] = WeightHandlerLoRA._fuse_lora_dicts(value1, value2)
+            first_value = values[0]
+
+            # Handle nested dictionaries
+            if all(isinstance(v, dict) and not isinstance(v, LoRALinear) for v in values):
+                fused_dict[key] = WeightHandlerLoRA._fuse_multiple_lora_dicts(values)
 
             # Handle LoRALinear layers
-            elif isinstance(value1, LoRALinear) and isinstance(value2, LoRALinear):
-                fused_layer = FusedLoRALinear(base_linear=value1.linear, loras=[value1, value2])
-                fused_dict[key] = fused_layer
+            elif all(isinstance(v, LoRALinear) for v in values):
+                fused_dict[key] = FusedLoRALinear(base_linear=first_value.linear, loras=values)
 
             # Handle lists
-            elif isinstance(value1, list) and isinstance(value2, list):
-                if len(value1) != len(value2):
-                    raise ValueError(f"Lists for key {key} have different lengths.")
-                fused_dict[key] = [
-                    WeightHandlerLoRA._fuse_lora_dicts({str(idx): v1}, {str(idx): v2})[str(idx)]
-                    if isinstance(v1, (dict, LoRALinear)) and isinstance(v2, (dict, LoRALinear))
-                    else v1  # Or apply other rules for non-LoRALinear types
-                    for idx, (v1, v2) in enumerate(zip(value1, value2))
-                ]
+            elif all(isinstance(v, list) for v in values):
+                # Get the maximum length of all lists
+                max_length = max(len(v) for v in values)
+
+                # Initialize the fused list
+                fused_dict[key] = []
+
+                # Process each index up to the maximum length
+                for idx in range(max_length):
+                    # Get elements at current index from lists that are long enough
+                    elements = [v[idx] for v in values if idx < len(v)]
+
+                    if not elements:
+                        continue
+
+                    # If elements are dicts or LoRALinear, recursively fuse them
+                    if all(isinstance(e, (dict, LoRALinear)) for e in elements):
+                        fused_element = WeightHandlerLoRA._fuse_multiple_lora_dicts([{str(idx): e} for e in elements])[str(idx)]  # fmt:off
+                        fused_dict[key].append(fused_element)
+                    else:
+                        # For non-LoRALinear types, keep the first element
+                        fused_dict[key].append(elements[0])
 
             else:
-                raise ValueError(f"Incompatible types for key {key}: {type(value1)} and {type(value2)}.")
+                types_str = ", ".join(type(v).__name__ for v in values)
+                raise ValueError(f"Incompatible types for key {key}: {types_str}")
 
         return fused_dict
 
