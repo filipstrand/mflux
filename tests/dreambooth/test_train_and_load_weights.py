@@ -1,10 +1,11 @@
+import shutil
+
 import numpy as np
 
 from mflux import Config, Flux1, ModelConfig
 from mflux.dreambooth.dreambooth import DreamBooth
 from mflux.dreambooth.dreambooth_initializer import DreamBoothInitializer
 from mflux.dreambooth.state.zip_util import ZipUtil
-from tests.dreambooth.test_resume_training import TestResumeTraining
 
 CHECKPOINT = "tests/dreambooth/tmp/_checkpoints/0000005_checkpoint.zip"
 OUTPUT_DIR = "tests/dreambooth/tmp/_checkpoints/0000005_checkpoint"
@@ -66,4 +67,8 @@ class TestTrainAndLoadWeights:
             )
         finally:
             # cleanup
-            TestResumeTraining.delete_folder("tests/dreambooth/tmp")
+            TestTrainAndLoadWeights.delete_folder("tests/dreambooth/tmp")
+
+    @staticmethod
+    def delete_folder(path: str) -> None:
+        return shutil.rmtree(path)
