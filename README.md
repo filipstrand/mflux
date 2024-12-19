@@ -607,6 +607,8 @@ A complete example (training configuration + dataset) is provided in this reposi
 mflux-train --train-config src/mflux/dreambooth/_example/train.json
 ```
 
+!!!!This is currently not true, will fix before merge to main, but you also have to send in model name 
+
 During training, MFLUX will output training checkpoints with artifacts (weights, states) according to what is specified in the configuration file.
 These will be saved as self-contained zip file, which can later be pointed to [resume an existing training run](#resuming-a-training-run).
 To find the LoRA weights, simply unzip and look for the `adapter` safetensors file.
@@ -620,6 +622,8 @@ To resume training for a given checkpoint, say `checkpoint_00002000.zip`, simply
 ```sh
 mflux-train --train-checkpoint checkpoint_00002000.zip
 ```
+
+!!!!This is currently not true, will fix before merge to main, but you also have to send in model name
 
 There are two nice properties of the training procedure: 
 
