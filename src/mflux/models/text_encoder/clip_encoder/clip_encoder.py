@@ -9,6 +9,6 @@ class CLIPEncoder(nn.Module):
         super().__init__()
         self.text_model = CLIPTextModel(dims=768, num_encoder_layers=12)
 
-    def forward(self, tokens: mx.array) -> mx.array:
-        pooled_output = self.text_model.forward(tokens)
+    def __call__(self, tokens: mx.array) -> mx.array:
+        pooled_output = self.text_model(tokens)
         return pooled_output

@@ -71,6 +71,10 @@ class CommandLineParser(argparse.ArgumentParser):
         self.supports_metadata_config = True
         self.add_argument("--config-from-metadata", "-C", type=Path, required=False, default=argparse.SUPPRESS, help="Re-use the parameters from prior metadata. Params from metadata are secondary to other args you provide.")
 
+    def add_training_arguments(self) -> None:
+        self.add_argument("--train-config", type=str, required=False, help="Local path of the training configuration file")
+        self.add_argument("--train-checkpoint", type=str, required=False, help="Local path to the resume file which specifies how to continue training")
+
     def parse_args(self, **kwargs) -> argparse.Namespace:
         namespace = super().parse_args()
         if hasattr(namespace, "path") and namespace.path is not None and namespace.model is None:

@@ -11,7 +11,7 @@ class T5DenseReluDense(nn.Module):
         self.wi_1 = nn.Linear(4096, 10240, bias=False)
         self.wo = nn.Linear(10240, 4096, bias=False)
 
-    def forward(self, hidden_states: mx.array) -> mx.array:
+    def __call__(self, hidden_states: mx.array) -> mx.array:
         hidden_gelu = T5DenseReluDense.new_gelu(self.wi_0(hidden_states))
         hidden_linear = self.wi_1(hidden_states)
         hidden_states = hidden_gelu * hidden_linear
