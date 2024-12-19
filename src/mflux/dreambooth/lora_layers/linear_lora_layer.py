@@ -39,17 +39,15 @@ class LoRALinear(nn.Module):
         self.lora_A = mx.random.uniform(
             low=-scale,
             high=scale,
-            shape=(r, input_dims),
+            shape=(input_dims, r),
         )
         self.lora_B = mx.random.uniform(
             low=-scale,
             high=scale,
-            shape=(output_dims, r),
+            shape=(r, output_dims),
         )
 
     def __call__(self, x):
         base_out = self.linear(x)
-        A = mx.transpose(self.lora_A)
-        B = mx.transpose(self.lora_B)
-        lora_out = mx.matmul(mx.matmul(x, A), B)
+        lora_out = mx.matmul(mx.matmul(x, self.lora_A), self.lora_B)
         return base_out + self.scale * lora_out

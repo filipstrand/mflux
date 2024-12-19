@@ -1,3 +1,4 @@
+import mlx.core as mx
 import mlx.nn as nn
 from mlx.utils import tree_flatten, tree_unflatten
 
@@ -25,6 +26,7 @@ class WeightHandlerLoRA:
                 weights = dict(tree_flatten(weights))
                 weights = {key.removesuffix(".weight"): value for key, value in weights.items()}
                 weights = {f"transformer.{key}": value for key, value in weights.items()}
+                weights = {key: mx.transpose(value) for key, value in weights.items()}
                 lora_transformer_dict = LoRALayers.transformer_dict_from_template(weights, transformer, lora_scale)
                 transformer_weights = tree_unflatten(list(lora_transformer_dict.items()))["transformer"]
                 weights = WeightHandler(
