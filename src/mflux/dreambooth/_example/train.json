@@ -30,6 +30,8 @@
             "end": 38
         },
         "layer_types": [
+            "proj_out",
+            "proj_mlp",
             "attn.to_q",
             "attn.to_k",
             "attn.to_v"
