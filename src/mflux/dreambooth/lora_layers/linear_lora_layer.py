@@ -40,14 +40,21 @@ class LoRALinear(nn.Module):
             low=-scale,
             high=scale,
             shape=(r, input_dims),
+            # shape=(input_dims, r),
         )
         self.lora_B = mx.random.uniform(
             low=-scale,
             high=scale,
             shape=(output_dims, r),
+            # shape=(r, output_dims),
         )
 
     def __call__(self, x):
         base_out = self.linear(x)
         lora_out = mx.matmul(x, mx.transpose(self.lora_B @ self.lora_A))
+        # lora_out = mx.matmul(mx.matmul(x, self.lora_A), self.lora_B)
         return base_out + self.scale * lora_out
+
+
+# When doing the out-commented version, it requires less memory...
+# ...but we also get problems reading regular LoRAs...
