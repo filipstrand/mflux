@@ -190,6 +190,7 @@ class LoRALayers:
             if name.endswith(".lora_A") or name.endswith(".lora_B"):
                 weights[name] = weight
 
+        weights = {key: mx.transpose(val) for key, val in weights.items()}
         weights = {"transformer": weights}
         mx.save_safetensors(
             str(path),
