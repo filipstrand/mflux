@@ -4,10 +4,10 @@
   "steps": 20,
   "guidance": 3.0,
   "quantize": 4,
-  "width": 128,
-  "height": 128,
+  "width": 512,
+  "height": 512,
   "training_loop": {
-    "num_epochs": 10,
+    "num_epochs": 100,
     "batch_size": 1
   },
   "optimizer": {
@@ -16,7 +16,7 @@
   },
   "save": {
     "output_path": "~/Desktop/train",
-    "checkpoint_frequency": 5
+    "checkpoint_frequency": 10
   },
   "instrumentation": {
     "plot_frequency": 1,
@@ -30,8 +30,6 @@
             "end": 38
         },
         "layer_types": [
-            "proj_out",
-            "proj_mlp",
             "attn.to_q",
             "attn.to_k",
             "attn.to_v"

@@ -4,10 +4,10 @@
   "steps": 2,
   "guidance": 3.0,
   "quantize": 4,
-  "width": 512,
-  "height": 512,
+  "width": 128,
+  "height": 128,
   "training_loop": {
-    "num_epochs": 100,
+    "num_epochs": 1,
     "batch_size": 1
   },
   "optimizer": {
@@ -16,7 +16,7 @@
   },
   "save": {
     "output_path": "tests/dreambooth/tmp",
-    "checkpoint_frequency": 20
+    "checkpoint_frequency": 1
   },
   "lora_layers": {
     "single_transformer_blocks": {
@@ -25,6 +25,8 @@
         "end": 38
       },
       "layer_types": [
+        "proj_out",
+        "proj_mlp",
         "attn.to_q",
         "attn.to_k",
         "attn.to_v"
