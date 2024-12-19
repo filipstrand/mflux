@@ -13,7 +13,7 @@ class T5FeedForward(nn.Module):
         self.layer_norm = T5LayerNorm()
         self.DenseReluDense = T5DenseReluDense()
 
-    def forward(self, hidden_states: mx.array) -> mx.array:
-        forwarded_states = self.layer_norm.forward(hidden_states)
-        forwarded_states = self.DenseReluDense.forward(forwarded_states)
+    def __call__(self, hidden_states: mx.array) -> mx.array:
+        forwarded_states = self.layer_norm(hidden_states)
+        forwarded_states = self.DenseReluDense(forwarded_states)
         return hidden_states + forwarded_states

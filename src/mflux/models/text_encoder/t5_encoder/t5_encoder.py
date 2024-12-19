@@ -12,9 +12,9 @@ class T5Encoder(nn.Module):
         self.t5_blocks = [T5Block(i) for i in range(24)]
         self.final_layer_norm = T5LayerNorm()
 
-    def forward(self, tokens: mx.array):
+    def __call__(self, tokens: mx.array):
         hidden_states = self.shared(tokens)
         for block in self.t5_blocks:
-            hidden_states = block.forward(hidden_states)
-        hidden_states = self.final_layer_norm.forward(hidden_states)
+            hidden_states = block(hidden_states)
+        hidden_states = self.final_layer_norm(hidden_states)
         return hidden_states
