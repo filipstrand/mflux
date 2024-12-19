@@ -15,6 +15,6 @@ class FusedLoRALinear(nn.Module):
 
         lora_out = mx.zeros_like(base_out)
         for lora in self.loras:
-            lora_out += lora.scale * mx.matmul(x, mx.transpose(lora.lora_B @ lora.lora_A))
+            lora_out += lora.scale * mx.matmul(mx.matmul(x, lora.lora_A), lora.lora_B)
 
         return base_out + lora_out
