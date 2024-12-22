@@ -24,12 +24,12 @@ class Decoder(nn.Module):
         self.conv_norm_out = ConvNormOut()
         self.conv_out = ConvOut()
 
-    def decode(self, latents: mx.array) -> mx.array:
-        latents = self.conv_in.forward(latents)
-        latents = self.mid_block.forward(latents)
+    def __call__(self, latents: mx.array) -> mx.array:
+        latents = self.conv_in(latents)
+        latents = self.mid_block(latents)
         for up_block in self.up_blocks:
-            latents = up_block.forward(latents)
-        latents = self.conv_norm_out.forward(latents)
+            latents = up_block(latents)
+        latents = self.conv_norm_out(latents)
         latents = nn.silu(latents)
-        latents = self.conv_out.forward(latents)
+        latents = self.conv_out(latents)
         return latents

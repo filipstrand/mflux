@@ -9,7 +9,7 @@ class EmbedND(nn.Module):
         self.theta = 10000
         self.axes_dim = [16, 56, 56]
 
-    def forward(self, ids: mx.array) -> mx.array:
+    def __call__(self, ids: mx.array) -> mx.array:
         emb = mx.concatenate(
             [EmbedND.rope(ids[..., i], self.axes_dim[i], self.theta) for i in range(3)],
             axis=-3,

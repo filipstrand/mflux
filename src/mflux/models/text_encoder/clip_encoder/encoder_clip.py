@@ -11,8 +11,8 @@ class EncoderCLIP(nn.Module):
         super().__init__()
         self.layers = [CLIPEncoderLayer(i) for i in range(num_encoder_layers)]
 
-    def forward(self, tokens: mx.array, causal_attention_mask: mx.array) -> mx.array:
+    def __call__(self, tokens: mx.array, causal_attention_mask: mx.array) -> mx.array:
         hidden_states = tokens
         for encoder_layer in self.layers:
-            hidden_states = encoder_layer.forward(hidden_states, causal_attention_mask)
+            hidden_states = encoder_layer(hidden_states, causal_attention_mask)
         return hidden_states

@@ -1,0 +1,88 @@
+{
+  "model": "dev",
+  "seed": 42,
+  "steps": 2,
+  "guidance": 3.0,
+  "quantize": 4,
+  "width": 128,
+  "height": 128,
+  "training_loop": {
+    "num_epochs": 1,
+    "batch_size": 1
+  },
+  "optimizer": {
+    "name": "AdamW",
+    "learning_rate": 1e-4
+  },
+  "save": {
+    "output_path": "tests/dreambooth/tmp",
+    "checkpoint_frequency": 1
+  },
+  "instrumentation": {
+    "plot_frequency": 1,
+    "generate_image_frequency": 50000,
+    "validation_prompt": "photo of sks dog"
+  },
+  "lora_layers": {
+    "transformer_blocks": {
+      "block_range": {
+        "start": 12,
+        "end": 13
+      },
+      "layer_types": [
+        "attn.to_q",
+        "attn.to_k",
+        "attn.to_v",
+        "attn.add_q_proj",
+        "attn.add_k_proj",
+        "attn.add_v_proj",
+        "attn.to_out",
+        "attn.to_add_out",
+        "ff.linear1",
+        "ff.linear2",
+        "ff_context.linear1",
+        "ff_context.linear2"
+      ],
+      "lora_rank": 4
+    },
+    "single_transformer_blocks": {
+      "block_range": {
+        "start": 17,
+        "end": 18
+      },
+      "layer_types": [
+        "proj_out",
+        "proj_mlp",
+        "attn.to_q",
+        "attn.to_k",
+        "attn.to_v"
+      ],
+      "lora_rank": 4
+    }
+  },
+  "examples": {
+    "path": "../../../src/mflux/dreambooth/_example/images/",
+    "images": [
+        {
+          "image": "01.jpeg",
+          "prompt": "photo of sks dog"
+        },
+        {
+          "image": "02.jpeg",
+          "prompt": "photo of sks dog"
+        },
+        {
+          "image": "03.jpeg",
+          "prompt": "photo of sks dog"
+        },
+        {
+          "image": "04.jpeg",
+          "prompt": "photo of sks dog"
+        },
+        {
+          "image": "05.jpeg",
+          "prompt": "photo of sks dog"
+        }
+      ]
+  }
+}

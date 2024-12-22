@@ -1,0 +1,67 @@
+{
+  "model": "dev",
+  "seed": 42,
+  "steps": 20,
+  "guidance": 3.0,
+  "quantize": 4,
+  "width": 512,
+  "height": 512,
+  "training_loop": {
+    "num_epochs": 100,
+    "batch_size": 1
+  },
+  "optimizer": {
+    "name": "AdamW",
+    "learning_rate": 1e-4
+  },
+  "save": {
+    "output_path": "~/Desktop/train",
+    "checkpoint_frequency": 10
+  },
+  "instrumentation": {
+    "plot_frequency": 1,
+    "generate_image_frequency": 20,
+    "validation_prompt": "photo of sks dog"
+  },
+  "lora_layers": {
+    "single_transformer_blocks" : {
+        "block_range": {
+            "start": 0,
+            "end": 38
+        },
+        "layer_types": [
+            "proj_out",
+            "proj_mlp",
+            "attn.to_q",
+            "attn.to_k",
+            "attn.to_v"
+        ],
+        "lora_rank": 4
+        }
+    },
+  "examples": {
+      "path": "images/",
+      "images": [
+        {
+          "image": "01.jpeg",
+          "prompt": "photo of sks dog"
+        },
+        {
+          "image": "02.jpeg",
+          "prompt": "photo of sks dog"
+        },
+        {
+          "image": "03.jpeg",
+          "prompt": "photo of sks dog"
+        },
+        {
+          "image": "04.jpeg",
+          "prompt": "photo of sks dog"
+        },
+        {
+          "image": "05.jpeg",
+          "prompt": "photo of sks dog"
+        }
+      ]
+  }
+}

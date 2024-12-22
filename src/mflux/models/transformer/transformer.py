@@ -44,15 +44,15 @@ class Transformer(nn.Module):
         time_step = mx.broadcast_to(time_step, (1,)).astype(config.precision)
         hidden_states = self.x_embedder(hidden_states)
         guidance = mx.broadcast_to(config.guidance * config.num_train_steps, (1,)).astype(config.precision)
-        text_embeddings = self.time_text_embed.forward(time_step, pooled_prompt_embeds, guidance)
+        text_embeddings = self.time_text_embed(time_step, pooled_prompt_embeds, guidance)
         encoder_hidden_states = self.context_embedder(prompt_embeds)
         txt_ids = Transformer.prepare_text_ids(seq_len=prompt_embeds.shape[1])
         img_ids = Transformer.prepare_latent_image_ids(config.height, config.width)
         ids = mx.concatenate((txt_ids, img_ids), axis=1)
-        image_rotary_emb = self.pos_embed.forward(ids)
+        image_rotary_emb = self.pos_embed(ids)
 
         for idx, block in enumerate(self.transformer_blocks):
-            encoder_hidden_states, hidden_states = block.forward(
+            encoder_hidden_states, hidden_states = block(
                 hidden_states=hidden_states,
                 encoder_hidden_states=encoder_hidden_states,
                 text_embeddings=text_embeddings,
@@ -66,7 +66,7 @@ class Transformer(nn.Module):
         hidden_states = mx.concatenate([encoder_hidden_states, hidden_states], axis=1)
 
         for idx, block in enumerate(self.single_transformer_blocks):
-            hidden_states = block.forward(
+            hidden_states = block(
                 hidden_states=hidden_states,
                 text_embeddings=text_embeddings,
                 rotary_embeddings=image_rotary_emb,
@@ -80,7 +80,7 @@ class Transformer(nn.Module):
                 )
 
         hidden_states = hidden_states[:, encoder_hidden_states.shape[1] :, ...]
-        hidden_states = self.norm_out.forward(hidden_states, text_embeddings)
+        hidden_states = self.norm_out(hidden_states, text_embeddings)
         hidden_states = self.proj_out(hidden_states)
         noise = hidden_states
         return noise

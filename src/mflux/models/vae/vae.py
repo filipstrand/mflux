@@ -16,9 +16,9 @@ class VAE(nn.Module):
 
     def decode(self, latents: mx.array) -> mx.array:
         scaled_latents = (latents / self.scaling_factor) + self.shift_factor
-        return self.decoder.decode(scaled_latents)
+        return self.decoder(scaled_latents)
 
     def encode(self, latents: mx.array) -> mx.array:
-        latents = self.encoder.encode(latents)
+        latents = self.encoder(latents)
         mean, _ = mx.split(latents, 2, axis=1)
         return (mean - self.shift_factor) * self.scaling_factor

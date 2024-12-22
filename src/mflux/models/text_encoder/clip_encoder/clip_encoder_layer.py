@@ -13,13 +13,13 @@ class CLIPEncoderLayer(nn.Module):
         self.mlp = CLIPMLP()
         self.layer_norm2 = nn.LayerNorm(dims=768)
 
-    def forward(self, hidden_states: mx.array, causal_attention_mask: mx.array) -> mx.array:
+    def __call__(self, hidden_states: mx.array, causal_attention_mask: mx.array) -> mx.array:
         residual = hidden_states
         hidden_states = self.layer_norm1(hidden_states)
-        hidden_states = self.self_attn.forward(hidden_states, causal_attention_mask)
+        hidden_states = self.self_attn(hidden_states, causal_attention_mask)
         hidden_states = residual + hidden_states
         residual = hidden_states
         hidden_states = self.layer_norm2(hidden_states)
-        hidden_states = self.mlp.forward(hidden_states)
+        hidden_states = self.mlp(hidden_states)
         hidden_states = residual + hidden_states
         return hidden_states
