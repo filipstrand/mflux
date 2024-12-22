@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import mlx.core as mx
-from mlx import nn
 from tqdm import tqdm
 
 from mflux.config.config import ConfigControlnet
@@ -26,6 +25,8 @@ from mflux.tokenizer.t5_tokenizer import TokenizerT5
 from mflux.tokenizer.tokenizer_handler import TokenizerHandler
 from mflux.weights.model_saver import ModelSaver
 from mflux.weights.weight_handler import WeightHandler
+from mflux.weights.weight_handler_lora import WeightHandlerLoRA
+from mflux.weights.weight_util import WeightUtil
 
 if TYPE_CHECKING:
     from mflux.post_processing.generated_image import GeneratedImage
@@ -61,52 +62,29 @@ class Flux1Controlnet:
         self.t5_text_encoder = T5Encoder()
         self.clip_text_encoder = CLIPEncoder()
 
-        # Load the weights from disk, huggingface cache, or download from huggingface
-        weights = WeightHandler(
-            repo_id=model_config.model_name,
-            local_path=local_path,
-            lora_paths=lora_paths,
-            lora_scales=lora_scales
-        )  # fmt: off
-
-        # Set the loaded weights if they are not quantized
-        if weights.quantization_level is None:
-            self._set_model_weights(weights)
-
-        # Optionally quantize the model here at initialization (also required if about to load quantized weights)
-        self.bits = None
-        if quantize is not None or weights.quantization_level is not None:
-            self.bits = weights.quantization_level if weights.quantization_level is not None else quantize
-            # fmt: off
-            nn.quantize(self.vae, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=self.bits)
-            nn.quantize(self.transformer, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 64, group_size=64, bits=self.bits)
-            nn.quantize(self.t5_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=self.bits)
-            nn.quantize(self.clip_text_encoder, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=self.bits)
-            # fmt: on
-
-        # If loading previously saved quantized weights, the weights must be set after modules have been quantized
-        if weights.quantization_level is not None:
-            self._set_model_weights(weights)
-
-        weights_controlnet, controlnet_quantization_level, controlnet_config = WeightHandlerControlnet.load_controlnet_transformer(
-            controlnet_id=CONTROLNET_ID
-        )  # fmt: off
-        self.transformer_controlnet = TransformerControlnet(
-            model_config=model_config,
-            num_blocks=controlnet_config["num_layers"],
-            num_single_blocks=controlnet_config["num_single_layers"],
+        # Set the weights and quantize the model
+        weights = WeightHandler.load_regular_weights(repo_id=model_config.model_name, local_path=local_path)
+        self.bits = WeightUtil.set_weights_and_quantize(
+            quantize_arg=quantize,
+            weights=weights,
+            vae=self.vae,
+            transformer=self.transformer,
+            t5_text_encoder=self.t5_text_encoder,
+            clip_text_encoder=self.clip_text_encoder,
         )
 
-        if controlnet_quantization_level is None:
-            self.transformer_controlnet.update(weights_controlnet)
+        # Set LoRA weights
+        lora_weights = WeightHandlerLoRA.load_lora_weights(transformer=self.transformer, lora_files=lora_paths, lora_scales=lora_scales)  # fmt:off
+        WeightHandlerLoRA.set_lora_weights(transformer=self.transformer, loras=lora_weights)
 
-        self.bits = None
-        if quantize is not None or controlnet_quantization_level is not None:
-            self.bits = controlnet_quantization_level if controlnet_quantization_level is not None else quantize
-            nn.quantize(self.transformer_controlnet, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 128, group_size=128, bits=self.bits)  # fmt: off
-
-        if controlnet_quantization_level is not None:
-            self.transformer_controlnet.update(weights_controlnet)
+        # Set Controlnet weights
+        weights_controlnet = WeightHandlerControlnet.load_controlnet_transformer(controlnet_id=CONTROLNET_ID)
+        self.transformer_controlnet = TransformerControlnet(model_config=model_config, num_blocks=weights_controlnet.config["num_layers"], num_single_blocks=weights_controlnet.config["num_single_layers"])  # fmt:off
+        WeightUtil.set_controlnet_weights_and_quantize(
+            quantize_arg=quantize,
+            weights=weights_controlnet,
+            transformer_controlnet=self.transformer_controlnet,
+        )
 
     def generate_image(
             self,
@@ -147,13 +125,13 @@ class Flux1Controlnet:
         # 2. Embed the prompt
         t5_tokens = self.t5_tokenizer.tokenize(prompt)
         clip_tokens = self.clip_tokenizer.tokenize(prompt)
-        prompt_embeds = self.t5_text_encoder.forward(t5_tokens)
-        pooled_prompt_embeds = self.clip_text_encoder.forward(clip_tokens)
+        prompt_embeds = self.t5_text_encoder(t5_tokens)
+        pooled_prompt_embeds = self.clip_text_encoder(clip_tokens)
 
         for t in time_steps:
             try:
                 # Compute controlnet samples
-                controlnet_block_samples, controlnet_single_block_samples = self.transformer_controlnet.forward(
+                controlnet_block_samples, controlnet_single_block_samples = self.transformer_controlnet(
                     t=t,
                     prompt_embeds=prompt_embeds,
                     pooled_prompt_embeds=pooled_prompt_embeds,
@@ -201,12 +179,6 @@ class Flux1Controlnet:
             config=config,
             controlnet_image_path=controlnet_image_path,
         )
-
-    def _set_model_weights(self, weights):
-        self.vae.update(weights.vae)
-        self.transformer.update(weights.transformer)
-        self.t5_text_encoder.update(weights.t5_encoder)
-        self.clip_text_encoder.update(weights.clip_encoder)
 
     def save_model(self, base_path: str) -> None:
         ModelSaver.save_model(self, self.bits, base_path)

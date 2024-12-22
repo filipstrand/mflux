@@ -8,7 +8,7 @@ class T5LayerNorm(nn.Module):
         self.weight = mx.ones((4096,))
         self.variance_epsilon = 1e-06
 
-    def forward(self, hidden_states: mx.array) -> mx.array:
+    def __call__(self, hidden_states: mx.array) -> mx.array:
         variance = mx.mean(
             mx.power(hidden_states.astype(mx.float32), 2),
             axis=-1,

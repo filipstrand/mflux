@@ -13,7 +13,7 @@ class UpSampler(nn.Module):
             padding=(1, 1),
         )
 
-    def forward(self, input_array: mx.array) -> mx.array:
+    def __call__(self, input_array: mx.array) -> mx.array:
         input_array = mx.transpose(input_array, (0, 2, 3, 1))
         hidden_states = UpSampler.up_sample_nearest(input_array)
         hidden_state = self.conv(hidden_states)

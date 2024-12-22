@@ -55,7 +55,7 @@ class ResnetBlock2D(nn.Module):
             stride=(1, 1),
         )
 
-    def forward(self, input_array: mx.array) -> mx.array:
+    def __call__(self, input_array: mx.array) -> mx.array:
         input_array = mx.transpose(input_array, (0, 2, 3, 1))
         hidden_states = self.norm1(input_array.astype(mx.float32)).astype(Config.precision)
         hidden_states = nn.silu(hidden_states)

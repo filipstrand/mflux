@@ -4,6 +4,7 @@ import typing as t
 
 import mlx.core as mx
 import PIL.Image
+import toml
 
 from mflux.config.model_config import ModelConfig
 
@@ -55,7 +56,7 @@ class GeneratedImage:
         return {
             # mflux_version is used by future metadata readers
             # to determine supportability of metadata-derived workflows
-            "mflux_version": str(GeneratedImage.get_version()),
+            "mflux_version": GeneratedImage.get_version(),
             "model": str(self.model_config.alias),
             "seed": self.seed,
             "steps": self.steps,
@@ -73,8 +74,27 @@ class GeneratedImage:
         }
 
     @staticmethod
-    def get_version():
+    def get_version() -> str:
+        version = GeneratedImage._get_version_from_toml()
+        if version:
+            return version
+
+        # Fallback to installed package version
         try:
-            return importlib.metadata.version("mflux")
+            return str(importlib.metadata.version("mflux"))
         except importlib.metadata.PackageNotFoundError:
             return "unknown"
+
+    @staticmethod
+    def _get_version_from_toml() -> str | None:
+        # Search for pyproject.toml by traversing up from the current working directory
+        current_dir = pathlib.Path(__file__).resolve().parent
+        for parent in current_dir.parents:
+            pyproject_path = parent / "pyproject.toml"
+            if pyproject_path.exists():
+                try:
+                    pyproject_data = toml.load(pyproject_path)
+                    return pyproject_data.get("project", {}).get("version")
+                except (toml.TomlDecodeError, KeyError, TypeError):
+                    return None
+        return None

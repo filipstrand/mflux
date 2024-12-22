@@ -71,9 +71,19 @@ class CommandLineParser(argparse.ArgumentParser):
         self.supports_metadata_config = True
         self.add_argument("--config-from-metadata", "-C", type=Path, required=False, default=argparse.SUPPRESS, help="Re-use the parameters from prior metadata. Params from metadata are secondary to other args you provide.")
 
+    def add_training_arguments(self) -> None:
+        self.add_argument("--train-config", type=str, required=False, help="Local path of the training configuration file")
+        self.add_argument("--train-checkpoint", type=str, required=False, help="Local path of the checkpoint file which specifies how to continue the training process")
+
     def parse_args(self, **kwargs) -> argparse.Namespace:
         namespace = super().parse_args()
-        if hasattr(namespace, "path") and namespace.path is not None and namespace.model is None:
+
+        # Check if either training arguments are provided
+        has_training_args = (hasattr(namespace, "train_config") and namespace.train_config is not None) or \
+                            (hasattr(namespace, "train_checkpoint") and namespace.train_checkpoint is not None)
+
+        # Only enforce model requirement for path if we're not in training mode
+        if hasattr(namespace, "path") and namespace.path is not None and namespace.model is None and not has_training_args:
             self.error("--model must be specified when using --path")
 
         if getattr(namespace, "config_from_metadata", False):
@@ -125,7 +135,8 @@ class CommandLineParser(argparse.ArgumentParser):
                 if namespace.controlnet_save_canny == self.get_default("controlnet_save_canny") and (cnet_canny_from_metadata := prior_gen_metadata.get("controlnet_save_canny", None)):
                     namespace.controlnet_save_canny = cnet_canny_from_metadata
 
-        if namespace.model is None:
+        # Only require model if we're not in training mode
+        if namespace.model is None and not has_training_args:
             self.error("--model / -m must be provided, or 'model' must be specified in the config file.")
 
         if self.supports_image_generation and namespace.prompt is None:
