@@ -20,7 +20,7 @@ class QuantizationUtil:
         q_level = weights.meta_data.quantization_level
 
         if quantize is not None or q_level is not None:
-            bits = q_level if q_level is not None else quantize
+            bits = int(q_level) if q_level is not None else quantize
             # fmt: off
             nn.quantize(vae, class_predicate=lambda _, m: isinstance(m, nn.Linear), group_size=64, bits=bits)
             nn.quantize(transformer, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 64, group_size=64, bits=bits)
@@ -36,5 +36,5 @@ class QuantizationUtil:
     ):
         q_level = weights.meta_data.quantization_level
         if quantize is not None or q_level is not None:
-            bits = q_level if q_level is not None else quantize
+            bits = int(q_level) if q_level is not None else quantize
             nn.quantize(transformer_controlnet, class_predicate=lambda _, m: isinstance(m, nn.Linear) and len(m.weight[1]) > 128, group_size=128, bits=bits)  # fmt: off

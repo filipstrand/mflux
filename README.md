@@ -618,7 +618,7 @@ mflux-train --train-config src/mflux/dreambooth/_example/train.json
 ```
 
 By default, this will train an adapter with images of size `512x512` with a batch size of 1 and can take up to several hours to fully complete depending on your machine.
-If this task is too computationally demanding, see the section on [memory issues](#memory-issues) for tips on how to speed things up and what tradeoffs exists.
+If this task is too computationally demanding, see the section on [memory issues](#memory-issues) for tips on how to speed things up and what tradeoffs exist.
 
 During training, MFLUX will output training checkpoints with artifacts (weights, states) according to what is specified in the configuration file.
 As specified in the file `train.json`, these files will be placed in a folder on the Desktop called `~/Desktop/train`, but this can of course be changed to any other path by adjusting the configuration. 
@@ -643,11 +643,11 @@ There are two nice properties of the training procedure:
 Because of these, MFLUX has the ability to resume a training run from a previous checkpoint and have the results
 be *exactly* identical to a training run which was never interrupted in the first place.
 
-*⚠️ Note: Everything but the dataset itself is contained within this zipfile, as the dataset can be quite large.
+*⚠️ Note: Everything but the dataset itself is contained within this zip file, as the dataset can be quite large.
 The zip file will contain configuration files which point to the original dataset, so make sure that it is in the same place when resuming training*.
 
 *⚠️ Note: One current limitation is that a training run can only be resumed if it has not yet been completed. 
-In other words, only checkpoints that represents an interrupted training-run can be resumed and run until completion.*
+In other words, only checkpoints that represent an interrupted training-run can be resumed and run until completion.*
 
 #### Configuration details
 
@@ -687,7 +687,7 @@ The maximum range available for the different layer categories are:
 *⚠️ Note: As the joint transformer blocks (`transformer_blocks`) - are placed earlier on in the sequence of computations, they will require more resources to train.
 In other words, training later layers, such as only the `single_transformer_blocks` should be faster. However, training too few / only later layers might result in a faster but unsuccessful training.*
 
-*Under the `examples` section, there is an argument called `"path"` which specified where the images are located. This path is relative to the config file itself.*
+*Under the `examples` section, there is an argument called `"path"` which specifies where the images are located. This path is relative to the config file itself.*
 
 #### Memory issues
 
@@ -713,16 +713,16 @@ Note, however, that reducing the trainable parameters might lead to worse perfor
 #### Misc
 
 This feature is currently v1 and can be considered a bit experimental. Interfaces might change (configuration file setup etc.)
-The aim is to also gradually expand the scope of this feature with alternatives techniques, data augmentation etc.
+The aim is to also gradually expand the scope of this feature with alternative techniques, data augmentation etc.
 
 - As with loading external LoRA adapters, the MFLUX training currently only supports training the transformer part of the network.
 - Sometimes, a model trained with the `dev` model might actually work better when applied to the `schnell` weights.
 - Currently, all training images are assumed to be in the resolution specified in the configuration file.
-- Loss curve can be a bit misleading/hard to read, sometimes it conveys little improvement over time, but actual image samples shows the real progress.
-- When plotting the loss during training, we label it as "validation loss" but is actually only the first 10 elements of the training examples for now. Future updates should support user inputs of separate validation images.
+- Loss curve can be a bit misleading/hard to read, sometimes it conveys little improvement over time, but actual image samples show the real progress.
+- When plotting the loss during training, we label it as "validation loss" but it is actually only the first 10 elements of the training examples for now. Future updates should support user inputs of separate validation images.
 - Training also works with the original model as quantized!
-- [For the curious, a motivation for the loss function can be found at here](src/mflux/dreambooth/optimization/_loss_derivation/dreambooth_loss.pdf).
-- Two great resources that heavily inspired this feature are the: 
+- [For the curious, a motivation for the loss function can be found here](src/mflux/dreambooth/optimization/_loss_derivation/dreambooth_loss.pdf).
+- Two great resources that heavily inspired this feature are: 
   - The fine-tuning script in [mlx-examples](https://github.com/ml-explore/mlx-examples/tree/main/flux#finetuning)
   - The original fine-tuning script in [Diffusers](https://huggingface.co/docs/diffusers/v0.11.0/en/training/dreambooth)
 
