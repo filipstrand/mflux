@@ -65,17 +65,19 @@ class LoRALayers:
             return LoRALayers(weights=weights)
 
     @staticmethod
+    @staticmethod
     def _construct_layers(
         block_spec: TransformerBlocks | SingleTransformerBlocks,
         blocks: list[JointTransformerBlock] | list[SingleTransformerBlock],
         block_prefix: str,
     ) -> dict:
-        start = block_spec.block_range.start
-        end = block_spec.block_range.end
+        block_indices = block_spec.block_range.get_blocks()  # Usa il metodo con ()
         lora_layers = {}
-        for i in range(start, end):
-            block = blocks[i]
+        for idx in block_indices:
+            if idx >= len(blocks):
+                raise IndexError(f"Indice {idx} fuori dai limiti della lista dei blocchi.")
 
+            block = blocks[idx]
             for layer_type in block_spec.layer_types:
                 original_layer = LoRALayers._get_nested_attr(block, layer_type)
                 is_list = isinstance(original_layer, list)
@@ -84,7 +86,7 @@ class LoRALayers:
                     linear=original_layer[0] if is_list else original_layer,
                     r=block_spec.lora_rank,
                 )
-                layer_path = f"{block_prefix}.{i}.{layer_type}"
+                layer_path = f"{block_prefix}.{idx}.{layer_type}"
 
                 lora_layers[layer_path] = [lora_layer] if is_list else lora_layer
 
