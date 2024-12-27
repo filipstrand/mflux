@@ -3,7 +3,7 @@ import json
 import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from mflux.dreambooth.state.zip_util import ZipUtil
 
@@ -53,11 +53,19 @@ class SaveSpec:
 class StatisticsSpec:
     state_path: str | None = None
 
-
+#indices and Optional 
 @dataclass
 class BlockRange:
-    start: int
-    end: int
+    start: Optional[int] = None
+    end: Optional[int] = None
+    indices: Optional[List[int]] = None
+
+    def get_blocks(self) -> List[int]:
+        if self.indices:
+            return self.indices
+        if self.start is not None and self.end is not None:
+            return list(range(self.start, self.end + 1))
+        raise ValueError("Devono essere forniti 'start' e 'end' o 'indices'.")
 
 
 @dataclass
@@ -124,6 +132,8 @@ class TrainingSpec:
 
         return TrainingSpec.from_conf(data, path, new_folder)
 
+
+
     @staticmethod
     def from_conf(config: dict, config_path: str | None, new_folder: bool = True) -> "TrainingSpec":
         absolute_config_path = None if config_path is None else Path(config_path).absolute()
@@ -141,7 +151,7 @@ class TrainingSpec:
         statistics = (
             StatisticsSpec() if config.get("statistics", None) is None else StatisticsSpec(**config["statistics"])
         )
-
+        
         # Parse LoraLayers structure
         transformer_blocks = config["lora_layers"].get("transformer_blocks", None)
         if transformer_blocks:
@@ -181,6 +191,7 @@ class TrainingSpec:
             examples=examples,
             config_path=None if absolute_config_path is None else str(absolute_config_path),
         )
+       
 
     def to_json(self) -> str:
         spec_dict = asdict(self)
