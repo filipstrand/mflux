@@ -1,15 +1,16 @@
 import mlx.core as mx
 from mlx import nn
-from mlx.core.fast import scaled_dot_product_attention
+
+from mflux.models.transformer.common.attention_utils import AttentionUtils
 
 
 class JointAttention(nn.Module):
-    head_dimension = 128
-    batch_size = 1
-    num_heads = 24
-
     def __init__(self):
         super().__init__()
+        self.head_dimension = 128
+        self.batch_size = 1
+        self.num_heads = 24
+
         self.to_q = nn.Linear(3072, 3072)
         self.to_k = nn.Linear(3072, 3072)
         self.to_v = nn.Linear(3072, 3072)
@@ -29,51 +30,42 @@ class JointAttention(nn.Module):
         encoder_hidden_states: mx.array,
         image_rotary_emb: mx.array,
     ) -> (mx.array, mx.array):
-        query = self.to_q(hidden_states)
-        key = self.to_k(hidden_states)
-        value = self.to_v(hidden_states)
-
-        query = mx.transpose(mx.reshape(query, (1, -1, 24, 128)), (0, 2, 1, 3))
-        key = mx.transpose(mx.reshape(key, (1, -1, 24, 128)), (0, 2, 1, 3))
-        value = mx.transpose(mx.reshape(value, (1, -1, 24, 128)), (0, 2, 1, 3))
-
-        query = self.norm_q(query)
-        key = self.norm_k(key)
-
-        encoder_hidden_states_query_proj = self.add_q_proj(encoder_hidden_states)
-        encoder_hidden_states_key_proj = self.add_k_proj(encoder_hidden_states)
-        encoder_hidden_states_value_proj = self.add_v_proj(encoder_hidden_states)
-
-        encoder_hidden_states_query_proj = mx.transpose(
-            mx.reshape(encoder_hidden_states_query_proj, (1, -1, 24, 128)),
-            (0, 2, 1, 3),
+        query, key, value = AttentionUtils.process_qkv(
+            hidden_states=hidden_states,
+            to_q=self.to_q,
+            to_k=self.to_k,
+            to_v=self.to_v,
+            norm_q=self.norm_q,
+            norm_k=self.norm_k,
+            num_heads=self.num_heads,
+            head_dim=self.head_dimension,
         )
-        encoder_hidden_states_key_proj = mx.transpose(
-            mx.reshape(encoder_hidden_states_key_proj, (1, -1, 24, 128)),
-            (0, 2, 1, 3),
-        )
-        encoder_hidden_states_value_proj = mx.transpose(
-            mx.reshape(encoder_hidden_states_value_proj, (1, -1, 24, 128)),
-            (0, 2, 1, 3),
+        enc_query, enc_key, enc_value = AttentionUtils.process_qkv(
+            hidden_states=encoder_hidden_states,
+            to_q=self.add_q_proj,
+            to_k=self.add_k_proj,
+            to_v=self.add_v_proj,
+            norm_q=self.norm_added_q,
+            norm_k=self.norm_added_k,
+            num_heads=self.num_heads,
+            head_dim=self.head_dimension,
         )
 
-        encoder_hidden_states_query_proj = self.norm_added_q(encoder_hidden_states_query_proj)
-        encoder_hidden_states_key_proj = self.norm_added_k(encoder_hidden_states_key_proj)
+        query = mx.concatenate([enc_query, query], axis=2)
+        key = mx.concatenate([enc_key, key], axis=2)
+        value = mx.concatenate([enc_value, value], axis=2)
 
-        query = mx.concatenate([encoder_hidden_states_query_proj, query], axis=2)
-        key = mx.concatenate([encoder_hidden_states_key_proj, key], axis=2)
-        value = mx.concatenate([encoder_hidden_states_value_proj, value], axis=2)
+        query, key = AttentionUtils.apply_rope(xq=query, xk=key, freqs_cis=image_rotary_emb)
 
-        query, key = JointAttention.apply_rope(query, key, image_rotary_emb)
-
-        scale = 1 / mx.sqrt(query.shape[-1])
-        hidden_states = scaled_dot_product_attention(query, key, value, scale=scale)
-
-        hidden_states = mx.transpose(hidden_states, (0, 2, 1, 3))
-        hidden_states = mx.reshape(
-            hidden_states,
-            (self.batch_size, -1, self.num_heads * self.head_dimension),
+        hidden_states = AttentionUtils.compute_attention(
+            query=query,
+            key=key,
+            value=value,
+            batch_size=self.batch_size,
+            num_heads=self.num_heads,
+            head_dim=self.head_dimension,
         )
+
         encoder_hidden_states, hidden_states = (
             hidden_states[:, : encoder_hidden_states.shape[1]],
             hidden_states[:, encoder_hidden_states.shape[1] :],
@@ -83,11 +75,3 @@ class JointAttention(nn.Module):
         encoder_hidden_states = self.to_add_out(encoder_hidden_states)
 
         return hidden_states, encoder_hidden_states
-
-    @staticmethod
-    def apply_rope(xq: mx.array, xk: mx.array, freqs_cis: mx.array):
-        xq_ = xq.astype(mx.float32).reshape(*xq.shape[:-1], -1, 1, 2)
-        xk_ = xk.astype(mx.float32).reshape(*xk.shape[:-1], -1, 1, 2)
-        xq_out = freqs_cis[..., 0] * xq_[..., 0] + freqs_cis[..., 1] * xq_[..., 1]
-        xk_out = freqs_cis[..., 0] * xk_[..., 0] + freqs_cis[..., 1] * xk_[..., 1]
-        return xq_out.reshape(*xq.shape).astype(mx.float32), xk_out.reshape(*xk.shape).astype(mx.float32)
