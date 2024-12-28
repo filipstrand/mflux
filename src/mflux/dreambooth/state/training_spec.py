@@ -64,7 +64,7 @@ class BlockRange:
         if self.indices:
             return self.indices
         if self.start is not None and self.end is not None:
-            return list(range(self.start, self.end + 1))
+            return list(range(self.start, self.end - 1))
         raise ValueError("Devono essere forniti 'start' e 'end' o 'indices'.")
 
 
