@@ -1,5 +1,6 @@
 import mlx.core as mx
 from mlx import nn
+from mlx.core.fast import scaled_dot_product_attention
 
 
 class JointAttention(nn.Module):
@@ -65,7 +66,9 @@ class JointAttention(nn.Module):
 
         query, key = JointAttention.apply_rope(query, key, image_rotary_emb)
 
-        hidden_states = JointAttention.attention(query, key, value)
+        scale = 1 / mx.sqrt(query.shape[-1])
+        hidden_states = scaled_dot_product_attention(query, key, value, scale=scale)
+
         hidden_states = mx.transpose(hidden_states, (0, 2, 1, 3))
         hidden_states = mx.reshape(
             hidden_states,
@@ -80,14 +83,6 @@ class JointAttention(nn.Module):
         encoder_hidden_states = self.to_add_out(encoder_hidden_states)
 
         return hidden_states, encoder_hidden_states
-
-    @staticmethod
-    def attention(query, key, value):
-        scale = 1 / mx.sqrt(query.shape[-1])
-        scores = (query * scale) @ key.transpose(0, 1, 3, 2)
-        attn = mx.softmax(scores, axis=-1)
-        hidden_states = attn @ value
-        return hidden_states
 
     @staticmethod
     def apply_rope(xq: mx.array, xk: mx.array, freqs_cis: mx.array):

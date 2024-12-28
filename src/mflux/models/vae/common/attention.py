@@ -1,5 +1,6 @@
 import mlx.core as mx
 from mlx import nn
+from mlx.core.fast import scaled_dot_product_attention
 
 from mflux.config.config import Config
 
@@ -20,14 +21,18 @@ class Attention(nn.Module):
 
         y = self.group_norm(input_array.astype(mx.float32)).astype(Config.precision)
 
-        queries = self.to_q(y).reshape(B, H * W, C)
-        keys = self.to_k(y).reshape(B, H * W, C)
-        values = self.to_v(y).reshape(B, H * W, C)
+        queries = self.to_q(y).reshape(B, H * W, 1, C)
+        keys = self.to_k(y).reshape(B, H * W, 1, C)
+        values = self.to_v(y).reshape(B, H * W, 1, C)
+
+        queries = mx.transpose(queries, (0, 2, 1, 3))
+        keys = mx.transpose(keys, (0, 2, 1, 3))
+        values = mx.transpose(values, (0, 2, 1, 3))
 
         scale = 1 / mx.sqrt(queries.shape[-1])
-        scores = (queries * scale) @ keys.transpose(0, 2, 1)
-        attn = mx.softmax(scores, axis=-1)
-        y = (attn @ values).reshape(B, H, W, C)
+        y = scaled_dot_product_attention(queries, keys, values, scale=scale)
+
+        y = mx.transpose(y, (0, 2, 1, 3)).reshape(B, H, W, C)
 
         y = self.to_out[0](y)
         output_tensor = input_array + y

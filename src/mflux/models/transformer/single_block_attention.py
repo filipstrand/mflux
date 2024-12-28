@@ -1,5 +1,6 @@
 import mlx.core as mx
 from mlx import nn
+from mlx.core.fast import scaled_dot_product_attention
 
 
 class SingleBlockAttention(nn.Module):
@@ -29,21 +30,15 @@ class SingleBlockAttention(nn.Module):
 
         query, key = SingleBlockAttention.apply_rope(query, key, image_rotary_emb)
 
-        hidden_states = SingleBlockAttention.attention(query, key, value)
+        scale = 1 / mx.sqrt(query.shape[-1])
+        hidden_states = scaled_dot_product_attention(query, key, value, scale=scale)
+
         hidden_states = mx.transpose(hidden_states, (0, 2, 1, 3))
         hidden_states = mx.reshape(
             hidden_states,
             (self.batch_size, -1, self.num_heads * self.head_dimension),
         )
 
-        return hidden_states
-
-    @staticmethod
-    def attention(query, key, value):
-        scale = 1 / mx.sqrt(query.shape[-1])
-        scores = (query * scale) @ key.transpose(0, 1, 3, 2)
-        attn = mx.softmax(scores, axis=-1)
-        hidden_states = attn @ value
         return hidden_states
 
     @staticmethod
