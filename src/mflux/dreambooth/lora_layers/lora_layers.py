@@ -65,6 +65,7 @@ class LoRALayers:
             return LoRALayers(weights=weights)
 
     @staticmethod
+    @staticmethod
     def _construct_layers(
         block_spec: TransformerBlocks | SingleTransformerBlocks,
         blocks: list[JointTransformerBlock] | list[SingleTransformerBlock],
