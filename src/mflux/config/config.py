@@ -11,10 +11,11 @@ class Config:
 
     def __init__(
         self,
-        num_inference_steps: int = 4,
+        num_inference_steps: int = 8,
         width: int = 1024,
-        height: int = 1024,
-        guidance: float = 4.0,
+        height: int = 1536,
+        guidance: float = 3.6,
+        output: str = "/Volumes/Newhome/ImgMFLUX/fluxr0x.png",
         init_image_path: Path | None = None,
         init_image_strength: float | None = None,
     ):
@@ -26,6 +27,7 @@ class Config:
         self.guidance = guidance
         self.init_image_path = init_image_path
         self.init_image_strength = init_image_strength
+        self.output = output
 
 
 class ConfigControlnet(Config):

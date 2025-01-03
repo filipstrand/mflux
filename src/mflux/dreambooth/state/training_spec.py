@@ -3,7 +3,7 @@ import json
 import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from mflux.dreambooth.state.zip_util import ZipUtil
 
@@ -54,10 +54,19 @@ class StatisticsSpec:
     state_path: str | None = None
 
 
+# indices and Optional
 @dataclass
 class BlockRange:
-    start: int
-    end: int
+    start: Optional[int] = None
+    end: Optional[int] = None
+    indices: Optional[List[int]] = None
+
+    def get_blocks(self) -> List[int]:
+        if self.indices:
+            return self.indices
+        if self.start is not None and self.end is not None:
+            return list(range(self.start, self.end - 1))
+        raise ValueError("Devono essere forniti 'start' e 'end' o 'indices'.")
 
 
 @dataclass
