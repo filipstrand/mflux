@@ -141,7 +141,7 @@ class Flux1Controlnet:
                 )
 
                 # 3.t Predict the noise
-                noise = self.transformer.predict(
+                noise = self.transformer.predict_with_t(
                     t=t,
                     prompt_embeds=prompt_embeds,
                     pooled_prompt_embeds=pooled_prompt_embeds,

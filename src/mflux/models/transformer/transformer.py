@@ -30,7 +30,7 @@ class Transformer(nn.Module):
         self.norm_out = AdaLayerNormContinuous(3072, 3072)
         self.proj_out = nn.Linear(3072, 64)
 
-    def predict(
+    def predict_with_t(
         self,
         t: int,
         prompt_embeds: mx.array,
@@ -40,7 +40,29 @@ class Transformer(nn.Module):
         controlnet_block_samples: list[mx.array] | None = None,
         controlnet_single_block_samples: list[mx.array] | None = None,
     ) -> mx.array:
-        time_step = config.sigmas[t] * config.num_train_steps
+        return self.predict_with_sigma(
+            t,
+            config.sigmas[t],
+            prompt_embeds,
+            pooled_prompt_embeds,
+            hidden_states,
+            config,
+            controlnet_block_samples,
+            controlnet_single_block_samples,
+        )
+
+    def predict_with_sigma(
+        self,
+        t: float,
+        sigma_t: float,
+        prompt_embeds: mx.array,
+        pooled_prompt_embeds: mx.array,
+        hidden_states: mx.array,
+        config: RuntimeConfig,
+        controlnet_block_samples: list[mx.array] | None = None,
+        controlnet_single_block_samples: list[mx.array] | None = None,
+    ) -> mx.array:
+        time_step = sigma_t * config.num_train_steps
         time_step = mx.broadcast_to(time_step, (1,)).astype(config.precision)
         hidden_states = self.x_embedder(hidden_states)
         guidance = mx.broadcast_to(config.guidance * config.num_train_steps, (1,)).astype(config.precision)
@@ -67,6 +89,7 @@ class Transformer(nn.Module):
 
         for idx, block in enumerate(self.single_transformer_blocks):
             hidden_states = block(
+                t=t,
                 hidden_states=hidden_states,
                 text_embeddings=text_embeddings,
                 rotary_embeddings=image_rotary_emb,

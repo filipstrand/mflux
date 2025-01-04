@@ -1,24 +1,39 @@
 import mlx.core as mx
 from mlx import nn
 
+from mflux.flux.v_cache import VCache
+
 
 class SingleBlockAttention(nn.Module):
     head_dimension = 128
     batch_size = 1
     num_heads = 24
 
-    def __init__(self):
+    def __init__(self, layer):
         super().__init__()
+        self.layer = layer
         self.to_q = nn.Linear(3072, 3072)
         self.to_k = nn.Linear(3072, 3072)
         self.to_v = nn.Linear(3072, 3072)
         self.norm_q = nn.RMSNorm(128)
         self.norm_k = nn.RMSNorm(128)
 
-    def __call__(self, hidden_states: mx.array, image_rotary_emb: mx.array) -> (mx.array, mx.array):
+    def __call__(self, t: float, hidden_states: mx.array, image_rotary_emb: mx.array) -> (mx.array, mx.array):
         query = self.to_q(hidden_states)
         key = self.to_k(hidden_states)
+
+        # Handle the values from inversion
+        key_hash = hash((t, id(self)))
         value = self.to_v(hidden_states)
+
+        if self.layer > 15:
+            if VCache.is_inverting:
+                if t <= VCache.t_max:
+                    VCache.v_cache[key_hash] = mx.array(value)
+            else:
+                if t <= VCache.t_max:
+                    value = VCache.v_cache.get(key_hash, None)
+                    value = value if value is not None else self.to_v(hidden_states)
 
         query = mx.transpose(mx.reshape(query, (1, -1, 24, 128)), (0, 2, 1, 3))
         key = mx.transpose(mx.reshape(key, (1, -1, 24, 128)), (0, 2, 1, 3))

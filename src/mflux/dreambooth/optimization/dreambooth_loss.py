@@ -53,7 +53,7 @@ class DreamBoothLoss:
         )  # fmt: off
 
         # Predict the noise from timestep t
-        predicted_noise = flux.transformer.predict(
+        predicted_noise = flux.transformer.predict_with_t(
             t=t,
             prompt_embeds=example.prompt_embeds,
             pooled_prompt_embeds=example.pooled_prompt_embeds,

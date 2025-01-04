@@ -13,11 +13,12 @@ class SingleTransformerBlock(nn.Module):
         self.layer = layer
         self.norm = AdaLayerNormZeroSingle()
         self.proj_mlp = nn.Linear(3072, 4 * 3072)
-        self.attn = SingleBlockAttention()
+        self.attn = SingleBlockAttention(layer)
         self.proj_out = nn.Linear(3072 + 4 * 3072, 3072)
 
     def __call__(
         self,
+        t: float,
         hidden_states: mx.array,
         text_embeddings: mx.array,
         rotary_embeddings: mx.array,
@@ -26,6 +27,7 @@ class SingleTransformerBlock(nn.Module):
         norm_hidden_states, gate = self.norm(x=hidden_states, text_embeddings=text_embeddings)
         mlp_hidden_states = nn.gelu_approx(self.proj_mlp(norm_hidden_states))
         attn_output = self.attn(
+            t=t,
             hidden_states=norm_hidden_states,
             image_rotary_emb=rotary_embeddings,
         )
