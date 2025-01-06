@@ -36,6 +36,7 @@ class Flux1(nn.Module):
         lora_scales: list[float] | None = None,
     ):
         super().__init__()
+
         self.lora_paths = lora_paths
         self.lora_scales = lora_scales
         self.model_config = model_config
@@ -66,10 +67,83 @@ class Flux1(nn.Module):
         lora_weights = WeightHandlerLoRA.load_lora_weights(transformer=self.transformer, lora_files=lora_paths, lora_scales=lora_scales)  # fmt:off
         WeightHandlerLoRA.set_lora_weights(transformer=self.transformer, loras=lora_weights)
 
+    def invert(
+        self,
+        prompt: str,
+        seed: int,
+        init_image_path: Path,
+        config: Config = Config(),
+        stepwise_output_dir: Path = None,
+    ) -> (mx.array, mx.array):
+        # Create a new runtime config based on the model type and input parameters
+        config = RuntimeConfig(config, self.model_config)
+        time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
+        stepwise_handler = StepwiseHandler(
+            flux=self,
+            config=config,
+            seed=seed,
+            prompt=prompt,
+            time_steps=time_steps,
+            output_dir=stepwise_output_dir,
+        )
+
+        # 1. Create the initial latents from the image
+        image_latents = LatentCreator.encode_image(
+            init_image_path=init_image_path,
+            width=config.width,
+            height=config.height,
+            vae=self.vae,
+        )  # fmt: off
+
+        # 2. Embed the prompt
+        t5_tokens = self.t5_tokenizer.tokenize(prompt)
+        clip_tokens = self.clip_tokenizer.tokenize(prompt)
+        prompt_embeds = self.t5_text_encoder(t5_tokens)
+        pooled_prompt_embeds = self.clip_text_encoder(clip_tokens)
+
+        latents = mx.array(image_latents)
+        for gen_step, t in enumerate(time_steps, 1):
+            try:
+                dt = config.sigmas[config.num_inference_steps - 1 - t] - config.sigmas[config.num_inference_steps - t]
+
+                # 3.t Predict the noise with higher order terms
+                noise1 = self.transformer.predict_with_sigma(
+                    t=float(config.num_inference_steps - t),
+                    sigma_t=config.sigmas[config.num_inference_steps - t],
+                    prompt_embeds=prompt_embeds,
+                    pooled_prompt_embeds=pooled_prompt_embeds,
+                    hidden_states=latents,
+                    config=config,
+                )
+                noise2 = self.transformer.predict_with_sigma(
+                    t=float(config.num_inference_steps - t) - 0.5,
+                    sigma_t=config.sigmas[config.num_inference_steps - t] + 0.5 * dt,
+                    prompt_embeds=prompt_embeds,
+                    pooled_prompt_embeds=pooled_prompt_embeds,
+                    hidden_states=latents + noise1 * 0.5 * dt,
+                    config=config,
+                )
+
+                # 4.t Take one denoise step
+                latents += dt * noise2
+
+                # Handle stepwise output if enabled
+                stepwise_handler.process_step(config.num_inference_steps - t, latents)
+
+                # Evaluate to enable progress tracking
+                mx.eval(latents)
+
+            except KeyboardInterrupt:  # noqa: PERF203
+                stepwise_handler.handle_interruption()
+                raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(time_steps)}")
+
+        return latents, image_latents
+
     def generate_image(
         self,
         seed: int,
         prompt: str,
+        latents: mx.array,
         config: Config = Config(),
         stepwise_output_dir: Path = None,
     ) -> GeneratedImage:
@@ -85,10 +159,7 @@ class Flux1(nn.Module):
             output_dir=stepwise_output_dir,
         )
 
-        # 1. Create the initial latents
-        latents = LatentCreator.create_for_txt2img_or_img2img(seed, config, self.vae)
-
-        # 2. Embed the prompt
+        # 1. Embed the prompt
         t5_tokens = self.t5_tokenizer.tokenize(prompt)
         clip_tokens = self.clip_tokenizer.tokenize(prompt)
         prompt_embeds = self.t5_text_encoder(t5_tokens)
@@ -96,18 +167,28 @@ class Flux1(nn.Module):
 
         for gen_step, t in enumerate(time_steps, 1):
             try:
-                # 3.t Predict the noise
-                noise = self.transformer.predict(
-                    t=t,
+                dt = config.sigmas[t + 1] - config.sigmas[t]
+
+                # 2.t Predict the noise with higher order terms
+                noise1 = self.transformer.predict_with_sigma(
+                    t=float(t),
+                    sigma_t=config.sigmas[t],
                     prompt_embeds=prompt_embeds,
                     pooled_prompt_embeds=pooled_prompt_embeds,
                     hidden_states=latents,
                     config=config,
                 )
+                noise2 = self.transformer.predict_with_sigma(
+                    t=float(t) + 0.5,
+                    sigma_t=config.sigmas[t] + 0.5 * dt,
+                    prompt_embeds=prompt_embeds,
+                    pooled_prompt_embeds=pooled_prompt_embeds,
+                    hidden_states=latents + noise1 * 0.5 * dt,
+                    config=config,
+                )
 
-                # 4.t Take one denoise step
-                dt = config.sigmas[t + 1] - config.sigmas[t]
-                latents += noise * dt
+                # 3.t Take one denoise step
+                latents += dt * noise2
 
                 # Handle stepwise output if enabled
                 stepwise_handler.process_step(gen_step, latents)
@@ -119,7 +200,7 @@ class Flux1(nn.Module):
                 stepwise_handler.handle_interruption()
                 raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(time_steps)}")
 
-        # 5. Decode the latent array and return the image
+        # 4. Decode the latent array and return the image
         latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
