@@ -27,6 +27,10 @@ class RuntimeConfig:
     def guidance(self) -> float:
         return self.config.guidance
 
+    @guidance.setter
+    def guidance(self, value: float):
+        self.config.guidance = value
+
     @property
     def num_inference_steps(self) -> int:
         return self.config.num_inference_steps
