@@ -1,47 +1,49 @@
-import time
 from pathlib import Path
 
 from mflux import Config, Flux1, ModelConfig, StopImageGenerationException
-from mflux.ui.cli.parsers import CommandLineParser
+
+# image_path = "/Users/filipstrand/Desktop/lighthouse.png"
+# source_prompt = "The image features a tall white lighthouse standing prominently on a hill, with a beautiful blue sky in the background. The lighthouse is illuminated by a bright light, making it a prominent landmark in the scene."
+# target_prompt = "The image features Big ben clock tower standing prominently on a hill, with a beautiful blue sky in the background. The Big ben clock tower is illuminated by a bright light, making it a prominent landmark in the scene."
+
+image_path = "/Users/filipstrand/Desktop/gas_station.png"
+source_prompt = "A gas station with a white and red sign that reads 'CAFE' There are several cars parked in front of the gas station, including a white car and a van."
+target_prompt = "A gas station with a white and red sign that reads 'CVPR' There are several cars parked in front of the gas station, including a white car and a van."
+
+height = 512
+width = 512
+steps = 28
+seed = 2
+source_guidance = 1.5
+target_guidance = 5.5
 
 
 def main():
-    # fmt: off
-    parser = CommandLineParser(description="Generate an image based on a prompt.")
-    parser.add_model_arguments(require_model_arg=False)
-    parser.add_lora_arguments()
-    parser.add_image_generator_arguments(supports_metadata_config=True)
-    parser.add_image_to_image_arguments(required=False)
-    parser.add_output_arguments()
-    args = parser.parse_args()
-
     # Load the model
     flux = Flux1(
-        model_config=ModelConfig.from_alias(args.model),
-        quantize=args.quantize,
-        local_path=args.path,
-        lora_paths=args.lora_paths,
-        lora_scales=args.lora_scales,
+        model_config=ModelConfig.FLUX1_DEV,
+        quantize=4,
     )
 
     try:
-        # Generate an image
         image = flux.generate_image(
-            seed=int(time.time()) if args.seed is None else args.seed,
-            prompt=args.prompt,
-            stepwise_output_dir=Path(args.stepwise_image_output_dir) if args.stepwise_image_output_dir else None,
+            seed=seed,
+            src_prompt=source_prompt,
+            tar_prompt=target_prompt,
+            src_guidance=source_guidance,
+            tar_guidance=target_guidance,
+            image_path=image_path,
+            stepwise_output_dir=Path("/Users/filipstrand/Desktop/edit"),
             config=Config(
-                num_inference_steps=args.steps,
-                height=args.height,
-                width=args.width,
-                guidance=args.guidance,
-                init_image_path=args.init_image_path,
-                init_image_strength=args.init_image_strength,
+                num_inference_steps=steps,
+                height=height,
+                width=width,
+                guidance=0.0,
             ),
         )
 
         # Save the image
-        image.save(path=args.output, export_json_metadata=args.metadata)
+        image.save(path="edited.png")
     except StopImageGenerationException as stop_exc:
         print(stop_exc)
 

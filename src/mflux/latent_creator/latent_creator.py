@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import mlx.core as mx
 from mlx import nn
 
@@ -35,20 +37,35 @@ class LatentCreator:
             return pure_noise
         else:
             # Image2Image
-            user_image = ImageUtil.load_image(runtime_conf.config.init_image_path).convert("RGB")
-            scaled_user_image = ImageUtil.scale_to_dimensions(
-                image=user_image,
-                target_width=runtime_conf.width,
-                target_height=runtime_conf.height,
+            latents = LatentCreator.encode_image(
+                init_image_path=runtime_conf.config.init_image_path,
+                height=runtime_conf.height,
+                width=runtime_conf.width,
+                vae=vae,
             )
-            encoded = vae.encode(ImageUtil.to_array(scaled_user_image))
-            latents = ArrayUtil.pack_latents(latents=encoded, height=runtime_conf.height, width=runtime_conf.width)
             sigma = runtime_conf.sigmas[runtime_conf.init_time_step]
             return LatentCreator.add_noise_by_interpolation(
                 clean=latents,
                 noise=pure_noise,
                 sigma=sigma
             )  # fmt: off
+
+    @staticmethod
+    def encode_image(
+        init_image_path: Path,
+        width: int,
+        height: int,
+        vae: nn.Module,
+    ):
+        user_image = ImageUtil.load_image(init_image_path).convert("RGB")
+        scaled_user_image = ImageUtil.scale_to_dimensions(
+            image=user_image,
+            target_width=width,
+            target_height=height,
+        )
+        encoded = vae.encode(ImageUtil.to_array(scaled_user_image))
+        latents = ArrayUtil.pack_latents(latents=encoded, height=height, width=width)
+        return latents
 
     @staticmethod
     def add_noise_by_interpolation(clean: mx.array, noise: mx.array, sigma: float) -> mx.array:
