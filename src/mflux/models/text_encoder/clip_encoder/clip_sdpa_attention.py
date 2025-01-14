@@ -1,5 +1,6 @@
 import mlx.core as mx
 from mlx import nn
+from mlx.core.fast import scaled_dot_product_attention
 
 
 class CLIPSdpaAttention(nn.Module):
@@ -23,20 +24,13 @@ class CLIPSdpaAttention(nn.Module):
         key = CLIPSdpaAttention.reshape_and_transpose(key, self.batch_size, self.num_heads, self.head_dimension)
         value = CLIPSdpaAttention.reshape_and_transpose(value, self.batch_size, self.num_heads, self.head_dimension)
 
-        hidden_states = CLIPSdpaAttention.masked_attention(query, key, value, causal_attention_mask)
+        scale = 1 / mx.sqrt(query.shape[-1])
+        hidden_states = scaled_dot_product_attention(query, key, value, scale=scale, mask=causal_attention_mask)
+
         hidden_states = mx.transpose(hidden_states, (0, 2, 1, 3))
         hidden_states = mx.reshape(hidden_states, (self.batch_size, -1, self.num_heads * self.head_dimension))
 
         hidden_states = self.out_proj(hidden_states)
-        return hidden_states
-
-    @staticmethod
-    def masked_attention(query, key, value, mask):
-        scale = 1 / mx.sqrt(query.shape[-1])
-        scores = (query * scale) @ key.transpose(0, 1, 3, 2)
-        scores = scores + mask
-        attn = mx.softmax(scores, axis=-1)
-        hidden_states = attn @ value
         return hidden_states
 
     @staticmethod
