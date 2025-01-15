@@ -1,6 +1,7 @@
 import math
 
 import mlx.core as mx
+import numpy as np
 from mlx import nn
 
 from mflux.config.model_config import ModelConfig
@@ -30,6 +31,15 @@ class Transformer(nn.Module):
         self.norm_out = AdaLayerNormContinuous(3072, 3072)
         self.proj_out = nn.Linear(3072, 64)
 
+        self.enable_teacache = True
+        self.cnt = 0
+        self.rel_l1_thresh = (
+            0.6  # 0.25 for 1.5x speedup, 0.4 for 1.8x speedup, 0.6 for 2.0x speedup, 0.8 for 2.25x speedup
+        )
+        self.accumulated_rel_l1_distance = 0
+        self.previous_modulated_input = None
+        self.previous_residual = None
+
     def predict(
         self,
         t: int,
@@ -50,6 +60,59 @@ class Transformer(nn.Module):
         img_ids = Transformer.prepare_latent_image_ids(config.height, config.width)
         ids = mx.concatenate((txt_ids, img_ids), axis=1)
         image_rotary_emb = self.pos_embed(ids)
+
+        # =================
+        # fmt: off
+        self.num_steps = config.num_inference_steps
+        inp = mx.array(hidden_states)
+        temb_ = mx.array(text_embeddings)
+        modulated_inp, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.transformer_blocks[0].norm1(inp, text_embeddings=temb_)
+        if self.cnt == 0 or self.cnt == self.num_steps-1:
+            should_calc = True
+            self.accumulated_rel_l1_distance = 0
+        else:
+            coefficients = [4.98651651e+02, -2.83781631e+02,  5.58554382e+01, -3.82021401e+00, 2.64230861e-01]
+            rescale_func = np.poly1d(coefficients)
+            self.accumulated_rel_l1_distance += rescale_func(((modulated_inp-self.previous_modulated_input).abs().mean() / self.previous_modulated_input.abs().mean()).cpu().item())
+            if self.accumulated_rel_l1_distance < self.rel_l1_thresh:
+                should_calc = False
+            else:
+                should_calc = True
+                self.accumulated_rel_l1_distance = 0
+        self.previous_modulated_input = modulated_inp
+        self.cnt += 1
+        if self.cnt == self.num_steps:
+            self.cnt = 0
+        # fmt: off
+        # =================
+
+        if not should_calc:
+            hidden_states += self.previous_residual
+        else:
+            hidden_states = self.regular_forward_pass(
+                controlnet_block_samples,
+                controlnet_single_block_samples,
+                encoder_hidden_states,
+                hidden_states,
+                image_rotary_emb,
+                text_embeddings
+            )
+
+        hidden_states = self.norm_out(hidden_states, text_embeddings)
+        hidden_states = self.proj_out(hidden_states)
+        noise = hidden_states
+        return noise
+
+    def regular_forward_pass(
+        self,
+        controlnet_block_samples,
+        controlnet_single_block_samples,
+        encoder_hidden_states,
+        hidden_states,
+        image_rotary_emb,
+        text_embeddings,
+    ):
+        ori_hidden_states = mx.array(hidden_states)
 
         for idx, block in enumerate(self.transformer_blocks):
             encoder_hidden_states, hidden_states = block(
@@ -80,10 +143,8 @@ class Transformer(nn.Module):
                 )
 
         hidden_states = hidden_states[:, encoder_hidden_states.shape[1] :, ...]
-        hidden_states = self.norm_out(hidden_states, text_embeddings)
-        hidden_states = self.proj_out(hidden_states)
-        noise = hidden_states
-        return noise
+        self.previous_residual = hidden_states - ori_hidden_states
+        return hidden_states
 
     @staticmethod
     def prepare_latent_image_ids(height: int, width: int) -> mx.array:
