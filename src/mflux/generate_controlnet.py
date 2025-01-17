@@ -1,7 +1,7 @@
 import time
 from pathlib import Path
 
-from mflux import ConfigControlnet, Flux1Controlnet, ModelConfig, StopImageGenerationException
+from mflux import ConfigControlnet, Flux1Controlnet, ModelLookup, StopImageGenerationException
 from mflux.ui.cli.parsers import CommandLineParser
 
 
@@ -16,7 +16,7 @@ def main():
 
     # Load the model
     flux = Flux1Controlnet(
-        model_config=ModelConfig.from_alias(args.model),
+        model_config=ModelLookup.from_name(args.model, base_model=args.base_model),
         quantize=args.quantize,
         local_path=args.path,
         lora_paths=args.lora_paths,

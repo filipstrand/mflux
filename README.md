@@ -263,7 +263,7 @@ Or, with the correct python environment active, create and run a separate script
 from mflux import Flux1, Config
 
 # Load the model
-flux = Flux1.from_alias(
+flux = Flux1.from_name(
    alias="schnell",  # "schnell" or "dev"
    quantize=8,       # 4 or 8
 )

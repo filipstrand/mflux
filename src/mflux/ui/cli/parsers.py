@@ -6,6 +6,21 @@ from pathlib import Path
 from mflux.ui import defaults as ui_defaults
 
 
+class ModelSpecAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        if values in ["dev", "schnell"]:
+            setattr(namespace, self.dest, values)
+            return
+
+        if values.count("/") != 1:
+            raise argparse.ArgumentError(
+                self, ('Value must be either "dev", "schnell", or "' f'in format "org/model". Got: {values}')
+            )
+
+        # If we got here, values contains exactly one slash
+        setattr(namespace, self.dest, values)
+
+
 # fmt: off
 class CommandLineParser(argparse.ArgumentParser):
 
@@ -19,12 +34,12 @@ class CommandLineParser(argparse.ArgumentParser):
 
     def add_model_arguments(self, path_type: t.Literal["load", "save"] = "load", require_model_arg: bool = True) -> None:
 
-        self.add_argument("--model", "-m", type=str, required=require_model_arg, choices=ui_defaults.MODEL_CHOICES, help=f"The model to use ({' or '.join(ui_defaults.MODEL_CHOICES)}).")
-
+        self.add_argument("--model", "-m", type=str, required=require_model_arg, action=ModelSpecAction, help=f"The model to use ({' or '.join(ui_defaults.MODEL_CHOICES)} or a compatible huggingface repo_id org/model).")
         if path_type == "load":
             self.add_argument("--path", type=str, default=None, help="Local path for loading a model from disk")
         else:
             self.add_argument("--path", type=str, required=True, help="Local path for saving a model to disk.")
+        self.add_argument("--base-model", type=str, required=False, choices=ui_defaults.MODEL_CHOICES, help="When using a third-party huggingface model, explicitly specify whether the base model is dev or schnell")
         self.add_argument("--quantize",  "-q", type=int, choices=ui_defaults.QUANTIZE_CHOICES, default=None, help=f"Quantize the model ({' or '.join(map(str, ui_defaults.QUANTIZE_CHOICES))}, Default is None)")
 
     def add_lora_arguments(self) -> None:
@@ -92,6 +107,9 @@ class CommandLineParser(argparse.ArgumentParser):
             if namespace.model is None:
                 # when not provided by CLI flag, find it in the config file
                 namespace.model = prior_gen_metadata.get("model", None)
+
+            if namespace.base_model is None:
+                namespace.base_model = prior_gen_metadata.get("base_model", None)
 
             if namespace.prompt is None:
                 namespace.prompt = prior_gen_metadata.get("prompt", None)

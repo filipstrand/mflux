@@ -14,7 +14,7 @@ class TimeTextEmbed(nn.Module):
     def __init__(self, model_config: ModelConfig):
         super().__init__()
         self.text_embedder = TextEmbedder()
-        self.guidance_embedder = GuidanceEmbedder() if model_config == ModelConfig.FLUX1_DEV else None
+        self.guidance_embedder = GuidanceEmbedder() if model_config.supports_guidance else None
         self.timestep_embedder = TimestepEmbedder()
 
     def __call__(
