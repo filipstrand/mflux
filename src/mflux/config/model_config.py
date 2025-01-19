@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import dataclass
 from typing import Literal
 
@@ -22,14 +23,6 @@ class ModelConfig:
     supports_guidance: bool
     base_model: str | None
 
-    @property
-    def alias(self):
-        # maintain compatibility with < 0.4.0 behavior
-        # where alias is the name of an official model
-        if self.model_name.startswith("black-forest-labs/FLUX.1-"):
-            return self.model_name[len("black-forest-labs/FLUX.1-") :].lower()
-        return None
-
 
 DefaultModelConfigs = {
     "dev": ModelConfig(
@@ -51,17 +44,26 @@ DefaultModelConfigs = {
 
 class ModelLookup:
     @staticmethod
+    def from_alias(alias: str) -> ModelConfig:
+        warnings.warn(
+            "from_alias is deprecated and will be removed in a future release. " "Please use from_name instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return ModelLookup.from_name(model_name=alias, base_model=None)
+
+    @staticmethod
     def from_name(
-        alias: str,
+        model_name: str,
         base_model: Literal["dev", "schnell"] | None = None,
     ) -> ModelConfig:
-        if alias in DefaultModelConfigs:
-            return DefaultModelConfigs[alias]
+        if model_name in DefaultModelConfigs:
+            return DefaultModelConfigs[model_name]
 
-        if all(["dev" not in alias, "schnell" not in alias, base_model is None]):
+        if all(["dev" not in model_name, "schnell" not in model_name, base_model is None]):
             raise ModelConfigError(
                 "Cannot infer base model and max_sequence_length "
-                f"from model reference: {alias!r}. "
+                f"from model reference: {model_name!r}. "
                 "Please specify --base-model [dev | schnell]"
             )
 
@@ -69,10 +71,10 @@ class ModelLookup:
             raise InvalidBaseModel("As of this version, mflux only recognizes base models dev or schnell")
 
         if base_model is None:
-            # infer base model on apparent model namming
-            if "dev" in alias:
+            # infer base model on apparent model naming
+            if "dev" in model_name:
                 base_model = "dev"
-            elif "schnell" in alias:
+            elif "schnell" in model_name:
                 base_model = "schnell"
 
         if base_model == "dev":
@@ -83,16 +85,14 @@ class ModelLookup:
             max_sequence_length = KNOWN_SEQUENCE_LENGTH_BY_BASE_MODEL["schnell"]
 
         return ModelConfig(
-            alias,  # actually this arg is model_name
-            DEFAULT_TRAIN_STEPS,
-            max_sequence_length,
-            supports_guidance,
-            base_model,
+            model_name=model_name,
+            num_train_steps=DEFAULT_TRAIN_STEPS,
+            max_sequence_length=max_sequence_length,
+            supports_guidance=supports_guidance,
+            base_model=base_model,
         )
 
 
-# maintain old `ModelConfig.from_alias` function name for backwards compatibility in user code and docs
-ModelConfig.from_alias = ModelLookup.from_name
 # keep these class members to be backwards compatible with < 0.5.0 ModelConfig Enum implementation
 ModelConfig.FLUX1_DEV = DefaultModelConfigs["dev"]
 ModelConfig.FLUX1_SCHNELL = DefaultModelConfigs["schnell"]
