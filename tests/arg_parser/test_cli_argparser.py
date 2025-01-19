@@ -93,10 +93,12 @@ def test_model_arg_not_in_file(mflux_generate_parser, mflux_generate_minimal_arg
     with patch('sys.argv', mflux_generate_minimal_argv + ['--model', 'dev', '--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
         args = mflux_generate_parser.parse_args()
         assert args.model == "dev"
+        assert args.base_model is None
     # test value read from flag
     with patch('sys.argv', mflux_generate_minimal_argv + ['--model', 'schnell', '--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
         args = mflux_generate_parser.parse_args()
         assert args.model == "schnell"
+        assert args.base_model is None
 
 
 def test_model_arg_in_file(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):
@@ -112,6 +114,25 @@ def test_model_arg_in_file(mflux_generate_parser, mflux_generate_minimal_argv, b
     with patch('sys.argv', mflux_generate_minimal_argv + ['--model', 'schnell', '--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
         args = mflux_generate_parser.parse_args()
         assert args.model == "schnell"
+
+
+def test_base_model_arg_in_file(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):
+    metadata_file = temp_dir / "model.json"
+    with metadata_file.open("wt") as m:
+        base_metadata_dict["model"] = "some-lab/some-model"
+        base_metadata_dict["base_model"] = "dev"
+        json.dump(base_metadata_dict, m, indent=4)
+    # test value read from file
+    with patch('sys.argv', mflux_generate_minimal_argv + ['--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
+        args = mflux_generate_parser.parse_args()
+        assert args.model == "some-lab/some-model"
+        assert args.base_model == "dev"
+    # test value read from flag, overrides value from file
+    with patch('sys.argv', mflux_generate_minimal_argv + ['--base-model', 'schnell', '--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
+        args = mflux_generate_parser.parse_args()
+        assert args.model == "some-lab/some-model"
+        # override metadata base model with CLI --base-model
+        assert args.base_model == "schnell"
 
 
 def test_prompt_arg(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):
