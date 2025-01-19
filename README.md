@@ -264,8 +264,8 @@ from mflux import Flux1, Config
 
 # Load the model
 flux = Flux1.from_name(
-   alias="schnell",  # "schnell" or "dev"
-   quantize=8,       # 4 or 8
+   model_name="schnell",  # "schnell" or "dev"
+   quantize=8,            # 4 or 8
 )
 
 # Generate an image

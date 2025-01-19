@@ -57,9 +57,7 @@ class GeneratedImage:
             # mflux_version is used by future metadata readers
             # to determine supportability of metadata-derived workflows
             "mflux_version": GeneratedImage.get_version(),
-            "model": str(self.model_config.alias)
-            if self.model_config.alias is not None
-            else self.model_config.model_name,
+            "model": self.model_config.model_name,
             "base_model": str(self.model_config.base_model),
             "seed": self.seed,
             "steps": self.steps,

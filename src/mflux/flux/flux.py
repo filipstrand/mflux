@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 
 import mlx.core as mx
@@ -136,14 +137,20 @@ class Flux1(nn.Module):
         )
 
     @staticmethod
+    def from_alias(alias: str, quantize: int | None = None) -> "Flux1":
+        warnings.warn(
+            "from_alias is deprecated and will be removed in a future release. " "Please use from_name instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return Flux1.from_name(model_name=alias, quantize=quantize)
+
+    @staticmethod
     def from_name(model_name: str, quantize: int | None = None) -> "Flux1":
         return Flux1(
-            model_config=ModelLookup.from_name(model_name),
+            model_config=ModelLookup.from_name(model_name=model_name, base_model=None),
             quantize=quantize,
         )
-
-    # maintain old `from_alias` function name for backwards compatibility in user code and docs
-    from_alias = from_name
 
     def save_model(self, base_path: str) -> None:
         ModelSaver.save_model(self, self.bits, base_path)

@@ -17,7 +17,7 @@ def main():
 
     # Load the model
     flux = Flux1(
-        model_config=ModelLookup.from_name(args.model, base_model=args.base_model),
+        model_config=ModelLookup.from_name(model_name=args.model, base_model=args.base_model),
         quantize=args.quantize,
         local_path=args.path,
         lora_paths=args.lora_paths,
