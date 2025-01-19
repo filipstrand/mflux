@@ -46,7 +46,7 @@ class ModelLookup:
     @staticmethod
     def from_alias(alias: str) -> ModelConfig:
         warnings.warn(
-            "from_alias is deprecated and will be removed in a future release. " "Please use from_name instead.",
+            "from_alias is deprecated and will be removed in a future release. Please use from_name instead.",
             DeprecationWarning,
             stacklevel=2,
         )
