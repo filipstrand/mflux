@@ -1,4 +1,4 @@
-from mflux import Flux1, ModelConfig
+from mflux import Flux1, ModelLookup
 from mflux.ui.cli.parsers import CommandLineParser
 
 
@@ -11,7 +11,7 @@ def main():
     print(f"Saving model {args.model} with quantization level {args.quantize}\n")
 
     flux = Flux1(
-        model_config=ModelConfig.from_alias(args.model),
+        model_config=ModelLookup.from_name(args.model, base_model=args.base_model),
         quantize=args.quantize,
         lora_paths=args.lora_paths,
         lora_scales=args.lora_scales,

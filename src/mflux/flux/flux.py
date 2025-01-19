@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 
 import mlx.core as mx
@@ -5,7 +6,7 @@ from mlx import nn
 from tqdm import tqdm
 
 from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
+from mflux.config.model_config import ModelConfig, ModelLookup
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.error.exceptions import StopImageGenerationException
 from mflux.latent_creator.latent_creator import LatentCreator
@@ -137,8 +138,17 @@ class Flux1(nn.Module):
 
     @staticmethod
     def from_alias(alias: str, quantize: int | None = None) -> "Flux1":
+        warnings.warn(
+            "from_alias is deprecated and will be removed in a future release. Please use from_name instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return Flux1.from_name(model_name=alias, quantize=quantize)
+
+    @staticmethod
+    def from_name(model_name: str, quantize: int | None = None) -> "Flux1":
         return Flux1(
-            model_config=ModelConfig.from_alias(alias),
+            model_config=ModelLookup.from_name(model_name=model_name, base_model=None),
             quantize=quantize,
         )
 
