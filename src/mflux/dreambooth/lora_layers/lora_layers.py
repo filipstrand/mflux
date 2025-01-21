@@ -65,13 +65,12 @@ class LoRALayers:
             return LoRALayers(weights=weights)
 
     @staticmethod
-    @staticmethod
     def _construct_layers(
         block_spec: TransformerBlocks | SingleTransformerBlocks,
         blocks: list[JointTransformerBlock] | list[SingleTransformerBlock],
         block_prefix: str,
     ) -> dict:
-        block_indices = block_spec.block_range.get_blocks()  # Usa il metodo con ()
+        block_indices = block_spec.block_range.get_blocks()  
         lora_layers = {}
         for idx in block_indices:
             if idx >= len(blocks):
