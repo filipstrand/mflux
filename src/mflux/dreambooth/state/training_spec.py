@@ -54,7 +54,7 @@ class StatisticsSpec:
     state_path: str | None = None
 
 
-# indices and Optional
+
 @dataclass
 class BlockRange:
     start: Optional[int] = None
@@ -66,7 +66,7 @@ class BlockRange:
             return self.indices
         if self.start is not None and self.end is not None:
             return list(range(self.start, self.end - 1))
-        raise ValueError("Devono essere forniti 'start' e 'end' o 'indices'.")
+        raise ValueError("Either ‘start’ and ‘end’ or ‘indices’ must be provided.")
 
 
 @dataclass
