@@ -1,4 +1,5 @@
 import json
+import random
 from pathlib import Path
 from unittest.mock import patch
 
@@ -40,6 +41,11 @@ def mflux_save_parser() -> CommandLineParser:
 @pytest.fixture
 def mflux_generate_minimal_argv() -> list[str]:
     return ["mflux-generate", "--prompt", "meaning of life"]
+
+
+@pytest.fixture
+def mflux_generate_minimal_model_argv() -> list[str]:
+    return ["mflux-generate", "--prompt", "meaning of life", "--model", "dev"]
 
 
 @pytest.fixture
@@ -182,19 +188,53 @@ def test_quantize_arg(mflux_generate_parser, mflux_generate_minimal_argv, base_m
         assert args.quantize == 8
 
 
-def test_seed_arg(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off
+def test_seed_arg(mflux_generate_parser, mflux_generate_minimal_model_argv, base_metadata_dict, temp_dir):  # fmt: off
     metadata_file = temp_dir / "seed.json"
     with metadata_file.open("wt") as m:
         base_metadata_dict["seed"] = 24
         json.dump(base_metadata_dict, m, indent=4)
     # test metadata config accepted
-    with patch('sys.argv', mflux_generate_minimal_argv + ['--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
+    with patch('sys.argv', mflux_generate_minimal_model_argv + ['--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
         args = mflux_generate_parser.parse_args()
-        assert args.seed == 24
+        assert args.seed == [24]
+        assert "_seed_{seed}" not in args.output
+
     # test CLI override
-    with patch('sys.argv', mflux_generate_minimal_argv + ['--seed', '2424', '--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
+    with patch('sys.argv', mflux_generate_minimal_model_argv + ['--seed', '2424', '--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
         args = mflux_generate_parser.parse_args()
-        assert args.seed == 2424
+        # --seed arg overrides metadata
+        assert args.seed == [2424]
+        assert "_seed_{seed}" not in args.output
+
+    with patch('sys.argv', mflux_generate_minimal_model_argv + ['--seed', '2424', '4848', '9696']):  # fmt: off
+        args = mflux_generate_parser.parse_args()
+        assert args.seed == [2424, 4848, 9696]
+        assert "_seed_{seed}" in args.output
+
+    with patch('sys.argv', mflux_generate_minimal_model_argv + ['--auto-seeds', '5', '--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
+        args = mflux_generate_parser.parse_args()
+        # auto-seeds defers to value from metadata, and is ignored
+        assert len(args.seed) == 1
+        assert args.seed == [24]
+        assert "_seed_{seed}" not in args.output
+
+
+def test_auto_seeds_arg(mflux_generate_parser, mflux_generate_minimal_model_argv):
+    with patch("sys.argv", mflux_generate_minimal_model_argv + ["--seed", "24", "48", "--auto-seeds", "5"]):
+        args = mflux_generate_parser.parse_args()
+        # auto-seeds defers to explicit values of --seed
+        assert len(args.seed) == 2
+        assert args.seed == [24, 48]
+        assert "_seed_{seed}" in args.output
+
+    for _ in range(0, 10):
+        random_auto_seed_count = random.randint(0, 100)
+        with patch("sys.argv", mflux_generate_minimal_model_argv + ["--auto-seeds", str(random_auto_seed_count)]):
+            args = mflux_generate_parser.parse_args()
+            assert len(set(args.seed)) == random_auto_seed_count
+            assert "_seed_{seed}" in args.output
+            for _ in args.seed:
+                assert isinstance(_, int)
 
 
 def test_steps_arg(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off
