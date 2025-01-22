@@ -57,6 +57,9 @@ class WeightHandler:
             ),
         )
 
+    def num_transformer_blocks(self) -> int:
+        return len(self.transformer["transformer_blocks"])
+
     @staticmethod
     def _load_clip_encoder(root_path: Path) -> (dict, int):
         weights, quantization_level, _ = WeightHandler._get_weights("text_encoder", root_path)
