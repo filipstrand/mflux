@@ -777,6 +777,25 @@ with different prompts and LoRA adapters active.
 - Currently, the supported controlnet is the [canny-only version](https://huggingface.co/InstantX/FLUX.1-dev-Controlnet-Canny).
 - Dreambooth training currently does not support sending in training parameters as flags.
 
+### Optional Tool: Batch Image Renamer
+
+With a large number of generated images, some users want to automatically rename their image outputs to reflect the prompts and configs.
+
+The bundled `tools/rename_images.py` is an optional tool that is part with the project repo
+but *not* included in the `mflux` Python package due to additional dependencies that
+do not make sense to become standard project requirements.
+
+The script uses [KeyBERT](https://maartengr.github.io/KeyBERT/) (a keyword extraction library)
+to extract keywords from mflux exif metadata to update the image file names.
+We then use `uv run` to execute the script in an isolated env without affecting your `mflux` env.
+
+Users who want to use or extend this tool to their own needs is encouraged to `git clone` the repo
+then `uv run tools/rename_images.py <paths>` or download the single-file standalone script
+and `uv run your/path/rename_images.py`.
+
+This script's renaming logic can be customized to your needs.
+See `uv run tools/rename_images.py --help` for full CLI usage help.
+
 ### 💡Workflow Tips
 
 - To hide the model fetching status progress bars, `export HF_HUB_DISABLE_PROGRESS_BARS=1`
