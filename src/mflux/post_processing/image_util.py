@@ -154,7 +154,7 @@ class ImageUtil:
     def _embed_metadata(metadata: dict, path: str) -> None:
         try:
             # Convert metadata dictionary to a string
-            metadata_str = str(metadata)
+            metadata_str = json.dumps(metadata)
 
             # Convert the string to bytes (using UTF-8 encoding)
             user_comment_bytes = metadata_str.encode("utf-8")
