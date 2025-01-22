@@ -1,5 +1,7 @@
 import argparse
 import json
+import random
+import time
 import typing as t
 from pathlib import Path
 
@@ -56,7 +58,8 @@ class CommandLineParser(argparse.ArgumentParser):
 
     def add_image_generator_arguments(self, supports_metadata_config=False) -> None:
         self.add_argument("--prompt", type=str, required=(not supports_metadata_config), default=None, help="The textual description of the image to generate.")
-        self.add_argument("--seed", type=int, default=None, help="Entropy Seed (Default is time-based random-seed)")
+        self.add_argument("--seed", type=int, default=None, nargs='+', help="Specify 1+ Entropy Seeds (Default is 1 time-based random-seed)")
+        self.add_argument("--auto-seeds", type=int, default=-1, help="Auto generate N Entropy Seeds (random ints between 0 and 1 billion")
         self._add_image_generator_common_arguments()
         if supports_metadata_config:
             self.add_metadata_config()
@@ -121,8 +124,14 @@ class CommandLineParser(argparse.ArgumentParser):
                 namespace.guidance = guidance_from_metadata
             if namespace.quantize is None:
                 namespace.quantize = prior_gen_metadata.get("quantize", None)
+            seed_from_metadata = prior_gen_metadata.get("seed", None)
+            if namespace.seed is None and seed_from_metadata is not None:
+                namespace.seed = [seed_from_metadata]
+
             if namespace.seed is None:
-                namespace.seed = prior_gen_metadata.get("seed", None)
+                # not passed by user, not populated by metadata
+                namespace.seed = [int(time.time())]
+
             if namespace.steps is None:
                 namespace.steps = prior_gen_metadata.get("steps", None)
 
@@ -156,6 +165,20 @@ class CommandLineParser(argparse.ArgumentParser):
         # Only require model if we're not in training mode
         if namespace.model is None and not has_training_args:
             self.error("--model / -m must be provided, or 'model' must be specified in the config file.")
+
+        if self.supports_image_generation and namespace.seed is None and namespace.auto_seeds > 0:
+            # choose N int seeds in the range of  0 < value < 1 billion
+            namespace.seed = [random.randint(0, int(1e7)) for _ in range(namespace.auto_seeds)]
+
+        if self.supports_image_generation and namespace.seed is None:
+            # final default: did not obtain seed from metadata, --seed, or --auto-seeds
+            namespace.seed = [int(time.time())]
+
+        if self.supports_image_generation and len(namespace.seed) > 1:
+            # auto append seed-$value to output names for multi image generations
+            # e.g. output.png -> output_seed_101.png output_seed_102.png, etc
+            output_path = Path(namespace.output)
+            namespace.output = str(output_path.with_stem(output_path.stem + "_seed_{seed}"))
 
         if self.supports_image_generation and namespace.prompt is None:
             # not supplied by CLI and not supplied by metadata config file
