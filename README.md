@@ -155,9 +155,11 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--model`** or **`-m`** (required, `str`): Model to use for generation (`"schnell"` or `"dev"`).
 
-- **`--output`** (optional, `str`, default: `"image.png"`): Output image filename.
+- **`--output`** (optional, `str`, default: `"image.png"`): Output image filename. If `--seed` `--auto-seeds` establishes N > 1 seed values, the "stem" of the output file name will automatically append `_seed_{value}`.
 
-- **`--seed`** (optional, `int`, default: `None`): Seed for random number generation. Default is time-based.
+- **`--seed`** (optional, repeatable `int` args, default: `None`): 1 or more seeds for random number generation. e.g. `--seed 42` or `--seed 123 456 789`. Default is a single time-based value.
+
+- **`--auto-seeds`** (optional, `int`, default: `None`): Auto generate N random Seeds in a series of image generations. Superceded by `--seed` arg and `seed` values in `--config-from-metadata` files.
 
 - **`--height`** (optional, `int`, default: `1024`): Height of the output image in pixels.
 
