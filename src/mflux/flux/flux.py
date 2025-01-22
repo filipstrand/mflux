@@ -46,14 +46,16 @@ class Flux1(nn.Module):
         self.t5_tokenizer = TokenizerT5(tokenizers.t5, max_length=self.model_config.max_sequence_length)
         self.clip_tokenizer = TokenizerCLIP(tokenizers.clip)
 
+        # Load the weights
+        weights = WeightHandler.load_regular_weights(repo_id=model_config.model_name, local_path=local_path)
+
         # Initialize the models
         self.vae = VAE()
-        self.transformer = Transformer(model_config)
+        self.transformer = Transformer(model_config, num_transformer_blocks=weights.num_transformer_blocks())
         self.t5_text_encoder = T5Encoder()
         self.clip_text_encoder = CLIPEncoder()
 
         # Set the weights and quantize the model
-        weights = WeightHandler.load_regular_weights(repo_id=model_config.model_name, local_path=local_path)
         self.bits = WeightUtil.set_weights_and_quantize(
             quantize_arg=quantize,
             weights=weights,

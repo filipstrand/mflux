@@ -19,13 +19,13 @@ from mflux.models.transformer.time_text_embed import TimeTextEmbed
 
 
 class Transformer(nn.Module):
-    def __init__(self, model_config: ModelConfig):
+    def __init__(self, model_config: ModelConfig, num_transformer_blocks: int):
         super().__init__()
         self.pos_embed = EmbedND()
         self.x_embedder = nn.Linear(64, 3072)
         self.time_text_embed = TimeTextEmbed(model_config=model_config)
         self.context_embedder = nn.Linear(4096, 3072)
-        self.transformer_blocks = [JointTransformerBlock(i) for i in range(19)]
+        self.transformer_blocks = [JointTransformerBlock(i) for i in range(num_transformer_blocks)]
         self.single_transformer_blocks = [SingleTransformerBlock(i) for i in range(38)]
         self.norm_out = AdaLayerNormContinuous(3072, 3072)
         self.proj_out = nn.Linear(3072, 64)
