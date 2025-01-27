@@ -56,8 +56,16 @@ class StatisticsSpec:
 
 @dataclass
 class BlockRange:
-    start: int
-    end: int
+    start: int | None = None
+    end: int | None = None
+    indices: List[int] | None = None
+
+    def get_blocks(self) -> List[int]:
+        if self.indices:
+            return self.indices
+        if self.start is not None and self.end is not None:
+            return list(range(self.start, self.end))
+        raise ValueError("Either 'start' and 'end' or 'indices' must be provided.")
 
 
 @dataclass
