@@ -159,7 +159,7 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--seed`** (optional, repeatable `int` args, default: `None`): 1 or more seeds for random number generation. e.g. `--seed 42` or `--seed 123 456 789`. Default is a single time-based value.
 
-- **`--auto-seeds`** (optional, `int`, default: `None`): Auto generate N random Seeds in a series of image generations. Superceded by `--seed` arg and `seed` values in `--config-from-metadata` files.
+- **`--auto-seeds`** (optional, `int`, default: `None`): Auto generate N random Seeds in a series of image generations. Superseded by `--seed` arg and `seed` values in `--config-from-metadata` files.
 
 - **`--height`** (optional, `int`, default: `1024`): Height of the output image in pixels.
 
@@ -688,6 +688,28 @@ The maximum range available for the different layer categories are:
 - `single_transformer_blocks`:
   - `start: 0`
   - `end: 38`
+
+<details>
+<summary>Specify individual layers</summary>
+
+For even more precision, you can specify individual block indices to train like so:
+
+```json
+"lora_layers": {
+  "single_transformer_blocks": {
+    "block_range": {
+      "indices": [
+        0,
+        1,
+        7,
+        19,
+        20
+      ],
+      ...
+  },
+...
+```
+</details>
 
 *⚠️ Note: As the joint transformer blocks (`transformer_blocks`) - are placed earlier on in the sequence of computations, they will require more resources to train.
 In other words, training later layers, such as only the `single_transformer_blocks` should be faster. However, training too few / only later layers might result in a faster but unsuccessful training.*
