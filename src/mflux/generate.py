@@ -24,7 +24,7 @@ def main():
     )
 
     try:
-        for seed_value in args.seed:  # 1+ values: see argparser --seed and --auto-seeds
+        for seed_value in args.seed:
             # Generate an image for each seed value
             image = flux.generate_image(
                 seed=seed_value,
