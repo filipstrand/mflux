@@ -74,7 +74,7 @@ class LoRALayers:
         lora_layers = {}
         for idx in block_indices:
             if idx >= len(blocks):
-                raise IndexError(f"Indice {idx} over range")
+                raise IndexError(f"Index {idx} over range")
 
             block = blocks[idx]
             for layer_type in block_spec.layer_types:
