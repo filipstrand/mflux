@@ -8,6 +8,8 @@ from mlx.utils import tree_unflatten
 from mflux.weights.weight_handler import MetaData
 from mflux.weights.weight_util import WeightUtil
 
+CONTROLNET_ID = "InstantX/FLUX.1-dev-Controlnet-Canny"
+
 
 class WeightHandlerControlnet:
     def __init__(self, meta_data: MetaData, config: dict, controlnet_transformer: dict | None = None):
@@ -16,8 +18,8 @@ class WeightHandlerControlnet:
         self.config = config
 
     @staticmethod
-    def load_controlnet_transformer(controlnet_id: str) -> "WeightHandlerControlnet":
-        controlnet_path = Path(snapshot_download(repo_id=controlnet_id, allow_patterns=["*.safetensors", "config.json"]))  # fmt:off
+    def load_controlnet_transformer() -> "WeightHandlerControlnet":
+        controlnet_path = Path(snapshot_download(repo_id=CONTROLNET_ID, allow_patterns=["*.safetensors", "config.json"]))  # fmt:off
         file = next(controlnet_path.glob("diffusion_pytorch_model.safetensors"))
         quantization_level = mx.load(str(file), return_metadata=True)[1].get("quantization_level")
         weights = list(mx.load(str(file)).items())
@@ -60,3 +62,9 @@ class WeightHandlerControlnet:
             controlnet_transformer=weights,
             meta_data=MetaData(quantization_level=quantization_level)
         )  # fmt:off
+
+    def num_transformer_blocks(self) -> int:
+        return self.config["num_layers"]
+
+    def num_single_transformer_blocks(self) -> int:
+        return self.config["num_single_layers"]
