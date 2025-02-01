@@ -53,12 +53,12 @@ class DreamBoothLoss:
         )  # fmt: off
 
         # Predict the noise from timestep t
-        predicted_noise = flux.transformer.predict(
+        predicted_noise = flux.transformer(
             t=t,
+            config=config,
+            hidden_states=latents_t,
             prompt_embeds=example.prompt_embeds,
             pooled_prompt_embeds=example.pooled_prompt_embeds,
-            hidden_states=latents_t,
-            config=config,
         )
 
         # Construct the loss (derivation in src/mflux/dreambooth/optimization/_loss_derivation)
