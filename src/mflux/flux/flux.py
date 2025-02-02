@@ -51,7 +51,7 @@ class Flux1(nn.Module):
 
         # Initialize the models
         self.vae = VAE()
-        self.transformer = Transformer(model_config, num_transformer_blocks=weights.num_transformer_blocks())
+        self.transformer = Transformer(model_config, num_transformer_blocks=weights.num_transformer_blocks(), num_single_transformer_blocks=weights.num_single_transformer_blocks())  # fmt: off
         self.t5_text_encoder = T5Encoder()
         self.clip_text_encoder = CLIPEncoder()
 
@@ -100,12 +100,12 @@ class Flux1(nn.Module):
         for gen_step, t in enumerate(time_steps, 1):
             try:
                 # 3.t Predict the noise
-                noise = self.transformer.predict(
+                noise = self.transformer(
                     t=t,
+                    config=config,
+                    hidden_states=latents,
                     prompt_embeds=prompt_embeds,
                     pooled_prompt_embeds=pooled_prompt_embeds,
-                    hidden_states=latents,
-                    config=config,
                 )
 
                 # 4.t Take one denoise step

@@ -18,6 +18,7 @@ class SingleBlockAttention(nn.Module):
         self.norm_k = nn.RMSNorm(128)
 
     def __call__(self, hidden_states: mx.array, image_rotary_emb: mx.array) -> mx.array:
+        # 1a. Compute Q,K,V for hidden_states
         query, key, value = AttentionUtils.process_qkv(
             hidden_states=hidden_states,
             to_q=self.to_q,
@@ -29,8 +30,10 @@ class SingleBlockAttention(nn.Module):
             head_dim=self.head_dimension,
         )
 
+        # 1b. Apply rope to Q,K
         query, key = AttentionUtils.apply_rope(xq=query, xk=key, freqs_cis=image_rotary_emb)
 
+        # 2. Compute attention
         return AttentionUtils.compute_attention(
             query=query,
             key=key,
