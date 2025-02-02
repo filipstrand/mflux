@@ -30,6 +30,7 @@ class JointAttention(nn.Module):
         encoder_hidden_states: mx.array,
         image_rotary_emb: mx.array,
     ) -> (mx.array, mx.array):
+        # 1a. Compute Q,K,V for hidden_states
         query, key, value = AttentionUtils.process_qkv(
             hidden_states=hidden_states,
             to_q=self.to_q,
@@ -40,6 +41,8 @@ class JointAttention(nn.Module):
             num_heads=self.num_heads,
             head_dim=self.head_dimension,
         )
+
+        # 1b. Compute Q,K,V for encoder_hidden_states
         enc_query, enc_key, enc_value = AttentionUtils.process_qkv(
             hidden_states=encoder_hidden_states,
             to_q=self.add_q_proj,
@@ -51,12 +54,15 @@ class JointAttention(nn.Module):
             head_dim=self.head_dimension,
         )
 
+        # 1c. Concatenate results
         query = mx.concatenate([enc_query, query], axis=2)
         key = mx.concatenate([enc_key, key], axis=2)
         value = mx.concatenate([enc_value, value], axis=2)
 
+        # 1d. Apply rope to Q,K
         query, key = AttentionUtils.apply_rope(xq=query, xk=key, freqs_cis=image_rotary_emb)
 
+        # 2. Compute attention
         hidden_states = AttentionUtils.compute_attention(
             query=query,
             key=key,
@@ -66,12 +72,13 @@ class JointAttention(nn.Module):
             head_dim=self.head_dimension,
         )
 
+        # 3. Separate the results
         encoder_hidden_states, hidden_states = (
             hidden_states[:, : encoder_hidden_states.shape[1]],
             hidden_states[:, encoder_hidden_states.shape[1] :],
         )
 
+        # 4. Project the output
         hidden_states = self.to_out[0](hidden_states)
         encoder_hidden_states = self.to_add_out(encoder_hidden_states)
-
         return hidden_states, encoder_hidden_states
