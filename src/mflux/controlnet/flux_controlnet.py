@@ -1,6 +1,4 @@
-import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import mlx.core as mx
 from tqdm import tqdm
@@ -18,6 +16,7 @@ from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.transformer.transformer import Transformer
 from mflux.models.vae.vae import VAE
 from mflux.post_processing.array_util import ArrayUtil
+from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
 from mflux.post_processing.stepwise_handler import StepwiseHandler
 from mflux.tokenizer.clip_tokenizer import TokenizerCLIP
@@ -27,14 +26,6 @@ from mflux.weights.model_saver import ModelSaver
 from mflux.weights.weight_handler import WeightHandler
 from mflux.weights.weight_handler_lora import WeightHandlerLoRA
 from mflux.weights.weight_util import WeightUtil
-
-if TYPE_CHECKING:
-    from mflux.post_processing.generated_image import GeneratedImage
-
-
-log = logging.getLogger(__name__)
-
-CONTROLNET_ID = "InstantX/FLUX.1-dev-Controlnet-Canny"
 
 
 class Flux1Controlnet:
@@ -61,7 +52,7 @@ class Flux1Controlnet:
 
         # Initialize the models
         self.vae = VAE()
-        self.transformer = Transformer(model_config, num_transformer_blocks=weights.num_transformer_blocks())
+        self.transformer = Transformer(model_config, num_transformer_blocks=weights.num_transformer_blocks(), num_single_transformer_blocks=weights.num_single_transformer_blocks())  # fmt: off
         self.t5_text_encoder = T5Encoder()
         self.clip_text_encoder = CLIPEncoder()
 
@@ -80,8 +71,8 @@ class Flux1Controlnet:
         WeightHandlerLoRA.set_lora_weights(transformer=self.transformer, loras=lora_weights)
 
         # Set Controlnet weights
-        weights_controlnet = WeightHandlerControlnet.load_controlnet_transformer(controlnet_id=CONTROLNET_ID)
-        self.transformer_controlnet = TransformerControlnet(model_config=model_config, num_blocks=weights_controlnet.config["num_layers"], num_single_blocks=weights_controlnet.config["num_single_layers"])  # fmt:off
+        weights_controlnet = WeightHandlerControlnet.load_controlnet_transformer()
+        self.transformer_controlnet = TransformerControlnet(model_config=model_config, num_transformer_blocks=weights_controlnet.num_transformer_blocks(), num_single_transformer_blocks=weights_controlnet.num_single_transformer_blocks())  # fmt:off
         WeightUtil.set_controlnet_weights_and_quantize(
             quantize_arg=quantize,
             weights=weights_controlnet,
@@ -89,15 +80,15 @@ class Flux1Controlnet:
         )
 
     def generate_image(
-            self,
-            seed: int,
-            prompt: str,
-            output: str,
-            controlnet_image_path: str,
-            controlnet_save_canny: bool = False,
-            config: ConfigControlnet = ConfigControlnet(),
-            stepwise_output_dir: Path = None,
-    ) -> "GeneratedImage":  # fmt: off
+        self,
+        seed: int,
+        prompt: str,
+        output: str,
+        controlnet_image_path: str,
+        controlnet_save_canny: bool = False,
+        config: ConfigControlnet = ConfigControlnet(),
+        stepwise_output_dir: Path = None,
+    ) -> GeneratedImage:  # fmt: off
         # Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.num_inference_steps))
@@ -110,16 +101,8 @@ class Flux1Controlnet:
             output_dir=stepwise_output_dir,
         )
 
-        # Embed the controlnet reference image
-        control_image = ImageUtil.load_image(controlnet_image_path)
-        control_image = ControlnetUtil.scale_image(config.height, config.width, control_image)
-        control_image = ControlnetUtil.preprocess_canny(control_image)
-        if controlnet_save_canny:
-            ControlnetUtil.save_canny_image(control_image, output)
-        controlnet_cond = ImageUtil.to_array(control_image)
-        controlnet_cond = self.vae.encode(controlnet_cond)
-        controlnet_cond = (controlnet_cond / self.vae.scaling_factor) + self.vae.shift_factor
-        controlnet_cond = ArrayUtil.pack_latents(latents=controlnet_cond, height=config.height, width=config.width)
+        # 0. Embed the controlnet reference image
+        controlnet_condition = self._embed_image(config, controlnet_image_path, controlnet_save_canny, output)
 
         # 1. Create the initial latents
         latents = LatentCreator.create(seed=seed, height=config.height, width=config.width)
@@ -130,35 +113,35 @@ class Flux1Controlnet:
         prompt_embeds = self.t5_text_encoder(t5_tokens)
         pooled_prompt_embeds = self.clip_text_encoder(clip_tokens)
 
-        for t in time_steps:
+        for gen_step, t in enumerate(time_steps, 1):
             try:
-                # Compute controlnet samples
+                # 3.t Compute controlnet samples
                 controlnet_block_samples, controlnet_single_block_samples = self.transformer_controlnet(
                     t=t,
+                    config=config,
+                    hidden_states=latents,
                     prompt_embeds=prompt_embeds,
                     pooled_prompt_embeds=pooled_prompt_embeds,
-                    hidden_states=latents,
-                    controlnet_cond=controlnet_cond,
-                    config=config,
+                    controlnet_condition=controlnet_condition,
                 )
 
-                # 3.t Predict the noise
-                noise = self.transformer.predict(
+                # 4.t Predict the noise
+                noise = self.transformer(
                     t=t,
+                    config=config,
+                    hidden_states=latents,
                     prompt_embeds=prompt_embeds,
                     pooled_prompt_embeds=pooled_prompt_embeds,
-                    hidden_states=latents,
-                    config=config,
                     controlnet_block_samples=controlnet_block_samples,
                     controlnet_single_block_samples=controlnet_single_block_samples,
                 )
 
-                # 4.t Take one denoise step
+                # 5.t Take one denoise step
                 dt = config.sigmas[t + 1] - config.sigmas[t]
                 latents += noise * dt
 
                 # Handle stepwise output if enabled
-                stepwise_handler.process_step(t, latents)
+                stepwise_handler.process_step(gen_step, latents)
 
                 # Evaluate to enable progress tracking
                 mx.eval(latents)
@@ -181,6 +164,26 @@ class Flux1Controlnet:
             config=config,
             controlnet_image_path=controlnet_image_path,
         )
+
+    def _embed_image(
+        self,
+        config: RuntimeConfig,
+        controlnet_image_path: str,
+        controlnet_save_canny: bool,
+        output: str,
+    ):
+        control_image = ImageUtil.load_image(controlnet_image_path)
+        control_image = ControlnetUtil.scale_image(config.height, config.width, control_image)
+        control_image = ControlnetUtil.preprocess_canny(control_image)
+
+        if controlnet_save_canny:
+            ControlnetUtil.save_canny_image(control_image, output)
+
+        controlnet_cond = ImageUtil.to_array(control_image)
+        controlnet_cond = self.vae.encode(controlnet_cond)
+        controlnet_cond = (controlnet_cond / self.vae.scaling_factor) + self.vae.shift_factor
+        controlnet_cond = ArrayUtil.pack_latents(latents=controlnet_cond, height=config.height, width=config.width)
+        return controlnet_cond
 
     def save_model(self, base_path: str) -> None:
         ModelSaver.save_model(self, self.bits, base_path)

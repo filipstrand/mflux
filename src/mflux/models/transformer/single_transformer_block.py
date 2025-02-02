@@ -12,8 +12,8 @@ class SingleTransformerBlock(nn.Module):
         super().__init__()
         self.layer = layer
         self.norm = AdaLayerNormZeroSingle()
-        self.proj_mlp = nn.Linear(3072, 4 * 3072)
         self.attn = SingleBlockAttention()
+        self.proj_mlp = nn.Linear(3072, 4 * 3072)
         self.proj_out = nn.Linear(3072 + 4 * 3072, 3072)
 
     def __call__(
@@ -22,15 +22,39 @@ class SingleTransformerBlock(nn.Module):
         text_embeddings: mx.array,
         rotary_embeddings: mx.array,
     ) -> (mx.array, mx.array):
+        # 0. Establish residual connection
         residual = hidden_states
-        norm_hidden_states, gate = self.norm(x=hidden_states, text_embeddings=text_embeddings)
-        mlp_hidden_states = nn.gelu_approx(self.proj_mlp(norm_hidden_states))
+
+        # 1. Compute norm for hidden_states
+        norm_hidden_states, gate = self.norm(
+            hidden_states=hidden_states,
+            text_embeddings=text_embeddings
+        )  # fmt: off
+
+        # 2. Compute attention
         attn_output = self.attn(
             hidden_states=norm_hidden_states,
             image_rotary_emb=rotary_embeddings,
         )
+
+        # 3. Apply norm and feed forward for hidden states
+        hidden_states = self._apply_feed_forward_and_projection(
+            norm_hidden_states=norm_hidden_states,
+            attn_output=attn_output,
+            gate=gate,
+        )
+
+        return residual + hidden_states
+
+    def _apply_feed_forward_and_projection(
+        self,
+        norm_hidden_states: mx.array,
+        attn_output: mx.array,
+        gate: mx.array,
+    ) -> mx.array:
+        feed_forward = self.proj_mlp(norm_hidden_states)
+        mlp_hidden_states = nn.gelu_approx(feed_forward)
         hidden_states = mx.concatenate([attn_output, mlp_hidden_states], axis=2)
         gate = mx.expand_dims(gate, axis=1)
         hidden_states = gate * self.proj_out(hidden_states)
-        hidden_states = residual + hidden_states
         return hidden_states
