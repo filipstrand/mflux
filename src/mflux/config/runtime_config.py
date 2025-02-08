@@ -10,7 +10,11 @@ logger = logging.getLogger(__name__)
 
 
 class RuntimeConfig:
-    def __init__(self, config: Config | ConfigControlnet, model_config):
+    def __init__(
+        self,
+        config: Config | ConfigControlnet,
+        model_config: ModelConfig,
+    ):
         self.config = config
         self.model_config = model_config
         self.sigmas = self._create_sigmas(config, model_config)

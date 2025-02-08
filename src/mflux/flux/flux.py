@@ -9,6 +9,7 @@ from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig, ModelLookup
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.error.exceptions import StopImageGenerationException
+from mflux.flux.flux_initializer import FluxInitializer
 from mflux.latent_creator.latent_creator import LatentCreator
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
@@ -18,16 +19,15 @@ from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
 from mflux.post_processing.stepwise_handler import StepwiseHandler
-from mflux.tokenizer.clip_tokenizer import TokenizerCLIP
-from mflux.tokenizer.t5_tokenizer import TokenizerT5
-from mflux.tokenizer.tokenizer_handler import TokenizerHandler
 from mflux.weights.model_saver import ModelSaver
-from mflux.weights.weight_handler import WeightHandler
-from mflux.weights.weight_handler_lora import WeightHandlerLoRA
-from mflux.weights.weight_util import WeightUtil
 
 
 class Flux1(nn.Module):
+    vae: VAE
+    transformer: Transformer
+    t5_text_encoder: T5Encoder
+    clip_text_encoder: CLIPEncoder
+
     def __init__(
         self,
         model_config: ModelConfig,
@@ -37,37 +37,14 @@ class Flux1(nn.Module):
         lora_scales: list[float] | None = None,
     ):
         super().__init__()
-        self.lora_paths = lora_paths
-        self.lora_scales = lora_scales
-        self.model_config = model_config
-
-        # Load and initialize the tokenizers from disk, huggingface cache, or download from huggingface
-        tokenizers = TokenizerHandler(model_config.model_name, self.model_config.max_sequence_length, local_path)
-        self.t5_tokenizer = TokenizerT5(tokenizers.t5, max_length=self.model_config.max_sequence_length)
-        self.clip_tokenizer = TokenizerCLIP(tokenizers.clip)
-
-        # Load the weights
-        weights = WeightHandler.load_regular_weights(repo_id=model_config.model_name, local_path=local_path)
-
-        # Initialize the models
-        self.vae = VAE()
-        self.transformer = Transformer(model_config, num_transformer_blocks=weights.num_transformer_blocks(), num_single_transformer_blocks=weights.num_single_transformer_blocks())  # fmt: off
-        self.t5_text_encoder = T5Encoder()
-        self.clip_text_encoder = CLIPEncoder()
-
-        # Set the weights and quantize the model
-        self.bits = WeightUtil.set_weights_and_quantize(
-            quantize_arg=quantize,
-            weights=weights,
-            vae=self.vae,
-            transformer=self.transformer,
-            t5_text_encoder=self.t5_text_encoder,
-            clip_text_encoder=self.clip_text_encoder,
+        FluxInitializer.init(
+            flux_model=self,
+            model_config=model_config,
+            quantize=quantize,
+            local_path=local_path,
+            lora_paths=lora_paths,
+            lora_scales=lora_scales,
         )
-
-        # Set LoRA weights
-        lora_weights = WeightHandlerLoRA.load_lora_weights(transformer=self.transformer, lora_files=lora_paths, lora_scales=lora_scales)  # fmt:off
-        WeightHandlerLoRA.set_lora_weights(transformer=self.transformer, loras=lora_weights)
 
     def generate_image(
         self,
@@ -89,7 +66,11 @@ class Flux1(nn.Module):
         )
 
         # 1. Create the initial latents
-        latents = LatentCreator.create_for_txt2img_or_img2img(seed, config, self.vae)
+        latents = LatentCreator.create_for_txt2img_or_img2img(
+            seed=seed,
+            vae=self.vae,
+            runtime_conf=config,
+        )
 
         # 2. Embed the prompt
         t5_tokens = self.t5_tokenizer.tokenize(prompt)
