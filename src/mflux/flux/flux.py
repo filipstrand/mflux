@@ -53,7 +53,7 @@ class Flux1(nn.Module):
         config: Config = Config(),
         stepwise_output_dir: Path = None,
     ) -> GeneratedImage:
-        # Create a new runtime config based on the model type and input parameters
+        # Convert the user config to a runtime config with derived parameters.
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
         stepwise_handler = StepwiseHandler(
@@ -108,15 +108,15 @@ class Flux1(nn.Module):
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,
+            config=config,
             seed=seed,
             prompt=prompt,
             quantization=self.bits,
-            generation_time=time_steps.format_dict["elapsed"],
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
             init_image_path=config.init_image_path,
             init_image_strength=config.init_image_strength,
-            config=config,
+            generation_time=time_steps.format_dict["elapsed"],
         )
 
     @staticmethod

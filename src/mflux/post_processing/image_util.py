@@ -8,25 +8,23 @@ import numpy as np
 import piexif
 import PIL.Image
 
-from mflux.config.config import ConfigControlnet
+from mflux.config.runtime_config import RuntimeConfig
 from mflux.post_processing.generated_image import GeneratedImage
 
 log = logging.getLogger(__name__)
-
-RuntimeConfig: t.TypeAlias = "mflux.config.runtime_config.RuntimeConfig"  # noqa: F821
 
 
 class ImageUtil:
     @staticmethod
     def to_image(
         decoded_latents: mx.array,
+        config: RuntimeConfig,
         seed: int,
         prompt: str,
         quantization: int,
         generation_time: float,
         lora_paths: list[str],
         lora_scales: list[float],
-        config: RuntimeConfig,
         controlnet_image_path: str | None = None,
         init_image_path: str | None = None,
         init_image_strength: float | None = None,
@@ -49,7 +47,7 @@ class ImageUtil:
             init_image_path=init_image_path,
             init_image_strength=init_image_strength,
             controlnet_image_path=controlnet_image_path,
-            controlnet_strength=config.controlnet_strength if isinstance(config.config, ConfigControlnet) else None,
+            controlnet_strength=config.controlnet_strength,
         )
 
     @staticmethod

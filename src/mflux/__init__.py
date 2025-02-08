@@ -1,4 +1,4 @@
-from mflux.config.config import Config, ConfigControlnet
+from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig, ModelLookup
 from mflux.controlnet.flux_controlnet import Flux1Controlnet
 from mflux.error.exceptions import StopImageGenerationException
@@ -9,7 +9,6 @@ __all__ = [
     "Flux1",
     "Flux1Controlnet",
     "Config",
-    "ConfigControlnet",
     "ModelConfig",
     "ModelLookup",
     "ImageUtil",
