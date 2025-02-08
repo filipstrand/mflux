@@ -14,7 +14,7 @@ def main():
     parser.add_output_arguments()
     args = parser.parse_args()
 
-    # Load the model
+    # 1. Load the model
     flux = Flux1(
         model_config=ModelLookup.from_name(model_name=args.model, base_model=args.base_model),
         quantize=args.quantize,
@@ -25,7 +25,7 @@ def main():
 
     try:
         for seed_value in args.seed:
-            # Generate an image for each seed value
+            # 2. Generate an image for each seed value
             image = flux.generate_image(
                 seed=seed_value,
                 prompt=args.prompt,
@@ -39,7 +39,7 @@ def main():
                     init_image_strength=args.init_image_strength,
                 ),
             )
-            # Save the image
+            # 3. Save the image
             image.save(path=args.output.format(seed=seed_value), export_json_metadata=args.metadata)
     except StopImageGenerationException as stop_exc:
         print(stop_exc)

@@ -3,7 +3,7 @@ import logging
 import mlx.core as mx
 import numpy as np
 
-from mflux.config.config import Config, ConfigControlnet
+from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 
 logger = logging.getLogger(__name__)
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class RuntimeConfig:
     def __init__(
         self,
-        config: Config | ConfigControlnet,
+        config: Config,
         model_config: ModelConfig,
     ):
         self.config = config
@@ -54,23 +54,20 @@ class RuntimeConfig:
     @property
     def init_time_step(self) -> int:
         if self.config.init_image_path is None:
-            # text to image, always begin at time step 0
+            # For text-to-image, always begin at time step 0.
             return 0
         else:
-            # we skip to the time step as informed by the init_image_strength
-            # the higher the strength number, the more time steps we skip
+            # For image-to-image: higher strength means we skip more steps.
             strength = max(0.0, min(1.0, self.config.init_image_strength))
-            # if the strength is too small to even influence the image
-            # help the user round up so the init_image has influence at step 1
             t = max(1, int(self.num_inference_steps * strength))
             return t
 
     @property
-    def controlnet_strength(self) -> float:
-        if isinstance(self.config, ConfigControlnet):
+    def controlnet_strength(self) -> float | None:
+        if self.config.controlnet_strength is not None:
             return self.config.controlnet_strength
-        else:
-            raise NotImplementedError("Controlnet conditioning scale is only available for ConfigControlnet")
+
+        return None
 
     @staticmethod
     def _create_sigmas(config, model) -> mx.array:

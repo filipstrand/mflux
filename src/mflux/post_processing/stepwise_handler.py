@@ -40,13 +40,13 @@ class StepwiseHandler:
             stepwise_decoded = self.flux.vae.decode(unpack_latents)
             stepwise_img = ImageUtil.to_image(
                 decoded_latents=stepwise_decoded,
+                config=self.config,
                 seed=self.seed,
                 prompt=self.prompt,
                 quantization=self.flux.bits,
-                generation_time=self.time_steps.format_dict["elapsed"],
                 lora_paths=self.flux.lora_paths,
                 lora_scales=self.flux.lora_scales,
-                config=self.config,
+                generation_time=self.time_steps.format_dict["elapsed"],
             )
             self.step_wise_images.append(stepwise_img)
 

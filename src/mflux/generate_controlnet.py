@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from mflux import ConfigControlnet, Flux1Controlnet, ModelLookup, StopImageGenerationException
+from mflux import Config, Flux1Controlnet, ModelLookup, StopImageGenerationException
 from mflux.ui.cli.parsers import CommandLineParser
 
 
@@ -13,7 +13,7 @@ def main():
     parser.add_output_arguments()
     args = parser.parse_args()
 
-    # Load the model
+    # 1. Load the model
     flux = Flux1Controlnet(
         model_config=ModelLookup.from_name(model_name=args.model, base_model=args.base_model),
         quantize=args.quantize,
@@ -24,7 +24,7 @@ def main():
 
     try:
         for seed_value in args.seed:
-            # Generate an image for each seed value
+            # 2. Generate an image for each seed value
             image = flux.generate_image(
                 seed=seed_value,
                 prompt=args.prompt,
@@ -32,7 +32,7 @@ def main():
                 controlnet_image_path=args.controlnet_image_path,
                 controlnet_save_canny=args.controlnet_save_canny,
                 stepwise_output_dir=Path(args.stepwise_image_output_dir) if args.stepwise_image_output_dir else None,
-                config=ConfigControlnet(
+                config=Config(
                     num_inference_steps=args.steps,
                     height=args.height,
                     width=args.width,
@@ -41,7 +41,7 @@ def main():
                 ),
             )
 
-            # Save the image
+            # 3. Save the image
             image.save(path=args.output.format(seed=seed_value), export_json_metadata=args.metadata)
     except StopImageGenerationException as stop_exc:
         print(stop_exc)
