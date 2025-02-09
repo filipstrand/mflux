@@ -7,4 +7,4 @@ MODEL_INFERENCE_STEPS = {
     "dev": 14,
     "schnell": 4,
 }
-QUANTIZE_CHOICES = [4, 8]
+QUANTIZE_CHOICES = [3, 4, 6, 8]
