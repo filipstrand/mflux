@@ -1,10 +1,12 @@
-from pathlib import Path
-
 from mflux import Config, Flux1Controlnet, ModelLookup, StopImageGenerationException
+from mflux.callbacks.callback_registry import CallbackRegistry
+from mflux.callbacks.instances.canny_saver import CannyImageSaver
+from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
 from mflux.ui.cli.parsers import CommandLineParser
 
 
 def main():
+    # 0. Parse command line arguments
     parser = CommandLineParser(description="Generate an image based on a prompt and a controlnet reference image.")  # fmt: off
     parser.add_model_arguments(require_model_arg=True)
     parser.add_lora_arguments()
@@ -22,16 +24,21 @@ def main():
         lora_scales=args.lora_scales,
     )
 
+    # 2. Register the optional callbacks
+    if args.controlnet_save_canny:
+        CallbackRegistry.register_before_loop(CannyImageSaver(path=args.output))
+    if args.stepwise_image_output_dir:
+        handler = StepwiseHandler(flux=flux, output_dir=args.stepwise_image_output_dir)
+        CallbackRegistry.register_in_loop(handler)
+        CallbackRegistry.register_interrupt(handler)
+
     try:
-        for seed_value in args.seed:
-            # 2. Generate an image for each seed value
+        for seed in args.seed:
+            # 3. Generate an image for each seed value
             image = flux.generate_image(
-                seed=seed_value,
+                seed=seed,
                 prompt=args.prompt,
-                output=args.output,
                 controlnet_image_path=args.controlnet_image_path,
-                controlnet_save_canny=args.controlnet_save_canny,
-                stepwise_output_dir=Path(args.stepwise_image_output_dir) if args.stepwise_image_output_dir else None,
                 config=Config(
                     num_inference_steps=args.steps,
                     height=args.height,
@@ -41,8 +48,8 @@ def main():
                 ),
             )
 
-            # 3. Save the image
-            image.save(path=args.output.format(seed=seed_value), export_json_metadata=args.metadata)
+            # 4. Save the image
+            image.save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)
     except StopImageGenerationException as stop_exc:
         print(stop_exc)
 
