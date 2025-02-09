@@ -1,12 +1,10 @@
 import logging
-import os
 
 import cv2
 import mlx.core as mx
 import numpy as np
 import PIL.Image
 
-from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.vae.vae import VAE
 from mflux.post_processing.array_util import ArrayUtil
 
@@ -17,29 +15,20 @@ class ControlnetUtil:
     @staticmethod
     def encode_image(
         vae: VAE,
-        config: RuntimeConfig,
+        height: int,
+        width: int,
         controlnet_image_path: str,
-        controlnet_save_canny: bool,
-        output: str,
-    ) -> mx.array:
+    ) -> (mx.array, PIL.Image):
         from mflux import ImageUtil
 
         control_image = ImageUtil.load_image(controlnet_image_path)
-        control_image = ControlnetUtil._scale_image(config.height, config.width, control_image)
+        control_image = ControlnetUtil._scale_image(height=height, width=width, img=control_image)
         control_image = ControlnetUtil._preprocess_canny(control_image)
-
-        if controlnet_save_canny:
-            base, ext = os.path.splitext(output)
-            ImageUtil.save_image(
-                image=control_image,
-                path=f"{base}_controlnet_canny{ext}"
-            )  # fmt: off
-
         controlnet_cond = ImageUtil.to_array(control_image)
         controlnet_cond = vae.encode(controlnet_cond)
         controlnet_cond = (controlnet_cond / vae.scaling_factor) + vae.shift_factor
-        controlnet_cond = ArrayUtil.pack_latents(latents=controlnet_cond, height=config.height, width=config.width)
-        return controlnet_cond
+        controlnet_cond = ArrayUtil.pack_latents(latents=controlnet_cond, height=height, width=width)
+        return controlnet_cond, control_image
 
     @staticmethod
     def _preprocess_canny(img: PIL.Image) -> PIL.Image:

@@ -40,9 +40,7 @@ class ImageGeneratorControlnetTestHelper:
             image = flux.generate_image(
                 seed=seed,
                 prompt=prompt,
-                output=str(output_image_path),
                 controlnet_image_path=controlnet_image_path,
-                controlnet_save_canny=False,
                 config=Config(
                     num_inference_steps=steps,
                     height=768,
