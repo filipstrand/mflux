@@ -3,7 +3,7 @@ import os
 import numpy as np
 from PIL import Image
 
-from mflux import ConfigControlnet, Flux1Controlnet, ModelConfig
+from mflux import Config, Flux1Controlnet, ModelConfig
 from tests.image_generation.helpers.image_generation_test_helper import ImageGeneratorTestHelper
 
 
@@ -40,10 +40,8 @@ class ImageGeneratorControlnetTestHelper:
             image = flux.generate_image(
                 seed=seed,
                 prompt=prompt,
-                output=str(output_image_path),
                 controlnet_image_path=controlnet_image_path,
-                controlnet_save_canny=False,
-                config=ConfigControlnet(
+                config=Config(
                     num_inference_steps=steps,
                     height=768,
                     width=493,
