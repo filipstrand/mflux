@@ -52,7 +52,7 @@ class Flux1Controlnet(nn.Module):
         seed: int,
         prompt: str,
         controlnet_image_path: str,
-        config: Config = Config(),
+        config: Config,
     ) -> GeneratedImage:
         # 0. Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)

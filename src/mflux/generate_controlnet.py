@@ -1,4 +1,4 @@
-from mflux import Config, Flux1Controlnet, ModelLookup, StopImageGenerationException
+from mflux import Config, Flux1Controlnet, ModelConfig, StopImageGenerationException
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.callbacks.instances.canny_saver import CannyImageSaver
 from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
@@ -17,7 +17,7 @@ def main():
 
     # 1. Load the model
     flux = Flux1Controlnet(
-        model_config=ModelLookup.from_name(model_name=args.model, base_model=args.base_model),
+        model_config=ModelConfig.from_name(model_name=args.model, base_model=args.base_model),
         quantize=args.quantize,
         local_path=args.path,
         lora_paths=args.lora_paths,

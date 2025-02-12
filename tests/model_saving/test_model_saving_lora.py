@@ -13,7 +13,7 @@ class TestModelSavingLora:
         try:
             # given a saved quantized model on disk (without LoRA)...
             fluxA = Flux1(
-                model_config=ModelConfig.FLUX1_SCHNELL,
+                model_config=ModelConfig.schnell(),
                 quantize=4,
             )
             fluxA.save_model(PATH)
@@ -21,7 +21,7 @@ class TestModelSavingLora:
 
             # ...and given an 'on-the-fly' quantized model which we generate an image from
             fluxB = Flux1(
-                model_config=ModelConfig.FLUX1_SCHNELL,
+                model_config=ModelConfig.schnell(),
                 quantize=4,
                 lora_paths=TestModelSavingLora.get_lora_path(),
                 lora_scales=[1.0],
@@ -39,7 +39,7 @@ class TestModelSavingLora:
 
             # when loading the quantized model from a local path (also without specifying bits) with a LoRA...
             fluxC = Flux1(
-                model_config=ModelConfig.FLUX1_SCHNELL,
+                model_config=ModelConfig.schnell(),
                 local_path=PATH,
                 lora_paths=TestModelSavingLora.get_lora_path(),
                 lora_scales=[1.0],
