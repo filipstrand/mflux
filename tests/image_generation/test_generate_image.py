@@ -9,7 +9,7 @@ class TestImageGenerator:
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_schnell.png",
             output_image_path=TestImageGenerator.OUTPUT_IMAGE_FILENAME,
-            model_config=ModelConfig.FLUX1_SCHNELL,
+            model_config=ModelConfig.schnell(),
             steps=2,
             seed=42,
             height=341,
@@ -21,7 +21,7 @@ class TestImageGenerator:
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_dev.png",
             output_image_path=TestImageGenerator.OUTPUT_IMAGE_FILENAME,
-            model_config=ModelConfig.FLUX1_DEV,
+            model_config=ModelConfig.dev(),
             steps=15,
             seed=42,
             height=341,
@@ -33,7 +33,7 @@ class TestImageGenerator:
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_dev_lora.png",
             output_image_path=TestImageGenerator.OUTPUT_IMAGE_FILENAME,
-            model_config=ModelConfig.FLUX1_DEV,
+            model_config=ModelConfig.dev(),
             steps=15,
             seed=42,
             height=341,
@@ -47,7 +47,7 @@ class TestImageGenerator:
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_dev_lora_multiple.png",
             output_image_path=TestImageGenerator.OUTPUT_IMAGE_FILENAME,
-            model_config=ModelConfig.FLUX1_DEV,
+            model_config=ModelConfig.dev(),
             steps=15,
             seed=42,
             height=341,
@@ -63,7 +63,7 @@ class TestImageGenerator:
             init_image_path="reference_dev_lora.png",
             init_image_strength=0.4,
             output_image_path=TestImageGenerator.OUTPUT_IMAGE_FILENAME,
-            model_config=ModelConfig.FLUX1_DEV,
+            model_config=ModelConfig.dev(),
             steps=8,
             seed=44,
             height=341,

@@ -12,7 +12,7 @@ class TestModelSaving:
         try:
             # given a saved quantized model (and an image from that model)
             fluxA = Flux1(
-                model_config=ModelConfig.FLUX1_DEV,
+                model_config=ModelConfig.dev(),
                 quantize=4,
             )
             image1 = fluxA.generate_image(
@@ -29,7 +29,7 @@ class TestModelSaving:
 
             # when loading the quantized model (also without specifying bits)
             fluxB = Flux1(
-                model_config=ModelConfig.FLUX1_DEV,
+                model_config=ModelConfig.dev(),
                 local_path=PATH,
             )
 

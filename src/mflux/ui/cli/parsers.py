@@ -16,7 +16,7 @@ class ModelSpecAction(argparse.Action):
 
         if values.count("/") != 1:
             raise argparse.ArgumentError(
-                self, ('Value must be either "dev", "schnell", or "' f'in format "org/model". Got: {values}')
+                self, 'Value must be either "dev", "schnell", or "' f'in format "org/model". Got: {values}'
             )
 
         # If we got here, values contains exactly one slash
@@ -26,8 +26,8 @@ class ModelSpecAction(argparse.Action):
 # fmt: off
 class CommandLineParser(argparse.ArgumentParser):
 
-    def __init__(self, *pargs, **kwargs):
-        super().__init__(*pargs, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.supports_metadata_config = False
         self.supports_image_generation = False
         self.supports_controlnet = False

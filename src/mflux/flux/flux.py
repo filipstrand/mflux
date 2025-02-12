@@ -4,11 +4,12 @@ from tqdm import tqdm
 
 from mflux.callbacks.callbacks import Callbacks
 from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig, ModelLookup
+from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.flux.flux_initializer import FluxInitializer
 from mflux.latent_creator.latent_creator import Img2Img, LatentCreator
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
+from mflux.models.text_encoder.prompt_encoder import PromptEncoder
 from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.transformer.transformer import Transformer
 from mflux.models.vae.vae import VAE
@@ -46,7 +47,7 @@ class Flux1(nn.Module):
         self,
         seed: int,
         prompt: str,
-        config: Config = Config(),
+        config: Config,
     ) -> GeneratedImage:
         # 0. Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
@@ -66,10 +67,14 @@ class Flux1(nn.Module):
         )
 
         # 2. Encode the prompt
-        t5_tokens = self.t5_tokenizer.tokenize(prompt)
-        clip_tokens = self.clip_tokenizer.tokenize(prompt)
-        prompt_embeds = self.t5_text_encoder(t5_tokens)
-        pooled_prompt_embeds = self.clip_text_encoder(clip_tokens)
+        prompt_embeds, pooled_prompt_embeds = PromptEncoder.encode_prompt(
+            prompt=prompt,
+            prompt_cache=self.prompt_cache,
+            t5_tokenizer=self.t5_tokenizer,
+            clip_tokenizer=self.clip_tokenizer,
+            t5_text_encoder=self.t5_text_encoder,
+            clip_text_encoder=self.clip_text_encoder,
+        )
 
         # (Optional) Call subscribers for beginning of loop
         Callbacks.before_loop(
@@ -134,7 +139,7 @@ class Flux1(nn.Module):
     @staticmethod
     def from_name(model_name: str, quantize: int | None = None) -> "Flux1":
         return Flux1(
-            model_config=ModelLookup.from_name(model_name=model_name, base_model=None),
+            model_config=ModelConfig.from_name(model_name=model_name, base_model=None),
             quantize=quantize,
         )
 
