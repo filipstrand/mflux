@@ -378,7 +378,7 @@ Luxury food photograph of an italian Linguine pasta alle vongole dish with lots 
 
 ### 🗜️ Quantization
 
-MFLUX supports running FLUX in 4-bit or 8-bit quantized mode. Running a quantized version can greatly speed up the
+MFLUX supports running FLUX in 3, 4, 6, or 8-bit quantized mode. Running a quantized version can greatly speed up the
 generation process and reduce the memory consumption by several gigabytes. [Quantized models also take up less disk space](#-size-comparisons-for-quantized-models).
 
 ```sh
@@ -404,11 +404,10 @@ running the 8-bit quantized version on this particular machine. Unlike the non-q
 
 The model sizes for both `schnell` and `dev` at various quantization levels are as follows:
 
-| 4 bit  | 8 bit   | Original (16 bit) |
-|--------|---------|-------------------|
-| 9.85GB | 18.16GB | 33.73GB           |
+| 3 bit  | 4 bit  | 6 bit   | 8 bit   | Original (16 bit) |
+|--------|--------|---------|---------|-------------------|
+| 7.52GB | 9.61GB | 13.81GB | 18.01GB | 33.73GB           |
 
-The reason weights sizes are not fully cut in half is because a small number of weights are not quantized and kept at full precision.
 
 #### 💾 Saving a quantized version to disk
 

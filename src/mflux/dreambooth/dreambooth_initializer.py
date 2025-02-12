@@ -1,6 +1,6 @@
 import mlx.core.random as random
 
-from mflux import Config, Flux1, ModelLookup
+from mflux import Config, Flux1, ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.dreambooth.dataset.dataset import Dataset
 from mflux.dreambooth.dataset.iterator import Iterator
@@ -28,7 +28,7 @@ class DreamBoothInitializer:
         random.seed(training_spec.seed)
 
         # Load the model
-        model_config = ModelLookup.from_name(training_spec.model)
+        model_config = ModelConfig.from_name(training_spec.model)
         flux = Flux1(
             model_config=model_config,
             quantize=training_spec.quantize,

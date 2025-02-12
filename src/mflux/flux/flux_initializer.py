@@ -1,3 +1,4 @@
+from mflux import ModelConfig
 from mflux.controlnet.transformer_controlnet import TransformerControlnet
 from mflux.controlnet.weight_handler_controlnet import WeightHandlerControlnet
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
@@ -16,13 +17,14 @@ class FluxInitializer:
     @staticmethod
     def init(
         flux_model,
-        model_config,
+        model_config: ModelConfig,
         quantize: int | None,
         local_path: str | None,
         lora_paths: list[str] | None,
         lora_scales: list[float] | None,
     ) -> None:
-        # 0. Set paths and config for later
+        # 0. Set paths, configs and prompt_cache for later
+        flux_model.prompt_cache = {}
         flux_model.lora_paths = lora_paths
         flux_model.lora_scales = lora_scales
         flux_model.model_config = model_config
@@ -81,7 +83,7 @@ class FluxInitializer:
     @staticmethod
     def init_controlnet(
         flux_model,
-        model_config,
+        model_config: ModelConfig,
         quantize: int | None,
         local_path: str | None,
         lora_paths: list[str] | None,

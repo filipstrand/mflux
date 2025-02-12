@@ -70,9 +70,9 @@ class RuntimeConfig:
         return None
 
     @staticmethod
-    def _create_sigmas(config, model) -> mx.array:
+    def _create_sigmas(config: Config, model_config: ModelConfig) -> mx.array:
         sigmas = RuntimeConfig._create_sigmas_values(config.num_inference_steps)
-        if model == ModelConfig.FLUX1_DEV:
+        if model_config.is_dev():
             sigmas = RuntimeConfig._shift_sigmas(sigmas=sigmas, width=config.width, height=config.height)
         return sigmas
 
