@@ -4,7 +4,7 @@ from tqdm import tqdm
 
 from mflux.callbacks.callbacks import Callbacks
 from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig, ModelLookup
+from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.flux.flux_initializer import FluxInitializer
 from mflux.latent_creator.latent_creator import Img2Img, LatentCreator
@@ -47,7 +47,7 @@ class Flux1(nn.Module):
         self,
         seed: int,
         prompt: str,
-        config: Config = Config(),
+        config: Config,
     ) -> GeneratedImage:
         # 0. Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
@@ -139,7 +139,7 @@ class Flux1(nn.Module):
     @staticmethod
     def from_name(model_name: str, quantize: int | None = None) -> "Flux1":
         return Flux1(
-            model_config=ModelLookup.from_name(model_name=model_name, base_model=None),
+            model_config=ModelConfig.from_name(model_name=model_name, base_model=None),
             quantize=quantize,
         )
 

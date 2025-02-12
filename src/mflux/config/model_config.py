@@ -1,98 +1,92 @@
-import warnings
-from dataclasses import dataclass
+from functools import lru_cache
 from typing import Literal
 
-DEFAULT_TRAIN_STEPS = 1000
-
-KNOWN_SEQUENCE_LENGTH_BY_BASE_MODEL = {"dev": 512, "schnell": 256}
+from mflux.error.error import InvalidBaseModel, ModelConfigError
 
 
-class ModelConfigError(ValueError):
-    """User error in model config."""
-
-
-class InvalidBaseModel(ModelConfigError):
-    """Invalid base model, cannot infer model properties."""
-
-
-@dataclass
 class ModelConfig:
-    model_name: str
-    num_train_steps: int
-    max_sequence_length: int
-    supports_guidance: bool
-    base_model: str | None
+    def __init__(
+        self,
+        alias: str | None,
+        model_name: str,
+        base_model: str | None,
+        num_train_steps: int,
+        max_sequence_length: int,
+        supports_guidance: bool,
+    ):
+        self.alias = alias
+        self.model_name = model_name
+        self.base_model = base_model
+        self.num_train_steps = num_train_steps
+        self.max_sequence_length = max_sequence_length
+        self.supports_guidance = supports_guidance
 
-
-DefaultModelConfigs = {
-    "dev": ModelConfig(
-        model_name="black-forest-labs/FLUX.1-dev",
-        num_train_steps=DEFAULT_TRAIN_STEPS,
-        max_sequence_length=KNOWN_SEQUENCE_LENGTH_BY_BASE_MODEL["dev"],
-        supports_guidance=True,
-        base_model=None,
-    ),
-    "schnell": ModelConfig(
-        model_name="black-forest-labs/FLUX.1-schnell",
-        num_train_steps=DEFAULT_TRAIN_STEPS,
-        max_sequence_length=KNOWN_SEQUENCE_LENGTH_BY_BASE_MODEL["schnell"],
-        supports_guidance=False,
-        base_model=None,
-    ),
-}
-
-
-class ModelLookup:
     @staticmethod
-    def from_alias(alias: str) -> ModelConfig:
-        warnings.warn(
-            "from_alias is deprecated and will be removed in a future release. Please use from_name instead.",
-            DeprecationWarning,
-            stacklevel=2,
+    @lru_cache
+    def dev() -> "ModelConfig":
+        return ModelConfig(
+            alias="dev",
+            model_name="black-forest-labs/FLUX.1-dev",
+            base_model=None,
+            num_train_steps=1000,
+            max_sequence_length=512,
+            supports_guidance=True,
         )
-        return ModelLookup.from_name(model_name=alias, base_model=None)
+
+    @staticmethod
+    @lru_cache
+    def schnell() -> "ModelConfig":
+        return ModelConfig(
+            alias="schnell",
+            model_name="black-forest-labs/FLUX.1-schnell",
+            base_model=None,
+            num_train_steps=1000,
+            max_sequence_length=256,
+            supports_guidance=False,
+        )
 
     @staticmethod
     def from_name(
         model_name: str,
         base_model: Literal["dev", "schnell"] | None = None,
-    ) -> ModelConfig:
-        if model_name in DefaultModelConfigs:
-            return DefaultModelConfigs[model_name]
+    ) -> "ModelConfig":
+        dev = ModelConfig.dev()
+        schnell = ModelConfig.schnell()
 
-        if all(["dev" not in model_name, "schnell" not in model_name, base_model is None]):
-            raise ModelConfigError(
-                "Cannot infer base model and max_sequence_length "
-                f"from model reference: {model_name!r}. "
-                "Please specify --base-model [dev | schnell]"
-            )
+        # 0. Validate explicit base_model
+        allowed_names = [dev.alias, dev.model_name, schnell.alias, schnell.model_name]
+        if base_model and base_model not in allowed_names:
+            raise InvalidBaseModel(f"Invalid base_model. Choose one of {allowed_names}")
 
-        if base_model is not None and base_model not in ["dev", "schnell"]:
-            raise InvalidBaseModel("As of this version, mflux only recognizes base models dev or schnell")
+        # 1. If model_name is "dev" or "schnell" then simply return
+        if model_name == dev.model_name or model_name == dev.alias:
+            return dev
+        if model_name == schnell.model_name or model_name == schnell.alias:
+            return schnell
 
-        if base_model is None:
-            # infer base model on apparent model naming
+        # 1. Determine the appropriate base model
+        default_base = None
+        if not base_model:
             if "dev" in model_name:
-                base_model = "dev"
+                default_base = dev
             elif "schnell" in model_name:
-                base_model = "schnell"
+                default_base = schnell
+            else:
+                raise ModelConfigError(f"Cannot infer base_model from {model_name}. Specify --base-model.")
+        elif base_model == dev.model_name or base_model == dev.alias:
+            default_base = dev
+        elif base_model == schnell.model_name or base_model == schnell.alias:
+            default_base = schnell
 
-        if base_model == "dev":
-            supports_guidance = True
-            max_sequence_length = KNOWN_SEQUENCE_LENGTH_BY_BASE_MODEL["dev"]
-        elif base_model == "schnell":
-            supports_guidance = False
-            max_sequence_length = KNOWN_SEQUENCE_LENGTH_BY_BASE_MODEL["schnell"]
-
+        # 2. Construct the config based on the model name and base default
         return ModelConfig(
+            alias=default_base.alias,
             model_name=model_name,
-            num_train_steps=DEFAULT_TRAIN_STEPS,
-            max_sequence_length=max_sequence_length,
-            supports_guidance=supports_guidance,
-            base_model=base_model,
+            base_model=default_base.model_name,
+            num_train_steps=default_base.num_train_steps,
+            max_sequence_length=default_base.max_sequence_length,
+            supports_guidance=default_base.supports_guidance,
         )
 
-
-# keep these class members to be backwards compatible with < 0.5.0 ModelConfig Enum implementation
-ModelConfig.FLUX1_DEV = DefaultModelConfigs["dev"]
-ModelConfig.FLUX1_SCHNELL = DefaultModelConfigs["schnell"]
+    def is_dev(self) -> bool:
+        return self.alias == "dev"

@@ -42,7 +42,7 @@ class TestTrainAndLoadWeights:
 
             # When: Loading a new Flux instance with the trained LoRA...
             fluxB = Flux1(
-                model_config=ModelConfig.FLUX1_DEV,
+                model_config=ModelConfig.dev(),
                 quantize=4,
                 lora_paths=[LORA_FILE],
                 lora_scales=[1.0],

@@ -41,12 +41,12 @@ class Callbacks:
 
     @staticmethod
     def interruption(
-            seed: int,
-            prompt: str,
-            step: int,
-            latents: mx.array,
-            config: RuntimeConfig,
-            time_steps: tqdm
+        seed: int,
+        prompt: str,
+        step: int,
+        latents: mx.array,
+        config: RuntimeConfig,
+        time_steps: tqdm
     ):  # fmt: off
         for subscriber in CallbackRegistry.interrupt_callbacks():
             subscriber.call_interrupt(
