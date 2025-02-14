@@ -87,10 +87,12 @@ class Flux1Controlnet(nn.Module):
         Callbacks.before_loop(
             seed=seed,
             prompt=prompt,
+            latents=latents,
+            config=config,
             canny_image=canny_image
         )  # fmt: off
 
-        for gen_step, t in enumerate(time_steps, 1):
+        for t in time_steps:
             try:
                 # 4.t Compute controlnet samples
                 controlnet_block_samples, controlnet_single_block_samples = self.transformer_controlnet(
@@ -119,9 +121,9 @@ class Flux1Controlnet(nn.Module):
 
                 # (Optional) Call subscribes at end of loop
                 Callbacks.in_loop(
+                    t=t,
                     seed=seed,
                     prompt=prompt,
-                    step=gen_step,
                     latents=latents,
                     config=config,
                     time_steps=time_steps,
@@ -132,9 +134,9 @@ class Flux1Controlnet(nn.Module):
 
             except KeyboardInterrupt:  # noqa: PERF203
                 Callbacks.interruption(
+                    t=t,
                     seed=seed,
                     prompt=prompt,
-                    step=gen_step,
                     latents=latents,
                     config=config,
                     time_steps=time_steps,

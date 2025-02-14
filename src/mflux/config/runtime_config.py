@@ -53,14 +53,16 @@ class RuntimeConfig:
 
     @property
     def init_time_step(self) -> int:
-        if self.config.init_image_path is None:
-            # For text-to-image, always begin at time step 0.
+        is_txt2img = self.config.init_image_path is None or self.config.init_image_strength == 0.0
+
+        if is_txt2img:
             return 0
         else:
-            # For image-to-image: higher strength means we skip more steps.
+            # 1. Clamp strength to [0, 1]
             strength = max(0.0, min(1.0, self.config.init_image_strength))
-            t = max(1, int(self.num_inference_steps * strength))
-            return t
+
+            # 2. Return start time in [1, floor(num_steps * strength)]
+            return max(1, int(self.num_inference_steps * strength))
 
     @property
     def controlnet_strength(self) -> float | None:
