@@ -5,8 +5,9 @@ from mflux.models.transformer.common.attention_utils import AttentionUtils
 
 
 class JointAttention(nn.Module):
-    def __init__(self):
+    def __init__(self, layer: int):
         super().__init__()
+        self.layer = layer
         self.head_dimension = 128
         self.batch_size = 1
         self.num_heads = 24
@@ -26,12 +27,16 @@ class JointAttention(nn.Module):
 
     def __call__(
         self,
+        t: int,
         hidden_states: mx.array,
         encoder_hidden_states: mx.array,
         image_rotary_emb: mx.array,
     ) -> (mx.array, mx.array):
         # 1a. Compute Q,K,V for hidden_states
         query, key, value = AttentionUtils.process_qkv(
+            t=t,
+            block=self,
+            should_cache=False,
             hidden_states=hidden_states,
             to_q=self.to_q,
             to_k=self.to_k,
@@ -44,6 +49,9 @@ class JointAttention(nn.Module):
 
         # 1b. Compute Q,K,V for encoder_hidden_states
         enc_query, enc_key, enc_value = AttentionUtils.process_qkv(
+            t=t,
+            block=self,
+            should_cache=False,
             hidden_states=encoder_hidden_states,
             to_q=self.add_q_proj,
             to_k=self.add_k_proj,

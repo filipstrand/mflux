@@ -5,8 +5,9 @@ from mflux.models.transformer.common.attention_utils import AttentionUtils
 
 
 class SingleBlockAttention(nn.Module):
-    def __init__(self):
+    def __init__(self, layer: int):
         super().__init__()
+        self.layer = layer
         self.head_dimension = 128
         self.batch_size = 1
         self.num_heads = 24
@@ -17,9 +18,12 @@ class SingleBlockAttention(nn.Module):
         self.norm_q = nn.RMSNorm(128)
         self.norm_k = nn.RMSNorm(128)
 
-    def __call__(self, hidden_states: mx.array, image_rotary_emb: mx.array) -> mx.array:
+    def __call__(self, t: int, hidden_states: mx.array, image_rotary_emb: mx.array) -> mx.array:
         # 1a. Compute Q,K,V for hidden_states
         query, key, value = AttentionUtils.process_qkv(
+            t=t,
+            block=self,
+            should_cache=True,
             hidden_states=hidden_states,
             to_q=self.to_q,
             to_k=self.to_k,

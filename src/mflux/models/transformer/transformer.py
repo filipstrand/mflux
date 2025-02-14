@@ -38,6 +38,7 @@ class Transformer(nn.Module):
     def __call__(
         self,
         t: int,
+        sigma_t: float,
         config: RuntimeConfig,
         hidden_states: mx.array,
         prompt_embeds: mx.array,
@@ -48,12 +49,13 @@ class Transformer(nn.Module):
         # 1. Create embeddings
         hidden_states = self.x_embedder(hidden_states)
         encoder_hidden_states = self.context_embedder(prompt_embeds)
-        text_embeddings = Transformer.compute_text_embeddings(t, pooled_prompt_embeds, self.time_text_embed, config)
+        text_embeddings = Transformer.compute_text_embeddings(sigma_t, pooled_prompt_embeds, self.time_text_embed, config)  # fmt: off
         image_rotary_embeddings = Transformer.compute_rotary_embeddings(prompt_embeds, self.pos_embed, config)
 
         # 2. Run the joint transformer blocks
         for idx, block in enumerate(self.transformer_blocks):
             encoder_hidden_states, hidden_states = self._apply_joint_transformer_block(
+                t=t,
                 idx=idx,
                 block=block,
                 hidden_states=hidden_states,
@@ -69,6 +71,7 @@ class Transformer(nn.Module):
         # 4. Run the single transformer blocks
         for idx, block in enumerate(self.single_transformer_blocks):
             hidden_states = self._apply_single_transformer_block(
+                t=t,
                 idx=idx,
                 block=block,
                 hidden_states=hidden_states,
@@ -86,6 +89,7 @@ class Transformer(nn.Module):
 
     def _apply_single_transformer_block(
         self,
+        t: int,
         idx: int,
         block: SingleTransformerBlock,
         hidden_states: mx.array,
@@ -96,6 +100,7 @@ class Transformer(nn.Module):
     ) -> mx.array:
         # 1. Apply single transformer block
         hidden_states = block(
+            t=t,
             hidden_states=hidden_states,
             text_embeddings=text_embeddings,
             rotary_embeddings=image_rotary_embeddings,
@@ -109,6 +114,7 @@ class Transformer(nn.Module):
 
     def _apply_joint_transformer_block(
         self,
+        t: int,
         idx: int,
         block: JointTransformerBlock,
         hidden_states: mx.array,
@@ -119,6 +125,7 @@ class Transformer(nn.Module):
     ) -> mx.array:
         # 1. Apply joint transformer block
         encoder_hidden_states, hidden_states = block(
+            t=t,
             hidden_states=hidden_states,
             encoder_hidden_states=encoder_hidden_states,
             text_embeddings=text_embeddings,
@@ -141,12 +148,12 @@ class Transformer(nn.Module):
 
     @staticmethod
     def compute_text_embeddings(
-        t: int,
+        sigma_t: float,
         pooled_prompt_embeds: mx.array,
         time_text_embed: TimeTextEmbed,
         config: RuntimeConfig,
     ) -> mx.array:
-        time_step = config.sigmas[t] * config.num_train_steps
+        time_step = sigma_t * config.num_train_steps
         time_step = mx.broadcast_to(time_step, (1,)).astype(config.precision)
         guidance = mx.broadcast_to(config.guidance * config.num_train_steps, (1,)).astype(config.precision)
         text_embeddings = time_text_embed(time_step, pooled_prompt_embeds, guidance)

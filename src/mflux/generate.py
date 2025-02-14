@@ -1,52 +1,67 @@
 from mflux import Config, Flux1, ModelConfig, StopImageGenerationException
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
-from mflux.ui.cli.parsers import CommandLineParser
+from mflux.flux.v_cache import VCache
+
+image_path = "/Users/filipstrand/Desktop/cat.png"
+source_prompt = "A cat"
+target_prompt = "A sleeping cat"
+height = 256
+width = 256
+steps = 20
+seed = 2
+source_guidance = 1.5
+target_guidance = 5.5
+VCache.t_max = 10
 
 
 def main():
-    # 0. Parse command line arguments
-    parser = CommandLineParser(description="Generate an image based on a prompt.")
-    parser.add_model_arguments(require_model_arg=False)
-    parser.add_lora_arguments()
-    parser.add_image_generator_arguments(supports_metadata_config=True)
-    parser.add_image_to_image_arguments(required=False)
-    parser.add_output_arguments()
-    args = parser.parse_args()
-
-    # 1. Load the model
+    # Load the model
     flux = Flux1(
-        model_config=ModelConfig.from_name(model_name=args.model, base_model=args.base_model),
-        quantize=args.quantize,
-        local_path=args.path,
-        lora_paths=args.lora_paths,
-        lora_scales=args.lora_scales,
+        model_config=ModelConfig.dev(),
+        quantize=4,
     )
 
-    # 2. Register the optional callbacks
-    if args.stepwise_image_output_dir:
-        handler = StepwiseHandler(flux=flux, output_dir=args.stepwise_image_output_dir)
-        CallbackRegistry.register_before_loop(handler)
-        CallbackRegistry.register_in_loop(handler)
-        CallbackRegistry.register_interrupt(handler)
+    # 2a. Register the optional callbacks - Backwards direction
+    handler_backward = StepwiseHandler(flux=flux, output_dir="/Users/filipstrand/Desktop/backward", forward=False)
+    CallbackRegistry.register_before_loop(handler_backward)
+    CallbackRegistry.register_in_loop(handler_backward)
+    # 2b. Register the optional callbacks - Forwards direction
+    handler_forward = StepwiseHandler(flux=flux, output_dir="/Users/filipstrand/Desktop/forward", forward=True)
+    CallbackRegistry.register_before_loop(handler_forward)
+    CallbackRegistry.register_in_loop(handler_forward)
 
     try:
-        for seed in args.seed:
-            # 3. Generate an image for each seed value
-            image = flux.generate_image(
-                seed=seed,
-                prompt=args.prompt,
-                config=Config(
-                    num_inference_steps=args.steps,
-                    height=args.height,
-                    width=args.width,
-                    guidance=args.guidance,
-                    init_image_path=args.init_image_path,
-                    init_image_strength=args.init_image_strength,
-                ),
-            )
-            # 4. Save the image
-            image.save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)
+        # 1. Invert an existing image
+        VCache.is_inverting = True
+        inverted_latents = flux.invert(
+            seed=seed,
+            prompt=source_prompt,
+            config=Config(
+                num_inference_steps=steps,
+                height=height,
+                width=width,
+                guidance=source_guidance,
+                init_image_path=image_path,
+            ),
+        )
+
+        # 2. Generate a new image based on the inverted one
+        VCache.is_inverting = False
+        image = flux.generate_image(
+            seed=seed,
+            prompt=target_prompt,
+            latents=inverted_latents,
+            config=Config(
+                num_inference_steps=steps,
+                height=height,
+                width=width,
+                guidance=target_guidance,
+            ),
+        )
+
+        # 3. Save the image
+        image.save(path="edited.png")
     except StopImageGenerationException as stop_exc:
         print(stop_exc)
 

@@ -7,6 +7,7 @@ import tqdm
 from mflux import StopImageGenerationException
 from mflux.callbacks.callback import BeforeLoopCallback, InLoopCallback, InterruptCallback
 from mflux.config.runtime_config import RuntimeConfig
+from mflux.flux.v_cache import VCache
 from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.image_util import ImageUtil
 
@@ -16,9 +17,11 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
         self,
         flux,
         output_dir: str,
+        forward: bool,
     ):
         self.flux = flux
         self.output_dir = Path(output_dir)
+        self.forward = forward
         self.step_wise_images = []
 
         if self.output_dir:
@@ -93,12 +96,13 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
             lora_scales=self.flux.lora_scales,
             generation_time=generation_time,
         )
-        stepwise_img.save(
-            path=self.output_dir / f"seed_{seed}_step{step}of{config.num_inference_steps}.png",
-            export_json_metadata=False,
-        )
-        self.step_wise_images.append(stepwise_img)
-        self._save_composite(seed=seed)
+        if self.forward != VCache.is_inverting:
+            stepwise_img.save(
+                path=self.output_dir / f"seed_{seed}_step{step}of{config.num_inference_steps}.png",
+                export_json_metadata=False,
+            )
+            self.step_wise_images.append(stepwise_img)
+            self._save_composite(seed=seed)
 
     def _save_composite(self, seed: int) -> None:
         if self.step_wise_images:

@@ -53,7 +53,7 @@ class RuntimeConfig:
 
     @property
     def init_time_step(self) -> int:
-        is_txt2img = self.config.init_image_path is None or self.config.init_image_strength == 0.0
+        is_txt2img = True
 
         if is_txt2img:
             return 0

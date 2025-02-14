@@ -43,28 +43,27 @@ class Flux1(nn.Module):
             lora_scales=lora_scales,
         )
 
-    def generate_image(
+    def invert(
         self,
         seed: int,
         prompt: str,
         config: Config,
-    ) -> GeneratedImage:
+    ) -> (mx.array, mx.array):
         # 0. Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
 
-        # 1. Create the initial latents
-        latents = LatentCreator.create_for_txt2img_or_img2img(
-            seed=seed,
-            height=config.height,
+        # 1. Create the initial latents from the image
+        latents = LatentCreator.encode_image(
             width=config.width,
+            height=config.height,
             img2img=Img2Img(
                 vae=self.vae,
                 sigmas=config.sigmas,
                 init_time_step=config.init_time_step,
                 init_image_path=config.init_image_path,
-            ),
-        )
+            )
+        )  # fmt: off
 
         # 2. Encode the prompt
         prompt_embeds, pooled_prompt_embeds = PromptEncoder.encode_prompt(
@@ -85,42 +84,109 @@ class Flux1(nn.Module):
         )  # fmt: off
 
         for t in time_steps:
-            try:
-                # 3.t Predict the noise
-                noise = self.transformer(
-                    t=t,
-                    config=config,
-                    hidden_states=latents,
-                    prompt_embeds=prompt_embeds,
-                    pooled_prompt_embeds=pooled_prompt_embeds,
-                )
+            dt = config.sigmas[config.num_inference_steps - 1 - t] - config.sigmas[config.num_inference_steps - t]
 
-                # 4.t Take one denoise step
-                dt = config.sigmas[t + 1] - config.sigmas[t]
-                latents += noise * dt
+            # 3.t Predict the noise with higher order terms
+            noise1 = self.transformer(
+                t=float(config.num_inference_steps - t),
+                sigma_t=config.sigmas[config.num_inference_steps - t],
+                prompt_embeds=prompt_embeds,
+                pooled_prompt_embeds=pooled_prompt_embeds,
+                hidden_states=latents,
+                config=config,
+            )
+            noise2 = self.transformer(
+                t=float(config.num_inference_steps - t) - 0.5,
+                sigma_t=config.sigmas[config.num_inference_steps - t] + 0.5 * dt,
+                prompt_embeds=prompt_embeds,
+                pooled_prompt_embeds=pooled_prompt_embeds,
+                hidden_states=latents + noise1 * 0.5 * dt,
+                config=config,
+            )
 
-                # (Optional) Call subscribes at end of loop
-                Callbacks.in_loop(
-                    t=t,
-                    seed=seed,
-                    prompt=prompt,
-                    latents=latents,
-                    config=config,
-                    time_steps=time_steps,
-                )  # fmt: off
+            # 4.t Take one denoise step
+            latents += dt * noise2
 
-                # (Optional) Evaluate to enable progress tracking
-                mx.eval(latents)
+            # (Optional) Call subscribes at end of loop
+            Callbacks.in_loop(
+                t=config.num_inference_steps - t,
+                seed=seed,
+                prompt=prompt,
+                latents=latents,
+                config=config,
+                time_steps=time_steps,
+            )  # fmt: off
 
-            except KeyboardInterrupt:  # noqa: PERF203
-                Callbacks.interruption(
-                    t=t,
-                    seed=seed,
-                    prompt=prompt,
-                    latents=latents,
-                    config=config,
-                    time_steps=time_steps,
-                )
+            # Evaluate to enable progress tracking
+            mx.eval(latents)
+
+        return latents
+
+    def generate_image(
+        self,
+        seed: int,
+        prompt: str,
+        latents: mx.array,
+        config: Config,
+    ) -> GeneratedImage:
+        # 0. Create a new runtime config based on the model type and input parameters
+        config = RuntimeConfig(config, self.model_config)
+        time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
+
+        # 2. Encode the prompt
+        prompt_embeds, pooled_prompt_embeds = PromptEncoder.encode_prompt(
+            prompt=prompt,
+            prompt_cache=self.prompt_cache,
+            t5_tokenizer=self.t5_tokenizer,
+            clip_tokenizer=self.clip_tokenizer,
+            t5_text_encoder=self.t5_text_encoder,
+            clip_text_encoder=self.clip_text_encoder,
+        )
+
+        # (Optional) Call subscribers for beginning of loop
+        Callbacks.before_loop(
+            seed=seed,
+            prompt=prompt,
+            latents=latents,
+            config=config,
+        )  # fmt: off
+
+        for t in time_steps:
+            dt = config.sigmas[t + 1] - config.sigmas[t]
+
+            # 3.t Predict the noise with higher order terms
+            noise1 = self.transformer(
+                t=float(t),
+                sigma_t=config.sigmas[t],
+                prompt_embeds=prompt_embeds,
+                pooled_prompt_embeds=pooled_prompt_embeds,
+                hidden_states=latents,
+                config=config,
+            )
+            noise2 = self.transformer(
+                t=float(t) + 0.5,
+                sigma_t=config.sigmas[t] + 0.5 * dt,
+                prompt_embeds=prompt_embeds,
+                pooled_prompt_embeds=pooled_prompt_embeds,
+                hidden_states=latents + noise1 * 0.5 * dt,
+                config=config,
+            )
+
+            # 4.t Take one denoise step
+            latents += dt * noise2
+
+            # (Optional) Call subscribes at end of loop
+            Callbacks.in_loop(
+                t=t,
+                seed=seed,
+                prompt=prompt,
+                latents=latents,
+                config=config,
+                time_steps=time_steps,
+            )  # fmt: off
+
+            # Evaluate to enable progress tracking
+            mx.eval(latents)
 
         # 7. Decode the latent array and return the image
         latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)

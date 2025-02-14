@@ -12,7 +12,7 @@ class JointTransformerBlock(nn.Module):
         self.layer = layer
         self.norm1 = AdaLayerNormZero()
         self.norm1_context = AdaLayerNormZero()
-        self.attn = JointAttention()
+        self.attn = JointAttention(layer)
         self.norm2 = nn.LayerNorm(dims=3072, eps=1e-6, affine=False)
         self.norm2_context = nn.LayerNorm(dims=1536, eps=1e-6, affine=False)
         self.ff = FeedForward(activation_function=nn.gelu)
@@ -20,6 +20,7 @@ class JointTransformerBlock(nn.Module):
 
     def __call__(
         self,
+        t: int,
         hidden_states: mx.array,
         encoder_hidden_states: mx.array,
         text_embeddings: mx.array,
@@ -39,6 +40,7 @@ class JointTransformerBlock(nn.Module):
 
         # 2. Compute attention
         attn_output, context_attn_output = self.attn(
+            t=t,
             hidden_states=norm_hidden_states,
             encoder_hidden_states=norm_encoder_hidden_states,
             image_rotary_emb=rotary_embeddings,
