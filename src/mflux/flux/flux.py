@@ -79,10 +79,12 @@ class Flux1(nn.Module):
         # (Optional) Call subscribers for beginning of loop
         Callbacks.before_loop(
             seed=seed,
-            prompt=prompt
+            prompt=prompt,
+            latents=latents,
+            config=config,
         )  # fmt: off
 
-        for gen_step, t in enumerate(time_steps, 1):
+        for t in time_steps:
             try:
                 # 3.t Predict the noise
                 noise = self.transformer(
@@ -99,9 +101,9 @@ class Flux1(nn.Module):
 
                 # (Optional) Call subscribes at end of loop
                 Callbacks.in_loop(
+                    t=t,
                     seed=seed,
                     prompt=prompt,
-                    step=gen_step,
                     latents=latents,
                     config=config,
                     time_steps=time_steps,
@@ -112,9 +114,9 @@ class Flux1(nn.Module):
 
             except KeyboardInterrupt:  # noqa: PERF203
                 Callbacks.interruption(
+                    t=t,
                     seed=seed,
                     prompt=prompt,
-                    step=gen_step,
                     latents=latents,
                     config=config,
                     time_steps=time_steps,
