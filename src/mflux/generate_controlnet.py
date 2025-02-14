@@ -29,6 +29,7 @@ def main():
         CallbackRegistry.register_before_loop(CannyImageSaver(path=args.output))
     if args.stepwise_image_output_dir:
         handler = StepwiseHandler(flux=flux, output_dir=args.stepwise_image_output_dir)
+        CallbackRegistry.register_before_loop(handler)
         CallbackRegistry.register_in_loop(handler)
         CallbackRegistry.register_interrupt(handler)
 

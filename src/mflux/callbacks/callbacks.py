@@ -11,29 +11,33 @@ class Callbacks:
     def before_loop(
         seed: int,
         prompt: str,
+        latents: mx.array,
+        config: RuntimeConfig,
         canny_image: PIL.Image.Image | None = None,
     ):  # fmt: off
         for subscriber in CallbackRegistry.before_loop_callbacks():
             subscriber.call_before_loop(
                 seed=seed,
                 prompt=prompt,
+                latents=latents,
+                config=config,
                 canny_image=canny_image,
             )
 
     @staticmethod
     def in_loop(
+        t: int,
         seed: int,
         prompt: str,
-        step: int,
         latents: mx.array,
         config: RuntimeConfig,
         time_steps: tqdm
     ):  # fmt: off
         for subscriber in CallbackRegistry.in_loop_callbacks():
             subscriber.call_in_loop(
+                t=t,
                 seed=seed,
                 prompt=prompt,
-                step=step,
                 latents=latents,
                 config=config,
                 time_steps=time_steps,
@@ -41,18 +45,18 @@ class Callbacks:
 
     @staticmethod
     def interruption(
+        t: int,
         seed: int,
         prompt: str,
-        step: int,
         latents: mx.array,
         config: RuntimeConfig,
         time_steps: tqdm
     ):  # fmt: off
         for subscriber in CallbackRegistry.interrupt_callbacks():
             subscriber.call_interrupt(
+                t=t,
                 seed=seed,
                 prompt=prompt,
-                step=step,
                 latents=latents,
                 config=config,
                 time_steps=time_steps,
