@@ -1,10 +1,12 @@
 import os
 from pathlib import Path
 
+import mlx.core as mx
 import PIL.Image
 
 from mflux import ImageUtil
 from mflux.callbacks.callback import BeforeLoopCallback
+from mflux.config.runtime_config import RuntimeConfig
 
 
 class CannyImageSaver(BeforeLoopCallback):
@@ -15,8 +17,10 @@ class CannyImageSaver(BeforeLoopCallback):
         self,
         seed: int,
         prompt: str,
+        latents: mx.array,
+        config: RuntimeConfig,
         canny_image: PIL.Image.Image | None = None,
-    ) -> None:  # fmt: off
+    ) -> None:
         base, ext = os.path.splitext(self.path)
         ImageUtil.save_image(
             image=canny_image,
