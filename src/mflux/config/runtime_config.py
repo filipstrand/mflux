@@ -27,6 +27,10 @@ class RuntimeConfig:
     def width(self) -> int:
         return self.config.width
 
+    @width.setter
+    def width(self, value):
+        self.config.width = value
+
     @property
     def guidance(self) -> float:
         return self.config.guidance

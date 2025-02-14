@@ -53,20 +53,25 @@ class Flux1(nn.Module):
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
 
-        # 1. Create the initial latents
-        latents = LatentCreator.create_for_txt2img_or_img2img(
-            seed=seed,
+        # 1. Encode the reference image
+        encoded_image = LatentCreator.encode_image(
             height=config.height,
             width=config.width,
             img2img=Img2Img(
                 vae=self.vae,
-                sigmas=config.sigmas,
-                init_time_step=config.init_time_step,
-                init_image_path=config.init_image_path,
+                sigmas=None,
+                init_time_step=None,
+                init_image_path=config.init_image_path
             ),
-        )
+        )  # fmt: off
 
-        # 2. Encode the prompt
+        # 2. Create the initial latents
+        config.width = 2 * config.width
+        L = 128
+        N = mx.random.normal(shape=[1, 16, L, L * 2], key=mx.random.key(seed))
+        latents = ArrayUtil.pack_latents(latents=N, height=config.height, width=config.width)
+
+        # 3. Encode the prompt
         prompt_embeds, pooled_prompt_embeds = PromptEncoder.encode_prompt(
             prompt=prompt,
             prompt_cache=self.prompt_cache,
@@ -86,7 +91,7 @@ class Flux1(nn.Module):
 
         for t in time_steps:
             try:
-                # 3.t Predict the noise
+                # 4.t Predict the noise
                 noise = self.transformer(
                     t=t,
                     config=config,
@@ -95,9 +100,14 @@ class Flux1(nn.Module):
                     pooled_prompt_embeds=pooled_prompt_embeds,
                 )
 
-                # 4.t Take one denoise step
+                # 5.t Take one denoise step
                 dt = config.sigmas[t + 1] - config.sigmas[t]
-                latents += noise * dt
+                latents_updated = latents + noise * dt
+
+                # 6.t Unpack and make sure left side (ref image) is updated by interpolation
+                unpacked = ArrayUtil.unpack_latents(latents=latents_updated, height=config.height, width=config.width)  # fmt: off
+                unpacked[:, :, :, 0:L] = LatentCreator.add_noise_by_interpolation(clean=mx.array(encoded_image), noise=N[:, :, :, 0:L], sigma=config.sigmas[t])  # fmt: off
+                latents = ArrayUtil.pack_latents(latents=unpacked, height=config.height, width=config.width)
 
                 # (Optional) Call subscribes at end of loop
                 Callbacks.in_loop(

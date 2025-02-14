@@ -3,6 +3,10 @@ from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
 from mflux.ui.cli.parsers import CommandLineParser
 
+prompt = """
+In this set of two images, a bold modern typeface with the brand name 'DEMA' is introduced and is shown on a company merchandise product photo; [IMAGE1] a simplistic black logo featuring a modern typeface with the brand name 'DEMA' on a bright light green/yellowish background; [IMAGE2] the design is printed on a green/yellowish hoodie as a company merchandise product photo with a plain white background.
+"""
+
 
 def main():
     # 0. Parse command line arguments
@@ -16,16 +20,16 @@ def main():
 
     # 1. Load the model
     flux = Flux1(
-        model_config=ModelConfig.from_name(model_name=args.model, base_model=args.base_model),
-        quantize=args.quantize,
+        model_config=ModelConfig.dev(),
+        quantize=8,
         local_path=args.path,
-        lora_paths=args.lora_paths,
-        lora_scales=args.lora_scales,
+        lora_paths=["/Users/filipstrand/Desktop/visual-identity-design.safetensors"],
+        lora_scales=[1.0],
     )
 
     # 2. Register the optional callbacks
-    if args.stepwise_image_output_dir:
-        handler = StepwiseHandler(flux=flux, output_dir=args.stepwise_image_output_dir)
+    if True:
+        handler = StepwiseHandler(flux=flux, output_dir="/Users/filipstrand/Desktop/ICLoRA")
         CallbackRegistry.register_before_loop(handler)
         CallbackRegistry.register_in_loop(handler)
         CallbackRegistry.register_interrupt(handler)
@@ -34,15 +38,15 @@ def main():
         for seed in args.seed:
             # 3. Generate an image for each seed value
             image = flux.generate_image(
-                seed=seed,
-                prompt=args.prompt,
+                seed=42,
+                prompt=prompt,
                 config=Config(
-                    num_inference_steps=args.steps,
-                    height=args.height,
-                    width=args.width,
+                    num_inference_steps=20,
+                    height=1024,
+                    width=1024,
                     guidance=args.guidance,
-                    init_image_path=args.init_image_path,
-                    init_image_strength=args.init_image_strength,
+                    init_image_path="/Users/filipstrand/Desktop/img1.png",
+                    init_image_strength=0,
                 ),
             )
             # 4. Save the image
