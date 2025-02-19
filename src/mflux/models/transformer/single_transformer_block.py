@@ -8,16 +8,17 @@ from mflux.models.transformer.single_block_attention import SingleBlockAttention
 
 
 class SingleTransformerBlock(nn.Module):
-    def __init__(self, layer):
+    def __init__(self, layer: int):
         super().__init__()
         self.layer = layer
         self.norm = AdaLayerNormZeroSingle()
-        self.attn = SingleBlockAttention()
+        self.attn = SingleBlockAttention(layer)
         self.proj_mlp = nn.Linear(3072, 4 * 3072)
         self.proj_out = nn.Linear(3072 + 4 * 3072, 3072)
 
     def __call__(
         self,
+        t: int,
         hidden_states: mx.array,
         text_embeddings: mx.array,
         rotary_embeddings: mx.array,
@@ -33,6 +34,7 @@ class SingleTransformerBlock(nn.Module):
 
         # 2. Compute attention
         attn_output = self.attn(
+            t=t,
             hidden_states=norm_hidden_states,
             image_rotary_emb=rotary_embeddings,
         )
