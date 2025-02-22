@@ -62,7 +62,8 @@ class LatentCreator:
                 target_width=width,
                 target_height=height,
             )
-            encoded = img2img.vae.encode(ImageUtil.to_array(scaled_user_image))
+            array = ImageUtil.to_array(scaled_user_image)
+            encoded = img2img.vae.encode(array)
             latents = ArrayUtil.pack_latents(latents=encoded, height=height, width=width)
 
             # 3. Find the appropriate sigma value

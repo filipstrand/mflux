@@ -28,7 +28,7 @@ class RuntimeConfig:
         return self.config.width
 
     @property
-    def guidance(self) -> float:
+    def guidance(self) -> float | None:
         return self.config.guidance
 
     @property
@@ -44,18 +44,23 @@ class RuntimeConfig:
         return self.model_config.num_train_steps
 
     @property
-    def init_image_path(self) -> str:
+    def init_image_path(self) -> str | None:
         return self.config.init_image_path
 
     @property
-    def init_image_strength(self) -> float:
+    def init_image_strength(self) -> float | None:
         return self.config.init_image_strength
+
+    @property
+    def masked_image_path(self) -> str | None:
+        return self.config.masked_image_path
 
     @property
     def init_time_step(self) -> int:
         is_txt2img = self.config.init_image_path is None or self.config.init_image_strength == 0.0
+        is_inpaint = self.config.masked_image_path is not None
 
-        if is_txt2img:
+        if is_txt2img or is_inpaint:
             return 0
         else:
             # 1. Clamp strength to [0, 1]
@@ -74,7 +79,7 @@ class RuntimeConfig:
     @staticmethod
     def _create_sigmas(config: Config, model_config: ModelConfig) -> mx.array:
         sigmas = RuntimeConfig._create_sigmas_values(config.num_inference_steps)
-        if model_config.is_dev():
+        if model_config.requires_sigma_shift:
             sigmas = RuntimeConfig._shift_sigmas(sigmas=sigmas, width=config.width, height=config.height)
         return sigmas
 
