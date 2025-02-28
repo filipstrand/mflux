@@ -58,12 +58,6 @@ class ImageGeneratorTestHelper:
 
             assert mse < 5.0, f"Generated image doesn't match reference image (MSE: {mse})"
 
-        # except:
-        # # cleanup
-        # # if os.path.exists(output_image_path):
-        # # os.remove(output_image_path)
-        # raise
-
         finally:
             # cleanup
             if os.path.exists(output_image_path):
