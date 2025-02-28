@@ -34,6 +34,9 @@ class CommandLineParser(argparse.ArgumentParser):
         self.supports_image_to_image = False
         self.supports_lora = False
 
+    def add_general_arguments(self) -> None:
+        self.add_argument("--low-ram", action="store_true", help="Enable low-RAM mode to reduce memory usage (may impact performance).")
+
     def add_model_arguments(self, path_type: t.Literal["load", "save"] = "load", require_model_arg: bool = True) -> None:
 
         self.add_argument("--model", "-m", type=str, required=require_model_arg, action=ModelSpecAction, help=f"The model to use ({' or '.join(ui_defaults.MODEL_CHOICES)} or a compatible huggingface repo_id org/model).")
@@ -186,5 +189,8 @@ class CommandLineParser(argparse.ArgumentParser):
 
         if self.supports_image_generation and namespace.steps is None:
             namespace.steps = ui_defaults.MODEL_INFERENCE_STEPS.get(namespace.model, None)
+
+        if namespace.low_ram and len(namespace.seed) > 1:
+            self.error("--low-ram cannot be used with multiple seeds")
 
         return namespace
