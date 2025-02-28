@@ -32,6 +32,17 @@ class InLoopCallback(Protocol):
         ...
 
 
+class AfterLoopCallback(Protocol):
+    def call_after_loop(
+        self,
+        seed: int,
+        prompt: str,
+        latents: mx.array,
+        config: RuntimeConfig
+    ) -> None:  # fmt: off
+        ...
+
+
 class InterruptCallback(Protocol):
     def call_interrupt(
         self,
