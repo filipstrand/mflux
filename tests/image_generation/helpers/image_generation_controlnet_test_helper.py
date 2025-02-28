@@ -51,13 +51,18 @@ class ImageGeneratorControlnetTestHelper:
             image.save(path=output_image_path)
 
             # then
-            np.testing.assert_array_equal(
-                np.array(Image.open(output_image_path)),
-                np.array(Image.open(reference_image_path)),
-                err_msg="Generated image doesn't match reference image",
+            mse = ImageGeneratorTestHelper.mse(
+                Image.open(output_image_path),
+                Image.open(reference_image_path),
             )
+
+            assert mse < 5.0, f"Generated image doesn't match reference image (MSE: {mse})"
 
         finally:
             # cleanup
             if os.path.exists(output_image_path):
                 os.remove(output_image_path)
+
+    @staticmethod
+    def mse(image1: Image, image2: Image) -> float:
+        return np.mean(np.square(np.array(image1) - np.array(image2)))

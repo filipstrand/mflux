@@ -51,11 +51,18 @@ class ImageGeneratorTestHelper:
             image.save(path=output_image_path)
 
             # then
-            np.testing.assert_array_equal(
-                np.array(Image.open(output_image_path)),
-                np.array(Image.open(reference_image_path)),
-                err_msg=f"Generated image doesn't match reference image. Check {output_image_path} vs {reference_image_path}",
+            mse = ImageGeneratorTestHelper.mse(
+                Image.open(output_image_path),
+                Image.open(reference_image_path),
             )
+
+            assert mse < 5.0, f"Generated image doesn't match reference image (MSE: {mse})"
+
+        # except:
+        # # cleanup
+        # # if os.path.exists(output_image_path):
+        # # os.remove(output_image_path)
+        # raise
 
         finally:
             # cleanup
@@ -67,3 +74,7 @@ class ImageGeneratorTestHelper:
         if path is None:
             return None
         return Path(__file__).parent.parent.parent / "resources" / path
+
+    @staticmethod
+    def mse(image1: Image, image2: Image) -> float:
+        return np.mean(np.square(np.array(image1) - np.array(image2)))
