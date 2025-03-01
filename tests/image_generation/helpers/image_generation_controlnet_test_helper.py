@@ -48,7 +48,7 @@ class ImageGeneratorControlnetTestHelper:
                     controlnet_strength=controlnet_strength,
                 ),
             )
-            image.save(path=output_image_path)
+            image.save(path=output_image_path, overwrite=True)
 
             # then
             np.testing.assert_array_equal(
