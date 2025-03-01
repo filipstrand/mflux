@@ -1,3 +1,4 @@
+import os
 import shutil
 
 import numpy as np
@@ -9,6 +10,9 @@ PATH = "tests/4bit/"
 
 class TestModelSaving:
     def test_save_and_load_4bit_model(self):
+        # Clean up any existing temporary directories from previous test runs
+        TestModelSaving.delete_folder_if_exists(PATH)
+
         try:
             # given a saved quantized model (and an image from that model)
             fluxA = Flux1(
@@ -56,3 +60,11 @@ class TestModelSaving:
     @staticmethod
     def delete_folder(path: str) -> None:
         return shutil.rmtree(path)
+
+    @staticmethod
+    def delete_folder_if_exists(path: str) -> None:
+        if os.path.exists(path):
+            shutil.rmtree(path)
+            print(f"Deleted folder: {path}")
+        else:
+            print(f"Folder does not exist: {path}")
