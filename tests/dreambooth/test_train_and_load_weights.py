@@ -1,3 +1,4 @@
+import os
 import shutil
 
 import numpy as np
@@ -14,6 +15,9 @@ LORA_FILE = "tests/dreambooth/tmp/_checkpoints/0000005_checkpoint/0000005_adapte
 
 class TestTrainAndLoadWeights:
     def test_train_and_load_weights(self):
+        # Clean up any existing temporary directories from previous test runs
+        TestTrainAndLoadWeights.delete_folder_if_exists("tests/dreambooth/tmp")
+
         try:
             # Given: A small training run from scratch for 5 steps (as described in the config)...
             fluxA, runtime_config, training_spec, training_state = DreamBoothInitializer.initialize(
@@ -72,3 +76,11 @@ class TestTrainAndLoadWeights:
     @staticmethod
     def delete_folder(path: str) -> None:
         return shutil.rmtree(path)
+
+    @staticmethod
+    def delete_folder_if_exists(path: str) -> None:
+        if os.path.exists(path):
+            shutil.rmtree(path)
+            print(f"Deleted folder: {path}")
+        else:
+            print("The specified folder does not exist.")
