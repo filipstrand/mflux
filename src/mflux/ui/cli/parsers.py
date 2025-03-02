@@ -69,8 +69,8 @@ class CommandLineParser(argparse.ArgumentParser):
 
     def add_image_to_image_arguments(self, required=False) -> None:
         self.supports_image_to_image = True
-        self.add_argument("--init-image-path", type=Path, required=required, default=None, help="Local path to init image")
-        self.add_argument("--init-image-strength", type=float, required=False, default=ui_defaults.INIT_IMAGE_STRENGTH, help=f"Controls how strongly the init image influences the output image. A value of 0.0 means no influence. (Default is {ui_defaults.INIT_IMAGE_STRENGTH})")
+        self.add_argument("--image-path", type=Path, required=required, default=None, help="Local path to init image")
+        self.add_argument("--image-strength", type=float, required=False, default=ui_defaults.IMAGE_STRENGTH, help=f"Controls how strongly the init image influences the output image. A value of 0.0 means no influence. (Default is {ui_defaults.IMAGE_STRENGTH})")
 
     def add_batch_image_generator_arguments(self) -> None:
         self.add_argument("--prompts-file", type=Path, required=True, default=argparse.SUPPRESS, help="Local path for a file that holds a batch of prompts.")
@@ -152,10 +152,10 @@ class CommandLineParser(argparse.ArgumentParser):
                     namespace.lora_scales = prior_gen_metadata.get("lora_scales", []) + namespace.lora_scales
 
             if self.supports_image_to_image:
-                if namespace.init_image_path is None:
-                    namespace.init_image_path = prior_gen_metadata.get("init_image_path", None)
-                if namespace.init_image_strength == self.get_default("init_image_strength") and (init_img_strength_from_metadata := prior_gen_metadata.get("init_image_strength", None)):
-                    namespace.init_image_strength = init_img_strength_from_metadata
+                if namespace.image_path is None:
+                    namespace.image_path = prior_gen_metadata.get("image_path", None)
+                if namespace.image_strength == self.get_default("image_strength") and (img_strength_from_metadata := prior_gen_metadata.get("image_strength", None)):
+                    namespace.image_strength = img_strength_from_metadata
 
             if self.supports_controlnet:
                 if namespace.controlnet_image_path is None:
