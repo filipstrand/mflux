@@ -44,6 +44,30 @@ class GeneratedImage:
         self.image_path = image_path
         self.image_strength = image_strength
 
+    def get_right_half(self) -> "GeneratedImage":
+        # Calculate the coordinates for the right half
+        width, height = self.image.size
+        right_half = self.image.crop((width // 2, 0, width, height))
+
+        # Create a new GeneratedImage with the right half and the same metadata
+        return GeneratedImage(
+            image=right_half,
+            model_config=self.model_config,
+            seed=self.seed,
+            prompt=self.prompt,
+            steps=self.steps,
+            guidance=self.guidance,
+            precision=self.precision,
+            quantization=self.quantization,
+            generation_time=self.generation_time,
+            lora_paths=self.lora_paths,
+            lora_scales=self.lora_scales,
+            controlnet_image_path=self.controlnet_image_path,
+            controlnet_strength=self.controlnet_strength,
+            image_path=self.image_path,
+            image_strength=self.image_strength,
+        )
+
     def save(
         self,
         path: t.Union[str, pathlib.Path],
