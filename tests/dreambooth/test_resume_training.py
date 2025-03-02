@@ -14,6 +14,9 @@ CHECKPOINT_5 = "tests/dreambooth/tmp/_checkpoints/0000005_checkpoint.zip"
 
 class TestResumeTraining:
     def test_resume_training(self):
+        # Clean up any existing temporary directories from previous test runs
+        TestResumeTraining.delete_folder_if_exists("tests/dreambooth/tmp")
+
         try:
             # Given: A small training run from scratch for 5 steps (as described in the config)...
             fluxA, runtime_config, training_spec, training_state = DreamBoothInitializer.initialize(
@@ -85,3 +88,11 @@ class TestResumeTraining:
     @staticmethod
     def delete_folder(path: str) -> None:
         return shutil.rmtree(path)
+
+    @staticmethod
+    def delete_folder_if_exists(path: str) -> None:
+        if os.path.exists(path):
+            shutil.rmtree(path)
+            print(f"Deleted folder: {path}")
+        else:
+            print("The specified folder does not exist.")

@@ -44,10 +44,15 @@ class GeneratedImage:
         self.init_image_path = init_image_path
         self.init_image_strength = init_image_strength
 
-    def save(self, path: t.Union[str, pathlib.Path], export_json_metadata: bool = False) -> None:
+    def save(
+        self,
+        path: t.Union[str, pathlib.Path],
+        export_json_metadata: bool = False,
+        overwrite: bool = False,
+    ) -> None:
         from mflux import ImageUtil
 
-        ImageUtil.save_image(self.image, path, self._get_metadata(), export_json_metadata)
+        ImageUtil.save_image(self.image, path, self._get_metadata(), export_json_metadata, overwrite)
 
     def _get_metadata(self) -> dict:
         """Generate metadata for reference as well as input data for
