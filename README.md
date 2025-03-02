@@ -26,6 +26,10 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 - [🔌 LoRA](#-lora)
   * [Multi-LoRA](#multi-lora)
   * [Supported LoRA formats (updated)](#supported-lora-formats-updated)
+- [🎭 In-Context LoRA](#-in-context-lora)
+  * [Available Styles](#available-styles)
+  * [How It Works](#how-it-works)
+  * [Tips for Best Results](#tips-for-best-results)
 - [🎛️ Dreambooth fine-tuning](#-dreambooth-fine-tuning)
   * [Training configuration](#training-configuration)
   * [Training example](#training-example)
@@ -391,7 +395,7 @@ mflux-generate \
     --quantize 8 \
     --height 1920 \
     --width 1024 \
-    --prompt "Tranquil pond in a bamboo forest at dawn, the sun is barely starting to peak over the horizon, panda practices Tai Chi near the edge of the pond, atmospheric perspective through the mist of morning dew, sunbeams, its movements are graceful and fluid — creating a sense of harmony and balance, the pond’s calm waters reflecting the scene, inviting a sense of meditation and connection with nature, style of Howard Terpning and Jessica Rossier"
+    --prompt "Tranquil pond in a bamboo forest at dawn, the sun is barely starting to peak over the horizon, panda practices Tai Chi near the edge of the pond, atmospheric perspective through the mist of morning dew, sunbeams, its movements are graceful and fluid — creating a sense of harmony and balance, the pond's calm waters reflecting the scene, inviting a sense of meditation and connection with nature, style of Howard Terpning and Jessica Rossier"
 ```
 ![image](src/mflux/assets/comparison6.jpg)
 
@@ -450,7 +454,7 @@ mflux-generate \
     --seed 2 \
     --height 1920 \
     --width 1024 \
-    --prompt "Tranquil pond in a bamboo forest at dawn, the sun is barely starting to peak over the horizon, panda practices Tai Chi near the edge of the pond, atmospheric perspective through the mist of morning dew, sunbeams, its movements are graceful and fluid — creating a sense of harmony and balance, the pond’s calm waters reflecting the scene, inviting a sense of meditation and connection with nature, style of Howard Terpning and Jessica Rossier"
+    --prompt "Tranquil pond in a bamboo forest at dawn, the sun is barely starting to peak over the horizon, panda practices Tai Chi near the edge of the pond, atmospheric perspective through the mist of morning dew, sunbeams, its movements are graceful and fluid — creating a sense of harmony and balance, the pond's calm waters reflecting the scene, inviting a sense of meditation and connection with nature, style of Howard Terpning and Jessica Rossier"
 ```
 
 *Note: When loading a quantized model from disk, there is no need to pass in `-q` flag, since we can infer this from the weight metadata.*
@@ -601,7 +605,85 @@ To report additional formats, examples or other any suggestions related to LoRA 
 
 ---
 
-### 🎛 Dreambooth fine-tuning
+### 🎭 In-Context LoRA
+
+In-Context LoRA is a powerful technique that allows you to generate images in a specific style based on a reference image, without requiring model fine-tuning. This approach uses specialized LoRA weights that enable the model to understand and apply the visual context from your reference image to a new generation.
+
+This feature is based on the [In-Context LoRA for Diffusion Transformers](https://github.com/ali-vilab/In-Context-LoRA) project by Ali-ViLab.
+
+![image](src/mflux/assets/in_context_example.jpg)
+
+To use In-Context LoRA, you need:
+1. A reference image
+2. A style LoRA (optional - the in-context ability works without LoRAs, but they can significantly enhance the results)
+
+
+#### Available Styles
+
+MFLUX provides several pre-defined styles from the [Hugging Face ali-vilab/In-Context-LoRA repository](https://huggingface.co/ali-vilab/In-Context-LoRA) that you can use with the `--lora-style` argument:
+
+| Style Name     | Description                               |
+|----------------|-------------------------------------------|
+| `couple`       | Couple profile photography style          |
+| `storyboard`   | Film storyboard sketching style           |
+| `font`         | Font design and typography style          |
+| `home`         | Home decoration and interior design style |
+| `illustration` | Portrait illustration style               |
+| `portrait`     | Portrait photography style                |
+| `ppt`          | Presentation template style               |
+| `sandstorm`    | Sandstorm visual effect                   |
+| `sparklers`    | Sparklers visual effect                   |
+| `identity`     | Visual identity and branding design style |
+
+#### How It Works
+
+The In-Context LoRA generation creates a side-by-side image where:
+- The left side shows your reference image with noise applied
+- The right side shows the new generation that follows your prompt while maintaining the visual context
+
+The final output is automatically cropped to show only the right half (the generated image).
+
+![image](src/mflux/assets/in_context_how_it_works.jpg)
+
+
+#### Prompting for In-Context LoRA
+
+For best results with In-Context LoRA, your prompt should describe both the reference image and the target image you want to generate. Use markers like `[IMAGE1]`, `[LEFT]`, or `[RIGHT]` to distinguish between the two parts.
+
+Here's an example:
+
+```sh
+mflux-generate-in-context \
+  --model dev \
+  --steps 20 \
+  --quantize 8 \
+  --seed 42 \
+  --height 1024 \
+  --width 1024 \
+  --image-path "reference.png" \
+  --lora-style identity \
+  --prompt "In this set of two images, a bold modern typeface with the brand name 'DEMA' is introduced and is shown on a company merchandise product photo; [IMAGE1] a simplistic black logo featuring a modern typeface with the brand name 'DEMA' on a bright light green/yellowish background; [IMAGE2] the design is printed on a green/yellowish hoodie as a company merchandise product photo with a plain white background."
+```
+
+This prompt clearly describes both the reference image (after `[IMAGE1]`) and the desired output (after `[IMAGE2]`). Other marker pairs you can use include:
+- `[LEFT]` and `[RIGHT]`
+- `[TOP]` and `[BOTTOM]`
+- `[REFERENCE]` and `[OUTPUT]`
+
+**Important**: In the current implementation, the reference image is ALWAYS placed on the left side of the composition, and the generated image on the right side. When using marker pairs in your prompt, the first marker (e.g., `[IMAGE1]`, `[LEFT]`, `[REFERENCE]`) always refers to your reference image, while the second marker (e.g., `[IMAGE2]`, `[RIGHT]`, `[OUTPUT]`) refers to what you want to generate.
+
+#### Tips for Best Results
+
+1. **Choose the right reference image**: Select a reference image with a clear composition and structure that matches your intended output.
+2. **Adjust guidance**: Higher guidance values (7.0-9.0) tend to produce results that more closely follow your prompt.
+3. **Try different styles**: Each style produces distinctly different results - experiment to find the one that best matches your vision.
+4. **Increase steps**: For higher quality results, use 25-30 steps.
+5. **Detailed prompting**: Be specific about both the reference image and your desired output in your prompt.
+6. **Try without LoRA**: While LoRAs enhance the results, you can experiment without them to see the base in-context capabilities.
+
+---
+
+### 🎛️ Dreambooth fine-tuning
 
 As of release [v.0.5.0](https://github.com/filipstrand/mflux/releases/tag/v.0.5.0), MFLUX has support for fine-tuning your own LoRA adapters using the [Dreambooth](https://dreambooth.github.io) technique.
 
@@ -801,6 +883,7 @@ with different prompts and LoRA adapters active.
 - Some LoRA adapters does not work.
 - Currently, the supported controlnet is the [canny-only version](https://huggingface.co/InstantX/FLUX.1-dev-Controlnet-Canny).
 - Dreambooth training currently does not support sending in training parameters as flags.
+- In-Context LoRA currently only supports a left-right image setup (reference image on left, generated image on right).
 
 ### Optional Tool: Batch Image Renamer
 
