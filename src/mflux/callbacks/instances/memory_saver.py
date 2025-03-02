@@ -65,6 +65,8 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
     
     def _delete_transformer(self) -> None:
         self.flux.transformer = None
+        if hasattr(self.flux, 'transformer_controlnet'):
+            self.flux.transformer_controlnet = None
         gc.collect()
         mx.metal.clear_cache()
 
