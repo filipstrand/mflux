@@ -50,8 +50,8 @@ def main():
                     height=args.height,
                     width=args.width,
                     guidance=args.guidance,
-                    init_image_path=args.init_image_path,
-                    init_image_strength=args.init_image_strength,
+                    image_path=args.image_path,
+                    image_strength=args.image_strength,
                 ),
             )
             # 4. Save the image

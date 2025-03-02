@@ -18,8 +18,8 @@ class ImageGeneratorTestHelper:
         seed: int,
         height: int = None,
         width: int = None,
-        init_image_path: str | None = None,
-        init_image_strength: float | None = None,
+        image_path: str | None = None,
+        image_strength: float | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
     ):
@@ -42,8 +42,8 @@ class ImageGeneratorTestHelper:
                 prompt=prompt,
                 config=Config(
                     num_inference_steps=steps,
-                    init_image_path=ImageGeneratorTestHelper.resolve_path(init_image_path),
-                    init_image_strength=init_image_strength,
+                    image_path=ImageGeneratorTestHelper.resolve_path(image_path),
+                    image_strength=image_strength,
                     height=height,
                     width=width,
                 ),

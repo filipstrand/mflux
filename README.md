@@ -185,9 +185,9 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--controlnet-save-canny`** (optional, bool, default: False): If set, saves the Canny edge detection reference image used by ControlNet.
 
-- **`--init-image-path`** (optional, `str`, default: `None`): Local path to the initial image for image-to-image generation.
+- **`--image-path`** (optional, `str`, default: `None`): Local path to the initial image for image-to-image generation.
 
-- **`--init-image-strength`** (optional, `float`, default: `0.4`): Controls how strongly the initial image influences the output image. A value of `0.0` means no influence. (Default is `0.4`)
+- **`--image-strength`** (optional, `float`, default: `0.4`): Controls how strongly the initial image influences the output image. A value of `0.0` means no influence. (Default is `0.4`)
 
 - **`--config-from-metadata`** or **`-C`** (optional, `str`): [EXPERIMENTAL] Path to a prior file saved via `--metadata`, or a compatible handcrafted config file adhering to the expected args schema.
 
@@ -514,15 +514,15 @@ processed a bit differently, which is why we require this structure above.*
 ### 🎨 Image-to-Image
 
 One way to condition the image generation is by starting from an existing image and let MFLUX produce new variations.
-Use the `--init-image-path` flag to specify the reference image, and the `--init-image-strength` to control how much the reference 
+Use the `--image-path` flag to specify the reference image, and the `--image-strength` to control how much the reference 
 image should guide the generation. For example, given the reference image below, the following command produced the first
 image using the  [Sketching](https://civitai.com/models/803456/sketching?modelVersionId=898364) LoRA: 
 
 ```sh
 mflux-generate \
 --prompt "sketching of an Eiffel architecture, masterpiece, best quality. The site is lit by lighting professionals, creating a subtle illumination effect. Ink on paper with very fine touches with colored markers, (shadings:1.1), loose lines, Schematic, Conceptual, Abstract, Gestural. Quick sketches to explore ideas and concepts." \
---init-image-path "reference.png" \
---init-image-strength 0.3 \
+--image-path "reference.png" \
+--image-strength 0.3 \
 --lora-paths Architectural_Sketching.safetensors \
 --lora-scales 1.0 \
 --model dev \

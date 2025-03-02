@@ -11,12 +11,12 @@ class Img2Img:
         vae: VAE,
         sigmas: mx.array,
         init_time_step: int,
-        init_image_path: int,
+        image_path: int,
     ):
         self.vae = vae
         self.sigmas = sigmas
         self.init_time_step = init_time_step
-        self.init_image_path = init_image_path
+        self.image_path = image_path
 
 
 class LatentCreator:
@@ -39,7 +39,7 @@ class LatentCreator:
         img2img: Img2Img,
     ) -> mx.array:
         # 0. Determine type of image generation
-        is_text2img = img2img.init_image_path is None
+        is_text2img = img2img.image_path is None
 
         if is_text2img:
             # 1. Create the pure noise

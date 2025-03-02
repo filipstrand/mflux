@@ -62,7 +62,7 @@ class Flux1(nn.Module):
                 vae=self.vae,
                 sigmas=config.sigmas,
                 init_time_step=config.init_time_step,
-                init_image_path=config.init_image_path,
+                image_path=config.image_path,
             ),
         )
 
@@ -141,8 +141,8 @@ class Flux1(nn.Module):
             quantization=self.bits,
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
-            init_image_path=config.init_image_path,
-            init_image_strength=config.init_image_strength,
+            image_path=config.image_path,
+            image_strength=config.image_strength,
             generation_time=time_steps.format_dict["elapsed"],
         )
 
