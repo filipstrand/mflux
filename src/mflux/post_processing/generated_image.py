@@ -25,8 +25,8 @@ class GeneratedImage:
         lora_scales: list[float],
         controlnet_image_path: str | pathlib.Path | None = None,
         controlnet_strength: float | None = None,
-        init_image_path: str | pathlib.Path | None = None,
-        init_image_strength: float | None = None,
+        image_path: str | pathlib.Path | None = None,
+        image_strength: float | None = None,
     ):
         self.image = image
         self.model_config = model_config
@@ -41,8 +41,32 @@ class GeneratedImage:
         self.lora_scales = lora_scales
         self.controlnet_image_path = controlnet_image_path
         self.controlnet_strength = controlnet_strength
-        self.init_image_path = init_image_path
-        self.init_image_strength = init_image_strength
+        self.image_path = image_path
+        self.image_strength = image_strength
+
+    def get_right_half(self) -> "GeneratedImage":
+        # Calculate the coordinates for the right half
+        width, height = self.image.size
+        right_half = self.image.crop((width // 2, 0, width, height))
+
+        # Create a new GeneratedImage with the right half and the same metadata
+        return GeneratedImage(
+            image=right_half,
+            model_config=self.model_config,
+            seed=self.seed,
+            prompt=self.prompt,
+            steps=self.steps,
+            guidance=self.guidance,
+            precision=self.precision,
+            quantization=self.quantization,
+            generation_time=self.generation_time,
+            lora_paths=self.lora_paths,
+            lora_scales=self.lora_scales,
+            controlnet_image_path=self.controlnet_image_path,
+            controlnet_strength=self.controlnet_strength,
+            image_path=self.image_path,
+            image_strength=self.image_strength,
+        )
 
     def save(
         self,
@@ -72,8 +96,8 @@ class GeneratedImage:
             "generation_time_seconds": round(self.generation_time, 2),
             "lora_paths": [str(p) for p in self.lora_paths] if self.lora_paths else None,
             "lora_scales": [round(scale, 2) for scale in self.lora_scales] if self.lora_scales else None,
-            "init_image_path": str(self.init_image_path) if self.init_image_path else None,
-            "init_image_strength": self.init_image_strength if self.init_image_path else None,
+            "image_path": str(self.image_path) if self.image_path else None,
+            "image_strength": self.image_strength if self.image_path else None,
             "controlnet_image_path": str(self.controlnet_image_path) if self.controlnet_image_path else None,
             "controlnet_strength": round(self.controlnet_strength, 2) if self.controlnet_strength else None,
             "prompt": self.prompt,

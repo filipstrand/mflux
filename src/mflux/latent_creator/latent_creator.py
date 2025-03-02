@@ -11,12 +11,12 @@ class Img2Img:
         vae: VAE,
         sigmas: mx.array,
         init_time_step: int,
-        init_image_path: int,
+        image_path: int,
     ):
         self.vae = vae
         self.sigmas = sigmas
         self.init_time_step = init_time_step
-        self.init_image_path = init_image_path
+        self.image_path = image_path
 
 
 class LatentCreator:
@@ -39,7 +39,7 @@ class LatentCreator:
         img2img: Img2Img,
     ) -> mx.array:
         # 0. Determine type of image generation
-        is_text2img = img2img.init_image_path is None
+        is_text2img = img2img.image_path is None
 
         if is_text2img:
             # 1. Create the pure noise
@@ -57,12 +57,7 @@ class LatentCreator:
             )
 
             # 2. Encode the image
-            scaled_user_image = ImageUtil.scale_to_dimensions(
-                image=ImageUtil.load_image(img2img.init_image_path).convert("RGB"),
-                target_width=width,
-                target_height=height,
-            )
-            encoded = img2img.vae.encode(ImageUtil.to_array(scaled_user_image))
+            encoded = LatentCreator.encode_image(height=height, width=width, img2img=img2img)
             latents = ArrayUtil.pack_latents(latents=encoded, height=height, width=width)
 
             # 3. Find the appropriate sigma value
@@ -74,6 +69,16 @@ class LatentCreator:
                 noise=pure_noise,
                 sigma=sigma
             )  # fmt: off
+
+    @staticmethod
+    def encode_image(height: int, width: int, img2img: Img2Img):
+        scaled_user_image = ImageUtil.scale_to_dimensions(
+            image=ImageUtil.load_image(img2img.image_path).convert("RGB"),
+            target_width=width,
+            target_height=height,
+        )
+        encoded = img2img.vae.encode(ImageUtil.to_array(scaled_user_image))
+        return encoded
 
     @staticmethod
     def add_noise_by_interpolation(clean: mx.array, noise: mx.array, sigma: float) -> mx.array:

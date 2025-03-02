@@ -27,6 +27,10 @@ class RuntimeConfig:
     def width(self) -> int:
         return self.config.width
 
+    @width.setter
+    def width(self, value):
+        self.config.width = value
+
     @property
     def guidance(self) -> float:
         return self.config.guidance
@@ -44,25 +48,29 @@ class RuntimeConfig:
         return self.model_config.num_train_steps
 
     @property
-    def init_image_path(self) -> str:
-        return self.config.init_image_path
+    def image_path(self) -> str:
+        return self.config.image_path
 
     @property
-    def init_image_strength(self) -> float:
-        return self.config.init_image_strength
+    def image_strength(self) -> float | None:
+        return self.config.image_strength
 
     @property
     def init_time_step(self) -> int:
-        is_txt2img = self.config.init_image_path is None or self.config.init_image_strength == 0.0
+        is_img2img = (
+            self.config.image_path is not None and
+            self.image_strength is not None and
+            self.image_strength > 0.0
+        )  # fmt: off
 
-        if is_txt2img:
-            return 0
-        else:
+        if is_img2img:
             # 1. Clamp strength to [0, 1]
-            strength = max(0.0, min(1.0, self.config.init_image_strength))
+            strength = max(0.0, min(1.0, self.config.image_strength))
 
             # 2. Return start time in [1, floor(num_steps * strength)]
             return max(1, int(self.num_inference_steps * strength))
+        else:
+            return 0
 
     @property
     def controlnet_strength(self) -> float | None:

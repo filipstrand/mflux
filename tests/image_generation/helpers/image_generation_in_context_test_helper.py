@@ -4,10 +4,12 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from mflux import Config, Flux1, ModelConfig
+from mflux import Config, ModelConfig
+from mflux.community.in_context_lora.flux_in_context_lora import Flux1InContextLoRA
+from mflux.community.in_context_lora.in_context_loras import LORA_REPO_ID, get_lora_filename
 
 
-class ImageGeneratorTestHelper:
+class ImageGeneratorInContextTestHelper:
     @staticmethod
     def assert_matches_reference_image(
         reference_image_path: str,
@@ -19,20 +21,25 @@ class ImageGeneratorTestHelper:
         height: int = None,
         width: int = None,
         image_path: str | None = None,
-        image_strength: float | None = None,
+        lora_style: str | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
     ):
         # resolve paths
-        reference_image_path = ImageGeneratorTestHelper.resolve_path(reference_image_path)
-        output_image_path = ImageGeneratorTestHelper.resolve_path(output_image_path)
-        lora_paths = [str(ImageGeneratorTestHelper.resolve_path(p)) for p in lora_paths] if lora_paths else None
+        reference_image_path = ImageGeneratorInContextTestHelper.resolve_path(reference_image_path)
+        output_image_path = ImageGeneratorInContextTestHelper.resolve_path(output_image_path)
+        image_path = ImageGeneratorInContextTestHelper.resolve_path(image_path)
+        lora_paths = (
+            [str(ImageGeneratorInContextTestHelper.resolve_path(p)) for p in lora_paths] if lora_paths else None
+        )
 
         try:
             # given
-            flux = Flux1(
+            flux = Flux1InContextLoRA(
                 model_config=model_config,
                 quantize=8,
+                lora_names=[get_lora_filename(lora_style)] if lora_style else None,
+                lora_repo_id=LORA_REPO_ID if lora_style else None,
                 lora_paths=lora_paths,
                 lora_scales=lora_scales
             )  # fmt: off
@@ -42,13 +49,13 @@ class ImageGeneratorTestHelper:
                 prompt=prompt,
                 config=Config(
                     num_inference_steps=steps,
-                    image_path=ImageGeneratorTestHelper.resolve_path(image_path),
-                    image_strength=image_strength,
+                    image_path=image_path,
                     height=height,
                     width=width,
                 ),
             )
-            image.save(path=output_image_path, overwrite=True)
+            # Save only the right half of the image (the generated part)
+            image.get_right_half().save(path=output_image_path, overwrite=True)
 
             # then
             np.testing.assert_array_equal(
