@@ -1,12 +1,14 @@
 from mflux import Config, Flux1, ModelConfig, StopImageGenerationException
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
+from mflux.callbacks.instances.memory_saver import MemorySaver
 from mflux.ui.cli.parsers import CommandLineParser
 
 
 def main():
     # 0. Parse command line arguments
     parser = CommandLineParser(description="Generate an image based on a prompt.")
+    parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
     parser.add_image_generator_arguments(supports_metadata_config=True)
@@ -30,6 +32,13 @@ def main():
         CallbackRegistry.register_in_loop(handler)
         CallbackRegistry.register_interrupt(handler)
 
+    memory_saver = None
+    if args.low_ram:
+        memory_saver = MemorySaver(flux)
+        CallbackRegistry.register_before_loop(memory_saver)
+        CallbackRegistry.register_in_loop(memory_saver)
+        CallbackRegistry.register_after_loop(memory_saver)
+
     try:
         for seed in args.seed:
             # 3. Generate an image for each seed value
@@ -49,6 +58,9 @@ def main():
             image.save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)
     except StopImageGenerationException as stop_exc:
         print(stop_exc)
+    finally:
+        if memory_saver:
+            print(memory_saver.memory_stats())
 
 
 if __name__ == "__main__":

@@ -99,7 +99,7 @@ class Flux1(nn.Module):
                 dt = config.sigmas[t + 1] - config.sigmas[t]
                 latents += noise * dt
 
-                # (Optional) Call subscribes at end of loop
+                # (Optional) Call subscribers at end of loop
                 Callbacks.in_loop(
                     t=t,
                     seed=seed,
@@ -121,6 +121,14 @@ class Flux1(nn.Module):
                     config=config,
                     time_steps=time_steps,
                 )
+
+        # (Optional) Call subscribers at end of loop
+        Callbacks.after_loop(
+            seed=seed,
+            prompt=prompt,
+            latents=latents,
+            config=config
+        )  # fmt: off
 
         # 7. Decode the latent array and return the image
         latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
