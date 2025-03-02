@@ -57,13 +57,7 @@ class LatentCreator:
             )
 
             # 2. Encode the image
-            scaled_user_image = ImageUtil.scale_to_dimensions(
-                image=ImageUtil.load_image(img2img.init_image_path).convert("RGB"),
-                target_width=width,
-                target_height=height,
-            )
-            encoded = img2img.vae.encode(ImageUtil.to_array(scaled_user_image))
-            latents = ArrayUtil.pack_latents(latents=encoded, height=height, width=width)
+            latents = LatentCreator.encode_image(height=height, width=width, img2img=img2img)
 
             # 3. Find the appropriate sigma value
             sigma = img2img.sigmas[img2img.init_time_step]
@@ -74,6 +68,17 @@ class LatentCreator:
                 noise=pure_noise,
                 sigma=sigma
             )  # fmt: off
+
+    @staticmethod
+    def encode_image(height: int, width: int, img2img: Img2Img):
+        scaled_user_image = ImageUtil.scale_to_dimensions(
+            image=ImageUtil.load_image(img2img.init_image_path).convert("RGB"),
+            target_width=width,
+            target_height=height,
+        )
+        encoded = img2img.vae.encode(ImageUtil.to_array(scaled_user_image))
+        latents = ArrayUtil.pack_latents(latents=encoded, height=height, width=width)
+        return latents
 
     @staticmethod
     def add_noise_by_interpolation(clean: mx.array, noise: mx.array, sigma: float) -> mx.array:

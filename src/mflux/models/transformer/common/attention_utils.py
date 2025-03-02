@@ -2,10 +2,15 @@ import mlx.core as mx
 from mlx import nn
 from mlx.core.fast import scaled_dot_product_attention
 
+from mflux.flux.v_cache import VCache
+
 
 class AttentionUtils:
     @staticmethod
     def process_qkv(
+        t: int,
+        block,
+        should_cache: bool,
         hidden_states: mx.array,
         to_q: nn.Linear,
         to_k: nn.Linear,
@@ -18,6 +23,20 @@ class AttentionUtils:
         query = to_q(hidden_states)
         key = to_k(hidden_states)
         value = to_v(hidden_states)
+
+        mx.eval(query, key, value)
+
+        # Handle the values from inversion
+        if should_cache:
+            key_hash = hash((t, id(block)))
+            if block.layer > 15:
+                if VCache.is_inverting:
+                    if t <= VCache.t_max:
+                        VCache.v_cache[key_hash] = mx.array(value)
+                else:
+                    if t <= VCache.t_max:
+                        value = VCache.v_cache.get(key_hash, None)
+                        value = value if value is not None else to_v(hidden_states)
 
         # Reshape and transpose
         query = mx.transpose(mx.reshape(query, (1, -1, num_heads, head_dim)), (0, 2, 1, 3))
@@ -32,12 +51,12 @@ class AttentionUtils:
 
     @staticmethod
     def compute_attention(
-        query: mx.array,
-        key: mx.array,
-        value: mx.array,
-        batch_size: int,
-        num_heads: int,
-        head_dim: int
+            query: mx.array,
+            key: mx.array,
+            value: mx.array,
+            batch_size: int,
+            num_heads: int,
+            head_dim: int
     ) -> mx.array:  # fmt: off
         scale = 1 / mx.sqrt(query.shape[-1])
         hidden_states = scaled_dot_product_attention(query, key, value, scale=scale)
