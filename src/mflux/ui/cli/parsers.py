@@ -5,6 +5,7 @@ import time
 import typing as t
 from pathlib import Path
 
+from mflux.community.in_context_lora.in_context_loras import LORA_NAME_MAP, LORA_REPO_ID
 from mflux.ui import defaults as ui_defaults
 
 
@@ -47,10 +48,15 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--base-model", type=str, required=False, choices=ui_defaults.MODEL_CHOICES, help="When using a third-party huggingface model, explicitly specify whether the base model is dev or schnell")
         self.add_argument("--quantize",  "-q", type=int, choices=ui_defaults.QUANTIZE_CHOICES, default=None, help=f"Quantize the model ({' or '.join(map(str, ui_defaults.QUANTIZE_CHOICES))}, Default is None)")
 
-    def add_lora_arguments(self) -> None:
+    def add_lora_arguments(self) -> None:  # fmt: off
         self.supports_lora = True
+        lora_group = self.add_argument_group("LoRA configuration")
+        lora_group.add_argument("--lora-style", type=str, choices=sorted(LORA_NAME_MAP.keys()), help="Style of the LoRA to use (e.g., 'storyboard' for film storyboard style)")
         self.add_argument("--lora-paths", type=str, nargs="*", default=None, help="Local safetensors for applying LORA from disk")
         self.add_argument("--lora-scales", type=float, nargs="*", default=None, help="Scaling factor to adjust the impact of LoRA weights on the model. A value of 1.0 applies the LoRA weights as they are.")
+        lora_group.add_argument("--lora-name", type=str, help="Name of the LoRA to download from Hugging Face")
+        lora_group.add_argument("--lora-repo-id", type=str, default=LORA_REPO_ID, help=f"Hugging Face repository ID for LoRAs (default: {LORA_REPO_ID})")
+    # fmt: on
 
     def _add_image_generator_common_arguments(self) -> None:
         self.supports_image_generation = True
