@@ -10,6 +10,7 @@ from mflux.tokenizer.t5_tokenizer import TokenizerT5
 from mflux.tokenizer.tokenizer_handler import TokenizerHandler
 from mflux.weights.weight_handler import WeightHandler
 from mflux.weights.weight_handler_lora import WeightHandlerLoRA
+from mflux.weights.weight_handler_lora_huggingface import WeightHandlerLoRAHuggingFace
 from mflux.weights.weight_util import WeightUtil
 
 
@@ -20,10 +21,13 @@ class FluxInitializer:
         model_config: ModelConfig,
         quantize: int | None,
         local_path: str | None,
-        lora_paths: list[str] | None,
-        lora_scales: list[float] | None,
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
+        lora_names: list[str] | None = None,
+        lora_repo_id: str | None = None,
     ) -> None:
         # 0. Set paths, configs and prompt_cache for later
+        lora_paths = lora_paths or []
         flux_model.prompt_cache = {}
         flux_model.lora_paths = lora_paths
         flux_model.lora_scales = lora_scales
@@ -70,9 +74,13 @@ class FluxInitializer:
         )
 
         # 5. Set LoRA weights
+        hf_lora_paths = WeightHandlerLoRAHuggingFace.download_loras(
+            lora_names=lora_names,
+            repo_id=lora_repo_id,
+        )
         lora_weights = WeightHandlerLoRA.load_lora_weights(
             transformer=flux_model.transformer,
-            lora_files=lora_paths,
+            lora_files=lora_paths + hf_lora_paths,
             lora_scales=lora_scales,
         )
         WeightHandlerLoRA.set_lora_weights(
@@ -86,8 +94,10 @@ class FluxInitializer:
         model_config: ModelConfig,
         quantize: int | None,
         local_path: str | None,
-        lora_paths: list[str] | None,
-        lora_scales: list[float] | None,
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
+        lora_names: list[str] | None = None,
+        lora_repo_id: str | None = None,
     ) -> None:
         # 1. Start with same init as regular Flux
         FluxInitializer.init(
@@ -97,6 +107,8 @@ class FluxInitializer:
             local_path=local_path,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
+            lora_names=lora_names,
+            lora_repo_id=lora_repo_id,
         )
 
         # 2. Apply ControlNet-specific initialization
