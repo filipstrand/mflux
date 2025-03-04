@@ -10,6 +10,7 @@ from mflux.ui.cli.parsers import CommandLineParser
 
 def _create_mflux_generate_parser(with_controlnet=False) -> CommandLineParser:
     parser = CommandLineParser(description="Generate an image based on a prompt.")
+    parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
     parser.add_image_generator_arguments(supports_metadata_config=True)
     parser.add_lora_arguments()
@@ -33,6 +34,7 @@ def mflux_generate_controlnet_parser() -> CommandLineParser:
 @pytest.fixture
 def mflux_save_parser() -> CommandLineParser:
     parser = CommandLineParser(description="Save a quantized version of Flux.1 to disk.")  # fmt: off
+    parser.add_general_arguments()
     parser.add_model_arguments(path_type="save", require_model_arg=True)
     parser.add_lora_arguments()
     return parser
