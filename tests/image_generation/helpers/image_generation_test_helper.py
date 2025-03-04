@@ -48,7 +48,7 @@ class ImageGeneratorTestHelper:
                     width=width,
                 ),
             )
-            image.save(path=output_image_path)
+            image.save(path=output_image_path, overwrite=True)
 
             # then
             mse = ImageGeneratorTestHelper.mse(

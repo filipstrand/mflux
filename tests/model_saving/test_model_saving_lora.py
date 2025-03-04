@@ -1,3 +1,4 @@
+import os
 import shutil
 from pathlib import Path
 
@@ -10,6 +11,9 @@ PATH = "tests/4bit/"
 
 class TestModelSavingLora:
     def test_save_and_load_4bit_model_with_lora(self):
+        # Clean up any existing temporary directories from previous test runs
+        TestModelSavingLora.delete_folder_if_exists(PATH)
+
         try:
             # given a saved quantized model on disk (without LoRA)...
             fluxA = Flux1(
@@ -70,6 +74,14 @@ class TestModelSavingLora:
     @staticmethod
     def delete_folder(path: str) -> None:
         return shutil.rmtree(path)
+
+    @staticmethod
+    def delete_folder_if_exists(path: str) -> None:
+        if os.path.exists(path):
+            shutil.rmtree(path)
+            print(f"Deleted folder: {path}")
+        else:
+            print(f"Folder does not exist: {path}")
 
     @staticmethod
     def resolve_path(path) -> Path | None:

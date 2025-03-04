@@ -114,22 +114,24 @@ class ImageUtil:
 
     @staticmethod
     def save_image(
-            image: PIL.Image.Image,
-            path: t.Union[str, pathlib.Path],
-            metadata: dict | None = None,
-            export_json_metadata: bool = False
+        image: PIL.Image.Image,
+        path: t.Union[str, pathlib.Path],
+        metadata: dict | None = None,
+        export_json_metadata: bool = False,
+        overwrite: bool = False
     ) -> None:  # fmt: off
         file_path = pathlib.Path(path)
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_name = file_path.stem
         file_extension = file_path.suffix
 
-        # If a file already exists, create a new name with a counter
-        counter = 1
-        while file_path.exists():
-            new_name = f"{file_name}_{counter}{file_extension}"
-            file_path = file_path.with_name(new_name)
-            counter += 1
+        # If a file already exists and overwrite is False, create a new name with a counter
+        if not overwrite:
+            counter = 1
+            while file_path.exists():
+                new_name = f"{file_name}_{counter}{file_extension}"
+                file_path = file_path.with_name(new_name)
+                counter += 1
 
         try:
             # Save image without metadata first
