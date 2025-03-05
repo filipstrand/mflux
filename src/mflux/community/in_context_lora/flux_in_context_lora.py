@@ -114,7 +114,7 @@ class Flux1InContextLoRA(nn.Module):
                     static_noise=static_noise,
                 )
 
-                # (Optional) Call subscribers at end of loop
+                # (Optional) Call subscribers in-loop
                 Callbacks.in_loop(
                     t=t,
                     seed=seed,
@@ -136,6 +136,14 @@ class Flux1InContextLoRA(nn.Module):
                     config=config,
                     time_steps=time_steps,
                 )
+
+        # (Optional) Call subscribers after loop
+        Callbacks.after_loop(
+            seed=seed,
+            prompt=prompt,
+            latents=latents,
+            config=config,
+        )  # fmt: off
 
         # 6. Decode the latent array and return the image
         latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
