@@ -119,7 +119,7 @@ class Flux1Controlnet(nn.Module):
                 dt = config.sigmas[t + 1] - config.sigmas[t]
                 latents += noise * dt
 
-                # (Optional) Call subscribers at end of loop
+                # (Optional) Call subscribers in-loop
                 Callbacks.in_loop(
                     t=t,
                     seed=seed,
@@ -142,7 +142,7 @@ class Flux1Controlnet(nn.Module):
                     time_steps=time_steps,
                 )
 
-        # (Optional) Call subscribers at end of loop
+        # (Optional) Call subscribers after loop
         Callbacks.after_loop(
             seed=seed,
             prompt=prompt,
