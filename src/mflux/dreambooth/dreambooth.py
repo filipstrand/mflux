@@ -62,6 +62,7 @@ class DreamBooth:
                 )  # fmt: off
                 image.save(path=training_state.get_current_validation_image_path(training_spec))
                 del image
+                flux.prompt_cache = {}
 
             # Save checkpoint periodically
             if training_state.should_save(training_spec):
