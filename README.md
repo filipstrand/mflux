@@ -22,6 +22,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
   * [💾 Saving a quantized version to disk](#-saving-a-quantized-version-to-disk)
   * [💽 Loading and running a quantized version from disk](#-loading-and-running-a-quantized-version-from-disk)
 - [💽 Running a non-quantized model directly from disk](#-running-a-non-quantized-model-directly-from-disk)
+- [🌐 Third-Party HuggingFace Model Support](#-third-party-huggingface-model-support)
 - [🎨 Image-to-Image](#-image-to-image)
 - [🔌 LoRA](#-lora)
   * [Multi-LoRA](#multi-lora)
@@ -157,13 +158,15 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--prompt`** (required, `str`): Text description of the image to generate.
 
-- **`--model`** or **`-m`** (required, `str`): Model to use for generation (`"schnell"` or `"dev"`).
+- **`--model`** or **`-m`** (required, `str`): Model to use for generation. Can be one of the official models (`"schnell"` or `"dev"`) or a HuggingFace repository ID for a compatible third-party model (e.g., `"Freepik/flux.1-lite-8B-alpha"`).
 
-- **`--output`** (optional, `str`, default: `"image.png"`): Output image filename. If `--seed` `--auto-seeds` establishes N > 1 seed values, the "stem" of the output file name will automatically append `_seed_{value}`.
+- **`--base-model`** (optional, `str`, default: `None`): Specifies which base architecture a third-party model is derived from (`"schnell"` or `"dev"`). Required when using third-party models from HuggingFace.
 
-- **`--seed`** (optional, repeatable `int` args, default: `None`): 1 or more seeds for random number generation. e.g. `--seed 42` or `--seed 123 456 789`. Default is a single time-based value.
+- **`--output`** (optional, `str`, default: `"image.png"`): Output image filename. If `--seed` or `--auto-seeds` establishes multiple seed values, the output filename will automatically be modified to include the seed value (e.g., `image_seed_42.png`).
 
-- **`--auto-seeds`** (optional, `int`, default: `None`): Auto generate N random Seeds in a series of image generations. Superseded by `--seed` arg and `seed` values in `--config-from-metadata` files.
+- **`--seed`** (optional, repeatable `int` args, default: `None`): 1 or more seeds for random number generation. e.g. `--seed 42` or `--seed 123 456 789`. When multiple seeds are provided, MFLUX will generate one image per seed, using the same prompt and settings. Default is a single time-based value.
+
+- **`--auto-seeds`** (optional, `int`, default: `None`): Auto generate N random Seeds in a series of image generations. For example, `--auto-seeds 5` will generate 5 different images with 5 different random seeds. This is superseded by explicit `--seed` arguments and `seed` values in `--config-from-metadata` files.
 
 - **`--height`** (optional, `int`, default: `1024`): Height of the output image in pixels.
 
@@ -175,19 +178,13 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--path`** (optional, `str`, default: `None`): Path to a local model on disk.
 
-- **`--quantize`** or **`-q`** (optional, `int`, default: `None`): [Quantization](#%EF%B8%8F-quantization) (choose between `4` or `8`).
+- **`--quantize`** or **`-q`** (optional, `int`, default: `None`): [Quantization](#%EF%B8%8F-quantization) (choose between `3`, `4`, `6`, or `8` bits).
 
 - **`--lora-paths`** (optional, `[str]`, default: `None`): The paths to the [LoRA](#-LoRA) weights.
 
 - **`--lora-scales`** (optional, `[float]`, default: `None`): The scale for each respective [LoRA](#-LoRA) (will default to `1.0` if not specified and only one LoRA weight is loaded.)
 
 - **`--metadata`** (optional): Exports a `.json` file containing the metadata for the image with the same name. (Even without this flag, the image metadata is saved and can be viewed using `exiftool image.png`)
-
-- **`--controlnet-image-path`** (required, `str`): Path to the local image used by ControlNet to guide output generation.
-
-- **`--controlnet-strength`** (optional, `float`, default: `0.4`): Degree of influence the control image has on the output. Ranges from `0.0` (no influence) to `1.0` (full influence).
-
-- **`--controlnet-save-canny`** (optional, bool, default: False): If set, saves the Canny edge detection reference image used by ControlNet.
 
 - **`--image-path`** (optional, `str`, default: `None`): Local path to the initial image for image-to-image generation.
 
@@ -196,6 +193,48 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 - **`--config-from-metadata`** or **`-C`** (optional, `str`): [EXPERIMENTAL] Path to a prior file saved via `--metadata`, or a compatible handcrafted config file adhering to the expected args schema.
 
 - **`--low-ram`** (optional): Reduces GPU memory usage by constraining the MLX cache size and releasing text encoders and transformer components after use. This option is only compatible with single image generation. While it may slightly decrease performance, it helps prevent system memory swapping to disk, allowing generation on systems with limited RAM.
+
+- **`--lora-name`** (optional, `str`, default: `None`): The name of the LoRA to download from Hugging Face.
+
+- **`--lora-repo-id`** (optional, `str`, default: `"ali-vilab/In-Context-LoRA"`): The Hugging Face repository ID for LoRAs.
+
+- **`--stepwise-image-output-dir`** (optional, `str`, default: `None`): [EXPERIMENTAL] Output directory to write step-wise images and their final composite image to. This feature may change in future versions. When specified, MFLUX will save an image for each denoising step, allowing you to visualize the generation process from noise to final image.
+
+#### 📜 In-Context LoRA Command-Line Arguments
+
+The `mflux-generate-in-context` command supports most of the same arguments as `mflux-generate`, with these additional parameters:
+
+- **`--image-path`** (required, `str`): Path to the reference image that will guide the style of the generated image.
+
+- **`--lora-style`** (optional, `str`, default: `None`): The style to use for In-Context LoRA generation. Choose from: `couple`, `storyboard`, `font`, `home`, `illustration`, `portrait`, `ppt`, `sandstorm`, `sparklers`, or `identity`.
+
+See the [In-Context LoRA](#-in-context-lora) section for more details on how to use this feature effectively.
+
+#### 📜 ControlNet Command-Line Arguments
+
+The `mflux-generate-controlnet` command supports most of the same arguments as `mflux-generate`, with these additional parameters:
+
+- **`--controlnet-image-path`** (required, `str`): Path to the local image used by ControlNet to guide output generation.
+
+- **`--controlnet-strength`** (optional, `float`, default: `0.4`): Degree of influence the control image has on the output. Ranges from `0.0` (no influence) to `1.0` (full influence).
+
+- **`--controlnet-save-canny`** (optional, bool, default: `False`): If set, saves the Canny edge detection reference image used by ControlNet.
+
+See the [ControlNet](#%EF%B8%8F-controlnet) section for more details on how to use this feature effectively.
+
+
+#### 📜 Batch Image Generation Arguments
+
+- **`--prompts-file`** (required, `str`): Local path for a file that holds a batch of prompts.
+
+- **`--global-seed`** (optional, `int`): Entropy Seed used for all prompts in the batch.
+
+#### 📜 Training Arguments
+
+- **`--train-config`** (optional, `str`): Local path of the training configuration file. This file defines all aspects of the training process including model parameters, optimizer settings, and training data. See the [Training configuration](#training-configuration) section for details on the structure of this file.
+
+- **`--train-checkpoint`** (optional, `str`): Local path of the checkpoint file which specifies how to continue the training process. Used when resuming an interrupted training run.
+
 
 <details>
 <summary>parameters supported by config files</summary>
@@ -406,6 +445,8 @@ By selecting the `--quantize` or `-q` flag to be `4`, `8`, or removing it entire
 Image generation times in this example are based on a 2021 M1 Pro (32GB) machine. Even though the images are almost identical, there is a ~2x speedup by
 running the 8-bit quantized version on this particular machine. Unlike the non-quantized version, for the 8-bit version the swap memory usage is drastically reduced and GPU utilization is close to 100% during the whole generation. Results here can vary across different machines.
 
+For systems with limited RAM, you can also use the `--low-ram` option which reduces GPU memory usage by constraining the MLX cache size and releasing text encoders and transformer components after use. This option is particularly helpful for preventing system memory swapping to disk on machines with less available RAM.
+
 #### 📊 Size comparisons for quantized models
 
 The model sizes for both `schnell` and `dev` at various quantization levels are as follows:
@@ -512,6 +553,31 @@ when loading a model directly from disk, we require the downloaded models to loo
 This mirrors how the resources are placed in the [HuggingFace Repo](https://huggingface.co/black-forest-labs/FLUX.1-schnell/tree/main) for FLUX.1.
 *Huggingface weights, unlike quantized ones exported directly from this project, have to be
 processed a bit differently, which is why we require this structure above.*
+
+---
+
+### 🌐 Third-Party HuggingFace Model Support
+
+MFLUX now supports compatible third-party models from HuggingFace that follow the FLUX architecture. This opens up the ecosystem to community-created models that may offer different capabilities, sizes, or specializations.
+
+To use a third-party model, specify the HuggingFace repository ID with the `--model` parameter and indicate which base architecture (dev or schnell) it's derived from using the `--base-model` parameter:
+
+```sh
+mflux-generate \
+    --model Freepik/flux.1-lite-8B \
+    --base-model schnell \
+    --steps 4 \
+    --seed 42 \
+    --prompt "A beautiful landscape with mountains and a lake"
+```
+
+Some examples of compatible third-party models include:
+- [Freepik/flux.1-lite-8B-alpha](https://huggingface.co/Freepik/flux.1-lite-8B-alpha) - A lighter version of FLUX
+- [shuttleai/shuttle-3-diffusion](https://huggingface.co/shuttleai/shuttle-3-diffusion) - Shuttle's implementation based on FLUX
+
+The model will be automatically downloaded from HuggingFace the first time you use it, similar to the official FLUX models.
+
+*Note: Third-party models may have different performance characteristics, capabilities, or limitations compared to the official FLUX models. Always refer to the model's documentation on HuggingFace for specific usage instructions.*
 
 ---
 
@@ -723,6 +789,8 @@ To resume training for a given checkpoint, say `0001000_checkpoint.zip`, simply 
 mflux-train --train-checkpoint 0001000_checkpoint.zip
 ```
 
+This uses the `--train-checkpoint` command-line argument to specify the checkpoint file to resume from.
+
 There are two nice properties of the training procedure: 
 
 - Fully deterministic (given a specified `seed` in the training configuration)
@@ -911,17 +979,20 @@ See `uv run tools/rename_images.py --help` for full CLI usage help.
 - Set up shell aliases for required args examples:
   - shortcut for dev model: `alias mflux-dev='mflux-generate --model dev'`
   - shortcut for schnell model *and* always save metadata: `alias mflux-schnell='mflux-generate --model schnell --metadata'`
+- For systems with limited memory, use the `--low-ram` flag to reduce memory usage by constraining the MLX cache size and releasing components after use
+- When generating multiple images with different seeds, use `--seed` with multiple values or `--auto-seeds` to automatically generate a series of random seeds
+- Use `--stepwise-image-output-dir` to save intermediate images at each denoising step, which can be useful for debugging or creating animations of the generation process
 
 ### ✅ TODO
 
 - [ ] [FLUX.1 Tools](https://blackforestlabs.ai/flux-1-tools/)
 
-### 🔬 Cool research / features to support 
+### 🔬 Cool research / features to support
+- [ ] [ConceptAttention](https://github.com/helblazer811/ConceptAttention)
 - [ ] [PuLID](https://github.com/ToTheBeginning/PuLID)
 - [ ] [depth based controlnet](https://huggingface.co/InstantX/SD3-Controlnet-Depth) via [ml-depth-pro](https://github.com/apple/ml-depth-pro) or similar?
 - [ ] [RF-Inversion](https://github.com/filipstrand/mflux/issues/91)
-- [ ] [In-Context LoRA](https://github.com/ali-vilab/In-Context-LoRA)
-
+- [ ] [catvton-flux](https://github.com/nftblackmagic/catvton-flux)
 
 ### 🌱‍ Related projects
 
