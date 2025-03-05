@@ -22,10 +22,15 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
   * [💾 Saving a quantized version to disk](#-saving-a-quantized-version-to-disk)
   * [💽 Loading and running a quantized version from disk](#-loading-and-running-a-quantized-version-from-disk)
 - [💽 Running a non-quantized model directly from disk](#-running-a-non-quantized-model-directly-from-disk)
+- [🌐 Third-Party HuggingFace Model Support](#-third-party-huggingface-model-support)
 - [🎨 Image-to-Image](#-image-to-image)
 - [🔌 LoRA](#-lora)
   * [Multi-LoRA](#multi-lora)
   * [Supported LoRA formats (updated)](#supported-lora-formats-updated)
+- [🎭 In-Context LoRA](#-in-context-lora)
+  * [Available Styles](#available-styles)
+  * [How It Works](#how-it-works)
+  * [Tips for Best Results](#tips-for-best-results)
 - [🎛️ Dreambooth fine-tuning](#-dreambooth-fine-tuning)
   * [Training configuration](#training-configuration)
   * [Training example](#training-example)
@@ -153,13 +158,15 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--prompt`** (required, `str`): Text description of the image to generate.
 
-- **`--model`** or **`-m`** (required, `str`): Model to use for generation (`"schnell"` or `"dev"`).
+- **`--model`** or **`-m`** (required, `str`): Model to use for generation. Can be one of the official models (`"schnell"` or `"dev"`) or a HuggingFace repository ID for a compatible third-party model (e.g., `"Freepik/flux.1-lite-8B-alpha"`).
 
-- **`--output`** (optional, `str`, default: `"image.png"`): Output image filename. If `--seed` `--auto-seeds` establishes N > 1 seed values, the "stem" of the output file name will automatically append `_seed_{value}`.
+- **`--base-model`** (optional, `str`, default: `None`): Specifies which base architecture a third-party model is derived from (`"schnell"` or `"dev"`). Required when using third-party models from HuggingFace.
 
-- **`--seed`** (optional, repeatable `int` args, default: `None`): 1 or more seeds for random number generation. e.g. `--seed 42` or `--seed 123 456 789`. Default is a single time-based value.
+- **`--output`** (optional, `str`, default: `"image.png"`): Output image filename. If `--seed` or `--auto-seeds` establishes multiple seed values, the output filename will automatically be modified to include the seed value (e.g., `image_seed_42.png`).
 
-- **`--auto-seeds`** (optional, `int`, default: `None`): Auto generate N random Seeds in a series of image generations. Superseded by `--seed` arg and `seed` values in `--config-from-metadata` files.
+- **`--seed`** (optional, repeatable `int` args, default: `None`): 1 or more seeds for random number generation. e.g. `--seed 42` or `--seed 123 456 789`. When multiple seeds are provided, MFLUX will generate one image per seed, using the same prompt and settings. Default is a single time-based value.
+
+- **`--auto-seeds`** (optional, `int`, default: `None`): Auto generate N random Seeds in a series of image generations. For example, `--auto-seeds 5` will generate 5 different images with 5 different random seeds. This is superseded by explicit `--seed` arguments and `seed` values in `--config-from-metadata` files.
 
 - **`--height`** (optional, `int`, default: `1024`): Height of the output image in pixels.
 
@@ -171,7 +178,7 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--path`** (optional, `str`, default: `None`): Path to a local model on disk.
 
-- **`--quantize`** or **`-q`** (optional, `int`, default: `None`): [Quantization](#%EF%B8%8F-quantization) (choose between `4` or `8`).
+- **`--quantize`** or **`-q`** (optional, `int`, default: `None`): [Quantization](#%EF%B8%8F-quantization) (choose between `3`, `4`, `6`, or `8` bits).
 
 - **`--lora-paths`** (optional, `[str]`, default: `None`): The paths to the [LoRA](#-LoRA) weights.
 
@@ -179,19 +186,55 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--metadata`** (optional): Exports a `.json` file containing the metadata for the image with the same name. (Even without this flag, the image metadata is saved and can be viewed using `exiftool image.png`)
 
-- **`--controlnet-image-path`** (required, `str`): Path to the local image used by ControlNet to guide output generation.
+- **`--image-path`** (optional, `str`, default: `None`): Local path to the initial image for image-to-image generation.
 
-- **`--controlnet-strength`** (optional, `float`, default: `0.4`): Degree of influence the control image has on the output. Ranges from `0.0` (no influence) to `1.0` (full influence).
-
-- **`--controlnet-save-canny`** (optional, bool, default: False): If set, saves the Canny edge detection reference image used by ControlNet.
-
-- **`--init-image-path`** (optional, `str`, default: `None`): Local path to the initial image for image-to-image generation.
-
-- **`--init-image-strength`** (optional, `float`, default: `0.4`): Controls how strongly the initial image influences the output image. A value of `0.0` means no influence. (Default is `0.4`)
+- **`--image-strength`** (optional, `float`, default: `0.4`): Controls how strongly the initial image influences the output image. A value of `0.0` means no influence. (Default is `0.4`)
 
 - **`--config-from-metadata`** or **`-C`** (optional, `str`): [EXPERIMENTAL] Path to a prior file saved via `--metadata`, or a compatible handcrafted config file adhering to the expected args schema.
 
 - **`--low-ram`** (optional): Reduces GPU memory usage by constraining the MLX cache size and releasing text encoders and transformer components after use. This option is only compatible with single image generation. While it may slightly decrease performance, it helps prevent system memory swapping to disk, allowing generation on systems with limited RAM.
+
+- **`--lora-name`** (optional, `str`, default: `None`): The name of the LoRA to download from Hugging Face.
+
+- **`--lora-repo-id`** (optional, `str`, default: `"ali-vilab/In-Context-LoRA"`): The Hugging Face repository ID for LoRAs.
+
+- **`--stepwise-image-output-dir`** (optional, `str`, default: `None`): [EXPERIMENTAL] Output directory to write step-wise images and their final composite image to. This feature may change in future versions. When specified, MFLUX will save an image for each denoising step, allowing you to visualize the generation process from noise to final image.
+
+#### 📜 In-Context LoRA Command-Line Arguments
+
+The `mflux-generate-in-context` command supports most of the same arguments as `mflux-generate`, with these additional parameters:
+
+- **`--image-path`** (required, `str`): Path to the reference image that will guide the style of the generated image.
+
+- **`--lora-style`** (optional, `str`, default: `None`): The style to use for In-Context LoRA generation. Choose from: `couple`, `storyboard`, `font`, `home`, `illustration`, `portrait`, `ppt`, `sandstorm`, `sparklers`, or `identity`.
+
+See the [In-Context LoRA](#-in-context-lora) section for more details on how to use this feature effectively.
+
+#### 📜 ControlNet Command-Line Arguments
+
+The `mflux-generate-controlnet` command supports most of the same arguments as `mflux-generate`, with these additional parameters:
+
+- **`--controlnet-image-path`** (required, `str`): Path to the local image used by ControlNet to guide output generation.
+
+- **`--controlnet-strength`** (optional, `float`, default: `0.4`): Degree of influence the control image has on the output. Ranges from `0.0` (no influence) to `1.0` (full influence).
+
+- **`--controlnet-save-canny`** (optional, bool, default: `False`): If set, saves the Canny edge detection reference image used by ControlNet.
+
+See the [ControlNet](#%EF%B8%8F-controlnet) section for more details on how to use this feature effectively.
+
+
+#### 📜 Batch Image Generation Arguments
+
+- **`--prompts-file`** (required, `str`): Local path for a file that holds a batch of prompts.
+
+- **`--global-seed`** (optional, `int`): Entropy Seed used for all prompts in the batch.
+
+#### 📜 Training Arguments
+
+- **`--train-config`** (optional, `str`): Local path of the training configuration file. This file defines all aspects of the training process including model parameters, optimizer settings, and training data. See the [Training configuration](#training-configuration) section for details on the structure of this file.
+
+- **`--train-checkpoint`** (optional, `str`): Local path of the checkpoint file which specifies how to continue the training process. Used when resuming an interrupted training run.
+
 
 <details>
 <summary>parameters supported by config files</summary>
@@ -391,7 +434,7 @@ mflux-generate \
     --quantize 8 \
     --height 1920 \
     --width 1024 \
-    --prompt "Tranquil pond in a bamboo forest at dawn, the sun is barely starting to peak over the horizon, panda practices Tai Chi near the edge of the pond, atmospheric perspective through the mist of morning dew, sunbeams, its movements are graceful and fluid — creating a sense of harmony and balance, the pond’s calm waters reflecting the scene, inviting a sense of meditation and connection with nature, style of Howard Terpning and Jessica Rossier"
+    --prompt "Tranquil pond in a bamboo forest at dawn, the sun is barely starting to peak over the horizon, panda practices Tai Chi near the edge of the pond, atmospheric perspective through the mist of morning dew, sunbeams, its movements are graceful and fluid — creating a sense of harmony and balance, the pond's calm waters reflecting the scene, inviting a sense of meditation and connection with nature, style of Howard Terpning and Jessica Rossier"
 ```
 ![image](src/mflux/assets/comparison6.jpg)
 
@@ -401,6 +444,8 @@ mflux-generate \
 By selecting the `--quantize` or `-q` flag to be `4`, `8`, or removing it entirely, we get all 3 images above. As can be seen, there is very little difference between the images (especially between the 8-bit, and the non-quantized result).
 Image generation times in this example are based on a 2021 M1 Pro (32GB) machine. Even though the images are almost identical, there is a ~2x speedup by
 running the 8-bit quantized version on this particular machine. Unlike the non-quantized version, for the 8-bit version the swap memory usage is drastically reduced and GPU utilization is close to 100% during the whole generation. Results here can vary across different machines.
+
+For systems with limited RAM, you can also use the `--low-ram` option which reduces GPU memory usage by constraining the MLX cache size and releasing text encoders and transformer components after use. This option is particularly helpful for preventing system memory swapping to disk on machines with less available RAM.
 
 #### 📊 Size comparisons for quantized models
 
@@ -450,7 +495,7 @@ mflux-generate \
     --seed 2 \
     --height 1920 \
     --width 1024 \
-    --prompt "Tranquil pond in a bamboo forest at dawn, the sun is barely starting to peak over the horizon, panda practices Tai Chi near the edge of the pond, atmospheric perspective through the mist of morning dew, sunbeams, its movements are graceful and fluid — creating a sense of harmony and balance, the pond’s calm waters reflecting the scene, inviting a sense of meditation and connection with nature, style of Howard Terpning and Jessica Rossier"
+    --prompt "Tranquil pond in a bamboo forest at dawn, the sun is barely starting to peak over the horizon, panda practices Tai Chi near the edge of the pond, atmospheric perspective through the mist of morning dew, sunbeams, its movements are graceful and fluid — creating a sense of harmony and balance, the pond's calm waters reflecting the scene, inviting a sense of meditation and connection with nature, style of Howard Terpning and Jessica Rossier"
 ```
 
 *Note: When loading a quantized model from disk, there is no need to pass in `-q` flag, since we can infer this from the weight metadata.*
@@ -511,18 +556,43 @@ processed a bit differently, which is why we require this structure above.*
 
 ---
 
+### 🌐 Third-Party HuggingFace Model Support
+
+MFLUX now supports compatible third-party models from HuggingFace that follow the FLUX architecture. This opens up the ecosystem to community-created models that may offer different capabilities, sizes, or specializations.
+
+To use a third-party model, specify the HuggingFace repository ID with the `--model` parameter and indicate which base architecture (dev or schnell) it's derived from using the `--base-model` parameter:
+
+```sh
+mflux-generate \
+    --model Freepik/flux.1-lite-8B \
+    --base-model schnell \
+    --steps 4 \
+    --seed 42 \
+    --prompt "A beautiful landscape with mountains and a lake"
+```
+
+Some examples of compatible third-party models include:
+- [Freepik/flux.1-lite-8B-alpha](https://huggingface.co/Freepik/flux.1-lite-8B-alpha) - A lighter version of FLUX
+- [shuttleai/shuttle-3-diffusion](https://huggingface.co/shuttleai/shuttle-3-diffusion) - Shuttle's implementation based on FLUX
+
+The model will be automatically downloaded from HuggingFace the first time you use it, similar to the official FLUX models.
+
+*Note: Third-party models may have different performance characteristics, capabilities, or limitations compared to the official FLUX models. Always refer to the model's documentation on HuggingFace for specific usage instructions.*
+
+---
+
 ### 🎨 Image-to-Image
 
 One way to condition the image generation is by starting from an existing image and let MFLUX produce new variations.
-Use the `--init-image-path` flag to specify the reference image, and the `--init-image-strength` to control how much the reference 
+Use the `--image-path` flag to specify the reference image, and the `--image-strength` to control how much the reference 
 image should guide the generation. For example, given the reference image below, the following command produced the first
 image using the  [Sketching](https://civitai.com/models/803456/sketching?modelVersionId=898364) LoRA: 
 
 ```sh
 mflux-generate \
 --prompt "sketching of an Eiffel architecture, masterpiece, best quality. The site is lit by lighting professionals, creating a subtle illumination effect. Ink on paper with very fine touches with colored markers, (shadings:1.1), loose lines, Schematic, Conceptual, Abstract, Gestural. Quick sketches to explore ideas and concepts." \
---init-image-path "reference.png" \
---init-image-strength 0.3 \
+--image-path "reference.png" \
+--image-strength 0.3 \
 --lora-paths Architectural_Sketching.safetensors \
 --lora-scales 1.0 \
 --model dev \
@@ -601,7 +671,85 @@ To report additional formats, examples or other any suggestions related to LoRA 
 
 ---
 
-### 🎛 Dreambooth fine-tuning
+### 🎭 In-Context LoRA
+
+In-Context LoRA is a powerful technique that allows you to generate images in a specific style based on a reference image, without requiring model fine-tuning. This approach uses specialized LoRA weights that enable the model to understand and apply the visual context from your reference image to a new generation.
+
+This feature is based on the [In-Context LoRA for Diffusion Transformers](https://github.com/ali-vilab/In-Context-LoRA) project by Ali-ViLab.
+
+![image](src/mflux/assets/in_context_example.jpg)
+
+To use In-Context LoRA, you need:
+1. A reference image
+2. A style LoRA (optional - the in-context ability works without LoRAs, but they can significantly enhance the results)
+
+
+#### Available Styles
+
+MFLUX provides several pre-defined styles from the [Hugging Face ali-vilab/In-Context-LoRA repository](https://huggingface.co/ali-vilab/In-Context-LoRA) that you can use with the `--lora-style` argument:
+
+| Style Name     | Description                               |
+|----------------|-------------------------------------------|
+| `couple`       | Couple profile photography style          |
+| `storyboard`   | Film storyboard sketching style           |
+| `font`         | Font design and typography style          |
+| `home`         | Home decoration and interior design style |
+| `illustration` | Portrait illustration style               |
+| `portrait`     | Portrait photography style                |
+| `ppt`          | Presentation template style               |
+| `sandstorm`    | Sandstorm visual effect                   |
+| `sparklers`    | Sparklers visual effect                   |
+| `identity`     | Visual identity and branding design style |
+
+#### How It Works
+
+The In-Context LoRA generation creates a side-by-side image where:
+- The left side shows your reference image with noise applied
+- The right side shows the new generation that follows your prompt while maintaining the visual context
+
+The final output is automatically cropped to show only the right half (the generated image).
+
+![image](src/mflux/assets/in_context_how_it_works.jpg)
+
+
+#### Prompting for In-Context LoRA
+
+For best results with In-Context LoRA, your prompt should describe both the reference image and the target image you want to generate. Use markers like `[IMAGE1]`, `[LEFT]`, or `[RIGHT]` to distinguish between the two parts.
+
+Here's an example:
+
+```sh
+mflux-generate-in-context \
+  --model dev \
+  --steps 20 \
+  --quantize 8 \
+  --seed 42 \
+  --height 1024 \
+  --width 1024 \
+  --image-path "reference.png" \
+  --lora-style identity \
+  --prompt "In this set of two images, a bold modern typeface with the brand name 'DEMA' is introduced and is shown on a company merchandise product photo; [IMAGE1] a simplistic black logo featuring a modern typeface with the brand name 'DEMA' on a bright light green/yellowish background; [IMAGE2] the design is printed on a green/yellowish hoodie as a company merchandise product photo with a plain white background."
+```
+
+This prompt clearly describes both the reference image (after `[IMAGE1]`) and the desired output (after `[IMAGE2]`). Other marker pairs you can use include:
+- `[LEFT]` and `[RIGHT]`
+- `[TOP]` and `[BOTTOM]`
+- `[REFERENCE]` and `[OUTPUT]`
+
+**Important**: In the current implementation, the reference image is ALWAYS placed on the left side of the composition, and the generated image on the right side. When using marker pairs in your prompt, the first marker (e.g., `[IMAGE1]`, `[LEFT]`, `[REFERENCE]`) always refers to your reference image, while the second marker (e.g., `[IMAGE2]`, `[RIGHT]`, `[OUTPUT]`) refers to what you want to generate.
+
+#### Tips for Best Results
+
+1. **Choose the right reference image**: Select a reference image with a clear composition and structure that matches your intended output.
+2. **Adjust guidance**: Higher guidance values (7.0-9.0) tend to produce results that more closely follow your prompt.
+3. **Try different styles**: Each style produces distinctly different results - experiment to find the one that best matches your vision.
+4. **Increase steps**: For higher quality results, use 25-30 steps.
+5. **Detailed prompting**: Be specific about both the reference image and your desired output in your prompt.
+6. **Try without LoRA**: While LoRAs enhance the results, you can experiment without them to see the base in-context capabilities.
+
+---
+
+### 🎛️ Dreambooth fine-tuning
 
 As of release [v.0.5.0](https://github.com/filipstrand/mflux/releases/tag/v.0.5.0), MFLUX has support for fine-tuning your own LoRA adapters using the [Dreambooth](https://dreambooth.github.io) technique.
 
@@ -640,6 +788,8 @@ To resume training for a given checkpoint, say `0001000_checkpoint.zip`, simply 
 ```sh
 mflux-train --train-checkpoint 0001000_checkpoint.zip
 ```
+
+This uses the `--train-checkpoint` command-line argument to specify the checkpoint file to resume from.
 
 There are two nice properties of the training procedure: 
 
@@ -801,6 +951,7 @@ with different prompts and LoRA adapters active.
 - Some LoRA adapters does not work.
 - Currently, the supported controlnet is the [canny-only version](https://huggingface.co/InstantX/FLUX.1-dev-Controlnet-Canny).
 - Dreambooth training currently does not support sending in training parameters as flags.
+- In-Context LoRA currently only supports a left-right image setup (reference image on left, generated image on right).
 
 ### Optional Tool: Batch Image Renamer
 
@@ -828,17 +979,20 @@ See `uv run tools/rename_images.py --help` for full CLI usage help.
 - Set up shell aliases for required args examples:
   - shortcut for dev model: `alias mflux-dev='mflux-generate --model dev'`
   - shortcut for schnell model *and* always save metadata: `alias mflux-schnell='mflux-generate --model schnell --metadata'`
+- For systems with limited memory, use the `--low-ram` flag to reduce memory usage by constraining the MLX cache size and releasing components after use
+- When generating multiple images with different seeds, use `--seed` with multiple values or `--auto-seeds` to automatically generate a series of random seeds
+- Use `--stepwise-image-output-dir` to save intermediate images at each denoising step, which can be useful for debugging or creating animations of the generation process
 
 ### ✅ TODO
 
 - [ ] [FLUX.1 Tools](https://blackforestlabs.ai/flux-1-tools/)
 
-### 🔬 Cool research / features to support 
+### 🔬 Cool research / features to support
+- [ ] [ConceptAttention](https://github.com/helblazer811/ConceptAttention)
 - [ ] [PuLID](https://github.com/ToTheBeginning/PuLID)
 - [ ] [depth based controlnet](https://huggingface.co/InstantX/SD3-Controlnet-Depth) via [ml-depth-pro](https://github.com/apple/ml-depth-pro) or similar?
 - [ ] [RF-Inversion](https://github.com/filipstrand/mflux/issues/91)
-- [ ] [In-Context LoRA](https://github.com/ali-vilab/In-Context-LoRA)
-
+- [ ] [catvton-flux](https://github.com/nftblackmagic/catvton-flux)
 
 ### 🌱‍ Related projects
 

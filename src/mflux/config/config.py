@@ -15,8 +15,8 @@ class Config:
         width: int = 1024,
         height: int = 1024,
         guidance: float = 4.0,
-        init_image_path: Path | None = None,
-        init_image_strength: float | None = None,
+        image_path: Path | None = None,
+        image_strength: float | None = None,
         controlnet_strength: float | None = None,
     ):
         if width % 16 != 0 or height % 16 != 0:
@@ -25,6 +25,6 @@ class Config:
         self.height = 16 * (height // 16)
         self.num_inference_steps = num_inference_steps
         self.guidance = guidance
-        self.init_image_path = init_image_path
-        self.init_image_strength = init_image_strength
+        self.image_path = image_path
+        self.image_strength = image_strength
         self.controlnet_strength = controlnet_strength

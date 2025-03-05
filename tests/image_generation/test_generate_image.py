@@ -60,8 +60,8 @@ class TestImageGenerator:
     def test_image_generation_dev_image_to_image(self):
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_dev_image_to_image_result.png",
-            init_image_path="reference_dev_lora.png",
-            init_image_strength=0.4,
+            image_path="reference_dev_lora.png",
+            image_strength=0.4,
             output_image_path=TestImageGenerator.OUTPUT_IMAGE_FILENAME,
             model_config=ModelConfig.dev(),
             steps=8,

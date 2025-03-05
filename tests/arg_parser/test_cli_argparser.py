@@ -75,8 +75,8 @@ def base_metadata_dict() -> dict:
         "generation_time_seconds": 42.0,
         "lora_paths": None,
         "lora_scales": None,
-        "init_image": None,
-        "init_image_strength": None,
+        "image": None,
+        "image_strength": None,
         "controlnet_image": None,
         "controlnet_strength": None,
         "controlnet_save_canny": False,
@@ -300,32 +300,32 @@ def test_image_to_image_args(mflux_generate_parser, mflux_generate_minimal_argv,
     metadata_file = temp_dir / "image_to_image.json"
     test_path = "/some/awesome/image.png"
     with metadata_file.open("wt") as m:
-        base_metadata_dict["init_image_path"] = test_path
+        base_metadata_dict["image_path"] = test_path
         json.dump(base_metadata_dict, m, indent=4)
 
     # test user default value
     with patch("sys.argv", mflux_generate_minimal_argv + ["-m", "dev"]):
         args = mflux_generate_parser.parse_args()
-        assert args.init_image_path is None
-        assert args.init_image_strength == 0.4  # default
+        assert args.image_path is None
+        assert args.image_strength == 0.4  # default
 
     # test metadata config accepted
     with patch('sys.argv', mflux_generate_minimal_argv + ['--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
         args = mflux_generate_parser.parse_args()
-        assert args.init_image_path == test_path
-        assert args.init_image_strength == 0.4  # default
+        assert args.image_path == test_path
+        assert args.image_strength == 0.4  # default
 
     # test strength override
-    with patch('sys.argv', mflux_generate_minimal_argv + ['--init-image-strength', '0.7', '--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
+    with patch('sys.argv', mflux_generate_minimal_argv + ['--image-strength', '0.7', '--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
         args = mflux_generate_parser.parse_args()
-        assert args.init_image_path == test_path
-        assert args.init_image_strength == 0.7
+        assert args.image_path == test_path
+        assert args.image_strength == 0.7
 
     # test image path override
-    with patch('sys.argv', mflux_generate_minimal_argv + ['--init-image-path', '/some/better/image.png', '--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
+    with patch('sys.argv', mflux_generate_minimal_argv + ['--image-path', '/some/better/image.png', '--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
         args = mflux_generate_parser.parse_args()
-        assert args.init_image_path == Path("/some/better/image.png")
-        assert args.init_image_strength == 0.4  # default
+        assert args.image_path == Path("/some/better/image.png")
+        assert args.image_strength == 0.4  # default
 
 
 def test_controlnet_args(mflux_generate_controlnet_parser, mflux_generate_controlnet_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off
