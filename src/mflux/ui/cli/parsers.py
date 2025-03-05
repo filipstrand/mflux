@@ -5,6 +5,7 @@ import time
 import typing as t
 from pathlib import Path
 
+from mflux.community.in_context_lora.in_context_loras import LORA_NAME_MAP, LORA_REPO_ID
 from mflux.ui import defaults as ui_defaults
 
 
@@ -47,10 +48,15 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--base-model", type=str, required=False, choices=ui_defaults.MODEL_CHOICES, help="When using a third-party huggingface model, explicitly specify whether the base model is dev or schnell")
         self.add_argument("--quantize",  "-q", type=int, choices=ui_defaults.QUANTIZE_CHOICES, default=None, help=f"Quantize the model ({' or '.join(map(str, ui_defaults.QUANTIZE_CHOICES))}, Default is None)")
 
-    def add_lora_arguments(self) -> None:
+    def add_lora_arguments(self) -> None:  # fmt: off
         self.supports_lora = True
+        lora_group = self.add_argument_group("LoRA configuration")
+        lora_group.add_argument("--lora-style", type=str, choices=sorted(LORA_NAME_MAP.keys()), help="Style of the LoRA to use (e.g., 'storyboard' for film storyboard style)")
         self.add_argument("--lora-paths", type=str, nargs="*", default=None, help="Local safetensors for applying LORA from disk")
         self.add_argument("--lora-scales", type=float, nargs="*", default=None, help="Scaling factor to adjust the impact of LoRA weights on the model. A value of 1.0 applies the LoRA weights as they are.")
+        lora_group.add_argument("--lora-name", type=str, help="Name of the LoRA to download from Hugging Face")
+        lora_group.add_argument("--lora-repo-id", type=str, default=LORA_REPO_ID, help=f"Hugging Face repository ID for LoRAs (default: {LORA_REPO_ID})")
+    # fmt: on
 
     def _add_image_generator_common_arguments(self) -> None:
         self.supports_image_generation = True
@@ -69,8 +75,8 @@ class CommandLineParser(argparse.ArgumentParser):
 
     def add_image_to_image_arguments(self, required=False) -> None:
         self.supports_image_to_image = True
-        self.add_argument("--init-image-path", type=Path, required=required, default=None, help="Local path to init image")
-        self.add_argument("--init-image-strength", type=float, required=False, default=ui_defaults.INIT_IMAGE_STRENGTH, help=f"Controls how strongly the init image influences the output image. A value of 0.0 means no influence. (Default is {ui_defaults.INIT_IMAGE_STRENGTH})")
+        self.add_argument("--image-path", type=Path, required=required, default=None, help="Local path to init image")
+        self.add_argument("--image-strength", type=float, required=False, default=ui_defaults.IMAGE_STRENGTH, help=f"Controls how strongly the init image influences the output image. A value of 0.0 means no influence. (Default is {ui_defaults.IMAGE_STRENGTH})")
 
     def add_batch_image_generator_arguments(self) -> None:
         self.add_argument("--prompts-file", type=Path, required=True, default=argparse.SUPPRESS, help="Local path for a file that holds a batch of prompts.")
@@ -152,10 +158,10 @@ class CommandLineParser(argparse.ArgumentParser):
                     namespace.lora_scales = prior_gen_metadata.get("lora_scales", []) + namespace.lora_scales
 
             if self.supports_image_to_image:
-                if namespace.init_image_path is None:
-                    namespace.init_image_path = prior_gen_metadata.get("init_image_path", None)
-                if namespace.init_image_strength == self.get_default("init_image_strength") and (init_img_strength_from_metadata := prior_gen_metadata.get("init_image_strength", None)):
-                    namespace.init_image_strength = init_img_strength_from_metadata
+                if namespace.image_path is None:
+                    namespace.image_path = prior_gen_metadata.get("image_path", None)
+                if namespace.image_strength == self.get_default("image_strength") and (img_strength_from_metadata := prior_gen_metadata.get("image_strength", None)):
+                    namespace.image_strength = img_strength_from_metadata
 
             if self.supports_controlnet:
                 if namespace.controlnet_image_path is None:
