@@ -6,6 +6,7 @@ from mflux.ui.cli.parsers import CommandLineParser
 
 def main():
     parser = CommandLineParser(description="Finetune a LoRA adapter")
+    parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
     parser.add_training_arguments()
     args = parser.parse_args()
