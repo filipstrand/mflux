@@ -108,13 +108,13 @@ class TrainingState:
     def get_current_validation_image_path(self, training_spec: TrainingSpec) -> Path:
         output_path = Path(training_spec.saver.output_path) / DREAMBOOTH_PATH_VALIDATION_IMAGES
         output_path.mkdir(parents=True, exist_ok=True)
-        path = output_path / Path(f"{self.iterator.num_iterations :07d}_{DREAMBOOTH_FILE_NAME_VALIDATION_IMAGE}.png")
+        path = output_path / Path(f"{self.iterator.num_iterations:07d}_{DREAMBOOTH_FILE_NAME_VALIDATION_IMAGE}.png")
         return path
 
     def get_current_loss_plot_path(self, training_spec: TrainingSpec) -> Path:
         output_path = Path(training_spec.saver.output_path) / DREAMBOOTH_PATH_VALIDATION_PLOT
         output_path.mkdir(parents=True, exist_ok=True)
-        path = output_path / Path(f"{self.iterator.num_iterations :07d}_{DREAMBOOTH_FILE_NAME_VALIDATION_LOSS}.pdf")
+        path = output_path / Path(f"{self.iterator.num_iterations:07d}_{DREAMBOOTH_FILE_NAME_VALIDATION_LOSS}.pdf")
         return path
 
     @staticmethod

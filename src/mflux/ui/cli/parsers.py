@@ -17,7 +17,7 @@ class ModelSpecAction(argparse.Action):
 
         if values.count("/") != 1:
             raise argparse.ArgumentError(
-                self, 'Value must be either "dev", "schnell", or "' f'in format "org/model". Got: {values}'
+                self, f'Value must be either "dev", "schnell", or "in format "org/model". Got: {values}'
             )
 
         # If we got here, values contains exactly one slash
