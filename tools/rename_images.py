@@ -51,10 +51,10 @@ def parse_metadata_from_image(image: Image, insecure=False) -> dict:
                     metadata = obj
                 else:
                     raise UnsupportedMetadata(
-                        "The metadata is not a dict output recognized by this tool. " f"Metadata: {value.decode()}"
+                        f"The metadata is not a dict output recognized by this tool. Metadata: {value.decode()}"
                     )
             except (ValueError, SyntaxError):
-                raise UnsupportedMetadata("The metadata is not parseable by this tool. " f"Metadata: {value.decode()}")
+                raise UnsupportedMetadata(f"The metadata is not parseable by this tool. Metadata: {value.decode()}")
 
     return metadata
 
