@@ -11,13 +11,14 @@ from mflux.ui import defaults as ui_defaults
 
 class ModelSpecAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
-        if values in ["dev", "schnell"]:
+        if values in ui_defaults.MODEL_CHOICES:
             setattr(namespace, self.dest, values)
             return
 
         if values.count("/") != 1:
             raise argparse.ArgumentError(
-                self, f'Value must be either "dev", "schnell", or "in format "org/model". Got: {values}'
+                self,
+                (f'Value must be either {" ".join(ui_defaults.MODEL_CHOICES)} or in format "org/model". Got: {values}'),
             )
 
         # If we got here, values contains exactly one slash
@@ -77,6 +78,7 @@ class CommandLineParser(argparse.ArgumentParser):
         self.supports_image_to_image = True
         self.add_argument("--image-path", type=Path, required=required, default=None, help="Local path to init image")
         self.add_argument("--image-strength", type=float, required=False, default=ui_defaults.IMAGE_STRENGTH, help=f"Controls how strongly the init image influences the output image. A value of 0.0 means no influence. (Default is {ui_defaults.IMAGE_STRENGTH})")
+        self.add_argument("--masked-image-path", type=Path, required=False, default=None, help="Local path to separate masked image as complement to --image-path")
 
     def add_batch_image_generator_arguments(self) -> None:
         self.add_argument("--prompts-file", type=Path, required=True, default=argparse.SUPPRESS, help="Local path for a file that holds a batch of prompts.")
