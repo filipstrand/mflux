@@ -1,8 +1,8 @@
 from mflux import Config, Flux1Controlnet, ModelConfig, StopImageGenerationException
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.callbacks.instances.canny_saver import CannyImageSaver
-from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
 from mflux.callbacks.instances.memory_saver import MemorySaver
+from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
 from mflux.ui.cli.parsers import CommandLineParser
 
 
@@ -65,6 +65,7 @@ def main():
     finally:
         if memory_saver:
             print(memory_saver.memory_stats())
+
 
 if __name__ == "__main__":
     main()

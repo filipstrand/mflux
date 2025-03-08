@@ -1,4 +1,4 @@
-from mflux.callbacks.callback import BeforeLoopCallback, InLoopCallback, InterruptCallback, AfterLoopCallback
+from mflux.callbacks.callback import AfterLoopCallback, BeforeLoopCallback, InLoopCallback, InterruptCallback
 
 
 class CallbackRegistry:

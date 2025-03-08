@@ -51,12 +51,7 @@ class Callbacks:
         config: RuntimeConfig
     ):  # fmt: off
         for subscriber in CallbackRegistry.after_loop_callbacks():
-            subscriber.call_after_loop(
-                seed=seed,
-                prompt=prompt,
-                latents=latents,
-                config=config
-            )
+            subscriber.call_after_loop(seed=seed, prompt=prompt, latents=latents, config=config)
 
     @staticmethod
     def interruption(

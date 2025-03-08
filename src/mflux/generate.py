@@ -1,7 +1,7 @@
 from mflux import Config, Flux1, ModelConfig, StopImageGenerationException
 from mflux.callbacks.callback_registry import CallbackRegistry
-from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
 from mflux.callbacks.instances.memory_saver import MemorySaver
+from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
 from mflux.ui.cli.parsers import CommandLineParser
 
 
