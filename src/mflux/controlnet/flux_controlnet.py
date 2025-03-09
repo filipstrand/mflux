@@ -8,6 +8,7 @@ from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.controlnet.controlnet_util import ControlnetUtil
 from mflux.controlnet.transformer_controlnet import TransformerControlnet
+from mflux.error.exceptions import StopImageGenerationException
 from mflux.flux.flux_initializer import FluxInitializer
 from mflux.latent_creator.latent_creator import LatentCreator
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
@@ -141,6 +142,7 @@ class Flux1Controlnet(nn.Module):
                     config=config,
                     time_steps=time_steps,
                 )
+                raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(time_steps)}")
 
         # (Optional) Call subscribers after loop
         Callbacks.after_loop(
