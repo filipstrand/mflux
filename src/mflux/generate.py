@@ -51,6 +51,7 @@ def main():
                     width=args.width,
                     guidance=args.guidance,
                     image_path=args.image_path,
+                    masked_image_path=args.masked_image_path,
                     image_strength=args.image_strength,
                 ),
             )
