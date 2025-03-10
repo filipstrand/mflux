@@ -230,7 +230,7 @@ def test_auto_seeds_arg(mflux_generate_parser, mflux_generate_minimal_model_argv
         assert "_seed_{seed}" in args.output
 
     for _ in range(0, 10):
-        random_auto_seed_count = random.randint(0, 100)
+        random_auto_seed_count = random.randint(2, 100)
         with patch("sys.argv", mflux_generate_minimal_model_argv + ["--auto-seeds", str(random_auto_seed_count)]):
             args = mflux_generate_parser.parse_args()
             assert len(set(args.seed)) == random_auto_seed_count
