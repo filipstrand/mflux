@@ -7,9 +7,11 @@ import mlx.core as mx
 import numpy as np
 import piexif
 import PIL.Image
+import PIL.ImageDraw
 
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.post_processing.generated_image import GeneratedImage
+from mflux.ui.box_values import AbsoluteBoxValues, BoxValues
 
 log = logging.getLogger(__name__)
 
@@ -100,6 +102,80 @@ class ImageUtil:
     @staticmethod
     def load_image(path: str | pathlib.Path) -> PIL.Image.Image:
         return PIL.Image.open(path)
+
+    @staticmethod
+    def expand_image(
+        image: PIL.Image.Image,
+        box_values: AbsoluteBoxValues = None,
+        top: int | str = 0,
+        right: int | str = 0,
+        bottom: int | str = 0,
+        left: int | str = 0,
+        fill_color: tuple = (255, 255, 255),
+    ) -> PIL.Image.Image:
+        """
+        Expand the image by padding it with the top/right/bottom/left box values specified
+        in either pixels or percentages relative to original image dimensions.
+        """
+        if box_values is None:
+            box_values = BoxValues(top=top, right=right, bottom=bottom, left=left).normalize_to_dimensions(
+                image.width, image.height
+            )  # Create new image with expanded dimensions, paste the original image into it
+
+        new_width = image.width + box_values.left + box_values.right
+        new_height = image.height + box_values.top + box_values.bottom
+        expanded_image = PIL.Image.new(image.mode, (new_width, new_height), fill_color)
+        expanded_image.paste(image, (box_values.left, box_values.top))
+        return expanded_image
+
+    @staticmethod
+    def create_outpaint_mask_image(orig_width: int, orig_height: int, **create_bordered_image_kwargs):
+        """
+        Create an outpaint mask image that is black in the middle representing the original image dimensions
+        and a white border on the outside paddings representing the areas to be painted over.
+        """
+        return ImageUtil.create_bordered_image(
+            orig_width,
+            orig_height,
+            border_color=(255, 255, 255),
+            content_color=(0, 0, 0),
+            **create_bordered_image_kwargs,
+        )
+
+    @staticmethod
+    def create_bordered_image(
+        orig_width: int,
+        orig_height: int,
+        border_color: tuple,
+        content_color: tuple,
+        box_values: AbsoluteBoxValues = None,
+        top: int | str = 0,
+        right: int | str = 0,
+        bottom: int | str = 0,
+        left: int | str = 0,
+    ) -> PIL.Image.Image:
+        """
+        Create an image with border color and a content/fill-colored center based on CSS box model values.
+        """
+        if box_values is None:
+            box_values = BoxValues(top=top, right=right, bottom=bottom, left=left).normalize_to_dimensions(
+                orig_width, orig_height
+            )
+
+        # Create a new white image
+        new_width = orig_width + box_values.right + box_values.left
+        new_height = orig_height + box_values.top + box_values.bottom
+
+        result = PIL.Image.new("RGB", (new_width, new_height), border_color)
+        draw = PIL.ImageDraw.Draw(result)
+
+        # Draw black rectangle in the center
+        draw.rectangle(
+            [(box_values.left, box_values.top), (box_values.left + orig_width, box_values.top + orig_height)],
+            fill=content_color,
+        )
+
+        return result
 
     @staticmethod
     def scale_to_dimensions(

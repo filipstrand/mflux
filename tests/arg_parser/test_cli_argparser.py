@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
+from mflux.ui.box_values import BoxValues
 from mflux.ui.cli.parsers import CommandLineParser
 
 
@@ -15,6 +16,7 @@ def _create_mflux_generate_parser(with_controlnet=False) -> CommandLineParser:
     parser.add_image_generator_arguments(supports_metadata_config=True)
     parser.add_lora_arguments()
     parser.add_image_to_image_arguments(required=False)
+    parser.add_image_outpaint_arguments()
     if with_controlnet:
         parser.add_controlnet_arguments()
     parser.add_output_arguments()
@@ -326,6 +328,40 @@ def test_image_to_image_args(mflux_generate_parser, mflux_generate_minimal_argv,
         args = mflux_generate_parser.parse_args()
         assert args.image_path == Path("/some/better/image.png")
         assert args.image_strength == 0.4  # default
+
+
+def test_image_outpaint_args(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off
+    metadata_file = temp_dir / "image_outpaint.json"
+    test_padding = "10,20,30,40"
+    with metadata_file.open("wt") as m:
+        base_metadata_dict["image_outpaint_padding"] = test_padding
+        json.dump(base_metadata_dict, m, indent=4)
+
+    # test user default value
+    with patch("sys.argv", mflux_generate_minimal_argv + ["-m", "dev"]):
+        args = mflux_generate_parser.parse_args()
+        assert args.image_outpaint_padding is None
+
+    # test metadata config accepted
+    with patch('sys.argv', mflux_generate_minimal_argv + ['--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
+        args = mflux_generate_parser.parse_args()
+        assert args.image_outpaint_padding == BoxValues(10, 20, 30, 40)
+
+    # test outpaint padding override in 4-value format
+    with patch('sys.argv', mflux_generate_minimal_argv + ['--image-outpaint-padding', '5,15,25,35', '--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
+        args = mflux_generate_parser.parse_args()
+        assert args.image_outpaint_padding == BoxValues(5, 15, 25, 35)
+
+    # test outpaint padding override in percentages in two-value format
+    with patch('sys.argv', mflux_generate_minimal_argv + ['--image-outpaint-padding', '10%,20%', '--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
+        args = mflux_generate_parser.parse_args()
+        assert args.image_outpaint_padding == BoxValues("10%", "20%", "10%", "20%")
+
+    # test outpaint padding override in percentages in three-value format, mixed int/percentages
+    # also allowing whitespace between the box values
+    with patch('sys.argv', mflux_generate_minimal_argv + ['--image-outpaint-padding', '10%, 50,   20%', '--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
+        args = mflux_generate_parser.parse_args()
+        assert args.image_outpaint_padding == BoxValues("10%", 50, "20%", 50)
 
 
 def test_controlnet_args(mflux_generate_controlnet_parser, mflux_generate_controlnet_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off

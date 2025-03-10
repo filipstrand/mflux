@@ -6,7 +6,10 @@ import typing as t
 from pathlib import Path
 
 from mflux.community.in_context_lora.in_context_loras import LORA_NAME_MAP, LORA_REPO_ID
-from mflux.ui import defaults as ui_defaults
+from mflux.ui import (
+    box_values,
+    defaults as ui_defaults,
+)
 
 
 class ModelSpecAction(argparse.Action):
@@ -33,6 +36,7 @@ class CommandLineParser(argparse.ArgumentParser):
         self.supports_image_generation = False
         self.supports_controlnet = False
         self.supports_image_to_image = False
+        self.supports_image_outpaint = False
         self.supports_lora = False
 
     def add_general_arguments(self) -> None:
@@ -87,6 +91,10 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--metadata", action="store_true", help="Export image metadata as a JSON file.")
         self.add_argument("--output", type=str, default="image.png", help="The filename for the output image. Default is \"image.png\".")
         self.add_argument('--stepwise-image-output-dir', type=str, default=None, help='[EXPERIMENTAL] Output dir to write step-wise images and their final composite image to. This feature may change in future versions.')
+
+    def add_image_outpaint_arguments(self, required=False) -> None:
+        self.supports_image_outpaint = True
+        self.add_argument("--image-outpaint-padding", type=str, default=None, required=required, help="For outpainting mode: CSS-style box padding values to extend the canvas of image specified by--image-path. E.g. '20', '50%%'")
 
     def add_controlnet_arguments(self) -> None:
         self.supports_controlnet = True
@@ -171,8 +179,13 @@ class CommandLineParser(argparse.ArgumentParser):
                 if namespace.controlnet_save_canny == self.get_default("controlnet_save_canny") and (cnet_canny_from_metadata := prior_gen_metadata.get("controlnet_save_canny", None)):
                     namespace.controlnet_save_canny = cnet_canny_from_metadata
 
+
+            if self.supports_image_outpaint:
+                if namespace.image_outpaint_padding is None:
+                    namespace.image_outpaint_padding = prior_gen_metadata.get("image_outpaint_padding", None)
+
         # Only require model if we're not in training mode
-        if namespace.model is None and not has_training_args:
+        if hasattr(namespace, "model") and namespace.model is None and not has_training_args:
             self.error("--model / -m must be provided, or 'model' must be specified in the config file.")
 
         if self.supports_image_generation and namespace.seed is None and namespace.auto_seeds > 0:
@@ -196,7 +209,12 @@ class CommandLineParser(argparse.ArgumentParser):
         if self.supports_image_generation and namespace.steps is None:
             namespace.steps = ui_defaults.MODEL_INFERENCE_STEPS.get(namespace.model, None)
 
-        if namespace.low_ram and len(namespace.seed) > 1:
+        if self.supports_image_outpaint and namespace.image_outpaint_padding is not None:
+            # parse and normalize any acceptable 1,2,3,4-tuple box value to 4-tuple
+            namespace.image_outpaint_padding = box_values.parse_box_value(namespace.image_outpaint_padding)
+            print(f"{namespace.image_outpaint_padding=}")
+
+        if hasattr(namespace, "low_ram") and namespace.low_ram is not None and len(namespace.seed) > 1:
             self.error("--low-ram cannot be used with multiple seeds")
 
         return namespace
