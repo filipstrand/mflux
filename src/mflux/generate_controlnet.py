@@ -37,7 +37,7 @@ def main():
 
     memory_saver = None
     if args.low_ram:
-        memory_saver = MemorySaver(flux)
+        memory_saver = MemorySaver(flux=flux, keep_transformer=len(args.seed) > 1)
         CallbackRegistry.register_before_loop(memory_saver)
         CallbackRegistry.register_in_loop(memory_saver)
         CallbackRegistry.register_after_loop(memory_saver)

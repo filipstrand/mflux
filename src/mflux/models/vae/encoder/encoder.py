@@ -29,6 +29,7 @@ class Encoder(nn.Module):
         latents = self.conv_in(latents)
         for down_block in self.down_blocks:
             latents = down_block(latents)
+            mx.eval(latents)
         latents = self.mid_block(latents)
         latents = self.conv_norm_out(latents)
         latents = nn.silu(latents)

@@ -29,6 +29,7 @@ class Decoder(nn.Module):
         latents = self.mid_block(latents)
         for up_block in self.up_blocks:
             latents = up_block(latents)
+            mx.eval(latents)
         latents = self.conv_norm_out(latents)
         latents = nn.silu(latents)
         latents = self.conv_out(latents)
