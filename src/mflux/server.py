@@ -4,7 +4,8 @@ import base64
 import os
 import tempfile
 import time
-from typing import List, Optional
+import threading
+from typing import List, Optional, Dict
 import io
 
 # Import the Flux modules
@@ -14,6 +15,18 @@ from mflux.callbacks.instances.memory_saver import MemorySaver
 from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
 
 app = FastAPI()
+
+# Global model cache and timer management
+model_cache: Dict[str, Flux1] = {}
+model_timers: Dict[str, threading.Timer] = {}
+
+def unload_model(model_key: str):
+    """Unload a model from cache when its timer expires"""
+    if model_key in model_cache:
+        print(f"Unloading model: {model_key}")
+        del model_cache[model_key]
+        if model_key in model_timers:
+            del model_timers[model_key]
 
 class GenerationRequest(BaseModel):
     prompt: str
@@ -36,6 +49,7 @@ class GenerationRequest(BaseModel):
     metadata: Optional[bool] = False
     local_path: Optional[str] = None
     response_format: Optional[str] = None
+    keep_alive: Optional[int] = 0
 
 class Image(BaseModel):
     b64_json: str
@@ -77,18 +91,53 @@ async def generate_images(request: GenerationRequest = Body(...)):
             
             if request.lora_scale is not None:
                 lora_scales = [request.lora_scale]
-                
-        # 1. Load the model with LoRA support
-        flux = Flux1(
-            model_config=ModelConfig.from_name(
-                model_name=model, 
-                base_model=request.base_model
-            ),
-            quantize=request.quantize,
-            local_path=request.local_path,
-            lora_paths=lora_paths,
-            lora_scales=lora_scales,
-        )
+        
+        # Create a unique model key based on model configuration
+        model_key = f"{model}_{request.base_model}_{request.quantize}_{request.local_path}_{lora_paths}"
+        
+        # Check if we have this model in cache
+        if model_key in model_cache:
+            print(f"Using cached model: {model_key}")
+            flux = model_cache[model_key]
+            
+            # Cancel any existing timer for this model
+            if model_key in model_timers and model_timers[model_key]:
+                model_timers[model_key].cancel()
+        else:
+            # 1. Load the model with LoRA support
+            print(f"Loading new model: {model_key}")
+            flux = Flux1(
+                model_config=ModelConfig.from_name(
+                    model_name=model, 
+                    base_model=request.base_model
+                ),
+                quantize=request.quantize,
+                local_path=request.local_path,
+                lora_paths=lora_paths,
+                lora_scales=lora_scales,
+            )
+            
+            # Store in cache
+            model_cache[model_key] = flux
+        
+        # Handle the keep_alive parameter
+        if request.keep_alive != -1:  # -1 means keep forever
+            if request.keep_alive == 0:  # 0 means unload immediately after use
+                # Will unload after generation completes
+                pass
+            else:
+                # Set a timer to unload the model after keep_alive minutes
+                timer = threading.Timer(
+                    request.keep_alive * 60,  # Convert minutes to seconds
+                    unload_model, 
+                    args=[model_key]
+                )
+                timer.daemon = True
+                model_timers[model_key] = timer
+                timer.start()
+                print(f"Model {model_key} will be unloaded in {request.keep_alive} minutes if not used again")
+        else:
+            print(f"Model {model_key} will remain loaded indefinitely")
         
         # 2. Register optional callbacks
         if stepwise_dir:
@@ -167,6 +216,13 @@ async def generate_images(request: GenerationRequest = Body(...)):
             # Print memory stats if using memory saver
             if memory_saver:
                 print(memory_saver.memory_stats())
+            
+            # If keep_alive is 0, unload the model immediately
+            if request.keep_alive == 0 and model_key in model_cache:
+                print(f"Unloading model immediately as requested: {model_key}")
+                del model_cache[model_key]
+                if model_key in model_timers:
+                    del model_timers[model_key]
         
         # Clean up temporary files
         if image_path and os.path.exists(image_path):
