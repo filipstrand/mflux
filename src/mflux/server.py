@@ -35,7 +35,7 @@ class GenerationRequest(BaseModel):
     stepwise_output: Optional[bool] = False
     metadata: Optional[bool] = False
     local_path: Optional[str] = None
-    response_format: Optional[str] = None  # Added for OpenAI compatibility
+    response_format: Optional[str] = None
 
 class Image(BaseModel):
     b64_json: str
@@ -46,8 +46,6 @@ class GenerationResponse(BaseModel):
 
 @app.post("/v1/images/generations", response_model=GenerationResponse)
 async def generate_images(request: GenerationRequest = Body(...)):
-    # Now accepts a direct JSON body instead of form data
-    
     try:
         # Determine the image path (if an image upload feature is needed, it would require a different approach)
         image_path = None
