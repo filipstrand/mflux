@@ -196,7 +196,7 @@ class CommandLineParser(argparse.ArgumentParser):
         if self.supports_image_generation and namespace.steps is None:
             namespace.steps = ui_defaults.MODEL_INFERENCE_STEPS.get(namespace.model, None)
 
-        if namespace.low_ram and len(namespace.seed) > 1:
+        if getattr(namespace, 'low_ram', False) and len(namespace.seed) > 1:
             self.error("--low-ram cannot be used with multiple seeds")
 
         return namespace
