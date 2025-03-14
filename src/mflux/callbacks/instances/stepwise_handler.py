@@ -4,7 +4,6 @@ import mlx.core as mx
 import PIL.Image
 import tqdm
 
-from mflux import StopImageGenerationException
 from mflux.callbacks.callback import BeforeLoopCallback, InLoopCallback, InterruptCallback
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.post_processing.array_util import ArrayUtil
@@ -69,7 +68,6 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
         time_steps: tqdm
     ) -> None:  # fmt: off
         self._save_composite(seed=seed)
-        raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(time_steps)}")
 
     def _save_image(
         self,
