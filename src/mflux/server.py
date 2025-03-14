@@ -5,8 +5,24 @@ import os
 import tempfile
 import time
 import threading
+import logging
 from typing import List, Optional, Dict
 import io
+
+# Configure the logger at the module level
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# Create a handler that writes to the console
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+
+# Create a formatter and add it to the handler
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+
+# Add the handler to the logger
+logger.addHandler(console_handler)
 
 # Import the Flux modules
 from mflux import Config, Flux1, ModelConfig, StopImageGenerationException
@@ -23,7 +39,7 @@ model_timers: Dict[str, threading.Timer] = {}
 def unload_model(model_key: str):
     """Unload a model from cache when its timer expires"""
     if model_key in model_cache:
-        print(f"Unloading model: {model_key}")
+        logger.info(f"Unloading model: {model_key}")
         del model_cache[model_key]
         if model_key in model_timers:
             del model_timers[model_key]
@@ -97,7 +113,7 @@ async def generate_images(request: GenerationRequest = Body(...)):
         
         # Check if we have this model in cache
         if model_key in model_cache:
-            print(f"Using cached model: {model_key}")
+            logger.info(f"Using cached model: {model_key}")
             flux = model_cache[model_key]
             
             # Cancel any existing timer for this model
@@ -105,7 +121,7 @@ async def generate_images(request: GenerationRequest = Body(...)):
                 model_timers[model_key].cancel()
         else:
             # 1. Load the model with LoRA support
-            print(f"Loading new model: {model_key}")
+            logger.info(f"Loading new model: {model_key}")
             flux = Flux1(
                 model_config=ModelConfig.from_name(
                     model_name=model, 
@@ -135,9 +151,9 @@ async def generate_images(request: GenerationRequest = Body(...)):
                 timer.daemon = True
                 model_timers[model_key] = timer
                 timer.start()
-                print(f"Model {model_key} will be unloaded in {request.keep_alive} minutes if not used again")
+                logger.info(f"Model {model_key} will be unloaded in {request.keep_alive} minutes if not used again")
         else:
-            print(f"Model {model_key} will remain loaded indefinitely")
+            logger.info(f"Model {model_key} will remain loaded indefinitely")
         
         # 2. Register optional callbacks
         if stepwise_dir:
@@ -215,11 +231,11 @@ async def generate_images(request: GenerationRequest = Body(...)):
         finally:
             # Print memory stats if using memory saver
             if memory_saver:
-                print(memory_saver.memory_stats())
+                logger.info(memory_saver.memory_stats())
             
             # If keep_alive is 0, unload the model immediately
             if request.keep_alive == 0 and model_key in model_cache:
-                print(f"Unloading model immediately as requested: {model_key}")
+                logger.info(f"Unloading model immediately as requested: {model_key}")
                 del model_cache[model_key]
                 if model_key in model_timers:
                     del model_timers[model_key]
@@ -234,6 +250,7 @@ async def generate_images(request: GenerationRequest = Body(...)):
             pass
                 
     except Exception as e:
+        logger.error(f"Generation failed: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
     
     return GenerationResponse(
