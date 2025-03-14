@@ -24,6 +24,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 - [💽 Running a non-quantized model directly from disk](#-running-a-non-quantized-model-directly-from-disk)
 - [🌐 Third-Party HuggingFace Model Support](#-third-party-huggingface-model-support)
 - [🎨 Image-to-Image](#-image-to-image)
+- [OpenAI-Server](#-OpenAI-Server)
 - [🔌 LoRA](#-lora)
   * [Multi-LoRA](#multi-lora)
   * [Supported LoRA formats (updated)](#supported-lora-formats-updated)
@@ -609,6 +610,65 @@ Like with [Controlnet](#-controlnet), this technique combines well with [LoRA](#
 ![image](src/mflux/assets/img2img.jpg)
 
 In the examples above the following LoRAs are used [Sketching](https://civitai.com/models/803456/sketching?modelVersionId=898364), [Animation Shot](https://civitai.com/models/883914/animation-shot-flux-xl-ponyrealism) and [flux-film-camera](https://civitai.com/models/874708?modelVersionId=979175) are used.
+
+---
+
+# 🌐 Running the OpenAI API Compatible Server
+
+MFLUX includes a server component that provides an OpenAI API-compatible interface, allowing you to integrate MFLUX with existing tools and workflows that support the OpenAI API.
+
+### 📦 Installation
+
+To install the server component, use the `[server]` extra when installing MFLUX:
+
+```sh
+pip install mflux[server]
+```
+
+### 🚀 Starting the Server
+
+Once installed, you can start the server using the `mflux-server` command:
+
+```sh
+mflux-server
+```
+
+By default, the server will:
+- Listen on `0.0.0.0` (all network interfaces)
+- Use port `8800`
+- Load models on demand
+
+### 🔌 Connecting to the Server
+
+You can connect to the server using any OpenAI API client by setting the base URL to your server address:
+
+```python
+import openai
+
+client = openai.Client(
+    api_key="not-needed",  # The server doesn't require authentication by default
+    base_url="http://localhost:8800/v1"  # Point to your MFLUX server
+)
+
+# Generate an image
+response = client.images.generate(
+    model="dev",  # Use "schnell" or "dev"
+    prompt="A beautiful mountain landscape at sunset",
+    n=1,
+    size="1024x1024"
+)
+
+# Print the image URL
+print(response.data[0].url)
+```
+
+### 🛠️ Advanced Configuration
+
+The server supports additional configuration options that can be passed as command-line arguments. For a complete list, run:
+
+```sh
+mflux-server --help
+```
 
 ---
 
