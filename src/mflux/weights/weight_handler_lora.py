@@ -38,7 +38,7 @@ class WeightHandlerLoRA:
                         quantization_level=None,
                         scale=lora_scale,
                         is_lora=True,
-                        is_mflux=True if mflux_version is not None else False,
+                        mflux_version=mflux_version,
                     ),
                 )
                 lora_weights.append(weights)
