@@ -1,3 +1,5 @@
+import mlx.core as mx
+import numpy as np
 import PIL.Image
 import pytest
 
@@ -132,3 +134,63 @@ def test_create_outpaint_mask_image():
 
     # Left edge of center box
     assert mask.getpixel((left_padding, top_padding + 10)) == (0, 0, 0)
+
+
+def test_binarize():
+    # Create test data using numpy arrays and convert to mx arrays
+    # Create a gradient array from 0 to 1
+    gradient = np.linspace(0, 1, 10).reshape(1, 1, 1, 10).astype(np.float32)
+    gradient_mx = mx.array(gradient)
+
+    # Apply binarization
+    result = ImageUtil._binarize(gradient_mx)
+
+    # Expected: values < 0.5 should be 0, values >= 0.5 should be 1
+    expected = mx.where(gradient_mx < 0.5, mx.zeros_like(gradient_mx), mx.ones_like(gradient_mx))
+
+    # Convert results to numpy for easier comparison
+    result_np = np.array(result)
+    expected_np = np.array(expected)
+
+    # Check values
+    assert np.array_equal(result_np, expected_np)
+
+    # Specifically check that the first 5 values are 0 and the rest are 1
+    assert np.all(result_np[:, :, :, :5] == 0)
+    assert np.all(result_np[:, :, :, 5:] == 1)
+
+
+def test_to_array_with_mask():
+    # Create a test image with gradient colors
+    from PIL import Image, ImageDraw
+
+    # Create a simple mask image (white square on black background)
+    mask_img = Image.new("RGB", (100, 100), color="black")
+    draw = ImageDraw.Draw(mask_img)
+    draw.rectangle((25, 25, 75, 75), fill="white")
+
+    # Convert to array with is_mask=False (should normalize)
+    regular_array = ImageUtil.to_array(mask_img, is_mask=False)
+
+    # Convert to array with is_mask=True (should binarize)
+    mask_array = ImageUtil.to_array(mask_img, is_mask=True)
+
+    # Check shapes
+    assert regular_array.shape == mask_array.shape
+
+    # Regular array should have normalized values between -1 and 1
+    assert mx.min(regular_array) < 0
+    assert mx.max(regular_array) <= 1.0
+
+    # Mask array should only have binary values (0 or 1)
+    unique_values = set(mx.array.flatten(mask_array).tolist())
+    assert unique_values == {0.0, 1.0} or unique_values == {0.0} or unique_values == {1.0}
+
+    # The center of the mask should be 1 (white square)
+    assert mask_array[0, 0, 50, 50] == 1.0
+
+    # The corners should be 0 (black background)
+    assert mask_array[0, 0, 0, 0] == 0.0
+    assert mask_array[0, 0, 0, 99] == 0.0
+    assert mask_array[0, 0, 99, 0] == 0.0
+    assert mask_array[0, 0, 99, 99] == 0.0

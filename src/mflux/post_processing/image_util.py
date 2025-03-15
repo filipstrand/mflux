@@ -30,6 +30,7 @@ class ImageUtil:
         controlnet_image_path: str | None = None,
         image_path: str | None = None,
         image_strength: float | None = None,
+        masked_image_path: str | None = None,
     ) -> GeneratedImage:
         normalized = ImageUtil._denormalize(decoded_latents)
         normalized_numpy = ImageUtil._to_numpy(normalized)
@@ -50,6 +51,7 @@ class ImageUtil:
             image_strength=image_strength,
             controlnet_image_path=controlnet_image_path,
             controlnet_strength=config.controlnet_strength,
+            masked_image_path=masked_image_path,
         )
 
     @staticmethod
@@ -73,6 +75,10 @@ class ImageUtil:
         return 2.0 * images - 1.0
 
     @staticmethod
+    def _binarize(image: mx.array) -> mx.array:
+        return mx.where(image < 0.5, mx.zeros_like(image), mx.ones_like(image))
+
+    @staticmethod
     def _to_numpy(images: mx.array) -> np.ndarray:
         images = mx.transpose(images, (0, 2, 3, 1))
         images = mx.array.astype(images, mx.float32)
@@ -92,11 +98,14 @@ class ImageUtil:
         return images
 
     @staticmethod
-    def to_array(image: PIL.Image.Image) -> mx.array:
+    def to_array(image: PIL.Image.Image, is_mask: bool = False) -> mx.array:
         image = ImageUtil._pil_to_numpy(image)
         array = mx.array(image)
         array = mx.transpose(array, (0, 3, 1, 2))
-        array = ImageUtil._normalize(array)
+        if is_mask:
+            array = ImageUtil._binarize(array)
+        else:
+            array = ImageUtil._normalize(array)
         return array
 
     @staticmethod
