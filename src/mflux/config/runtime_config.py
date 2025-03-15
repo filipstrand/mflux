@@ -32,7 +32,7 @@ class RuntimeConfig:
         self.config.width = value
 
     @property
-    def guidance(self) -> float:
+    def guidance(self) -> float | None:
         return self.config.guidance
 
     @property
@@ -54,6 +54,10 @@ class RuntimeConfig:
     @property
     def image_strength(self) -> float | None:
         return self.config.image_strength
+
+    @property
+    def masked_image_path(self) -> str | None:
+        return self.config.masked_image_path
 
     @property
     def init_time_step(self) -> int:
@@ -82,7 +86,7 @@ class RuntimeConfig:
     @staticmethod
     def _create_sigmas(config: Config, model_config: ModelConfig) -> mx.array:
         sigmas = RuntimeConfig._create_sigmas_values(config.num_inference_steps)
-        if model_config.is_dev():
+        if model_config.requires_sigma_shift:
             sigmas = RuntimeConfig._shift_sigmas(sigmas=sigmas, width=config.width, height=config.height)
         return sigmas
 

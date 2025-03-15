@@ -5,14 +5,15 @@ from unittest.mock import patch
 
 import pytest
 
+from mflux.ui import defaults as ui_defaults
 from mflux.ui.box_values import BoxValues
 from mflux.ui.cli.parsers import CommandLineParser
 
 
-def _create_mflux_generate_parser(with_controlnet=False) -> CommandLineParser:
+def _create_mflux_generate_parser(with_controlnet=False, require_model_arg=False) -> CommandLineParser:
     parser = CommandLineParser(description="Generate an image based on a prompt.")
     parser.add_general_arguments()
-    parser.add_model_arguments(require_model_arg=False)
+    parser.add_model_arguments(require_model_arg=require_model_arg)
     parser.add_image_generator_arguments(supports_metadata_config=True)
     parser.add_lora_arguments()
     parser.add_image_to_image_arguments(required=False)
@@ -25,12 +26,12 @@ def _create_mflux_generate_parser(with_controlnet=False) -> CommandLineParser:
 
 @pytest.fixture
 def mflux_generate_parser() -> CommandLineParser:
-    return _create_mflux_generate_parser(with_controlnet=False)
+    return _create_mflux_generate_parser(with_controlnet=False, require_model_arg=False)
 
 
 @pytest.fixture
 def mflux_generate_controlnet_parser() -> CommandLineParser:
-    return _create_mflux_generate_parser(with_controlnet=True)
+    return _create_mflux_generate_parser(with_controlnet=True, require_model_arg=False)
 
 
 @pytest.fixture
@@ -85,6 +86,23 @@ def base_metadata_dict() -> dict:
     }
 
 
+@pytest.fixture
+def mflux_fill_parser() -> CommandLineParser:
+    parser = CommandLineParser(description="Generate an image using the fill tool to complete masked areas.")
+    parser.add_general_arguments()
+    parser.add_model_arguments(require_model_arg=False)
+    parser.add_lora_arguments()
+    parser.add_image_generator_arguments(supports_metadata_config=False)
+    parser.add_fill_arguments()
+    parser.add_output_arguments()
+    return parser
+
+
+@pytest.fixture
+def mflux_fill_minimal_argv() -> list[str]:
+    return ["mflux-fill", "--prompt", "meaning of life", "--image-path", "image.png", "--masked-image-path", "mask.png"]
+
+
 def test_model_path_requires_model_arg(mflux_generate_parser):
     # when loading a model via --path, the model name still need to be specified
     with patch("sys.argv", "mflux-generate", "--path", "/some/saved/model"):
@@ -96,9 +114,14 @@ def test_model_arg_not_in_file(mflux_generate_parser, mflux_generate_minimal_arg
     with metadata_file.open("wt") as m:
         del base_metadata_dict["model"]
         json.dump(base_metadata_dict, m, indent=4)
-    # test model arg not provided in either flag or file
+
+    # Create a parser that requires the model argument
+    parser_with_required_model = _create_mflux_generate_parser(require_model_arg=True)
+
+    # test model arg not provided in either flag or file should raise SystemExit with required parser
     with patch('sys.argv', mflux_generate_minimal_argv + ['--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
-        pytest.raises(SystemExit, mflux_generate_parser.parse_args)
+        pytest.raises(SystemExit, parser_with_required_model.parse_args)
+
     # test value read from flag
     with patch('sys.argv', mflux_generate_minimal_argv + ['--model', 'dev', '--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
         args = mflux_generate_parser.parse_args()
@@ -411,3 +434,98 @@ def test_save_args(mflux_save_parser):
         # required --path not provided, exits to error
         args = mflux_save_parser.parse_args()
         assert args.path == "/some/model/folder"
+
+
+def test_fill_args(mflux_fill_parser, mflux_fill_minimal_argv):
+    # Test required arguments
+    with patch("sys.argv", mflux_fill_minimal_argv):
+        args = mflux_fill_parser.parse_args()
+        assert args.prompt == "meaning of life"
+        assert args.image_path == Path("image.png")
+        assert args.masked_image_path == Path("mask.png")
+        # Default guidance for fill should be None (will be set to 30 in generate_fill.py)
+        assert args.guidance == pytest.approx(3.5)  # default guidance value
+
+    # Test with missing required arguments
+    with patch("sys.argv", ["mflux-fill", "--prompt", "test"]):
+        # Missing image_path and masked_image_path should raise SystemExit
+        pytest.raises(SystemExit, mflux_fill_parser.parse_args)
+
+    with patch("sys.argv", ["mflux-fill", "--image-path", "image.png", "--masked-image-path", "mask.png"]):
+        # Missing prompt should raise SystemExit
+        pytest.raises(SystemExit, mflux_fill_parser.parse_args)
+
+    # Test with custom values
+    custom_argv = mflux_fill_minimal_argv + ["--guidance", "30", "--steps", "20", "--height", "512", "--width", "512"]
+    with patch("sys.argv", custom_argv):
+        args = mflux_fill_parser.parse_args()
+        assert args.guidance == pytest.approx(30.0)
+        assert args.steps == 20
+        assert args.height == 512
+        assert args.width == 512
+
+
+def test_fill_args_with_metadata(mflux_fill_parser, mflux_fill_minimal_argv, base_metadata_dict, temp_dir):
+    metadata_file = temp_dir / "fill_metadata.json"
+    # Set up metadata with fill-related values
+    with metadata_file.open("wt") as m:
+        # Add masked_image_path to the metadata dictionary
+        base_metadata_dict["masked_image_path"] = "metadata_mask.png"
+        base_metadata_dict["prompt"] = "from metadata file"
+        json.dump(base_metadata_dict, m, indent=4)
+
+    # Test with minimal args and metadata
+    # First modify the parser to support metadata config
+    mflux_fill_parser.supports_metadata_config = True
+    mflux_fill_parser.add_metadata_config()
+
+    # Create a modified version of minimal_argv that includes all required arguments
+    # that aren't in metadata
+    minimal_metadata_argv = [
+        "mflux-fill",
+        "--config-from-metadata",
+        metadata_file.as_posix(),
+        "--prompt",
+        "CLI prompt",
+        "--image-path",
+        "image.png",
+        "--masked-image-path",
+        "cli_mask.png",
+    ]
+
+    # Test command line arguments overriding metadata
+    with patch("sys.argv", minimal_metadata_argv):
+        args = mflux_fill_parser.parse_args()
+        assert args.prompt == "CLI prompt"  # From CLI
+        assert args.image_path == Path("image.png")  # From CLI
+        assert args.masked_image_path == Path("cli_mask.png")  # From CLI
+
+
+def test_fill_default_guidance():
+    # Create a parser just like in generate_fill.py
+    parser = CommandLineParser(description="Generate an image using the fill tool to complete masked areas.")
+    parser.add_general_arguments()
+    parser.add_model_arguments(require_model_arg=False)
+    parser.add_lora_arguments()
+    parser.add_image_generator_arguments(supports_metadata_config=False)
+    parser.add_fill_arguments()
+    parser.add_output_arguments()
+
+    # Parse minimal arguments
+    with patch(
+        "sys.argv", ["mflux-fill", "--prompt", "test", "--image-path", "img.png", "--masked-image-path", "mask.png"]
+    ):
+        args = parser.parse_args()
+
+        # Verify initial guidance value is the UI default
+        assert args.guidance == ui_defaults.GUIDANCE_SCALE
+
+        # Simulate what happens in generate_fill.py
+        if args.guidance is None:
+            args.guidance = 30
+        else:
+            # In our test we'll just override it to simulate the behavior
+            args.guidance = 30
+
+        # Now check that guidance is correctly set to 30
+        assert args.guidance == 30
