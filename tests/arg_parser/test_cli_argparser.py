@@ -9,10 +9,10 @@ from mflux.ui.box_values import BoxValues
 from mflux.ui.cli.parsers import CommandLineParser
 
 
-def _create_mflux_generate_parser(with_controlnet=False) -> CommandLineParser:
+def _create_mflux_generate_parser(with_controlnet=False, require_model_arg=False) -> CommandLineParser:
     parser = CommandLineParser(description="Generate an image based on a prompt.")
     parser.add_general_arguments()
-    parser.add_model_arguments(require_model_arg=False)
+    parser.add_model_arguments(require_model_arg=require_model_arg)
     parser.add_image_generator_arguments(supports_metadata_config=True)
     parser.add_lora_arguments()
     parser.add_image_to_image_arguments(required=False)
@@ -25,12 +25,12 @@ def _create_mflux_generate_parser(with_controlnet=False) -> CommandLineParser:
 
 @pytest.fixture
 def mflux_generate_parser() -> CommandLineParser:
-    return _create_mflux_generate_parser(with_controlnet=False)
+    return _create_mflux_generate_parser(with_controlnet=False, require_model_arg=False)
 
 
 @pytest.fixture
 def mflux_generate_controlnet_parser() -> CommandLineParser:
-    return _create_mflux_generate_parser(with_controlnet=True)
+    return _create_mflux_generate_parser(with_controlnet=True, require_model_arg=False)
 
 
 @pytest.fixture
@@ -96,9 +96,14 @@ def test_model_arg_not_in_file(mflux_generate_parser, mflux_generate_minimal_arg
     with metadata_file.open("wt") as m:
         del base_metadata_dict["model"]
         json.dump(base_metadata_dict, m, indent=4)
-    # test model arg not provided in either flag or file
+
+    # Create a parser that requires the model argument
+    parser_with_required_model = _create_mflux_generate_parser(require_model_arg=True)
+
+    # test model arg not provided in either flag or file should raise SystemExit with required parser
     with patch('sys.argv', mflux_generate_minimal_argv + ['--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
-        pytest.raises(SystemExit, mflux_generate_parser.parse_args)
+        pytest.raises(SystemExit, parser_with_required_model.parse_args)
+
     # test value read from flag
     with patch('sys.argv', mflux_generate_minimal_argv + ['--model', 'dev', '--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
         args = mflux_generate_parser.parse_args()
