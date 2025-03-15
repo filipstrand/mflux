@@ -49,7 +49,7 @@ class MaskUtil:
         return masked_image_latents
 
     @staticmethod
-    def _reshape_mask(the_mask: mx.array, height: int, width: int):
+    def _reshape_mask(the_mask: mx.array, height: int, width: int) -> mx.array:
         mask = the_mask[:, 0, :, :]
         mask = mx.reshape(mask, (1, height // 8, 8, width // 8, 8))
         mask = mx.transpose(mask, (0, 2, 4, 1, 3))

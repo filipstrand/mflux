@@ -8,7 +8,7 @@ from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.error.exceptions import StopImageGenerationException
 from mflux.flux.flux_initializer import FluxInitializer
-from mflux.inpaint.mask_util import MaskUtil
+from mflux.flux_tools.fill.mask_util import MaskUtil
 from mflux.latent_creator.latent_creator import Img2Img, LatentCreator
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.prompt_encoder import PromptEncoder
@@ -21,7 +21,7 @@ from mflux.post_processing.image_util import ImageUtil
 from mflux.weights.model_saver import ModelSaver
 
 
-class Flux1Inpaint(nn.Module):
+class Flux1Fill(nn.Module):
     vae: VAE
     transformer: Transformer
     t5_text_encoder: T5Encoder

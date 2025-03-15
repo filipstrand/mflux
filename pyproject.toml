@@ -57,6 +57,7 @@ homepage = "https://github.com/filipstrand/mflux"
 mflux-generate = "mflux.generate:main"
 mflux-generate-controlnet = "mflux.generate_controlnet:main"
 mflux-generate-in-context = "mflux.generate_in_context:main"
+mflux-generate-fill = "mflux.generate_fill:main"
 mflux-save = "mflux.save:main"
 mflux-train = "mflux.train:main"
 

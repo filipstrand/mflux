@@ -2,24 +2,28 @@ from mflux import Config, ModelConfig, StopImageGenerationException
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.callbacks.instances.memory_saver import MemorySaver
 from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
-from mflux.inpaint.flux_inpaint import Flux1Inpaint
+from mflux.flux_tools.fill.flux_fill import Flux1Fill
 from mflux.ui.cli.parsers import CommandLineParser
 
 
 def main():
     # 0. Parse command line arguments
-    parser = CommandLineParser(description="Generate an image based on a prompt with inpainting.")  # fmt: off
+    parser = CommandLineParser(description="Generate an image using the fill tool to complete masked areas.")
     parser.add_general_arguments()
-    parser.add_model_arguments(require_model_arg=True)
+    parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
     parser.add_image_generator_arguments(supports_metadata_config=False)
-    parser.add_argument("--masked-image-path", type=str, required=True, help="Local path to mask image")
+    parser.add_fill_arguments()
     parser.add_output_arguments()
     args = parser.parse_args()
 
+    # 0. Default to a higher guidance value for fill related tasks.
+    if args.guidance is None:
+        args.guidance = 30
+
     # 1. Load the model
-    flux = Flux1Inpaint(
-        model_config=ModelConfig.from_name(model_name=args.model, base_model=args.base_model),
+    flux = Flux1Fill(
+        model_config=ModelConfig.dev_fill(),
         quantize=args.quantize,
         local_path=args.path,
         lora_paths=args.lora_paths,
@@ -52,7 +56,6 @@ def main():
                     width=args.width,
                     guidance=args.guidance,
                     image_path=args.image_path,
-                    image_strength=args.image_strength,
                     masked_image_path=args.masked_image_path,
                 ),
             )
