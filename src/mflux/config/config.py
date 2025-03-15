@@ -3,6 +3,8 @@ from pathlib import Path
 
 import mlx.core as mx
 
+from mflux.config.constants import NoiseSchedulerType
+
 log = logging.getLogger(__name__)
 
 
@@ -18,6 +20,7 @@ class Config:
         image_path: Path | None = None,
         image_strength: float | None = None,
         controlnet_strength: float | None = None,
+        noise_scheduler: NoiseSchedulerType = NoiseSchedulerType.LINEAR,
     ):
         if width % 16 != 0 or height % 16 != 0:
             log.warning("Width and height should be multiples of 16. Rounding down.")
@@ -28,3 +31,4 @@ class Config:
         self.image_path = image_path
         self.image_strength = image_strength
         self.controlnet_strength = controlnet_strength
+        self.noise_scheduler = noise_scheduler

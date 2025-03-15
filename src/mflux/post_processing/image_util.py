@@ -10,6 +10,7 @@ import PIL.Image
 
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.post_processing.generated_image import GeneratedImage
+from mflux.ui.defaults import DEFAULT_SCHEDULER
 
 log = logging.getLogger(__name__)
 
@@ -48,6 +49,7 @@ class ImageUtil:
             image_strength=image_strength,
             controlnet_image_path=controlnet_image_path,
             controlnet_strength=config.controlnet_strength,
+            noise_scheduler=getattr(config.config, "noise_scheduler", DEFAULT_SCHEDULER),
         )
 
     @staticmethod
