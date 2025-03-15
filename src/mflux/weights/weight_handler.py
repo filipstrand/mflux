@@ -15,6 +15,7 @@ class MetaData:
     scale: float | None = None
     is_lora: bool = False
     is_mflux: bool = False
+    mflux_version: str | None = None
 
 
 class WeightHandler:
@@ -40,10 +41,11 @@ class WeightHandler:
         # Load the weights from disk, huggingface cache, or download from huggingface
         root_path = Path(local_path) if local_path else WeightHandler._download_or_get_cached_weights(repo_id)
 
-        clip_encoder, _ = WeightHandler._load_clip_encoder(root_path=root_path)
-        t5_encoder, _ = WeightHandler._load_t5_encoder(root_path=root_path)
-        vae, _ = WeightHandler._load_vae(root_path=root_path)
-        transformer, quantization_level, _ = WeightHandler.load_transformer(root_path=root_path)
+        clip_encoder, _, _ = WeightHandler._load_clip_encoder(root_path=root_path)
+        t5_encoder, _, _ = WeightHandler._load_t5_encoder(root_path=root_path)
+        vae, _, _ = WeightHandler._load_vae(root_path=root_path)
+        transformer, quantization_level, mflux_version = WeightHandler.load_transformer(root_path=root_path)
+
         return WeightHandler(
             clip_encoder=clip_encoder,
             t5_encoder=t5_encoder,
@@ -53,7 +55,7 @@ class WeightHandler:
                 quantization_level=quantization_level,
                 scale=None,
                 is_lora=False,
-                is_mflux=False,
+                mflux_version=mflux_version,
             ),
         )
 
@@ -64,17 +66,17 @@ class WeightHandler:
         return len(self.transformer["single_transformer_blocks"])
 
     @staticmethod
-    def _load_clip_encoder(root_path: Path) -> (dict, int):
-        weights, quantization_level, _ = WeightHandler._get_weights("text_encoder", root_path)
-        return weights, quantization_level
+    def _load_clip_encoder(root_path: Path) -> (dict, int, str | None):
+        weights, quantization_level, mflux_version = WeightHandler._get_weights("text_encoder", root_path)
+        return weights, quantization_level, mflux_version
 
     @staticmethod
-    def _load_t5_encoder(root_path: Path) -> (dict, int):
-        weights, quantization_level, _ = WeightHandler._get_weights("text_encoder_2", root_path)
+    def _load_t5_encoder(root_path: Path) -> (dict, int, str | None):
+        weights, quantization_level, mflux_version = WeightHandler._get_weights("text_encoder_2", root_path)
 
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
         if quantization_level is not None:
-            return weights, quantization_level
+            return weights, quantization_level, mflux_version
 
         # Reshape and process the huggingface weights
         weights["final_layer_norm"] = weights["encoder"]["final_layer_norm"]
@@ -93,7 +95,7 @@ class WeightHandler:
             block["attention"]["SelfAttention"]["relative_attention_bias"] = relative_attention_bias
 
         weights.pop("encoder")
-        return weights, quantization_level
+        return weights, quantization_level, mflux_version
 
     @staticmethod
     def load_transformer(root_path: Path | None = None, lora_path: str | None = None) -> (dict, int, str | None):
@@ -124,12 +126,12 @@ class WeightHandler:
         return weights, quantization_level, mflux_version
 
     @staticmethod
-    def _load_vae(root_path: Path) -> (dict, int):
-        weights, quantization_level, _ = WeightHandler._get_weights("vae", root_path)
+    def _load_vae(root_path: Path) -> (dict, int, str | None):
+        weights, quantization_level, mflux_version = WeightHandler._get_weights("vae", root_path)
 
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
         if quantization_level is not None:
-            return weights, quantization_level
+            return weights, quantization_level, mflux_version
 
         # Reshape and process the huggingface weights
         weights["decoder"]["conv_in"] = {"conv2d": weights["decoder"]["conv_in"]}
@@ -138,7 +140,7 @@ class WeightHandler:
         weights["encoder"]["conv_in"] = {"conv2d": weights["encoder"]["conv_in"]}
         weights["encoder"]["conv_out"] = {"conv2d": weights["encoder"]["conv_out"]}
         weights["encoder"]["conv_norm_out"] = {"norm": weights["encoder"]["conv_norm_out"]}
-        return weights, quantization_level
+        return weights, quantization_level, mflux_version
 
     @staticmethod
     def _get_weights(
@@ -156,6 +158,7 @@ class WeightHandler:
                 weight = list(data[0].items())
                 if len(data) > 1:
                     quantization_level = data[1].get("quantization_level")
+                    mflux_version = data[1].get("mflux_version")
                 weights.extend(weight)
 
         if lora_path and root_path is None:
