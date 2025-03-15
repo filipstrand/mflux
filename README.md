@@ -24,7 +24,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 - [💽 Running a non-quantized model directly from disk](#-running-a-non-quantized-model-directly-from-disk)
 - [🌐 Third-Party HuggingFace Model Support](#-third-party-huggingface-model-support)
 - [🎨 Image-to-Image](#-image-to-image)
-- [OpenAI-Server](#-OpenAI-Server)
+- [Server](#-Server)
 - [🔌 LoRA](#-lora)
   * [Multi-LoRA](#multi-lora)
   * [Supported LoRA formats (updated)](#supported-lora-formats-updated)
@@ -633,16 +633,16 @@ In the examples above the following LoRAs are used [Sketching](https://civitai.c
 
 ---
 
-# 🌐 Running the OpenAI API Compatible Server
+# 🌐 Running Servers
 
-MFLUX includes a server component that provides an OpenAI API-compatible interface, allowing you to integrate MFLUX with existing tools and workflows that support the OpenAI API.
+MFLUX includes a server component that provides an OpenAI, Comfu, and Automatic1111 API-compatible interface, allowing you to integrate MFLUX with existing tools and workflows that support the OpenAI API.
 
 ### 📦 Installation
 
 To install the server component, use the `[server]` extra when installing MFLUX:
 
 ```sh
-pip install mflux[server]
+uv pip install mflux[server]
 ```
 
 ### 🚀 Starting the Server
@@ -650,7 +650,9 @@ pip install mflux[server]
 Once installed, you can start the server using the `mflux-server` command:
 
 ```sh
-mflux-server
+mflux-server openai
+mflux-server automatic1111
+mflux-server comfyui
 ```
 
 By default, the server will:
@@ -660,7 +662,7 @@ By default, the server will:
 
 ### 🔌 Connecting to the Server
 
-You can connect to the server using any OpenAI API client by setting the base URL to your server address:
+You can connect to the OpenAI server using any OpenAI API client by setting the base URL to your server address:
 
 ```python
 import openai
@@ -672,7 +674,7 @@ client = openai.Client(
 
 # Generate an image
 response = client.images.generate(
-    model="dev",  # Use "schnell" or "dev"
+    model="dev",  # Use "schnell" or "dev", or Dalle-2 and 3, 3 is mapped to schnell and 2 is mapped to dev
     prompt="A beautiful mountain landscape at sunset",
     n=1,
     size="1024x1024"

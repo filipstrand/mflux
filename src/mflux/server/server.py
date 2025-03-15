@@ -85,6 +85,7 @@ async def generate_images(request: GenerationRequest = Body(...)):
         if request.stepwise_output:
             stepwise_dir = tempfile.mkdtemp()
 
+        # Map OpenAI model names to your internal models
         model = request.model or 'schnell'
         
         # Prepare LoRA parameters
