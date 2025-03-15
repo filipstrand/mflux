@@ -1014,7 +1014,7 @@ mflux-generate-fill \
 
 #### Outpainting
 
-![outpaint example](src/mflux/assets/outpaint example.jpg)
+![outpaint example](src/mflux/assets/outpaint_example.jpg)
 *Original room image credit: [Alexey Aladashvili on Unsplash](https://unsplash.com/photos/a-living-room-with-a-couch-and-a-table-JFzglhmwlck)*
 
 Outpainting extends your image beyond its original boundaries, allowing you to expand the canvas in any direction while maintaining visual consistency with the original content. This is useful for creating wider landscapes, revealing more of a scene, or transforming a portrait into a full-body image. The Fill tool intelligently generates new content that seamlessly connects with the existing image.
@@ -1027,7 +1027,7 @@ python -m tools.create_outpaint_image_canvas_and_mask \
   --image-outpaint-padding "0,30%,20%,0"
 ```
 
-For a real-world example, here's how to add 25% padding to both the left and right sides of an image:
+As an example, here's how to add 25% padding to both the left and right sides of an image:
 
 ```bash
 python -m tools.create_outpaint_image_canvas_and_mask \
@@ -1047,18 +1047,12 @@ Once you've created the expanded canvas and mask files, run the Fill tool on the
 mflux-generate-fill \
   --prompt "A detailed interior room photograph with natural lighting, extended in a way that perfectly complements the original space. The expanded areas continue the architectural style, color scheme, and overall aesthetic of the room seamlessly." \
   --steps 25 \
-  --seed 123 \
+  --seed 43 \
   --guidance 30 \
   -q 8 \
   --image-path "room.png" \
   --masked-image-path "room_mask.png" \
 ```
-
-For best results with outpainting:
-- Provide a detailed prompt that describes both the existing content and how the new areas should extend it
-- Use higher resolution settings when possible
-- Consider using more inference steps (20-30) for more refined results
-- Experiment with different guidance values (25-35) to find the optimal balance
 
 ##### Tips for Best Results
 
