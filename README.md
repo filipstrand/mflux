@@ -503,9 +503,29 @@ mflux-generate \
 *Also Note: Once we have a local model (quantized [or not](#-running-a-non-quantized-model-directly-from-disk)) specified via the `--path` argument, the huggingface cache models are not required to launch the model.
 In other words, you can reclaim the 34GB diskspace (per model) by deleting the full 16-bit model from the [Huggingface cache](#%EF%B8%8F-generating-an-image) if you choose.*
 
+⚠️ * Quantized models saved with mflux < v.0.6.0 will not work with v.0.6.0 and later due to updated implementation. The solution is to [save a new quantized local copy](https://github.com/filipstrand/mflux/issues/149) 
+
 *If you don't want to download the full models and quantize them yourself, the 4-bit weights are available here for a direct download:*
-- [madroid/flux.1-schnell-mflux-4bit](https://huggingface.co/madroid/flux.1-schnell-mflux-4bit)
-- [madroid/flux.1-dev-mflux-4bit](https://huggingface.co/madroid/flux.1-dev-mflux-4bit)
+- For mflux < v.0.6.0:
+  - [madroid/flux.1-schnell-mflux-4bit](https://huggingface.co/madroid/flux.1-schnell-mflux-4bit)
+  - [madroid/flux.1-dev-mflux-4bit](https://huggingface.co/madroid/flux.1-dev-mflux-4bit)
+- For mflux >= v.0.6.0:
+  - [dhairyashil/FLUX.1-schnell-mflux-v0.6.2-4bit](https://huggingface.co/dhairyashil/FLUX.1-schnell-mflux-v0.6.2-4bit)
+  - [dhairyashil/FLUX.1-dev-mflux-4bit](https://huggingface.co/dhairyashil/FLUX.1-dev-mflux-4bit)
+
+<details>
+<summary>Using the community model support, the quantized weights can be also be automatically downloaded</summary>
+
+```sh
+mflux-generate \
+    --model "dhairyashil/FLUX.1-schnell-mflux-v0.6.2-4bit" \
+    --base-model schnell \
+    --steps 2 \
+    --seed 2 \
+    --prompt "Luxury food photograph"
+```
+
+</details>
 
 ### 💽 Running a non-quantized model directly from disk
 
