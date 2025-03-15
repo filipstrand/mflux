@@ -27,6 +27,7 @@ class GeneratedImage:
         controlnet_strength: float | None = None,
         image_path: str | pathlib.Path | None = None,
         image_strength: float | None = None,
+        masked_image_path: str | pathlib.Path | None = None,
     ):
         self.image = image
         self.model_config = model_config
@@ -43,6 +44,7 @@ class GeneratedImage:
         self.controlnet_strength = controlnet_strength
         self.image_path = image_path
         self.image_strength = image_strength
+        self.masked_image_path = masked_image_path
 
     def get_right_half(self) -> "GeneratedImage":
         # Calculate the coordinates for the right half
@@ -66,6 +68,7 @@ class GeneratedImage:
             controlnet_strength=self.controlnet_strength,
             image_path=self.image_path,
             image_strength=self.image_strength,
+            masked_image_path=self.masked_image_path,
         )
 
     def save(
@@ -100,6 +103,7 @@ class GeneratedImage:
             "image_strength": self.image_strength if self.image_path else None,
             "controlnet_image_path": str(self.controlnet_image_path) if self.controlnet_image_path else None,
             "controlnet_strength": round(self.controlnet_strength, 2) if self.controlnet_strength else None,
+            "masked_image_path": str(self.masked_image_path) if self.masked_image_path else None,
             "prompt": self.prompt,
         }
 

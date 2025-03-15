@@ -8,6 +8,7 @@ from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.error.exceptions import StopImageGenerationException
 from mflux.flux.flux_initializer import FluxInitializer
+from mflux.inpaint.mask_util import MaskUtil
 from mflux.latent_creator.latent_creator import Img2Img, LatentCreator
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.prompt_encoder import PromptEncoder
@@ -20,7 +21,7 @@ from mflux.post_processing.image_util import ImageUtil
 from mflux.weights.model_saver import ModelSaver
 
 
-class Flux1(nn.Module):
+class Flux1Inpaint(nn.Module):
     vae: VAE
     transformer: Transformer
     t5_text_encoder: T5Encoder
@@ -77,6 +78,15 @@ class Flux1(nn.Module):
             clip_text_encoder=self.clip_text_encoder,
         )
 
+        # 3. Create the static masked latents
+        static_masked_latents = MaskUtil.create_masked_latents(
+            vae=self.vae,
+            config=config,
+            latents=latents,
+            img_path=config.image_path,
+            mask_path=config.masked_image_path,
+        )
+
         # (Optional) Call subscribers for beginning of loop
         Callbacks.before_loop(
             seed=seed,
@@ -87,16 +97,19 @@ class Flux1(nn.Module):
 
         for t in time_steps:
             try:
-                # 3.t Predict the noise
+                # 4.t Concatenate the updated latents with the static masked latents
+                hidden_states = mx.concatenate([latents, static_masked_latents], axis=-1)
+
+                # 5.t Predict the noise
                 noise = self.transformer(
                     t=t,
                     config=config,
-                    hidden_states=latents,
+                    hidden_states=hidden_states,
                     prompt_embeds=prompt_embeds,
                     pooled_prompt_embeds=pooled_prompt_embeds,
                 )
 
-                # 4.t Take one denoise step
+                # 6.t Take one denoise step
                 dt = config.sigmas[t + 1] - config.sigmas[t]
                 latents += noise * dt
 
@@ -145,21 +158,9 @@ class Flux1(nn.Module):
             lora_scales=self.lora_scales,
             image_path=config.image_path,
             image_strength=config.image_strength,
+            masked_image_path=config.masked_image_path,
             generation_time=time_steps.format_dict["elapsed"],
-        )
-
-    @staticmethod
-    def from_name(model_name: str, quantize: int | None = None) -> "Flux1":
-        return Flux1(
-            model_config=ModelConfig.from_name(model_name=model_name, base_model=None),
-            quantize=quantize,
         )
 
     def save_model(self, base_path: str) -> None:
         ModelSaver.save_model(self, self.bits, base_path)
-
-    def freeze(self, **kwargs):
-        self.vae.freeze()
-        self.transformer.freeze()
-        self.t5_text_encoder.freeze()
-        self.clip_text_encoder.freeze()
