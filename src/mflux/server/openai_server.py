@@ -33,7 +33,6 @@ class GenerationRequest(BaseModel):
     prompt: str
     model: Optional[str] = "schnell"
     base_model: Optional[str] = None
-    steps: Optional[int] = 2
     height: Optional[int] = HEIGHT
     width: Optional[int] = WIDTH
     size: Optional[str] = None
@@ -164,7 +163,7 @@ async def generate_images(request: GenerationRequest = Body(...)):
                     seed=current_seed,
                     prompt=request.prompt,
                     config=Config(
-                        num_inference_steps=request.steps or 2,
+                        num_inference_steps=request.n or 2,
                         height=height,
                         width=width,
                         guidance=request.guidance or 4.0,

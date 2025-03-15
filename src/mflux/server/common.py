@@ -117,7 +117,6 @@ class ModelManager:
             if model_key in self.model_timers:
                 del self.model_timers[model_key]
 
-
 def create_temp_directory():
     """Create a temporary directory and return its path"""
     return tempfile.mkdtemp()
