@@ -14,13 +14,14 @@ from mflux.ui import (
 
 class ModelSpecAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
-        if values in ["dev", "schnell"]:
+        if values in ui_defaults.MODEL_CHOICES:
             setattr(namespace, self.dest, values)
             return
 
         if values.count("/") != 1:
             raise argparse.ArgumentError(
-                self, f'Value must be either "dev", "schnell", or "in format "org/model". Got: {values}'
+                self,
+                (f'Value must be either {" ".join(ui_defaults.MODEL_CHOICES)} or in format "org/model". Got: {values}'),
             )
 
         # If we got here, values contains exactly one slash
@@ -38,12 +39,13 @@ class CommandLineParser(argparse.ArgumentParser):
         self.supports_image_to_image = False
         self.supports_image_outpaint = False
         self.supports_lora = False
+        self.require_model_arg = True
 
     def add_general_arguments(self) -> None:
         self.add_argument("--low-ram", action="store_true", help="Enable low-RAM mode to reduce memory usage (may impact performance).")
 
     def add_model_arguments(self, path_type: t.Literal["load", "save"] = "load", require_model_arg: bool = True) -> None:
-
+        self.require_model_arg = require_model_arg
         self.add_argument("--model", "-m", type=str, required=require_model_arg, action=ModelSpecAction, help=f"The model to use ({' or '.join(ui_defaults.MODEL_CHOICES)} or a compatible huggingface repo_id org/model).")
         if path_type == "load":
             self.add_argument("--path", type=str, default=None, help="Local path for loading a model from disk")
@@ -86,6 +88,10 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--prompts-file", type=Path, required=True, default=argparse.SUPPRESS, help="Local path for a file that holds a batch of prompts.")
         self.add_argument("--global-seed", type=int, default=argparse.SUPPRESS, help="Entropy Seed (used for all prompts in the batch)")
         self._add_image_generator_common_arguments()
+
+    def add_fill_arguments(self) -> None:
+        self.add_argument("--image-path", type=Path, required=True, help="Local path to the source image")
+        self.add_argument("--masked-image-path", type=Path, required=True, help="Local path to the mask image")
 
     def add_output_arguments(self) -> None:
         self.add_argument("--metadata", action="store_true", help="Export image metadata as a JSON file.")
@@ -184,8 +190,8 @@ class CommandLineParser(argparse.ArgumentParser):
                 if namespace.image_outpaint_padding is None:
                     namespace.image_outpaint_padding = prior_gen_metadata.get("image_outpaint_padding", None)
 
-        # Only require model if we're not in training mode
-        if hasattr(namespace, "model") and namespace.model is None and not has_training_args:
+        # Only require model if we're not in training mode and require_model_arg is True
+        if hasattr(namespace, "model") and namespace.model is None and not has_training_args and self.require_model_arg:
             self.error("--model / -m must be provided, or 'model' must be specified in the config file.")
 
         if self.supports_image_generation and namespace.seed is None and namespace.auto_seeds > 0:
