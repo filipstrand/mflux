@@ -37,6 +37,7 @@ class GenerationRequest(BaseModel):
     height: Optional[int] = HEIGHT
     width: Optional[int] = WIDTH
     size: Optional[str] = None
+    quality: Optional[str] = None
     guidance: Optional[float] = 4.0
     image_strength: Optional[float] = None
     controlnet_strength: Optional[float] = None
@@ -71,13 +72,17 @@ async def generate_images(request: GenerationRequest = Body(...)):
             stepwise_dir = create_temp_directory()
 
         # Use the model name directly without OpenAI mapping
-        model = request.model or 'schnell'
+        model = request.model or "schnell"
         
         # For OpenAI API compatibility, we can validate sizes
-        if model in ['dall-e-3', 'schnell']:
+        if model in ["dall-e-3", "schnell"]:
             valid_sizes = ['1024x1024', '1792x1024', '1024x1792']
+            if model == "dall-e-3":
+                model = "schnell"
         elif model in ['dall-e-2', 'dev']:
             valid_sizes = ['256x256', '512x512', '1024x1024']
+            if model == "dall-e-2":
+                model = "dev"
         else:
             # For custom models, we'll be more flexible with sizes
             valid_sizes = None

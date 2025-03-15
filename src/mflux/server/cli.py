@@ -1,6 +1,6 @@
 import argparse
 import sys
-from . import openai, automatic1111, comfyui
+from . import automatic1111, comfyui, openai_server
 
 def main():
     parser = argparse.ArgumentParser(description="Run mflux server with different API compatibilities")
@@ -13,7 +13,7 @@ def main():
     args = parser.parse_args()
     
     if args.api == "openai":
-        openai.run_server(host=args.host, port=args.port)
+        openai_server.run_server(host=args.host, port=args.port)
     elif args.api == "automatic1111":
         automatic1111.run_server(host=args.host, port=args.port)
     elif args.api == "comfyui":

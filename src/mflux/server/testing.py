@@ -1,59 +1,74 @@
-# Modified test_api.py with debugging
-import requests
+# Modified test_api.py using openai package
 import base64
 from PIL import Image
 import io
 import json
+from openai import OpenAI
 
 def test_api():
-    url = "http://localhost:8800/v1/images/generations"
+    # Configure the client to use your local server
+    client = OpenAI(
+        base_url="http://localhost:8800/v1",
+        api_key="dummy-key"  # API key is required but not used by your local server
+    )
     
-    payload = {
-        "prompt": "A cute lion",
-        "steps": 1,
-        "width": 512,
-        "height": 512
-    }
+    prompt = "A cute lion"
+    print(f"Sending request with prompt: '{prompt}'")
     
-    print(f"Sending request with prompt: '{payload['prompt']}'")
-    response = requests.post(url, json=payload)
-    
-    if response.status_code == 200:
-        result = response.json()
+    try:
+        # Make the API call using the OpenAI client
+        response = client.images.generate(
+            model="dall-e-3",
+            prompt="a white siamese cat",
+            size="1024x1024",
+            quality="standard",
+            n=1,
+        )
+        
         print("Success! Image generated.")
         
         # Debug: Check what we're getting back
-        print(f"Response keys: {result.keys()}")
-        print(f"Data length: {len(result.get('data', []))}")
+        print(f"Response type: {type(response)}")
+        print(f"Data length: {len(response.data)}")
         
-        if 'data' in result and len(result['data']) > 0:
-            # Debug: Check the b64_json field
-            img_data = result['data'][0].get('b64_json', '')
-            print(f"Base64 data length: {len(img_data)}")
-            print(f"Base64 data starts with: {img_data[:50]}...")
+        if response.data and len(response.data) > 0:
+            # Get the first image
+            image_data = response.data[0]
             
-            # Check if it's actually base64 encoded
-            try:
-                img_bytes = base64.b64decode(img_data)
-                print(f"Decoded bytes length: {len(img_bytes)}")
-                print(f"First few bytes: {img_bytes[:20]}")
+            # Check if b64_json is available
+            if hasattr(image_data, 'b64_json') and image_data.b64_json:
+                img_data = image_data.b64_json
+                print(f"Base64 data length: {len(img_data)}")
+                print(f"Base64 data starts with: {img_data[:50]}...")
                 
-                # Try to open the image
-                img = Image.open(io.BytesIO(img_bytes))
-                img.save("test_output.png")
-                print("Image saved to test_output.png")
-            except Exception as e:
-                print(f"Error decoding/opening image: {e}")
-                
-                # Try saving the raw base64 for inspection
-                with open("debug_base64.txt", "w") as f:
-                    f.write(img_data)
-                print("Saved base64 data to debug_base64.txt for inspection")
+                # Decode and save the image
+                try:
+                    img_bytes = base64.b64decode(img_data)
+                    print(f"Decoded bytes length: {len(img_bytes)}")
+                    print(f"First few bytes: {img_bytes[:20]}")
+                    
+                    img = Image.open(io.BytesIO(img_bytes))
+                    img.save("test_output.png")
+                    print("Image saved to test_output.png")
+                except Exception as e:
+                    print(f"Error decoding/opening image: {e}")
+                    
+                    # Save the raw base64 for inspection
+                    with open("debug_base64.txt", "w") as f:
+                        f.write(img_data)
+                    print("Saved base64 data to debug_base64.txt for inspection")
+            else:
+                # If using URL format instead of base64
+                if hasattr(image_data, 'url') and image_data.url:
+                    print(f"Image URL: {image_data.url}")
+                else:
+                    print("No image data found in the response")
+                    print(f"Available attributes: {dir(image_data)}")
         else:
             print("No data found in response")
-            print(f"Full response: {json.dumps(result, indent=2)}")
-    else:
-        print(f"Error {response.status_code}: {response.text}")
+            print(f"Full response: {response}")
+    except Exception as e:
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
     test_api()
