@@ -7,6 +7,7 @@ import PIL.Image
 import toml
 
 from mflux.config.model_config import ModelConfig
+from mflux.ui.defaults import DEFAULT_SCHEDULER
 
 
 class GeneratedImage:
@@ -27,6 +28,7 @@ class GeneratedImage:
         controlnet_strength: float | None = None,
         image_path: str | pathlib.Path | None = None,
         image_strength: float | None = None,
+        noise_scheduler: str = DEFAULT_SCHEDULER,
     ):
         self.image = image
         self.model_config = model_config
@@ -43,6 +45,7 @@ class GeneratedImage:
         self.controlnet_strength = controlnet_strength
         self.image_path = image_path
         self.image_strength = image_strength
+        self.noise_scheduler = noise_scheduler
 
     def get_right_half(self) -> "GeneratedImage":
         # Calculate the coordinates for the right half
@@ -66,6 +69,7 @@ class GeneratedImage:
             controlnet_strength=self.controlnet_strength,
             image_path=self.image_path,
             image_strength=self.image_strength,
+            noise_scheduler=self.noise_scheduler,
         )
 
     def save(
@@ -100,6 +104,7 @@ class GeneratedImage:
             "image_strength": self.image_strength if self.image_path else None,
             "controlnet_image_path": str(self.controlnet_image_path) if self.controlnet_image_path else None,
             "controlnet_strength": round(self.controlnet_strength, 2) if self.controlnet_strength else None,
+            "noise_scheduler": str(self.noise_scheduler),
             "prompt": self.prompt,
         }
 

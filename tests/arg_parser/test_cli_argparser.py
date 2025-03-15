@@ -328,6 +328,36 @@ def test_image_to_image_args(mflux_generate_parser, mflux_generate_minimal_argv,
         assert args.image_strength == 0.4  # default
 
 
+def test_noise_scheduler_arg(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off
+    from mflux.config.constants import COSINE, EXPONENTIAL, LINEAR, SCALED_LINEAR
+
+    metadata_file = temp_dir / "noise_scheduler.json"
+    with metadata_file.open("wt") as m:
+        base_metadata_dict["noise_scheduler"] = COSINE
+        json.dump(base_metadata_dict, m, indent=4)
+
+    # test default value (should be LINEAR)
+    with patch("sys.argv", mflux_generate_minimal_argv + ["--model", "dev"]):
+        args = mflux_generate_parser.parse_args()
+        assert args.noise_scheduler == LINEAR
+
+    # test metadata config accepted
+    with patch('sys.argv', mflux_generate_minimal_argv + ['--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
+        args = mflux_generate_parser.parse_args()
+        assert args.noise_scheduler == COSINE
+
+    # test CLI override with each possible value
+    for scheduler in [LINEAR, COSINE, EXPONENTIAL, SCALED_LINEAR]:
+        with patch('sys.argv', mflux_generate_minimal_argv + ['--noise-scheduler', scheduler, '--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
+            args = mflux_generate_parser.parse_args()
+            assert args.noise_scheduler == scheduler
+
+    # test invalid value validation (should be caught by choices parameter)
+    with patch('sys.argv', mflux_generate_minimal_argv + ['--noise-scheduler', 'invalid_scheduler']):  # fmt: off
+        with pytest.raises(SystemExit):
+            mflux_generate_parser.parse_args()
+
+
 def test_controlnet_args(mflux_generate_controlnet_parser, mflux_generate_controlnet_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off
     test_path = "/some/cnet/1.safetensors"
     metadata_file = temp_dir / "cnet_args.json"

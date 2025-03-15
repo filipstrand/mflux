@@ -1,11 +1,13 @@
 import argparse
 import json
+import logging
 import random
 import time
 import typing as t
 from pathlib import Path
 
 from mflux.community.in_context_lora.in_context_loras import LORA_NAME_MAP, LORA_REPO_ID
+from mflux.config.constants import NoiseSchedulerType
 from mflux.ui import defaults as ui_defaults
 
 
@@ -22,6 +24,16 @@ class ModelSpecAction(argparse.Action):
 
         # If we got here, values contains exactly one slash
         setattr(namespace, self.dest, values)
+
+
+class NoiseSchedulerTypeAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        try:
+            # Convert string to enum member using the from_string method
+            scheduler_type = NoiseSchedulerType.from_string(values)
+            setattr(namespace, self.dest, scheduler_type)
+        except ValueError as e:
+            raise argparse.ArgumentError(self, str(e))
 
 
 # fmt: off
@@ -64,6 +76,8 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--width", type=int, default=ui_defaults.WIDTH, help=f"Image width (Default is {ui_defaults.HEIGHT})")
         self.add_argument("--steps", type=int, default=None, help="Inference Steps")
         self.add_argument("--guidance", type=float, default=ui_defaults.GUIDANCE_SCALE, help=f"Guidance Scale (Default is {ui_defaults.GUIDANCE_SCALE})")
+        self.add_argument("--noise-scheduler", action=NoiseSchedulerTypeAction, choices=NoiseSchedulerType.choices(), default=None,
+                          help=f"Noise scheduler algorithm (Default is {ui_defaults.DEFAULT_SCHEDULER})")
 
     def add_image_generator_arguments(self, supports_metadata_config=False) -> None:
         self.add_argument("--prompt", type=str, required=(not supports_metadata_config), default=None, help="The textual description of the image to generate.")
@@ -144,6 +158,16 @@ class CommandLineParser(argparse.ArgumentParser):
             if namespace.steps is None:
                 namespace.steps = prior_gen_metadata.get("steps", None)
 
+            # Get noise scheduler from metadata if not explicitly provided through CLI
+            if namespace.noise_scheduler is None:
+                scheduler_str = prior_gen_metadata.get("noise_scheduler", None)
+                if scheduler_str:
+                    try:
+                        namespace.noise_scheduler = NoiseSchedulerType.from_string(scheduler_str)
+                    except ValueError:
+                        logging.warning(f"Invalid noise scheduler type in metadata: {scheduler_str}. Using default.")
+                        namespace.noise_scheduler = ui_defaults.DEFAULT_SCHEDULER
+
             if self.supports_lora:
                 if namespace.lora_paths is None:
                     namespace.lora_paths = prior_gen_metadata.get("lora_paths", None)
@@ -188,6 +212,10 @@ class CommandLineParser(argparse.ArgumentParser):
             # e.g. output.png -> output_seed_101.png output_seed_102.png, etc
             output_path = Path(namespace.output)
             namespace.output = str(output_path.with_stem(output_path.stem + "_seed_{seed}"))
+
+        # Set default noise scheduler if not provided via CLI or metadata
+        if self.supports_image_generation and namespace.noise_scheduler is None:
+            namespace.noise_scheduler = ui_defaults.DEFAULT_SCHEDULER
 
         if self.supports_image_generation and namespace.prompt is None:
             # not supplied by CLI and not supplied by metadata config file

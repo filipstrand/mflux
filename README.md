@@ -39,6 +39,8 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
   * [Memory issues](#memory-issues)
   * [Misc](#misc)
 - [🕹️ Controlnet](#%EF%B8%8F-controlnet)
+- [📊 Noise Schedulers](#-noise-schedulers)
+  * [Available Schedulers](#available-schedulers)
 - [🚧 Current limitations](#-current-limitations)
 - [💡Workflow tips](#workflow-tips)
 - [✅ TODO](#-todo)
@@ -175,6 +177,8 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 - **`--steps`** (optional, `int`, default: `4`): Number of inference steps.
 
 - **`--guidance`** (optional, `float`, default: `3.5`): Guidance scale (only used for `"dev"` model).
+
+- **`--noise-scheduler`** (optional, `str`, default: `"linear"`): Noise scheduler algorithm to use. Options are `"linear"`, `"cosine"`, `"exponential"`, `"sqrt"`, or `"scaled_linear"`. Each scheduler has different characteristics that affect the denoising process.
 
 - **`--path`** (optional, `str`, default: `None`): Path to a local model on disk.
 
@@ -942,6 +946,30 @@ Controlnet can also work well together with [LoRA adapters](#-lora). In the exam
 with different prompts and LoRA adapters active.
 
 ![image](src/mflux/assets/controlnet2.jpg)
+
+### 📊 Noise Schedulers
+
+MFLUX provides multiple noise scheduling algorithms that control how noise is reduced during the diffusion process. Each scheduler has unique characteristics that can affect image quality and generation style.
+
+You can specify the noise scheduler with the `--noise-scheduler` parameter:
+
+```sh
+mflux-generate --model dev --prompt "A serene landscape" --noise-scheduler cosine
+```
+
+#### Available Schedulers
+
+- **Linear** (default): The original noise scheduler that decreases noise in a linear fashion. Works well for most prompts and is computationally efficient.
+
+- **Cosine**: Provides smoother transitions between noise levels, often resulting in better perceptual quality for both simple and complex images. Based on research from Nichol & Dhariwal's "Improved Denoising Diffusion Probabilistic Models." Particularly effective for high-detail subjects.
+
+- **Exponential**: Accelerates the denoising process at the beginning and slows it at the end for more detail refinement. This can help with complex textures and fine detail work.
+
+- **Sqrt**: Uses a square root transformation to focus more steps in the higher noise regions. This helps preserve global structure while still ensuring good detail preservation in complex areas.
+
+- **Scaled Linear**: Applies a scaling factor to adjust the rate of noise reduction, making it more adaptable to different image types. Slower initial denoising and faster final denoising provide a balanced approach.
+
+Each scheduler is best suited for different types of prompts and imagery. Experimenting with different schedulers can help achieve optimal results for specific use cases.
 
 ### 🚧 Current limitations
 
