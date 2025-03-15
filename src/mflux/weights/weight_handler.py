@@ -14,7 +14,6 @@ class MetaData:
     quantization_level: int | None = None
     scale: float | None = None
     is_lora: bool = False
-    is_mflux: bool = False
     mflux_version: str | None = None
 
 
