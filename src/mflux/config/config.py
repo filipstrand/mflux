@@ -17,6 +17,7 @@ class Config:
         guidance: float = 4.0,
         image_path: Path | None = None,
         image_strength: float | None = None,
+        masked_image_path: Path | None = None,
         controlnet_strength: float | None = None,
     ):
         if width % 16 != 0 or height % 16 != 0:
@@ -27,4 +28,5 @@ class Config:
         self.guidance = guidance
         self.image_path = image_path
         self.image_strength = image_strength
+        self.masked_image_path = masked_image_path
         self.controlnet_strength = controlnet_strength
