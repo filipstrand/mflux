@@ -32,6 +32,10 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
   * [Available Styles](#available-styles)
   * [How It Works](#how-it-works)
   * [Tips for Best Results](#tips-for-best-results)
+- [🛠️ Flux Tools](#%EF%B8%8F-flux-tools)
+  * [🖌️ Fill](#%EF%B8%8F-fill)
+    + [Inpainting](#inpainting)
+    + [Outpainting](#outpainting)
 - [🎛️ Dreambooth fine-tuning](#-dreambooth-fine-tuning)
   * [Training configuration](#training-configuration)
   * [Training example](#training-example)
@@ -221,7 +225,7 @@ The `mflux-generate-controlnet` command supports most of the same arguments as `
 
 - **`--controlnet-save-canny`** (optional, bool, default: `False`): If set, saves the Canny edge detection reference image used by ControlNet.
 
-See the [ControlNet](#%EF%B8%8F-controlnet) section for more details on how to use this feature effectively.
+See the [Controlnet](#%EF%B8%8F-controlnet) section for more details on how to use this feature effectively.
 
 
 #### 📜 Batch Image Generation Arguments
@@ -831,6 +835,104 @@ This prompt clearly describes both the reference image (after `[IMAGE1]`) and th
 
 ---
 
+### 🛠️ Flux Tools
+
+MFLUX supports the official [Flux.1 Tools](https://blackforestlabs.ai/flux-1-tools/).
+
+#### 🖌️ Fill
+
+The Fill tool uses the [FLUX.1-Fill-dev](https://huggingface.co/black-forest-labs/FLUX.1-Fill-dev) model to allow you to selectively edit parts of an image by providing a binary mask. This is useful for inpainting (replacing specific areas) and outpainting (expanding the canvas).
+
+#### Inpainting
+
+Inpainting allows you to selectively regenerate specific parts of an image while preserving the rest. This is perfect for removing unwanted objects, adding new elements, or changing specific areas of an image without affecting the surrounding content. The Fill tool understands the context of the entire image and creates seamless edits that blend naturally with the preserved areas.
+
+![inpaint example](src/mflux/assets/inpaint_example.jpg)
+*Original dog image credit: [Julio Bernal on Unsplash](https://unsplash.com/photos/brown-and-white-long-coated-dog-WLGx0fKFSeI)*
+
+##### Creating Masks
+
+Before using the Fill tool, you need an image and a corresponding mask. You can create a mask using the included tool:
+
+```bash
+python -m tools.fill_mask_tool /path/to/your/image.jpg
+```
+
+This will open an interactive interface where you can paint over the areas you want to regenerate.
+Pressing the `s` key will save the mask at the same location as the image.
+
+##### Example
+
+To regenerate specific parts of an image:
+
+```bash
+mflux-generate-fill \
+  --prompt "A professionally shot studio photograph of a dog wearing a red hat and ski goggles. The dog is centered against a uniformly bright yellow background, with well-balanced lighting and sharp details." \
+  --steps 20 \
+  --seed 42 \
+  --height 1280 \
+  --width 851 \
+  --guidance 30 \
+  -q 8 \
+  --image-path "dog.png" \
+  --masked-image-path "dog_mask.png" \
+```
+
+#### Outpainting
+
+![outpaint example](src/mflux/assets/outpaint_example.jpg)
+*Original room image credit: [Alexey Aladashvili on Unsplash](https://unsplash.com/photos/a-living-room-with-a-couch-and-a-table-JFzglhmwlck)*
+
+Outpainting extends your image beyond its original boundaries, allowing you to expand the canvas in any direction while maintaining visual consistency with the original content. This is useful for creating wider landscapes, revealing more of a scene, or transforming a portrait into a full-body image. The Fill tool intelligently generates new content that seamlessly connects with the existing image.
+
+You can expand the canvas of your image using the provided tool:
+
+```bash
+python -m tools.create_outpaint_image_canvas_and_mask \
+  /path/to/your/image.jpg \
+  --image-outpaint-padding "0,30%,20%,0"
+```
+
+As an example, here's how to add 25% padding to both the left and right sides of an image:
+
+```bash
+python -m tools.create_outpaint_image_canvas_and_mask \
+  room.png \
+  --image-outpaint-padding "0,25%,0,25%"
+```
+
+The padding format is "top,right,bottom,left" where each value can be in pixels or as a percentage. For example, "0,30%,20%,0" expands the canvas by 30% to the right and 20% to the bottom.
+
+After running this command, you'll get two files: an expanded canvas with your original image and a corresponding mask. You can then run the `mflux-generate-fill` command similar to the inpainting example, using these files as input.
+
+##### Example
+
+Once you've created the expanded canvas and mask files, run the Fill tool on them:
+
+```bash
+mflux-generate-fill \
+  --prompt "A detailed interior room photograph with natural lighting, extended in a way that perfectly complements the original space. The expanded areas continue the architectural style, color scheme, and overall aesthetic of the room seamlessly." \
+  --steps 25 \
+  --seed 43 \
+  --guidance 30 \
+  -q 8 \
+  --image-path "room.png" \
+  --masked-image-path "room_mask.png" \
+```
+
+##### Tips for Best Results
+
+- **Model**: The model is always `FLUX.1-Fill-dev` and should not be specified.
+- **Guidance**: Higher guidance values (around 30) typically yield better results. This is the default if not specified.
+- **Resolution**: Higher resolution images generally produce better results with the Fill tool.
+- **Masks**: Make sure your mask clearly defines the areas you want to regenerate. White areas in the mask will be regenerated, while black areas will be preserved.
+- **Prompting**: For best results, provide detailed prompts that describe both what you want in the newly generated areas and how it should relate to the preserved parts of the image.
+- **Steps**: Using 20-30 denoising steps generally produces higher quality results.
+
+⚠️ *Note: Using the Fill tool requires an additional 33.92 GB download from [black-forest-labs/FLUX.1-Fill-dev](https://huggingface.co/black-forest-labs/FLUX.1-Fill-dev). The download happens automatically on first use.*
+
+---
+
 ### 🎛️ Dreambooth fine-tuning
 
 As of release [v.0.5.0](https://github.com/filipstrand/mflux/releases/tag/v.0.5.0), MFLUX has support for fine-tuning your own LoRA adapters using the [Dreambooth](https://dreambooth.github.io) technique.
@@ -1024,6 +1126,8 @@ Controlnet can also work well together with [LoRA adapters](#-lora). In the exam
 with different prompts and LoRA adapters active.
 
 ![image](src/mflux/assets/controlnet2.jpg)
+
+---
 
 ### 🚧 Current limitations
 
