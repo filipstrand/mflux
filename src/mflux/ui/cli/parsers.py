@@ -220,7 +220,4 @@ class CommandLineParser(argparse.ArgumentParser):
             namespace.image_outpaint_padding = box_values.parse_box_value(namespace.image_outpaint_padding)
             print(f"{namespace.image_outpaint_padding=}")
 
-        if getattr(namespace, 'low_ram', False) and len(namespace.seed) > 1:
-            self.error("--low-ram cannot be used with multiple seeds")
-
         return namespace
