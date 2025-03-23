@@ -92,12 +92,12 @@ class WeightUtil:
         siglip_vision_transformer: nn.Module,
     ):
         redux_encoder.update(weights.redux_encoder)
-        siglip_vision_transformer.update(weights.siglip)
+        siglip_vision_transformer.update(weights.siglip["vision_model"])
 
     @staticmethod
     def set_redux_weights_and_quantize(
         quantize_arg: int | None,
-        weights: "WeightHandler",
+        weights: "WeightHandlerRedux",
         redux_encoder: nn.Module,
         siglip_vision_transformer: nn.Module,
     ) -> int | None:

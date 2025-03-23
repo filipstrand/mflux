@@ -49,5 +49,24 @@ class QuantizationUtil:
 
         if quantize is not None or q_level is not None:
             bits = int(q_level) if q_level is not None else quantize
-            nn.quantize(redux_encoder, bits=bits)
-            nn.quantize(siglip_vision_transformer, bits=bits)
+            nn.quantize(redux_encoder, class_predicate=QuantizationUtil.quantization_predicate, bits=bits)
+            nn.quantize(siglip_vision_transformer, class_predicate=QuantizationUtil.quantization_predicate, bits=bits)
+
+    @staticmethod
+    def quantization_predicate(path, m):
+        # 1. Skip Conv2d layers
+        if isinstance(m, nn.Conv2d):
+            return False
+
+        # 2. Skip any layer with incompatible dimensions
+        if hasattr(m, "weight") and hasattr(m.weight, "shape"):
+            if m.weight.shape == (1152, 4304):
+                print(f"Skipping problematic (1152, 4304) matrix in {path}")
+                return False
+
+            if m.weight.shape[-1] % 64 != 0:
+                print(f"Skipping layer {path} with shape {m.weight.shape} - last dimension not divisible by 64")
+                return False
+
+        # Only quantize layers that have to_quantized method
+        return hasattr(m, "to_quantized")

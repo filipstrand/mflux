@@ -1,6 +1,5 @@
 import mlx.core as mx
 import numpy as np
-import PIL
 from PIL import Image
 
 from mflux import ImageUtil
@@ -58,20 +57,27 @@ class ReduxUtil:
 
     @staticmethod
     def _preprocess(image: Image.Image) -> mx.array:
-        # Resize to expected dimensions (384x384 for Siglip)
-        target_size = (384, 384)
-        image = image.resize(target_size, resample=PIL.Image.LANCZOS)
+        # Define constants
+        rescale_factor = 1 / 255.0
+        image_mean = [0.5, 0.5, 0.5]
+        image_std = [0.5, 0.5, 0.5]
 
-        # Convert to numpy array in range [0, 1]
-        image_np = np.array(image).astype(np.float32) / 255.0
+        # Resize image
+        image = image.resize((384, 384), resample=3)
 
-        # Standard Siglip normalization with ImageNet mean and std
-        mean = np.array([0.485, 0.456, 0.406])
-        std = np.array([0.229, 0.224, 0.225])
+        # Convert to numpy array
+        image_np = np.array(image)
+
+        # Rescale pixel values
+        image_np = image_np.astype(np.float64) * rescale_factor
+
+        # Normalize
+        mean = np.array(image_mean)
+        std = np.array(image_std)
         image_np = (image_np - mean) / std
 
-        # Convert to mx.array and ensure BCHW format (batch, channels, height, width)
-        image_mx = mx.array(image_np.transpose(2, 0, 1))  # CHW format
-        image_mx = mx.expand_dims(image_mx, axis=0)  # Add batch dimension
+        # Convert to MLX array and ensure (batch, channels, height, width)
+        image_mx = mx.array(image_np.transpose(2, 0, 1))
+        image_mx = mx.expand_dims(image_mx, axis=0)
 
         return image_mx

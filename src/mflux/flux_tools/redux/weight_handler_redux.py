@@ -3,13 +3,14 @@ from pathlib import Path
 from huggingface_hub import snapshot_download
 
 from mflux import ModelConfig
-from mflux.weights.weight_handler import WeightHandler
+from mflux.weights.weight_handler import MetaData, WeightHandler
 
 
 class WeightHandlerRedux:
-    def __init__(self, siglip: dict, redux_encoder: dict):
+    def __init__(self, siglip: dict, redux_encoder: dict, meta_data: MetaData):
         self.siglip = siglip
         self.redux_encoder = redux_encoder
+        self.meta_data = meta_data
 
     @staticmethod
     def load_weights() -> "WeightHandlerRedux":
@@ -21,6 +22,7 @@ class WeightHandlerRedux:
         return WeightHandlerRedux(
             siglip=siglip,
             redux_encoder=redux_encoder,
+            meta_data=MetaData(quantization_level=None)
         )  # fmt:off
 
     @staticmethod
