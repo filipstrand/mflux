@@ -10,7 +10,7 @@ class PromptEncoder:
     @staticmethod
     def encode_prompt(
         prompt: str,
-        prompt_cache: dict[str, (mx.array, mx.array)],
+        prompt_cache: dict[str, tuple[mx.array, mx.array]],
         t5_tokenizer: TokenizerT5,
         clip_tokenizer: TokenizerCLIP,
         t5_text_encoder: T5Encoder,

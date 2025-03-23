@@ -1,4 +1,3 @@
-
 ![image](src/mflux/assets/logo.png)
 *A MLX port of FLUX based on the Huggingface Diffusers implementation.*
 
@@ -35,6 +34,9 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
   * [🖌️ Fill](#%EF%B8%8F-fill)
     + [Inpainting](#inpainting)
     + [Outpainting](#outpainting)
+  * [🔍 Depth](#-depth)
+  * [🔄 Redux](#-redux)
+- [🕹️ Controlnet](#%EF%B8%8F-controlnet)
 - [🎛️ Dreambooth fine-tuning](#-dreambooth-fine-tuning)
   * [Training configuration](#training-configuration)
   * [Training example](#training-example)
@@ -42,13 +44,12 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
   * [Configuration details](#configuration-details)
   * [Memory issues](#memory-issues)
   * [Misc](#misc)
-- [🕹️ Controlnet](#%EF%B8%8F-controlnet)
 - [🚧 Current limitations](#-current-limitations)
 - [💡Workflow tips](#workflow-tips)
-- [✅ TODO](#-todo)
 - [🔬 Cool research / features to support](#-cool-research--features-to-support-)
 - [🌱‍ Related projects](#-related-projects)
-- [License](#license)
+- [🙏 Acknowledgements](#-acknowledgements)
+- [⚖️ License](#-license)
 
 <!-- TOC end -->
 
@@ -869,6 +870,119 @@ mflux-generate-fill \
 
 ⚠️ *Note: Using the Fill tool requires an additional 33.92 GB download from [black-forest-labs/FLUX.1-Fill-dev](https://huggingface.co/black-forest-labs/FLUX.1-Fill-dev). The download happens automatically on first use.*
 
+#### 🔍 Depth
+
+Using the depth tool, you can generate high-quality images constrained on a depth map from a reference image. These maps represent the estimated distance of each pixel from the camera, with brighter areas representing objects closer to the camera and darker areas representing objects farther away.
+
+For state-of-the-art depth extraction, MFLUX now supports the [Depth Pro](https://github.com/apple/ml-depth-pro) model, natively implemented in MLX based on the reference implementation. 
+
+![depth example](src/mflux/assets/depth_example.jpg)
+*Original hallway image credit: [Yuliya Matuzava on Unsplash](https://unsplash.com/photos/a-long-hallway-in-a-building-with-arches-and-arches-39NJt9jfGSU)*
+
+##### Example
+
+Using the `mflux-generate-depth` we can let MFLUX generate a new image conditioned on the depth map of the input image:
+
+```bash
+mflux-generate-depth \
+  --prompt "A hallway made of white carrara marble" \
+  -q 8 \
+  --height 1680 \
+  --width 1200 \
+  --image-path "original_image.png" \
+  --steps 20 \
+  --seed 7102725
+```
+
+Instead of automatically generating the depth map based on a reference image, you can instead input the depth map yourself using the `--depth-image-path`, like so:
+
+```bash
+mflux-generate-depth \
+  --prompt "A hallway made of white carrara marble" \
+  -q 8 \
+  --height 1680 \
+  --width 1200 \
+  --depth-image-path "depth_image.png" \
+  --steps 20
+```
+
+To generate and export the depth map from an image without triggering the image generation, run the following command:
+
+```bash
+mflux-save-depth --image-path "your_image.jpg" -q 8
+```
+
+This will create a depth map and save it with the same name as your image but with a "_depth" suffix (e.g., "your_image_depth.png").
+Quantization is supported for the Depth Pro model, however, output quality can very depend on the input image. 
+
+⚠️ *Note: The Depth Pro model requires an additional 1.9GB download from Apple. The download happens automatically on first use.*
+
+⚠️ *Note: Using the Depth tool requires an additional 33.92 GB download from [black-forest-labs/FLUX.1-Depth-dev](https://huggingface.co/black-forest-labs/FLUX.1-Depth-dev). The download happens automatically on first use.*
+
+#### 🔄 Redux
+
+The Redux tool is an adapter for FLUX.1 models that enables image variation generation similar to the [image-to-image](#-image-to-image) technique. 
+It can reproduce an input image with slight variations, allowing you to refine and enhance existing images. 
+Unlike the image-to-image technique which resumes the denoising process mid-way starting from the input image, the redux tool instead embeds the image and joins it with the T5 text encodings.
+
+![redux example](src/mflux/assets/redux_example.jpg)
+*Image credit: [Paris Bilal on Unsplash](https://unsplash.com/photos/a-cat-statue-sitting-on-top-of-a-white-base-Bedd4qHGWCg)*
+
+##### Example
+
+The following examples show how to use the Redux tool to generate variations:
+
+```bash
+mflux-generate-redux \
+  --prompt "a grey statue of a cat on a white platform in front of a blue background" \
+  --redux-image-paths "original.png" \
+  --steps 20 \
+  --height 1654 \
+  --width 1154 \
+  -q 8
+```
+There is a tendency for the reference image to dominate over the input prompt.
+
+⚠️ *Note: Using the Redux tool requires an additional 1.1GB download from [black-forest-labs/FLUX.1-Redux-dev](https://huggingface.co/black-forest-labs/FLUX.1-Redux-dev). The download happens automatically on first use.*
+
+---
+
+### 🕹️ Controlnet
+
+MFLUX has [Controlnet](https://huggingface.co/docs/diffusers/en/using-diffusers/controlnet) support for an even more fine-grained control
+of the image generation. By providing a reference image via `--controlnet-image-path` and a strength parameter via `--controlnet-strength`, you can guide the generation toward the reference image.
+
+```sh
+mflux-generate-controlnet \
+  --prompt "A comic strip with a joker in a purple suit" \
+  --model dev \
+  --steps 20 \
+  --seed 1727047657 \
+  --height 1066 \
+  --width 692 \
+  -q 8 \
+  --lora-paths "Dark Comic - s0_8 g4.safetensors" \
+  --controlnet-image-path "reference.png" \
+  --controlnet-strength 0.5 \
+  --controlnet-save-canny
+```
+![image](src/mflux/assets/controlnet1.jpg)
+
+*This example combines the controlnet reference image with the LoRA [Dark Comic Flux](https://civitai.com/models/742916/dark-comic-flux)*.
+
+⚠️ *Note: Controlnet requires an additional one-time download of ~3.58GB of weights from Huggingface. This happens automatically the first time you run the `generate-controlnet` command.
+At the moment, the Controlnet used is [InstantX/FLUX.1-dev-Controlnet-Canny](https://huggingface.co/InstantX/FLUX.1-dev-Controlnet-Canny), which was trained for the `dev` model.
+It can work well with `schnell`, but performance is not guaranteed.*
+
+⚠️ *Note: The output can be highly sensitive to the controlnet strength and is very much dependent on the reference image.
+Too high settings will corrupt the image. A recommended starting point a value like 0.4 and to play around with the strength.*
+
+
+Controlnet can also work well together with [LoRA adapters](#-lora). In the example below the same reference image is used as a controlnet input
+with different prompts and LoRA adapters active.
+
+![image](src/mflux/assets/controlnet2.jpg)
+
 ---
 
 ### 🎛️ Dreambooth fine-tuning
@@ -1029,44 +1143,6 @@ The aim is to also gradually expand the scope of this feature with alternative t
 
 ---
 
-### 🕹️ Controlnet
-
-MFLUX has [Controlnet](https://huggingface.co/docs/diffusers/en/using-diffusers/controlnet) support for an even more fine-grained control
-of the image generation. By providing a reference image via `--controlnet-image-path` and a strength parameter via `--controlnet-strength`, you can guide the generation toward the reference image.
-
-```sh
-mflux-generate-controlnet \
-  --prompt "A comic strip with a joker in a purple suit" \
-  --model dev \
-  --steps 20 \
-  --seed 1727047657 \
-  --height 1066 \
-  --width 692 \
-  -q 8 \
-  --lora-paths "Dark Comic - s0_8 g4.safetensors" \
-  --controlnet-image-path "reference.png" \
-  --controlnet-strength 0.5 \
-  --controlnet-save-canny
-```
-![image](src/mflux/assets/controlnet1.jpg)
-
-*This example combines the controlnet reference image with the LoRA [Dark Comic Flux](https://civitai.com/models/742916/dark-comic-flux)*.
-
-⚠️ *Note: Controlnet requires an additional one-time download of ~3.58GB of weights from Huggingface. This happens automatically the first time you run the `generate-controlnet` command.
-At the moment, the Controlnet used is [InstantX/FLUX.1-dev-Controlnet-Canny](https://huggingface.co/InstantX/FLUX.1-dev-Controlnet-Canny), which was trained for the `dev` model.
-It can work well with `schnell`, but performance is not guaranteed.*
-
-⚠️ *Note: The output can be highly sensitive to the controlnet strength and is very much dependent on the reference image.
-Too high settings will corrupt the image. A recommended starting point a value like 0.4 and to play around with the strength.*
-
-
-Controlnet can also work well together with [LoRA adapters](#-lora). In the example below the same reference image is used as a controlnet input
-with different prompts and LoRA adapters active.
-
-![image](src/mflux/assets/controlnet2.jpg)
-
----
-
 ### 🚧 Current limitations
 
 - Images are generated one by one.
@@ -1107,14 +1183,9 @@ See `uv run tools/rename_images.py --help` for full CLI usage help.
 - When generating multiple images with different seeds, use `--seed` with multiple values or `--auto-seeds` to automatically generate a series of random seeds
 - Use `--stepwise-image-output-dir` to save intermediate images at each denoising step, which can be useful for debugging or creating animations of the generation process
 
-### ✅ TODO
-
-- [ ] [FLUX.1 Tools](https://blackforestlabs.ai/flux-1-tools/)
-
 ### 🔬 Cool research / features to support
 - [ ] [ConceptAttention](https://github.com/helblazer811/ConceptAttention)
 - [ ] [PuLID](https://github.com/ToTheBeginning/PuLID)
-- [ ] [depth based controlnet](https://huggingface.co/InstantX/SD3-Controlnet-Depth) via [ml-depth-pro](https://github.com/apple/ml-depth-pro) or similar?
 - [ ] [RF-Inversion](https://github.com/filipstrand/mflux/issues/91)
 - [ ] [catvton-flux](https://github.com/nftblackmagic/catvton-flux)
 
@@ -1125,6 +1196,16 @@ See `uv run tools/rename_images.py --help` for full CLI usage help.
 - [mflux-fasthtml](https://github.com/anthonywu/mflux-fasthtml) by [@anthonywu](https://github.com/anthonywu)
 - [mflux-streamlit](https://github.com/elitexp/mflux-streamlit) by [@elitexp](https://github.com/elitexp)
 
-### License
+### 🙏 Acknowledgements
+
+MFLUX would not be possible without the great work of:
+
+- The MLX Team for [MLX](https://github.com/ml-explore/mlx) and [MLX examples](https://github.com/ml-explore/mlx-examples)
+- Black Forest Labs for the [FLUX project](https://github.com/black-forest-labs/flux)
+- Hugging Face for the [Diffusers library implementation of Flux](https://huggingface.co/black-forest-labs/FLUX.1-dev) 
+- Depth Pro authors for the [Depth Pro model](https://github.com/apple/ml-depth-pro?tab=readme-ov-file#citation)
+- The MLX community and all [contributors and testers](https://github.com/filipstrand/mflux/graphs/contributors)
+
+### ⚖️ License
 
 This project is licensed under the [MIT License](LICENSE).

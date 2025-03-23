@@ -92,6 +92,15 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--image-path", type=Path, required=True, help="Local path to the source image")
         self.add_argument("--masked-image-path", type=Path, required=True, help="Local path to the mask image")
 
+    def add_depth_arguments(self) -> None:
+        self.add_argument("--image-path", type=Path, required=False, help="Local path to the source image")
+        self.add_argument("--depth-image-path", type=Path, required=False, help="Local path to the depth image")
+        self.add_argument("--save-depth-map", action="store_true", required=False, help="If set, save the depth map created from the source image.")
+        self.add_argument("--quantize",  "-q", type=int, choices=ui_defaults.QUANTIZE_CHOICES, default=None, help=f"Quantize the model ({' or '.join(map(str, ui_defaults.QUANTIZE_CHOICES))}, Default is None)")
+
+    def add_redux_arguments(self) -> None:
+        self.add_argument("--redux-image-paths", type=Path, nargs="*", required=True, help="Local path to the source image")
+
     def add_output_arguments(self) -> None:
         self.add_argument("--metadata", action="store_true", help="Export image metadata as a JSON file.")
         self.add_argument("--output", type=str, default="image.png", help="The filename for the output image. Default is \"image.png\".")
@@ -212,7 +221,7 @@ class CommandLineParser(argparse.ArgumentParser):
             self.error("--prompt argument required or 'prompt' required in metadata config file")
 
         if self.supports_image_generation and namespace.steps is None:
-            namespace.steps = ui_defaults.MODEL_INFERENCE_STEPS.get(namespace.model, None)
+            namespace.steps = ui_defaults.MODEL_INFERENCE_STEPS.get(namespace.model, 14)
 
         if self.supports_image_outpaint and namespace.image_outpaint_padding is not None:
             # parse and normalize any acceptable 1,2,3,4-tuple box value to 4-tuple

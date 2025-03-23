@@ -8,7 +8,7 @@ from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.error.exceptions import StopImageGenerationException
 from mflux.flux.flux_initializer import FluxInitializer
-from mflux.latent_creator.latent_creator import Img2Img, LatentCreator
+from mflux.latent_creator.latent_creator import LatentCreator
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.prompt_encoder import PromptEncoder
 from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
@@ -59,14 +59,10 @@ class Flux1InContextLoRA(nn.Module):
 
         # 1. Encode the reference image
         encoded_image = LatentCreator.encode_image(
+            vae=self.vae,
+            image_path=config.image_path,
             height=config.height,
             width=config.width,
-            img2img=Img2Img(
-                vae=self.vae,
-                sigmas=config.sigmas,
-                init_time_step=config.init_time_step,
-                image_path=config.image_path,
-            ),
         )
 
         # 2. Create the initial latents and keep the initial static noise for later blending

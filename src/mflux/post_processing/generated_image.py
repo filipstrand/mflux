@@ -28,6 +28,8 @@ class GeneratedImage:
         image_path: str | pathlib.Path | None = None,
         image_strength: float | None = None,
         masked_image_path: str | pathlib.Path | None = None,
+        depth_image_path: str | pathlib.Path | None = None,
+        redux_image_paths: list[str] | list[pathlib.Path] | None = None,
     ):
         self.image = image
         self.model_config = model_config
@@ -45,6 +47,8 @@ class GeneratedImage:
         self.image_path = image_path
         self.image_strength = image_strength
         self.masked_image_path = masked_image_path
+        self.depth_image_path = depth_image_path
+        self.redux_image_paths = redux_image_paths
 
     def get_right_half(self) -> "GeneratedImage":
         # Calculate the coordinates for the right half
@@ -69,6 +73,7 @@ class GeneratedImage:
             image_path=self.image_path,
             image_strength=self.image_strength,
             masked_image_path=self.masked_image_path,
+            depth_image_path=self.depth_image_path,
         )
 
     def save(
@@ -104,6 +109,8 @@ class GeneratedImage:
             "controlnet_image_path": str(self.controlnet_image_path) if self.controlnet_image_path else None,
             "controlnet_strength": round(self.controlnet_strength, 2) if self.controlnet_strength else None,
             "masked_image_path": str(self.masked_image_path) if self.masked_image_path else None,
+            "depth_image_path": str(self.depth_image_path) if self.depth_image_path else None,
+            "redux_image_paths": str(self.redux_image_paths) if self.redux_image_paths else None,
             "prompt": self.prompt,
         }
 
@@ -113,7 +120,7 @@ class GeneratedImage:
         if version:
             return version
 
-        # Fallback to installed package version
+        # Fallback to an installed package version
         try:
             return str(importlib.metadata.version("mflux"))
         except importlib.metadata.PackageNotFoundError:
