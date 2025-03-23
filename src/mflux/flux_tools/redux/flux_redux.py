@@ -180,10 +180,6 @@ class Flux1Redux(nn.Module):
         )  # fmt:off
 
         # 3. Join the text and image embeddings
-        prompt_embeds, pooled_prompt_embeds = ReduxUtil.join_embeddings(
-            prompt_embeds_txt=prompt_embeds_txt,
-            pooled_prompt_embeds_txt=pooled_prompt_embeds_txt,
-            image_embeds=image_embeds,
-        )  # fmt:off
-
+        prompt_embeds = mx.concatenate([prompt_embeds_txt, image_embeds], axis=1)
+        pooled_prompt_embeds = pooled_prompt_embeds_txt
         return prompt_embeds, pooled_prompt_embeds

@@ -61,11 +61,9 @@ class QuantizationUtil:
         # 2. Skip any layer with incompatible dimensions
         if hasattr(m, "weight") and hasattr(m.weight, "shape"):
             if m.weight.shape == (1152, 4304):
-                print(f"Skipping problematic (1152, 4304) matrix in {path}")
                 return False
 
             if m.weight.shape[-1] % 64 != 0:
-                print(f"Skipping layer {path} with shape {m.weight.shape} - last dimension not divisible by 64")
                 return False
 
         # Only quantize layers that have to_quantized method
