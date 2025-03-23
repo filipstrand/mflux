@@ -9,7 +9,7 @@ from mflux.callbacks.callback import BeforeLoopCallback
 from mflux.config.runtime_config import RuntimeConfig
 
 
-class CannyImageSaver(BeforeLoopCallback):
+class DepthImageSaver(BeforeLoopCallback):
     def __init__(self, path: str):
         self.path = Path(path)
 
@@ -22,8 +22,11 @@ class CannyImageSaver(BeforeLoopCallback):
         canny_image: PIL.Image.Image | None = None,
         depth_image: PIL.Image.Image | None = None,
     ) -> None:
+        if depth_image is None:
+            return
+
         base, ext = os.path.splitext(self.path)
         ImageUtil.save_image(
-            image=canny_image,
-            path=f"{base}_controlnet_canny{ext}",
-        )
+            image=depth_image,
+            path=f"{base}_depth_map{ext}"
+        )  # fmt: off

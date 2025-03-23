@@ -57,7 +57,7 @@ class LatentCreator:
             )
 
             # 2. Encode the image
-            encoded = LatentCreator.encode_image(height=height, width=width, img2img=img2img)
+            encoded = LatentCreator.encode_image(vae=img2img.vae, image_path=img2img.image_path, height=height, width=width)  # fmt: off
             latents = ArrayUtil.pack_latents(latents=encoded, height=height, width=width)
 
             # 3. Find the appropriate sigma value
@@ -71,13 +71,13 @@ class LatentCreator:
             )
 
     @staticmethod
-    def encode_image(height: int, width: int, img2img: Img2Img):
+    def encode_image(vae: VAE, image_path: str, height: int, width: int):
         scaled_user_image = ImageUtil.scale_to_dimensions(
-            image=ImageUtil.load_image(img2img.image_path).convert("RGB"),
+            image=ImageUtil.load_image(image_path).convert("RGB"),
             target_width=width,
             target_height=height,
         )
-        encoded = img2img.vae.encode(ImageUtil.to_array(scaled_user_image))
+        encoded = vae.encode(ImageUtil.to_array(scaled_user_image))
         return encoded
 
     @staticmethod

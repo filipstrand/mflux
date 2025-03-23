@@ -8,8 +8,9 @@ from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.error.exceptions import StopImageGenerationException
 from mflux.flux.flux_initializer import FluxInitializer
-from mflux.flux_tools.fill.mask_util import MaskUtil
+from mflux.flux_tools.depth.depth_util import DepthUtil
 from mflux.latent_creator.latent_creator import LatentCreator
+from mflux.models.depth_pro.depth_pro import DepthPro
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.prompt_encoder import PromptEncoder
 from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
@@ -20,8 +21,9 @@ from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
 
 
-class Flux1Fill(nn.Module):
+class Flux1Depth(nn.Module):
     vae: VAE
+    depth_pro: DepthPro
     transformer: Transformer
     t5_text_encoder: T5Encoder
     clip_text_encoder: CLIPEncoder
@@ -34,9 +36,9 @@ class Flux1Fill(nn.Module):
         lora_scales: list[float] | None = None,
     ):
         super().__init__()
-        FluxInitializer.init(
+        FluxInitializer.init_depth(
             flux_model=self,
-            model_config=ModelConfig.dev_fill(),
+            model_config=ModelConfig.dev_depth(),
             quantize=quantize,
             local_path=local_path,
             lora_paths=lora_paths,
@@ -70,13 +72,13 @@ class Flux1Fill(nn.Module):
             clip_text_encoder=self.clip_text_encoder,
         )
 
-        # 3. Create the static masked latents
-        static_masked_latents = MaskUtil.create_masked_latents(
+        # 3. Encode the depth map
+        static_depth_map, depth_image = DepthUtil.encode_depth_map(
             vae=self.vae,
+            depth_pro=self.depth_pro,
             config=config,
-            latents=latents,
-            img_path=config.image_path,
-            mask_path=config.masked_image_path,
+            image_path=config.image_path,
+            depth_image_path=config.depth_image_path,
         )
 
         # (Optional) Call subscribers for beginning of loop
@@ -85,12 +87,13 @@ class Flux1Fill(nn.Module):
             prompt=prompt,
             latents=latents,
             config=config,
-        )
+            depth_image=depth_image,
+        )  # fmt: off
 
         for t in time_steps:
             try:
-                # 4.t Concatenate the updated latents with the static masked latents
-                hidden_states = mx.concatenate([latents, static_masked_latents], axis=-1)
+                # 4.t Concatenate the updated latents with the (static) depth map
+                hidden_states = mx.concatenate([latents, static_depth_map], axis=-1)
 
                 # 5.t Predict the noise
                 noise = self.transformer(
@@ -113,7 +116,7 @@ class Flux1Fill(nn.Module):
                     latents=latents,
                     config=config,
                     time_steps=time_steps,
-                )
+                )  # fmt: off
 
                 # (Optional) Evaluate to enable progress tracking
                 mx.eval(latents)
@@ -135,7 +138,7 @@ class Flux1Fill(nn.Module):
             prompt=prompt,
             latents=latents,
             config=config,
-        )
+        )  # fmt: off
 
         # 7. Decode the latent array and return the image
         latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
@@ -149,7 +152,6 @@ class Flux1Fill(nn.Module):
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
             image_path=config.image_path,
-            image_strength=config.image_strength,
-            masked_image_path=config.masked_image_path,
+            depth_image_path=config.depth_image_path,
             generation_time=time_steps.format_dict["elapsed"],
         )

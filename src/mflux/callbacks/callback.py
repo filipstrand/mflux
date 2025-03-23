@@ -15,6 +15,7 @@ class BeforeLoopCallback(Protocol):
         latents: mx.array,
         config: RuntimeConfig,
         canny_image: PIL.Image.Image | None = None,
+        depth_image: PIL.Image.Image | None = None,
     ) -> None: ...
 
 

@@ -14,6 +14,7 @@ class Callbacks:
         latents: mx.array,
         config: RuntimeConfig,
         canny_image: PIL.Image.Image | None = None,
+        depth_image: PIL.Image.Image | None = None,
     ):
         for subscriber in CallbackRegistry.before_loop_callbacks():
             subscriber.call_before_loop(
@@ -22,6 +23,7 @@ class Callbacks:
                 latents=latents,
                 config=config,
                 canny_image=canny_image,
+                depth_image=depth_image,
             )
 
     @staticmethod
