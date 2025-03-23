@@ -3,12 +3,10 @@ from tests.image_generation.helpers.image_generation_in_context_test_helper impo
 
 
 class TestImageGeneratorInContext:
-    OUTPUT_IMAGE_FILENAME = "output.png"
-
     def test_in_context_lora_identity(self):
         ImageGeneratorInContextTestHelper.assert_matches_reference_image(
             reference_image_path="ic_lora_reference_in_context_identity.png",
-            output_image_path=TestImageGeneratorInContext.OUTPUT_IMAGE_FILENAME,
+            output_image_path="output_ic_lora_reference_in_context_identity.png",
             model_config=ModelConfig.dev(),
             steps=25,
             seed=42,
