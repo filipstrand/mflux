@@ -2,7 +2,7 @@ from mflux import Config, ModelConfig, StopImageGenerationException
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.callbacks.instances.memory_saver import MemorySaver
 from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
-from mflux.flux_tools.fill.flux_fill import Flux1Fill
+from mflux.flux_tools.redux.flux_redux import Flux1Redux
 from mflux.ui.cli.parsers import CommandLineParser
 
 
@@ -13,7 +13,7 @@ def main():
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
     parser.add_image_generator_arguments(supports_metadata_config=False)
-    parser.add_fill_arguments()
+    parser.add_redux_arguments()
     parser.add_output_arguments()
     args = parser.parse_args()
 
@@ -22,8 +22,8 @@ def main():
         args.guidance = 30
 
     # 1. Load the model
-    flux = Flux1Fill(
-        model_config=ModelConfig.dev_fill(),
+    flux = Flux1Redux(
+        model_config=ModelConfig.dev_redux(),
         quantize=args.quantize,
         local_path=args.path,
         lora_paths=args.lora_paths,
@@ -56,7 +56,6 @@ def main():
                     width=args.width,
                     guidance=args.guidance,
                     image_path=args.image_path,
-                    masked_image_path=args.masked_image_path,
                 ),
             )
 

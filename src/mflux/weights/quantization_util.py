@@ -31,9 +31,23 @@ class QuantizationUtil:
         quantize: int,
         weights: "WeightHandlerControlnet",
         transformer_controlnet: nn.Module,
-    ):
+    ) -> None:
         q_level = weights.meta_data.quantization_level
 
         if quantize is not None or q_level is not None:
             bits = int(q_level) if q_level is not None else quantize
             nn.quantize(transformer_controlnet, bits=bits)
+
+    @staticmethod
+    def quantize_redux_models(
+        quantize: int,
+        weights: "WeightHandler",
+        redux_encoder: nn.Module,
+        siglip_vision_transformer: nn.Module,
+    ) -> None:
+        q_level = weights.meta_data.quantization_level
+
+        if quantize is not None or q_level is not None:
+            bits = int(q_level) if q_level is not None else quantize
+            nn.quantize(redux_encoder, bits=bits)
+            nn.quantize(siglip_vision_transformer, bits=bits)

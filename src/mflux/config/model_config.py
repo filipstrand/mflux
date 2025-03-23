@@ -37,6 +37,11 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
+    def dev_redux() -> "ModelConfig":
+        return AVAILABLE_MODELS["dev-redux"]
+
+    @staticmethod
+    @lru_cache
     def schnell() -> "ModelConfig":
         return AVAILABLE_MODELS["schnell"]
 
@@ -115,5 +120,15 @@ AVAILABLE_MODELS = {
         supports_guidance=True,
         requires_sigma_shift=True,
         priority=0,
+    ),
+    "dev-redux": ModelConfig(
+        alias="dev-redux",
+        model_name="black-forest-labs/FLUX.1-Redux-dev",
+        base_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,
+        requires_sigma_shift=True,
+        priority=3,
     ),
 }

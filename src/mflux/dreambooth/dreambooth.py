@@ -13,10 +13,10 @@ from mflux.weights.weight_handler_lora import WeightHandlerLoRA
 class DreamBooth:
     @staticmethod
     def train(
-            flux: Flux1,
-            runtime_config: RuntimeConfig,
-            training_spec: TrainingSpec,
-            training_state: TrainingState
+        flux: Flux1,
+        runtime_config: RuntimeConfig,
+        training_spec: TrainingSpec,
+        training_state: TrainingState
     ):  # fmt:off
         # Freeze the model and assign the LoRA layers to the model
         flux.freeze()

@@ -93,6 +93,9 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--image-path", type=Path, required=True, help="Local path to the source image")
         self.add_argument("--masked-image-path", type=Path, required=True, help="Local path to the mask image")
 
+    def add_redux_arguments(self) -> None:
+        self.add_argument("--image-path", type=Path, required=True, help="Local path to the source image")
+
     def add_output_arguments(self) -> None:
         self.add_argument("--metadata", action="store_true", help="Export image metadata as a JSON file.")
         self.add_argument("--output", type=str, default="image.png", help="The filename for the output image. Default is \"image.png\".")

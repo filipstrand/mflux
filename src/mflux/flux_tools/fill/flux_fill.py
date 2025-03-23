@@ -18,7 +18,6 @@ from mflux.models.vae.vae import VAE
 from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
-from mflux.weights.model_saver import ModelSaver
 
 
 class Flux1Fill(nn.Module):
@@ -155,6 +154,3 @@ class Flux1Fill(nn.Module):
             masked_image_path=config.masked_image_path,
             generation_time=time_steps.format_dict["elapsed"],
         )
-
-    def save_model(self, base_path: str) -> None:
-        ModelSaver.save_model(self, self.bits, base_path)

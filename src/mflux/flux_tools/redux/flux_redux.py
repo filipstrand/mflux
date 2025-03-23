@@ -8,7 +8,10 @@ from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.error.exceptions import StopImageGenerationException
 from mflux.flux.flux_initializer import FluxInitializer
-from mflux.latent_creator.latent_creator import Img2Img, LatentCreator
+from mflux.flux_tools.redux.redux_util import ReduxUtil
+from mflux.latent_creator.latent_creator import LatentCreator
+from mflux.models.redux_encoder.redux_encoder import ReduxEncoder
+from mflux.models.siglip_vision_transformer.siglip_vision_transformer import SiglipVisionTransformer
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.prompt_encoder import PromptEncoder
 from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
@@ -17,11 +20,14 @@ from mflux.models.vae.vae import VAE
 from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
-from mflux.weights.model_saver import ModelSaver
+from mflux.tokenizer.clip_tokenizer import TokenizerCLIP
+from mflux.tokenizer.t5_tokenizer import TokenizerT5
 
 
-class Flux1(nn.Module):
+class Flux1Redux(nn.Module):
     vae: VAE
+    image_encoder: SiglipVisionTransformer
+    image_embedder: ReduxEncoder
     transformer: Transformer
     t5_text_encoder: T5Encoder
     clip_text_encoder: CLIPEncoder
@@ -35,9 +41,8 @@ class Flux1(nn.Module):
         lora_scales: list[float] | None = None,
     ):
         super().__init__()
-        FluxInitializer.init(
+        FluxInitializer.init_redux(
             flux_model=self,
-            model_config=model_config,
             quantize=quantize,
             local_path=local_path,
             lora_paths=lora_paths,
@@ -55,27 +60,24 @@ class Flux1(nn.Module):
         time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
 
         # 1. Create the initial latents
-        latents = LatentCreator.create_for_txt2img_or_img2img(
+        latents = LatentCreator.create(
             seed=seed,
             height=config.height,
             width=config.width,
-            img2img=Img2Img(
-                vae=self.vae,
-                image_path=config.image_path,
-                sigmas=config.sigmas,
-                init_time_step=config.init_time_step,
-            ),
         )
 
-        # 2. Encode the prompt
-        prompt_embeds, pooled_prompt_embeds = PromptEncoder.encode_prompt(
+        # 2. Get prompt embeddings by fusing the prompt and image embeddings
+        prompt_embeds, pooled_prompt_embeds = Flux1Redux._get_prompt_embeddings(
             prompt=prompt,
             prompt_cache=self.prompt_cache,
             t5_tokenizer=self.t5_tokenizer,
             clip_tokenizer=self.clip_tokenizer,
             t5_text_encoder=self.t5_text_encoder,
             clip_text_encoder=self.clip_text_encoder,
-        )
+            image_path=config.image_path,
+            image_encoder=self.image_encoder,
+            image_embedder=self.image_embedder,
+        )  # fmt: off
 
         # (Optional) Call subscribers for beginning of loop
         Callbacks.before_loop(
@@ -149,17 +151,39 @@ class Flux1(nn.Module):
         )
 
     @staticmethod
-    def from_name(model_name: str, quantize: int | None = None) -> "Flux1":
-        return Flux1(
-            model_config=ModelConfig.from_name(model_name=model_name, base_model=None),
-            quantize=quantize,
+    def _get_prompt_embeddings(
+        prompt: str,
+        prompt_cache: dict[str, (mx.array, mx.array)],
+        t5_tokenizer: TokenizerT5,
+        clip_tokenizer: TokenizerCLIP,
+        t5_text_encoder: T5Encoder,
+        clip_text_encoder: CLIPEncoder,
+        image_path: str,
+        image_encoder: SiglipVisionTransformer,
+        image_embedder: ReduxEncoder,
+    ) -> (mx.array, mx.array):
+        # 1. Encode the prompt
+        prompt_embeds_txt, pooled_prompt_embeds_txt = PromptEncoder.encode_prompt(
+            prompt=prompt,
+            prompt_cache=prompt_cache,
+            t5_tokenizer=t5_tokenizer,
+            clip_tokenizer=clip_tokenizer,
+            t5_text_encoder=t5_text_encoder,
+            clip_text_encoder=clip_text_encoder,
         )
 
-    def save_model(self, base_path: str) -> None:
-        ModelSaver.save_model(self, self.bits, base_path)
+        # 2. Encode the image using the Siglip and Redux encoder
+        image_embeds = ReduxUtil.embed_image(
+            image_path=image_path,
+            image_encoder=image_encoder,
+            image_embedder=image_embedder,
+        )  # fmt:off
 
-    def freeze(self, **kwargs):
-        self.vae.freeze()
-        self.transformer.freeze()
-        self.t5_text_encoder.freeze()
-        self.clip_text_encoder.freeze()
+        # 3. Join the text and image embeddings
+        prompt_embeds, pooled_prompt_embeds = ReduxUtil.join_embeddings(
+            prompt_embeds_txt=prompt_embeds_txt,
+            pooled_prompt_embeds_txt=pooled_prompt_embeds_txt,
+            image_embeds=image_embeds,
+        )  # fmt:off
+
+        return prompt_embeds, pooled_prompt_embeds
