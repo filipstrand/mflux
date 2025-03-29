@@ -25,6 +25,7 @@ class WeightHandlerDepthPro:
         weights = [WeightUtil.reshape_weights(k, v) for k, v in weights.items()]
         weights = WeightUtil.flatten(weights)
         weights = tree_unflatten(weights)
+        mx.eval(weights)
         return WeightHandlerDepthPro(
             weights=weights,
             meta_data=MetaData(quantization_level=None)
@@ -62,3 +63,9 @@ class WeightHandlerDepthPro:
                     raise FileNotFoundError(f"Model file not found at {model_path}")
 
         return model_path
+
+    @staticmethod
+    def modify_encoder_weights(depth_pro_weights, name):
+        tmp = depth_pro_weights.weights["encoder"][name]
+        depth_pro_weights.weights["encoder"][name] = {}
+        depth_pro_weights.weights["encoder"][name]["layers"] = tmp

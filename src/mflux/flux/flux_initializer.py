@@ -2,8 +2,7 @@ from mflux import ModelConfig
 from mflux.controlnet.transformer_controlnet import TransformerControlnet
 from mflux.controlnet.weight_handler_controlnet import WeightHandlerControlnet
 from mflux.flux_tools.redux.weight_handler_redux import WeightHandlerRedux
-from mflux.models.depth_pro.depth_pro import DepthPro
-from mflux.models.depth_pro.weight_handler_depth_pro import WeightHandlerDepthPro
+from mflux.models.depth_pro.depth_pro_initializer import DepthProInitializer
 from mflux.models.redux_encoder.redux_encoder import ReduxEncoder
 from mflux.models.siglip_vision_transformer.siglip_vision_transformer import SiglipVisionTransformer
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
@@ -117,9 +116,7 @@ class FluxInitializer:
         )
 
         # 2. Initialize the DepthPro model and assign the weights
-        depth_pro_weights = WeightHandlerDepthPro.load_weights()
-        flux_model.depth_pro = DepthPro()
-        # flux_model.depth_pro.depth_pro_model.update(depth_pro_weights.weights)
+        flux_model.depth_pro = DepthProInitializer.init()
 
     @staticmethod
     def init_redux(

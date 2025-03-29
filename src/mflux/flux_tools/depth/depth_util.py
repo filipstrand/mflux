@@ -23,7 +23,7 @@ class DepthUtil:
         depth_image_path: str | None = None,
     ) -> (mx.array, PIL.Image.Image):
         # 1. Create the depth map or use existing one
-        depth_image_path, depth_image = DepthUtil._get_or_create_depth_map(
+        depth_image_path, depth_image = DepthUtil.get_or_create_depth_map(
             depth_pro=depth_pro,
             image_path=image_path,
             depth_map_path=depth_image_path,
@@ -42,7 +42,7 @@ class DepthUtil:
         return depth_latents, depth_image
 
     @staticmethod
-    def _get_or_create_depth_map(
+    def get_or_create_depth_map(
         depth_pro: DepthPro,
         image_path: str | None = None,
         depth_map_path: str | None = None,
