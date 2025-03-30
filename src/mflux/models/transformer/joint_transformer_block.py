@@ -28,14 +28,14 @@ class JointTransformerBlock(nn.Module):
         # 1a. Compute norm for hidden_states
         norm_hidden_states, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.norm1(
             hidden_states=hidden_states,
-            text_embeddings=text_embeddings
-        )  # fmt: off
+            text_embeddings=text_embeddings,
+        )
 
         # 1b. Compute norm for encoder_hidden_states
         norm_encoder_hidden_states, c_gate_msa, c_shift_mlp, c_scale_mlp, c_gate_mlp = self.norm1_context(
             hidden_states=encoder_hidden_states,
-            text_embeddings=text_embeddings
-        )  # fmt: off
+            text_embeddings=text_embeddings,
+        )
 
         # 2. Compute attention
         attn_output, context_attn_output = self.attn(

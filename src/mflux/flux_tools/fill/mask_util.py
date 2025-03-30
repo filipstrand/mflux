@@ -13,8 +13,8 @@ class MaskUtil:
         config: RuntimeConfig,
         latents: mx.array,
         img_path: str,
-        mask_path: str | None
-    ) -> mx.array:  # fmt: off
+        mask_path: str | None,
+    ) -> mx.array:
         if not img_path or not mask_path:
             # Return empty latents if no image or mask is provided
             return mx.zeros((1, 0, 0))

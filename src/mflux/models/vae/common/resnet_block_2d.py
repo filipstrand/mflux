@@ -4,7 +4,6 @@ from mlx import nn
 from mflux.config.config import Config
 
 
-# fmt: off
 class ResnetBlock2D(nn.Module):
     def __init__(
         self,
@@ -48,11 +47,15 @@ class ResnetBlock2D(nn.Module):
             padding=(1, 1),
         )
         self.is_conv_shortcut = is_conv_shortcut
-        self.conv_shortcut = None if not is_conv_shortcut else nn.Conv2d(
-            in_channels=conv_shortcut_in,
-            out_channels=conv_shortcut_out,
-            kernel_size=(1, 1),
-            stride=(1, 1),
+        self.conv_shortcut = (
+            nn.Conv2d(
+                in_channels=conv_shortcut_in,
+                out_channels=conv_shortcut_out,
+                kernel_size=(1, 1),
+                stride=(1, 1),
+            )
+            if is_conv_shortcut
+            else None
         )
 
     def __call__(self, input_array: mx.array) -> mx.array:

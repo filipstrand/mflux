@@ -21,8 +21,8 @@ class DreamBoothInitializer:
         # differently depending on if training starts from scratch or resumes from checkpoint.
         training_spec = TrainingSpec.resolve(
             config_path=config_path,
-            checkpoint_path=checkpoint_path
-        )  # fmt: off
+            checkpoint_path=checkpoint_path,
+        )
 
         # Set global random seed to make training deterministic
         random.seed(training_spec.seed)
@@ -58,8 +58,8 @@ class DreamBoothInitializer:
         )
         iterator = Iterator.from_spec(
             training_spec=training_spec,
-            dataset=dataset
-        )  # fmt: off
+            dataset=dataset,
+        )
 
         # Setup loss statistics
         statistics = Statistics.from_spec(training_spec=training_spec)

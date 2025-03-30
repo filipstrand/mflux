@@ -15,8 +15,7 @@ class BeforeLoopCallback(Protocol):
         latents: mx.array,
         config: RuntimeConfig,
         canny_image: PIL.Image.Image | None = None,
-    ) -> None:  # fmt: off
-        ...
+    ) -> None: ...
 
 
 class InLoopCallback(Protocol):
@@ -27,9 +26,8 @@ class InLoopCallback(Protocol):
         prompt: str,
         latents: mx.array,
         config: RuntimeConfig,
-        time_steps: tqdm
-    ) -> None:  # fmt: off
-        ...
+        time_steps: tqdm,
+    ) -> None: ...
 
 
 class AfterLoopCallback(Protocol):
@@ -38,9 +36,8 @@ class AfterLoopCallback(Protocol):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig
-    ) -> None:  # fmt: off
-        ...
+        config: RuntimeConfig,
+    ) -> None: ...
 
 
 class InterruptCallback(Protocol):
@@ -51,6 +48,5 @@ class InterruptCallback(Protocol):
         prompt: str,
         latents: mx.array,
         config: RuntimeConfig,
-        time_steps: tqdm
-    ) -> None:  # fmt: off
-        ...
+        time_steps: tqdm,
+    ) -> None: ...
