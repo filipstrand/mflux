@@ -41,8 +41,8 @@ class ImageGeneratorInContextTestHelper:
                 lora_names=[get_lora_filename(lora_style)] if lora_style else None,
                 lora_repo_id=LORA_REPO_ID if lora_style else None,
                 lora_paths=lora_paths,
-                lora_scales=lora_scales
-            )  # fmt: off
+                lora_scales=lora_scales,
+            )
             # when
             image = flux.generate_image(
                 seed=seed,

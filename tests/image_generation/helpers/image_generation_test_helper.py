@@ -34,8 +34,8 @@ class ImageGeneratorTestHelper:
                 model_config=model_config,
                 quantize=8,
                 lora_paths=lora_paths,
-                lora_scales=lora_scales
-            )  # fmt: off
+                lora_scales=lora_scales,
+            )
             # when
             image = flux.generate_image(
                 seed=seed,

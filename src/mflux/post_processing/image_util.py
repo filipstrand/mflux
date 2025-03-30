@@ -203,8 +203,8 @@ class ImageUtil:
         path: t.Union[str, pathlib.Path],
         metadata: dict | None = None,
         export_json_metadata: bool = False,
-        overwrite: bool = False
-    ) -> None:  # fmt: off
+        overwrite: bool = False,
+    ) -> None:
         file_path = pathlib.Path(path)
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_name = file_path.stem

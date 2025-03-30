@@ -30,7 +30,7 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
         latents: mx.array,
         config: RuntimeConfig,
         canny_image: PIL.Image.Image | None = None,
-    ) -> None:  # fmt: off
+    ) -> None:
         self._save_image(
             step=config.init_time_step,
             seed=seed,
@@ -47,8 +47,8 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
         prompt: str,
         latents: mx.array,
         config: RuntimeConfig,
-        time_steps: tqdm
-    ) -> None:  # fmt: off
+        time_steps: tqdm,
+    ) -> None:
         self._save_image(
             step=t + 1,
             seed=seed,
@@ -65,8 +65,8 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
         prompt: str,
         latents: mx.array,
         config: RuntimeConfig,
-        time_steps: tqdm
-    ) -> None:  # fmt: off
+        time_steps: tqdm,
+    ) -> None:
         self._save_composite(seed=seed)
 
     def _save_image(
@@ -76,8 +76,8 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
         prompt: str,
         latents: mx.array,
         config: RuntimeConfig,
-        time_steps: tqdm
-    ) -> None:  # fmt: off
+        time_steps: tqdm,
+    ) -> None:
         unpack_latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
         stepwise_decoded = self.flux.vae.decode(unpack_latents)
         generation_time = time_steps.format_dict["elapsed"] if time_steps is not None else 0

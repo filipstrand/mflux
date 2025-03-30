@@ -13,16 +13,16 @@ def main():
 
     flux, runtime_config, training_spec, training_state = DreamBoothInitializer.initialize(
         config_path=args.train_config,
-        checkpoint_path=args.train_checkpoint
-    )  # fmt: off
+        checkpoint_path=args.train_checkpoint,
+    )
 
     try:
         DreamBooth.train(
             flux=flux,
             runtime_config=runtime_config,
             training_spec=training_spec,
-            training_state=training_state
-        )  # fmt: off
+            training_state=training_state,
+        )
     except StopTrainingException as stop_exc:
         training_state.save(training_spec)
         print(stop_exc)

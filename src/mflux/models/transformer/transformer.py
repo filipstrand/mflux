@@ -172,7 +172,7 @@ class Transformer(nn.Module):
         idx: int,
         blocks: mx.array,
         controlnet_samples: list[mx.array] | None,
-    ) -> mx.array | None:  # fmt: off
+    ) -> mx.array | None:
         if controlnet_samples is None:
             return None
 

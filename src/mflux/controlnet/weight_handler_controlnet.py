@@ -41,16 +41,16 @@ class WeightHandlerControlnet:
             return WeightHandlerControlnet(
                 config=config,
                 controlnet_transformer=weights,
-                meta_data=MetaData(quantization_level=quantization_level)
-            )  # fmt:off
+                meta_data=MetaData(quantization_level=quantization_level),
+            )
 
         # Reshape and process the huggingface weights
         if "transformer_blocks" in weights:
             for block in weights["transformer_blocks"]:
                 block["ff"] = {
                     "linear1": block["ff"]["net"][0]["proj"],
-                    "linear2": block["ff"]["net"][2]
-                }  # fmt: off
+                    "linear2": block["ff"]["net"][2],
+                }
                 if block.get("ff_context") is not None:
                     block["ff_context"] = {
                         "linear1": block["ff_context"]["net"][0]["proj"],
@@ -60,8 +60,8 @@ class WeightHandlerControlnet:
         return WeightHandlerControlnet(
             config=config,
             controlnet_transformer=weights,
-            meta_data=MetaData(quantization_level=quantization_level)
-        )  # fmt:off
+            meta_data=MetaData(quantization_level=quantization_level),
+        )
 
     def num_transformer_blocks(self) -> int:
         return self.config["num_layers"]
