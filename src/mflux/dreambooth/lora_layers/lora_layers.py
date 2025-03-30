@@ -59,8 +59,8 @@ class LoRALayers:
 
             weights = WeightHandler(
                 meta_data=MetaData(mflux_version=GeneratedImage.get_version()),
-                transformer=mlx.utils.tree_unflatten(list(lora_layers.items()))['transformer'],
-            )  # fmt:off
+                transformer=mlx.utils.tree_unflatten(list(lora_layers.items()))["transformer"],
+            )
 
             return LoRALayers(weights=weights)
 

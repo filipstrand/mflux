@@ -37,8 +37,8 @@ class AttentionUtils:
         value: mx.array,
         batch_size: int,
         num_heads: int,
-        head_dim: int
-    ) -> mx.array:  # fmt: off
+        head_dim: int,
+    ) -> mx.array:
         scale = 1 / mx.sqrt(query.shape[-1])
         hidden_states = scaled_dot_product_attention(query, key, value, scale=scale)
 

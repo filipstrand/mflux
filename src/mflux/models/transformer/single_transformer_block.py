@@ -28,8 +28,8 @@ class SingleTransformerBlock(nn.Module):
         # 1. Compute norm for hidden_states
         norm_hidden_states, gate = self.norm(
             hidden_states=hidden_states,
-            text_embeddings=text_embeddings
-        )  # fmt: off
+            text_embeddings=text_embeddings,
+        )
 
         # 2. Compute attention
         attn_output = self.attn(

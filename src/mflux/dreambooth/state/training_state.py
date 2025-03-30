@@ -49,7 +49,7 @@ class TrainingState:
             iterator_path = Path(temp_dir) / f"{self.iterator.num_iterations:07d}_{DREAMBOOTH_FILE_NAME_ITERATOR}.json"
             loss_path = Path(temp_dir) / f"{self.iterator.num_iterations:07d}_{DREAMBOOTH_FILE_NAME_LOSS_FILE}.json"
             config_path = Path(temp_dir) / f"{self.iterator.num_iterations:07d}_{DREAMBOOTH_FILE_NAME_CONFIG_FILE}.json"
-            checkpoint_path = Path(temp_dir) / f"{DREAMBOOTH_FILE_NAME_CHECKPOINT}.json"  # fmt: off
+            checkpoint_path = Path(temp_dir) / f"{DREAMBOOTH_FILE_NAME_CHECKPOINT}.json"
             paths = [optimizer_path, lora_path, iterator_path, loss_path, config_path, checkpoint_path]
 
             # Save individual files to temporary directory

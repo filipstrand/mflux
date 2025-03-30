@@ -13,23 +13,23 @@ from mflux.weights.weight_handler_lora import WeightHandlerLoRA
 class DreamBooth:
     @staticmethod
     def train(
-            flux: Flux1,
-            runtime_config: RuntimeConfig,
-            training_spec: TrainingSpec,
-            training_state: TrainingState
-    ):  # fmt:off
+        flux: Flux1,
+        runtime_config: RuntimeConfig,
+        training_spec: TrainingSpec,
+        training_state: TrainingState,
+    ):
         # Freeze the model and assign the LoRA layers to the model
         flux.freeze()
         WeightHandlerLoRA.set_lora_layers(
             transformer_module=flux.transformer,
-            lora_layers=training_state.lora_layers
-        )  # fmt:off
+            lora_layers=training_state.lora_layers,
+        )
 
         # Define loss computation as a function of a batch 'b'
         train_step_function = nn.value_and_grad(
             model=flux,
-            fn=lambda b: DreamBoothLoss.compute_loss(flux, runtime_config, b)
-        )  # fmt: off
+            fn=lambda b: DreamBoothLoss.compute_loss(flux, runtime_config, b),
+        )
 
         # Setup progress bar
         batches = tqdm(
@@ -59,7 +59,7 @@ class DreamBooth:
                     seed=training_spec.seed,
                     config=runtime_config.config,
                     prompt=training_spec.instrumentation.validation_prompt,
-                )  # fmt: off
+                )
                 image.save(path=training_state.get_current_validation_image_path(training_spec))
                 del image
                 flux.prompt_cache = {}
