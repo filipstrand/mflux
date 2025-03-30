@@ -95,7 +95,7 @@ class CommandLineParser(argparse.ArgumentParser):
     def add_depth_arguments(self) -> None:
         self.add_argument("--image-path", type=Path, required=False, help="Local path to the source image")
         self.add_argument("--depth-image-path", type=Path, required=False, help="Local path to the depth image")
-        self.add_argument("--save-depth-map", action="store_true", help="If set, save the depth map created from the source image.")
+        self.add_argument("--save-depth-map", action="store_true", required=False, help="If set, save the depth map created from the source image.")
 
     def add_redux_arguments(self) -> None:
         self.add_argument("--image-path", type=Path, required=True, help="Local path to the source image")

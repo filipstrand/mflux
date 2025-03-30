@@ -19,7 +19,7 @@ class UpSampleBlock(nn.Module):
         )  # fmt: off
 
     @staticmethod
-    def _create_layers(dim_in: int, dim_out: int, upsample_layers: int, dim_int: int = None) -> list:
+    def _create_layers(dim_in: int, dim_out: int, upsample_layers: int, dim_int: int = None) -> list[nn.Module]:
         if dim_int is None:
             dim_int = dim_out
 
