@@ -24,6 +24,9 @@ class Config:
             log.warning("Width and height should be multiples of 16. Rounding down.")
         self.width = 16 * (width // 16)
         self.height = 16 * (height // 16)
+        if not num_inference_steps:
+            log.warning("No number of inference steps specified. Defaulting to 4.")
+            num_inference_steps = 4
         self.num_inference_steps = num_inference_steps
         self.guidance = guidance
         self.image_path = image_path
