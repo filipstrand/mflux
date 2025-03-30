@@ -27,7 +27,7 @@ class Transformer(nn.Module):
     ):
         super().__init__()
         self.pos_embed = EmbedND()
-        self.x_embedder = nn.Linear(64, 3072)
+        self.x_embedder = nn.Linear(model_config.x_embedder_input_dim(), 3072)
         self.time_text_embed = TimeTextEmbed(model_config=model_config)
         self.context_embedder = nn.Linear(4096, 3072)
         self.transformer_blocks = [JointTransformerBlock(i) for i in range(num_transformer_blocks)]

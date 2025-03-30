@@ -17,6 +17,7 @@ class Config:
         guidance: float = 4.0,
         image_path: Path | None = None,
         image_strength: float | None = None,
+        depth_image_path: Path | None = None,
         masked_image_path: Path | None = None,
         controlnet_strength: float | None = None,
     ):
@@ -28,5 +29,6 @@ class Config:
         self.guidance = guidance
         self.image_path = image_path
         self.image_strength = image_strength
+        self.depth_image_path = depth_image_path
         self.masked_image_path = masked_image_path
         self.controlnet_strength = controlnet_strength

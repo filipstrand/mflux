@@ -61,9 +61,9 @@ class Flux1(nn.Module):
             width=config.width,
             img2img=Img2Img(
                 vae=self.vae,
+                image_path=config.image_path,
                 sigmas=config.sigmas,
                 init_time_step=config.init_time_step,
-                image_path=config.image_path,
             ),
         )
 

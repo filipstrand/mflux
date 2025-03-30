@@ -66,12 +66,12 @@ class WeightHandler:
 
     @staticmethod
     def _load_clip_encoder(root_path: Path) -> (dict, int, str | None):
-        weights, quantization_level, mflux_version = WeightHandler._get_weights("text_encoder", root_path)
+        weights, quantization_level, mflux_version = WeightHandler.get_weights("text_encoder", root_path)
         return weights, quantization_level, mflux_version
 
     @staticmethod
     def _load_t5_encoder(root_path: Path) -> (dict, int, str | None):
-        weights, quantization_level, mflux_version = WeightHandler._get_weights("text_encoder_2", root_path)
+        weights, quantization_level, mflux_version = WeightHandler.get_weights("text_encoder_2", root_path)
 
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
         if quantization_level is not None:
@@ -98,7 +98,7 @@ class WeightHandler:
 
     @staticmethod
     def load_transformer(root_path: Path | None = None, lora_path: str | None = None) -> (dict, int, str | None):
-        weights, quantization_level, mflux_version = WeightHandler._get_weights("transformer", root_path, lora_path)
+        weights, quantization_level, mflux_version = WeightHandler.get_weights("transformer", root_path, lora_path)
 
         if lora_path:
             if "transformer" not in weights:
@@ -126,7 +126,7 @@ class WeightHandler:
 
     @staticmethod
     def _load_vae(root_path: Path) -> (dict, int, str | None):
-        weights, quantization_level, mflux_version = WeightHandler._get_weights("vae", root_path)
+        weights, quantization_level, mflux_version = WeightHandler.get_weights("vae", root_path)
 
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
         if quantization_level is not None:
@@ -142,7 +142,7 @@ class WeightHandler:
         return weights, quantization_level, mflux_version
 
     @staticmethod
-    def _get_weights(
+    def get_weights(
         model_name: str,
         root_path: Path | None = None,
         lora_path: str | None = None,

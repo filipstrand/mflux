@@ -37,8 +37,26 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
+    def dev_depth() -> "ModelConfig":
+        return AVAILABLE_MODELS["dev-depth"]
+
+    @staticmethod
+    @lru_cache
+    def dev_redux() -> "ModelConfig":
+        return AVAILABLE_MODELS["dev-redux"]
+
+    @staticmethod
+    @lru_cache
     def schnell() -> "ModelConfig":
         return AVAILABLE_MODELS["schnell"]
+
+    def x_embedder_input_dim(self) -> int:
+        if self.alias == "dev-fill":
+            return 384
+        if self.alias == "dev-depth":
+            return 128
+        else:
+            return 64
 
     @staticmethod
     def from_name(
@@ -115,5 +133,25 @@ AVAILABLE_MODELS = {
         supports_guidance=True,
         requires_sigma_shift=True,
         priority=0,
+    ),
+    "dev-depth": ModelConfig(
+        alias="dev-depth",
+        model_name="black-forest-labs/FLUX.1-Depth-dev",
+        base_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,
+        requires_sigma_shift=True,
+        priority=4,
+    ),
+    "dev-redux": ModelConfig(
+        alias="dev-redux",
+        model_name="black-forest-labs/FLUX.1-Redux-dev",
+        base_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,
+        requires_sigma_shift=True,
+        priority=3,
     ),
 }

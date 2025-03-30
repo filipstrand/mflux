@@ -31,6 +31,7 @@ class ImageUtil:
         image_path: str | None = None,
         image_strength: float | None = None,
         masked_image_path: str | None = None,
+        depth_image_path: str | None = None,
     ) -> GeneratedImage:
         normalized = ImageUtil._denormalize(decoded_latents)
         normalized_numpy = ImageUtil._to_numpy(normalized)
@@ -52,6 +53,7 @@ class ImageUtil:
             controlnet_image_path=controlnet_image_path,
             controlnet_strength=config.controlnet_strength,
             masked_image_path=masked_image_path,
+            depth_image_path=depth_image_path,
         )
 
     @staticmethod
@@ -260,3 +262,31 @@ class ImageUtil:
 
         except Exception as e:  # noqa: BLE001
             log.error(f"Error embedding metadata: {e}")
+
+    @staticmethod
+    def preprocess_for_model(
+        image: PIL.Image.Image,
+        target_size: tuple = (384, 384),
+        mean: list = [0.5, 0.5, 0.5],
+        std: list = [0.5, 0.5, 0.5],
+        resample: int = PIL.Image.LANCZOS,
+    ) -> mx.array:
+        # Resize the image to target size
+        image = image.resize(target_size, resample=resample)
+
+        # Convert PIL image to numpy array and normalize to [0, 1]
+        image_np = np.array(image).astype(np.float32) / 255.0
+
+        # Normalize using specified mean and std
+        mean_np = np.array(mean)
+        std_np = np.array(std)
+        image_np = (image_np - mean_np) / std_np
+
+        # Convert from HWC to CHW format
+        image_np = image_np.transpose(2, 0, 1)
+
+        # Convert to MLX array and add batch dimension
+        image_mx = mx.array(image_np)
+        image_mx = mx.expand_dims(image_mx, axis=0)
+
+        return image_mx
