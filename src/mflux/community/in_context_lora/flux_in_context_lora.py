@@ -145,7 +145,7 @@ class Flux1InContextLoRA(nn.Module):
             prompt=prompt,
             latents=latents,
             config=config,
-        )  # fmt: off
+        )
 
         # 6. Decode the latent array and return the image
         latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
@@ -184,7 +184,7 @@ class Flux1InContextLoRA(nn.Module):
         latents: mx.array,
         encoded_image: mx.array,
         static_noise: mx.array,
-    ) -> mx.array:  # fmt:off
+    ) -> mx.array:
         # 1. Unpack the latents
         unpacked = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
         unpacked_static_noise = ArrayUtil.unpack_latents(latents=static_noise, height=config.height, width=config.width)
@@ -196,8 +196,8 @@ class Flux1InContextLoRA(nn.Module):
         unpacked[:, :, :, 0:latent_width] = LatentCreator.add_noise_by_interpolation(
             clean=encoded_image[:, :, :, 0:latent_width],
             noise=unpacked_static_noise[:, :, :, 0:latent_width],
-            sigma=config.sigmas[t+1]
-        )  # fmt:off
+            sigma=config.sigmas[t + 1],
+        )
 
         # 4. Repack the latents
         return ArrayUtil.pack_latents(latents=unpacked, height=config.height, width=config.width)

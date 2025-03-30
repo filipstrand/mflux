@@ -71,8 +71,8 @@ class Flux1Controlnet(nn.Module):
         latents = LatentCreator.create(
             seed=seed,
             height=config.height,
-            width=config.width
-        )  # fmt: off
+            width=config.width,
+        )
 
         # 3. Encode the prompt
         prompt_embeds, pooled_prompt_embeds = PromptEncoder.encode_prompt(
@@ -90,8 +90,8 @@ class Flux1Controlnet(nn.Module):
             prompt=prompt,
             latents=latents,
             config=config,
-            canny_image=canny_image
-        )  # fmt: off
+            canny_image=canny_image,
+        )
 
         for t in time_steps:
             try:
@@ -128,7 +128,7 @@ class Flux1Controlnet(nn.Module):
                     latents=latents,
                     config=config,
                     time_steps=time_steps,
-                )  # fmt: off
+                )
 
                 # (Optional) Evaluate to enable progress tracking
                 mx.eval(latents)
@@ -150,7 +150,7 @@ class Flux1Controlnet(nn.Module):
             prompt=prompt,
             latents=latents,
             config=config,
-        )  # fmt: off
+        )
 
         # 7. Decode the latent array and return the image
         latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)

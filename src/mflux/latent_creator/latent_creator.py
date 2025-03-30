@@ -28,8 +28,8 @@ class LatentCreator:
     ) -> mx.array:
         return mx.random.normal(
             shape=[1, (height // 16) * (width // 16), 64],
-            key=mx.random.key(seed)
-        )  # fmt: off
+            key=mx.random.key(seed),
+        )
 
     @staticmethod
     def create_for_txt2img_or_img2img(
@@ -67,8 +67,8 @@ class LatentCreator:
             return LatentCreator.add_noise_by_interpolation(
                 clean=latents,
                 noise=pure_noise,
-                sigma=sigma
-            )  # fmt: off
+                sigma=sigma,
+            )
 
     @staticmethod
     def encode_image(height: int, width: int, img2img: Img2Img):

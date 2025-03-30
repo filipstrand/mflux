@@ -9,11 +9,9 @@ class DownBlock1(nn.Module):
     def __init__(self):
         super().__init__()
         self.resnets = [
-            # fmt: off
             ResnetBlock2D(norm1=128, conv1_in=128, conv1_out=128, norm2=128, conv2_in=128, conv2_out=128),
             ResnetBlock2D(norm1=128, conv1_in=128, conv1_out=128, norm2=128, conv2_in=128, conv2_out=128),
-            # fmt: on
-        ]
+        ]  # fmt: off
         self.downsamplers = [DownSampler(conv_in=128, conv_out=128)]
 
     def __call__(self, input_array: mx.array) -> mx.array:

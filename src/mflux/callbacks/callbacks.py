@@ -14,7 +14,7 @@ class Callbacks:
         latents: mx.array,
         config: RuntimeConfig,
         canny_image: PIL.Image.Image | None = None,
-    ):  # fmt: off
+    ):
         for subscriber in CallbackRegistry.before_loop_callbacks():
             subscriber.call_before_loop(
                 seed=seed,
@@ -31,8 +31,8 @@ class Callbacks:
         prompt: str,
         latents: mx.array,
         config: RuntimeConfig,
-        time_steps: tqdm
-    ):  # fmt: off
+        time_steps: tqdm,
+    ):
         for subscriber in CallbackRegistry.in_loop_callbacks():
             subscriber.call_in_loop(
                 t=t,
@@ -48,8 +48,8 @@ class Callbacks:
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig
-    ):  # fmt: off
+        config: RuntimeConfig,
+    ):
         for subscriber in CallbackRegistry.after_loop_callbacks():
             subscriber.call_after_loop(seed=seed, prompt=prompt, latents=latents, config=config)
 
@@ -60,8 +60,8 @@ class Callbacks:
         prompt: str,
         latents: mx.array,
         config: RuntimeConfig,
-        time_steps: tqdm
-    ):  # fmt: off
+        time_steps: tqdm,
+    ):
         for subscriber in CallbackRegistry.interrupt_callbacks():
             subscriber.call_interrupt(
                 t=t,

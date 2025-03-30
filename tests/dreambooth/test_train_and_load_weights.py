@@ -22,14 +22,14 @@ class TestTrainAndLoadWeights:
             # Given: A small training run from scratch for 5 steps (as described in the config)...
             fluxA, runtime_config, training_spec, training_state = DreamBoothInitializer.initialize(
                 config_path="tests/dreambooth/config/train.json",
-                checkpoint_path=None
-            )  # fmt:off
+                checkpoint_path=None,
+            )
             DreamBooth.train(
                 flux=fluxA,
                 runtime_config=runtime_config,
                 training_spec=training_spec,
-                training_state=training_state
-            )  # fmt: off
+                training_state=training_state,
+            )
             # ...we generate an image with the flux instance with the trained weights
             image1 = fluxA.generate_image(
                 seed=42,
@@ -50,7 +50,7 @@ class TestTrainAndLoadWeights:
                 quantize=4,
                 lora_paths=[LORA_FILE],
                 lora_scales=[1.0],
-            )  # fmt: off
+            )
 
             # ...and generating the same image from that
             image2 = fluxB.generate_image(
