@@ -1,6 +1,5 @@
 import logging
 import threading
-import time
 import os
 from typing import Dict, Optional
 import tempfile

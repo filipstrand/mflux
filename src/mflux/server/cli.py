@@ -1,5 +1,6 @@
 import argparse
 
+
 def main():
     parser = argparse.ArgumentParser(description="Run mflux server with different API compatibilities")
     parser.add_argument("api", choices=["openai", "automatic1111", "comfyui"], 
