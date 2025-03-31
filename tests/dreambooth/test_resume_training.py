@@ -21,14 +21,14 @@ class TestResumeTraining:
             # Given: A small training run from scratch for 5 steps (as described in the config)...
             fluxA, runtime_config, training_spec, training_state = DreamBoothInitializer.initialize(
                 config_path="tests/dreambooth/config/train.json",
-                checkpoint_path=None
-            )  # fmt:off
+                checkpoint_path=None,
+            )
             DreamBooth.train(
                 flux=fluxA,
                 runtime_config=runtime_config,
                 training_spec=training_spec,
-                training_state=training_state
-            )  # fmt: off
+                training_state=training_state,
+            )
             del fluxA, runtime_config, training_spec, training_state
             # ...where we can inspect the training state after 5 runs...
             adapter_after_5_steps = ZipUtil.unzip(
@@ -43,14 +43,14 @@ class TestResumeTraining:
             # When: Resuming the training from step 3...
             fluxB, runtime_config, training_spec, training_state = DreamBoothInitializer.initialize(
                 config_path=None,
-                checkpoint_path=CHECKPOINT_3
-            )  # fmt:off
+                checkpoint_path=CHECKPOINT_3,
+            )
             DreamBooth.train(
                 flux=fluxB,
                 runtime_config=runtime_config,
                 training_spec=training_spec,
-                training_state=training_state
-            )  # fmt: off
+                training_state=training_state,
+            )
             del fluxB, runtime_config, training_spec, training_state
             # ...where we can inspect the training state after 2 additional runs...
             adapter_after_5_steps_resumed = ZipUtil.unzip(

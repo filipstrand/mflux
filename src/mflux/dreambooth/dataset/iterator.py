@@ -143,8 +143,8 @@ class Iterator:
         data = ZipUtil.unzip(
             zip_path=training_spec.checkpoint_path,
             filename=iterator_path,
-            loader=lambda x: json.load(open(x, "r"))
-        )  # fmt: off
+            loader=lambda x: json.load(open(x, "r")),
+        )
         return cls.from_dict(data, dataset)
 
     def get_validation_batch(self) -> Batch:

@@ -14,8 +14,9 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
     components at strategic points in the execution cycle.
     """
 
-    def __init__(self, flux, cache_limit_bytes: int = 1000**3):
+    def __init__(self, flux, keep_transformer: bool = True, cache_limit_bytes: int = 1000**3):
         self.flux = flux
+        self.keep_transformer = keep_transformer
         self.peak_memory: int = 0
         mx.metal.set_cache_limit(cache_limit_bytes)
         mx.metal.clear_cache()
@@ -51,9 +52,11 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
         config: RuntimeConfig,
     ) -> None:
         self.peak_memory = mx.metal.get_peak_memory()
-        self._delete_transformer()
+        if not self.keep_transformer:
+            self._delete_transformer()
 
     def _delete_encoders(self) -> None:
+        # repeated image generation only works with the same prompt (cache)
         self.flux.clip_text_encoder = None
         self.flux.t5_text_encoder = None
         gc.collect()
@@ -67,4 +70,5 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
         mx.metal.clear_cache()
 
     def memory_stats(self) -> str:
+        self.peak_memory = mx.metal.get_peak_memory()
         return f"Peak MLX memory: {self.peak_memory / 10**9:.2f} GB"

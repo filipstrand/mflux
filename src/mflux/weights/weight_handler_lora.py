@@ -60,8 +60,8 @@ class WeightHandlerLoRA:
 
             WeightHandlerLoRA.set_lora_layers(
                 transformer_module=transformer,
-                lora_layers=LoRALayers(weights=fused_weights)
-            )  # fmt:off
+                lora_layers=LoRALayers(weights=fused_weights),
+            )
 
     @staticmethod
     def _fuse_multiple_lora_dicts(dicts: list[dict]) -> dict:
@@ -143,13 +143,13 @@ class WeightHandlerLoRA:
         for i, weights in enumerate(transformer_blocks):
             LoRALayers.set_transformer_block(
                 transformer_block=transformer_module.transformer_blocks[i],
-                dictionary=weights
-            )  # fmt:off
+                dictionary=weights,
+            )
 
         # Handle single_transformer_blocks
         single_transformer_blocks = transformer.get("single_transformer_blocks", [])
         for i, weights in enumerate(single_transformer_blocks):
             LoRALayers.set_single_transformer_block(
                 single_transformer_block=transformer_module.single_transformer_blocks[i],
-                dictionary=weights
-            )  # fmt:off
+                dictionary=weights,
+            )

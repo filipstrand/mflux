@@ -87,7 +87,7 @@ class Flux1Fill(nn.Module):
             prompt=prompt,
             latents=latents,
             config=config,
-        )  # fmt: off
+        )
 
         for t in time_steps:
             try:
@@ -115,7 +115,7 @@ class Flux1Fill(nn.Module):
                     latents=latents,
                     config=config,
                     time_steps=time_steps,
-                )  # fmt: off
+                )
 
                 # (Optional) Evaluate to enable progress tracking
                 mx.eval(latents)
@@ -137,7 +137,7 @@ class Flux1Fill(nn.Module):
             prompt=prompt,
             latents=latents,
             config=config,
-        )  # fmt: off
+        )
 
         # 7. Decode the latent array and return the image
         latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)

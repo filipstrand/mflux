@@ -24,5 +24,5 @@ class CannyImageSaver(BeforeLoopCallback):
         base, ext = os.path.splitext(self.path)
         ImageUtil.save_image(
             image=canny_image,
-            path=f"{base}_controlnet_canny{ext}"
-        )  # fmt: off
+            path=f"{base}_controlnet_canny{ext}",
+        )

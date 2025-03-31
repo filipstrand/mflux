@@ -41,8 +41,8 @@ class FluxInitializer:
         )
         flux_model.t5_tokenizer = TokenizerT5(
             tokenizer=tokenizers.t5,
-            max_length=model_config.max_sequence_length
-        )  # fmt: off
+            max_length=model_config.max_sequence_length,
+        )
         flux_model.clip_tokenizer = TokenizerCLIP(
             tokenizer=tokenizers.clip,
         )
@@ -50,8 +50,8 @@ class FluxInitializer:
         # 2. Load the regular weights
         weights = WeightHandler.load_regular_weights(
             repo_id=model_config.model_name,
-            local_path=local_path
-        )  # fmt: off
+            local_path=local_path,
+        )
 
         # 3. Initialize all models
         flux_model.vae = VAE()
@@ -85,8 +85,8 @@ class FluxInitializer:
         )
         WeightHandlerLoRA.set_lora_weights(
             transformer=flux_model.transformer,
-            loras=lora_weights
-        )  # fmt: off
+            loras=lora_weights,
+        )
 
     @staticmethod
     def init_controlnet(
