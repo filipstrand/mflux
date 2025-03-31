@@ -3,6 +3,7 @@ import threading
 import os
 from typing import Dict, Optional
 import tempfile
+import datetime
 
 from mflux import Flux1, ModelConfig
 
@@ -24,13 +25,14 @@ class ModelManager:
         self.model_timers: Dict[str, threading.Timer] = {}
     
     def get_model(self, 
-                  model_name: str, 
-                  base_model: Optional[str] = None,
-                  quantize: int = 8,
-                  local_path: Optional[str] = None,
-                  lora_paths: Optional[list] = None,
-                  lora_scales: Optional[list] = None,
-                  keep_alive: int = 0) -> Flux1:
+        model_name: str, 
+        base_model: Optional[str] = None,
+        quantize: int = 8,
+        local_path: Optional[str] = None,
+        lora_paths: Optional[list] = None,
+        lora_scales: Optional[list] = None,
+        keep_alive: datetime.timedelta = datetime.timedelta(minutes=0)
+    ) -> Flux1:
         """
         Get a model from cache or load it if not available
         
@@ -57,8 +59,11 @@ class ModelManager:
             flux = self.model_cache[model_key]
             
             # Cancel any existing timer for this model
-            if model_key in self.model_timers and self.model_timers[model_key]:
-                self.model_timers[model_key].cancel()
+            # if model_key in self.model_timers and self.model_timers[model_key]:
+            #     self.model_timers[model_key].cancel()
+
+            if timer := self.model_timers.get(model_key):
+                timer.cancel()
         else:
             # Load the model with LoRA support
             logger.info(f"Loading new model: {model_key}")
@@ -81,7 +86,7 @@ class ModelManager:
         
         return flux, model_key
     
-    def _setup_model_timer(self, model_key: str, keep_alive: int):
+    def _setup_model_timer(self, model_key: str, keep_alive: datetime.timedelta):
         """Set up a timer to unload the model after the specified time"""
         if keep_alive != MODEL_KEEP_ALIVE_FOREVER:  # Replace -1 with constant
             if keep_alive == MODEL_UNLOAD_IMMEDIATELY:  # Replace 0 with constant
@@ -90,7 +95,7 @@ class ModelManager:
             else:
                 # Set a timer to unload the model after keep_alive minutes
                 timer = threading.Timer(
-                    keep_alive * 60,  # Convert minutes to seconds
+                    keep_alive.total_seconds(),
                     self.unload_model, 
                     args=[model_key]
                 )
