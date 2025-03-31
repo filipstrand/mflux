@@ -639,7 +639,7 @@ In the examples above the following LoRAs are used [Sketching](https://civitai.c
 
 # 🌐 Running Servers
 
-MFLUX includes a server component that provides an OpenAI, Comfu, and Automatic1111 API-compatible interface, allowing you to integrate MFLUX with existing tools and workflows that support the OpenAI API.
+MFLUX includes a server component that provides API interfaces compatible with OpenAI, Comfy, and Automatic1111, allowing you to integrate MFLUX with existing tools and workflows that support the OpenAI API.
 
 ### 📦 Installation
 

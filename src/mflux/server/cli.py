@@ -19,8 +19,7 @@ def main():
     elif args.api == "comfyui":
         comfyui.run_server(host=args.host, port=args.port)
     else:
-        print(f"Unknown API: {args.api}", file=sys.stderr)
-        sys.exit(1)
+        parser.error(f"Unknown API: {args.api}")
 
 if __name__ == "__main__":
     main()
