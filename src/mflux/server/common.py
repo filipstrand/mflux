@@ -48,7 +48,8 @@ class ModelManager:
             Loaded Flux1 model
         """
         # Create a unique model key
-        model_key = f"{model_name}_{base_model}_{quantize}_{local_path}_{lora_paths}"
+        model_key = repr([model_name, base_model, quantize, local_path, lora_paths])
+        
         
         # Check if we have this model in cache
         if model_key in self.model_cache:

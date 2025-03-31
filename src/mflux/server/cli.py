@@ -7,7 +7,6 @@ def main():
                         help="API compatibility mode to run")
     parser.add_argument("--host", default="127.0.0.1", help="Host to bind the server to")
     parser.add_argument("--port", type=int, default=8000, help="Port to bind the server to")
-    # Add other common arguments here
     
     args = parser.parse_args()
     
