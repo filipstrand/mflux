@@ -9,6 +9,7 @@ import logging
 import http.client
 import argparse
 import uvicorn
+import random
 
 from mflux.ui.defaults import WIDTH, HEIGHT
 from mflux import Config, StopImageGenerationException
@@ -31,26 +32,26 @@ model_manager = ModelManager()
 
 class GenerationRequest(BaseModel):
     prompt: str
-    model: Optional[str] = "schnell"
+    model: str = "schnell"
     base_model: Optional[str] = None
     height: Optional[int] = HEIGHT
     width: Optional[int] = WIDTH
     size: Optional[str] = None
     quality: Optional[str] = None
-    guidance: Optional[float] = 4.0
+    guidance: float = 4.0
     image_strength: Optional[float] = None
     controlnet_strength: Optional[float] = None
     seed: Optional[int] = None
-    quantize: Optional[int] = 8
-    n: Optional[int] = 1
+    quantize: int = 8
+    n: int = 1
     lora_repo_id: Optional[str] = None
-    lora_scale: Optional[float] = 0.7
-    low_ram: Optional[bool] = False
-    stepwise_output: Optional[bool] = False
-    metadata: Optional[bool] = False
+    lora_scale: float = 0.7
+    low_ram: bool = False
+    stepwise_output: bool = False
+    metadata: bool = False
     local_path: Optional[str] = None
     response_format: Optional[str] = None
-    keep_alive: Optional[int] = MODEL_UNLOAD_IMMEDIATELY
+    keep_alive: int = MODEL_UNLOAD_IMMEDIATELY
 
 class Image(BaseModel):
     b64_json: str
@@ -85,7 +86,11 @@ async def generate_images(request: GenerationRequest = Body(...)):
         else:
             # For custom models, we'll be more flexible with sizes
             valid_sizes = None
+    except Exception as e:
+        logger.error(f"Generation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=http.client.INTERNAL_SERVER_ERROR, detail=f"Generation failed: {e}")
         
+    try:
         # Handle size parameter
         if request.size is not None:
             # Check if size is valid for the selected model
@@ -94,7 +99,7 @@ async def generate_images(request: GenerationRequest = Body(...)):
                     status_code=http.client.BAD_REQUEST, 
                     detail=f"Invalid size '{request.size}' for model '{model}'. Valid sizes: {valid_sizes}"
                 )
-            width_str, height_str = request.size.lower().split('x')
+            width_str, _, height_str = request.size.lower().partition('x')
             height = int(height_str)
             width = int(width_str)
         else:
@@ -123,7 +128,11 @@ async def generate_images(request: GenerationRequest = Body(...)):
             
             if request.lora_scale is not None:
                 lora_scales = [request.lora_scale]
+    except Exception as e:
+        logger.error(f"Generation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=http.client.INTERNAL_SERVER_ERROR, detail=f"Generation failed: {e}")
         
+    try:
         # Get the model using the model manager
         flux, model_key = model_manager.get_model(
             model_name=model,
@@ -134,93 +143,119 @@ async def generate_images(request: GenerationRequest = Body(...)):
             lora_scales=lora_scales,
             keep_alive=request.keep_alive
         )
+    except Exception as e:
+        logger.error(f"Generation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=http.client.INTERNAL_SERVER_ERROR, detail=f"Generation failed: {e}")
         
-        # Register optional callbacks
+    try:
+        registered_callbacks = []
+
         if stepwise_dir:
             handler = StepwiseHandler(flux=flux, output_dir=stepwise_dir)
             CallbackRegistry.register_before_loop(handler)
+            registered_callbacks.append(("before_loop", handler))
             CallbackRegistry.register_in_loop(handler)
+            registered_callbacks.append(("in_loop", handler))
             CallbackRegistry.register_interrupt(handler)
+            registered_callbacks.append(("interrupt", handler))
 
         memory_saver = None
         if request.low_ram:
             memory_saver = MemorySaver(flux)
             CallbackRegistry.register_before_loop(memory_saver)
+            registered_callbacks.append(("before_loop", memory_saver))
             CallbackRegistry.register_in_loop(memory_saver)
+            registered_callbacks.append(("in_loop", memory_saver))
             CallbackRegistry.register_after_loop(memory_saver)
+            registered_callbacks.append(("after_loop", memory_saver))
         
         images = []
+    
+    except Exception as e:
+        logger.error(f"Generation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=http.client.INTERNAL_SERVER_ERROR, detail=f"Generation failed: {e}")
         
-        try:
-            for i in range(request.n or 1):
-                if request.seed is not None:
-                    current_seed = request.seed + i
-                else:
-                    current_seed = int.from_bytes(os.urandom(4), byteorder='big')
-                
-                # Generate the image
-                generated_image = flux.generate_image(
-                    seed=current_seed,
-                    prompt=request.prompt,
-                    config=Config(
-                        num_inference_steps=request.n or 2,
-                        height=height,
-                        width=width,
-                        guidance=request.guidance or 4.0,
-                        image_path=image_path,
-                        image_strength=request.image_strength,
-                        controlnet_strength=request.controlnet_strength
-                    )
-                )
-                
-                # Save image to buffer via temporary file
-                buffer = io.BytesIO()
-                temp_img_path = f"{create_temp_directory()}/temp_img_{i}.png"
-
-                # Save with or without metadata
-                generated_image.save(
-                    path=temp_img_path, 
-                    export_json_metadata=request.metadata or False
-                )
-
-                # Read the file back
-                with open(temp_img_path, "rb") as f:
-                    buffer.write(f.read())
-
-                # Clean up temp file
-                cleanup_temp_file(temp_img_path)
-
-                # Encode image to base64
-                buffer.seek(0)
-                b64_img = base64.b64encode(buffer.getvalue()).decode('utf-8')
-                
-                # Add the image to our response list
-                images.append(Image(b64_json=b64_img))
-                
-        except StopImageGenerationException as stop_exc:
-            # Handle graceful stopping if needed
-            raise HTTPException(status_code=http.client.BAD_REQUEST, detail=f"Image generation stopped: {stop_exc}")
-        finally:
-            # Print memory stats if using memory saver
-            if memory_saver:
-                logger.info(memory_saver.memory_stats())
+    try:
+        for i in range(request.n or 1):
+            if request.seed is not None:
+                current_seed = request.seed + i
+            else:
+                current_seed = random.getrandbits(32)
             
-            # If keep_alive is 0, unload the model immediately
-            if request.keep_alive == 0:
-                model_manager.unload_model_after_use(model_key)
+            config = Config(
+                num_inference_steps=request.n or 2,
+                height=height,
+                width=width,
+                guidance=request.guidance or 4.0,
+                image_path=image_path,
+                image_strength=request.image_strength,
+                controlnet_strength=request.controlnet_strength
+            )
+            
+            # Generate the image
+            generated_image = flux.generate_image(
+                seed=current_seed,
+                prompt=request.prompt,
+                config=config
+            )
+            
+            # Save image to buffer via temporary file
+            buffer = io.BytesIO()
+            temp_img_path = f"{create_temp_directory()}/temp_img_{i}.png"
+
+            # Save with or without metadata
+            generated_image.save(
+                path=temp_img_path, 
+                export_json_metadata=request.metadata or False
+            )
+
+            # Read the file back
+            with open(temp_img_path, "rb") as f:
+                buffer.write(f.read())
+
+            # Clean up temp file
+            cleanup_temp_file(temp_img_path)
+
+            # Encode image to base64
+            buffer.seek(0)
+            b64_img = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            
+            # Add the image to our response list
+            images.append(Image(b64_json=b64_img))
+                
+    except StopImageGenerationException as stop_exc:
+        # Handle graceful stopping if needed
+        raise HTTPException(status_code=http.client.BAD_REQUEST, detail=f"Image generation stopped: {stop_exc}")
+    
+    finally:
+        # Clean up all registered callbacks
+        for callback_type, callback in registered_callbacks:
+            if callback_type == "before_loop":
+                CallbackRegistry.unregister_before_loop(callback)
+            elif callback_type == "in_loop":
+                CallbackRegistry.unregister_in_loop(callback)
+            elif callback_type == "after_loop":
+                CallbackRegistry.unregister_after_loop(callback)
+            elif callback_type == "interrupt":
+                CallbackRegistry.unregister_interrupt(callback)
+        
+        # Print memory stats if using memory saver
+        if memory_saver:
+            logger.info(memory_saver.memory_stats())
+        
+        # If keep_alive is 0, unload the model immediately
+        if request.keep_alive == 0:
+            model_manager.unload_model_after_use(model_key)
         
         # Clean up temporary files
         if image_path:
             cleanup_temp_file(image_path)
-                
-    except Exception as e:
-        logger.error(f"Generation failed: {e}", exc_info=True)
-        raise HTTPException(status_code=http.client.INTERNAL_SERVER_ERROR, detail=f"Generation failed: {e}")
-    
+
     return GenerationResponse(
         created=int(time.time()),
         data=images
     )
+
 
 def run_server(host="0.0.0.0", port=8800):
     """
@@ -231,7 +266,6 @@ def run_server(host="0.0.0.0", port=8800):
     
     uvicorn.run(app, host=host, port=port)
 
-# For direct execution of this file (for development/testing)
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='mflux OpenAI DALL·E-compatible API Server configuration')
     parser.add_argument('--host', default='0.0.0.0', type=str,

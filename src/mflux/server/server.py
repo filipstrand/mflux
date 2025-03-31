@@ -6,8 +6,10 @@ import tempfile
 import time
 import threading
 import logging
+import argparse
 from typing import List, Optional, Dict
 import io
+import uvicorn
 
 # Configure the logger at the module level
 logger = logging.getLogger(__name__)
@@ -254,5 +256,10 @@ async def generate_images(request: GenerationRequest = Body(...)):
     )
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8800)
+    parser = argparse.ArgumentParser(description='mflux OpenAI DALL·E-compatible API Server configuration')
+    parser.add_argument('--host', default='0.0.0.0', type=str,
+                        help='Host address to bind to (default: 0.0.0.0)')
+    parser.add_argument('--port', default=8800, type=int,
+                        help='Port to listen on (default: 8800)')
+    args = parser.parse_args()
+    uvicorn.run(app, host=args.host, port=args.port)
