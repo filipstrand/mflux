@@ -44,7 +44,7 @@ class GenerationRequest(BaseModel):
     seed: Optional[int] = None
     quantize: int = 4
     n: int = 1
-    steps: int = 1
+    steps: int = 4
     lora_repo_id: Optional[str] = None
     lora_scale: float = 0.7
     low_ram: bool = False
@@ -240,6 +240,8 @@ async def generate_images(request: GenerationRequest = Body(...)):
         
         # If keep_alive is 0, unload the model immediately
         if request.keep_alive == 0:
+            flux = None
+            del flux
             model_manager.unload_model(model_key)
         
         # Clean up temporary files

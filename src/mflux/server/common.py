@@ -25,7 +25,6 @@ class ModelManager:
     def __init__(self):
         self.model_cache: Dict[str, Flux1] = {}
         self.model_timers: Dict[str, threading.Timer] = {}
-        self.model = None
     
     def get_model(self, 
         model_name: str, 
@@ -77,7 +76,6 @@ class ModelManager:
                 lora_paths=lora_paths,
                 lora_scales=lora_scales,
             )
-            self.model = flux
             
             # Store in cache
             self.model_cache[model_key] = flux
