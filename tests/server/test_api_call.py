@@ -22,7 +22,7 @@ def test_api():
             prompt="a white siamese cat",
             size="1024x1024",
             quality="standard",
-            n=1,
+            n=2,
         )
         
         print("Success! Image generated.")
