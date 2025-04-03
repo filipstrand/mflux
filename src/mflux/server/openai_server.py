@@ -44,7 +44,7 @@ class GenerationRequest(BaseModel):
     seed: Optional[int] = None
     quantize: int = 4
     n: int = 1
-    steps: int = 4
+    steps: int = 1
     lora_repo_id: Optional[str] = None
     lora_scale: float = 0.7
     low_ram: bool = False
@@ -144,11 +144,7 @@ async def generate_images(request: GenerationRequest = Body(...)):
             lora_scales=lora_scales,
             keep_alive=request.keep_alive
         )
-    except Exception as e:
-        logger.error(f"Generation failed: {e}", exc_info=True)
-        raise HTTPException(status_code=http.client.INTERNAL_SERVER_ERROR, detail=f"Generation failed: {e}")
         
-    try:
         registered_callbacks = []
 
         if stepwise_dir:
@@ -171,12 +167,6 @@ async def generate_images(request: GenerationRequest = Body(...)):
             registered_callbacks.append(("after_loop", memory_saver))
         
         images = []
-    
-    except Exception as e:
-        logger.error(f"Generation failed: {e}", exc_info=True)
-        raise HTTPException(status_code=http.client.INTERNAL_SERVER_ERROR, detail=f"Generation failed: {e}")
-        
-    try:
         for i in range(request.n):
             if request.seed is not None:
                 current_seed = request.seed + i
@@ -230,7 +220,6 @@ async def generate_images(request: GenerationRequest = Body(...)):
         )
                 
     except StopImageGenerationException as stop_exc:
-        # Handle graceful stopping if needed
         raise HTTPException(status_code=http.client.BAD_REQUEST, detail=f"Image generation stopped: {stop_exc}")
     
     finally:
@@ -251,7 +240,7 @@ async def generate_images(request: GenerationRequest = Body(...)):
         
         # If keep_alive is 0, unload the model immediately
         if request.keep_alive == 0:
-            model_manager.unload_model_after_use(model_key)
+            model_manager.unload_model(model_key)
         
         # Clean up temporary files
         if image_path:

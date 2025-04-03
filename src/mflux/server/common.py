@@ -5,6 +5,8 @@ from typing import Dict, Optional
 import tempfile
 import datetime
 
+import mlx.core as mx
+
 from mflux import Flux1, ModelConfig
 
 MODEL_KEEP_ALIVE_FOREVER = -1
@@ -23,6 +25,7 @@ class ModelManager:
     def __init__(self):
         self.model_cache: Dict[str, Flux1] = {}
         self.model_timers: Dict[str, threading.Timer] = {}
+        self.model = None
     
     def get_model(self, 
         model_name: str, 
@@ -59,9 +62,6 @@ class ModelManager:
             flux = self.model_cache[model_key]
             
             # Cancel any existing timer for this model
-            # if model_key in self.model_timers and self.model_timers[model_key]:
-            #     self.model_timers[model_key].cancel()
-
             if timer := self.model_timers.get(model_key):
                 timer.cancel()
         else:
@@ -77,6 +77,7 @@ class ModelManager:
                 lora_paths=lora_paths,
                 lora_scales=lora_scales,
             )
+            self.model = flux
             
             # Store in cache
             self.model_cache[model_key] = flux
@@ -88,12 +89,11 @@ class ModelManager:
     
     def _setup_model_timer(self, model_key: str, keep_alive: datetime.timedelta):
         """Set up a timer to unload the model after the specified time"""
-        if keep_alive != MODEL_KEEP_ALIVE_FOREVER:  # Replace -1 with constant
-            if keep_alive == MODEL_UNLOAD_IMMEDIATELY:  # Replace 0 with constant
-                # Will unload after generation completes
+        if keep_alive != MODEL_KEEP_ALIVE_FOREVER:
+            if keep_alive == MODEL_UNLOAD_IMMEDIATELY:
+
                 pass
             else:
-                # Set a timer to unload the model after keep_alive minutes
                 timer = threading.Timer(
                     keep_alive.total_seconds(),
                     self.unload_model, 
@@ -108,29 +108,39 @@ class ModelManager:
     
     def unload_model(self, model_key: str):
         """Unload a model from cache when its timer expires"""
-        if model_key in self.model_cache:
-            logger.info(f"Unloading model: {model_key}")
-            model = self.model_cache[model_key]
-            
-            # Check if Flux1 has any explicit cleanup methods
-            if hasattr(model, 'unload') and callable(model.unload):
-                model.unload()
-            # Or if it has a close method
-            elif hasattr(model, 'close') and callable(model.close):
-                model.close()
-            
-            # Remove from cache
-            del self.model_cache[model_key]
-            self.model_timers.pop(model_key, None)
+        logger.info(f"Unloading model: {model_key}")
+        try:
+            # Get the model before removing it from cache
+            if model_key in self.model_cache:
+                model = self.model_cache[model_key]
                 
-            # Force garbage collection
-            import gc
-            gc.collect()
-    
-    def unload_model_after_use(self, model_key: str):
-        """Unload a model immediately after use"""
-        logger.info(f"Unloading model immediately as requested: {model_key}")
-        self.unload_model(model_key)
+                # Delete the model reference
+                del model
+                
+                # Remove from caches
+                self.model_cache.pop(model_key, None)
+                self.model_timers.pop(model_key, None)
+                
+                try:
+                    mx.metal.clear_cache()
+                    mx.metal.reset_device()
+                except ImportError:
+                    pass
+                except AttributeError:
+                    pass
+                    
+                # Force garbage collection
+                import gc
+                gc.collect()
+                gc.collect()  # Sometimes running it twice helps
+                
+                logger.info(f"Model {model_key} has been unloaded")
+            else:
+                logger.warning(f"Model {model_key} not found in cache")
+                
+        except Exception as e:
+            logger.error(f"Error unloading model {model_key}: {e}", exc_info=True)
+
 
 def create_temp_directory():
     """Create a temporary directory and return its path"""
