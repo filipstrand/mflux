@@ -186,7 +186,7 @@ async def generate_images(request: GenerationRequest = Body(...)):
                 num_inference_steps=request.n,
                 height=height,
                 width=width,
-                guidance=request.guidance or 4.0,
+                guidance=request.guidance,
                 image_path=image_path,
                 image_strength=request.image_strength,
                 controlnet_strength=request.controlnet_strength
@@ -222,6 +222,11 @@ async def generate_images(request: GenerationRequest = Body(...)):
             
             # Add the image to our response list
             images.append(Image(b64_json=b64_img))
+
+        return GenerationResponse(
+            created=int(time.time()),
+            data=images
+        )
                 
     except StopImageGenerationException as stop_exc:
         # Handle graceful stopping if needed
@@ -250,11 +255,6 @@ async def generate_images(request: GenerationRequest = Body(...)):
         # Clean up temporary files
         if image_path:
             cleanup_temp_file(image_path)
-
-    return GenerationResponse(
-        created=int(time.time()),
-        data=images
-    )
 
 
 def run_server(host="0.0.0.0", port=8800):
