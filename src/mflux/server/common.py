@@ -130,7 +130,6 @@ class ModelManager:
     def unload_model_after_use(self, model_key: str):
         """Unload a model immediately after use"""
         logger.info(f"Unloading model immediately as requested: {model_key}")
-        del self.model_cache[model_key]
         self.unload_model(model_key)
 
 def create_temp_directory():
