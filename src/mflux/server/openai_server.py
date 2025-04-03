@@ -43,7 +43,7 @@ class GenerationRequest(BaseModel):
     controlnet_strength: Optional[float] = None
     seed: Optional[int] = None
     quantize: int = 8
-    n: int = 1
+    n: int = 6
     lora_repo_id: Optional[str] = None
     lora_scale: float = 0.7
     low_ram: bool = False
@@ -176,14 +176,14 @@ async def generate_images(request: GenerationRequest = Body(...)):
         raise HTTPException(status_code=http.client.INTERNAL_SERVER_ERROR, detail=f"Generation failed: {e}")
         
     try:
-        for i in range(request.n or 1):
+        for i in range(request.n):
             if request.seed is not None:
                 current_seed = request.seed + i
             else:
                 current_seed = random.getrandbits(32)
             
             config = Config(
-                num_inference_steps=request.n or 2,
+                num_inference_steps=request.n,
                 height=height,
                 width=width,
                 guidance=request.guidance or 4.0,

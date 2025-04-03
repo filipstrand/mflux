@@ -110,17 +110,28 @@ class ModelManager:
         """Unload a model from cache when its timer expires"""
         if model_key in self.model_cache:
             logger.info(f"Unloading model: {model_key}")
+            model = self.model_cache[model_key]
+            
+            # Check if Flux1 has any explicit cleanup methods
+            if hasattr(model, 'unload') and callable(model.unload):
+                model.unload()
+            # Or if it has a close method
+            elif hasattr(model, 'close') and callable(model.close):
+                model.close()
+            
+            # Remove from cache
             del self.model_cache[model_key]
-            if model_key in self.model_timers:
-                del self.model_timers[model_key]
+            self.model_timers.pop(model_key, None)
+                
+            # Force garbage collection
+            import gc
+            gc.collect()
     
     def unload_model_after_use(self, model_key: str):
         """Unload a model immediately after use"""
-        if model_key in self.model_cache:
-            logger.info(f"Unloading model immediately as requested: {model_key}")
-            del self.model_cache[model_key]
-            if model_key in self.model_timers:
-                del self.model_timers[model_key]
+        logger.info(f"Unloading model immediately as requested: {model_key}")
+        del self.model_cache[model_key]
+        self.unload_model(model_key)
 
 def create_temp_directory():
     """Create a temporary directory and return its path"""
