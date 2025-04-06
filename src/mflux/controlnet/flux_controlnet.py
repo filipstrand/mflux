@@ -10,7 +10,7 @@ from mflux.controlnet.controlnet_util import ControlnetUtil
 from mflux.controlnet.transformer_controlnet import TransformerControlnet
 from mflux.error.exceptions import StopImageGenerationException
 from mflux.flux.flux_initializer import FluxInitializer
-from mflux.latent_creator.latent_creator import LatentCreator
+from mflux.latent_creator.latent_creator import Img2Img, LatentCreator
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.text_encoder.prompt_encoder import PromptEncoder
 from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
@@ -57,7 +57,7 @@ class Flux1Controlnet(nn.Module):
     ) -> GeneratedImage:
         # 0. Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
-        time_steps = tqdm(range(config.num_inference_steps))
+        time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
 
         # 1. Encode the controlnet reference image
         controlnet_condition, canny_image = ControlnetUtil.encode_image(
@@ -68,10 +68,16 @@ class Flux1Controlnet(nn.Module):
         )
 
         # 2. Create the initial latents
-        latents = LatentCreator.create(
+        latents = LatentCreator.create_for_txt2img_or_img2img(
             seed=seed,
             height=config.height,
             width=config.width,
+            img2img=Img2Img(
+                vae=self.vae,
+                sigmas=config.sigmas,
+                init_time_step=config.init_time_step,
+                image_path=config.image_path,
+            ),
         )
 
         # 3. Encode the prompt

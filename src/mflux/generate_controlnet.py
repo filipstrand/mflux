@@ -14,6 +14,7 @@ def main():
     parser.add_lora_arguments()
     parser.add_image_generator_arguments(supports_metadata_config=False)
     parser.add_controlnet_arguments()
+    parser.add_image_to_image_arguments(required=False)
     parser.add_output_arguments()
     args = parser.parse_args()
 
@@ -54,6 +55,8 @@ def main():
                     height=args.height,
                     width=args.width,
                     guidance=args.guidance,
+                    image_path=args.image_path,
+                    image_strength=args.image_strength,
                     controlnet_strength=args.controlnet_strength,
                 ),
             )
