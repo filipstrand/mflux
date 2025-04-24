@@ -56,6 +56,14 @@ class RuntimeConfig:
         return self.config.image_strength
 
     @property
+    def depth_image_path(self) -> str | None:
+        return self.config.depth_image_path
+
+    @property
+    def redux_image_paths(self) -> str | None:
+        return self.config.redux_image_paths
+
+    @property
     def masked_image_path(self) -> str | None:
         return self.config.masked_image_path
 

@@ -29,6 +29,7 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
         latents: mx.array,
         config: RuntimeConfig,
         canny_image: PIL.Image.Image | None = None,
+        depth_image: PIL.Image.Image | None = None,
     ) -> None:
         self.peak_memory = mx.metal.get_peak_memory()
         self._delete_encoders()
