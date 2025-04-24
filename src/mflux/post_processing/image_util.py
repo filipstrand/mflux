@@ -8,7 +8,6 @@ import numpy as np
 import piexif
 import PIL.Image
 import PIL.ImageDraw
-import torchvision.transforms.functional as F
 
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.post_processing.generated_image import GeneratedImage
@@ -302,6 +301,16 @@ class ImageUtil:
         std: list = [0.5, 0.5, 0.5],
         resample: int = PIL.Image.LANCZOS,
     ) -> mx.array:
-        image_np = F.to_tensor(image)
-        tensor = F.normalize(image_np, mean, std, False)
-        return mx.array(tensor)
+        # Convert PIL image to numpy array and normalize to [0, 1]
+        image_np = np.array(image).astype(np.float32) / 255.0
+
+        # Convert from HWC to CHW format
+        image_np = image_np.transpose(2, 0, 1)
+
+        # Normalize using specified mean and std
+        mean_np = np.array(mean).reshape(-1, 1, 1)
+        std_np = np.array(std).reshape(-1, 1, 1)
+        image_np = (image_np - mean_np) / std_np
+
+        # Convert to MLX array
+        return mx.array(image_np)
