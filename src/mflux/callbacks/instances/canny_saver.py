@@ -20,6 +20,7 @@ class CannyImageSaver(BeforeLoopCallback):
         latents: mx.array,
         config: RuntimeConfig,
         canny_image: PIL.Image.Image | None = None,
+        depth_image: PIL.Image.Image | None = None,
     ) -> None:
         base, ext = os.path.splitext(self.path)
         ImageUtil.save_image(

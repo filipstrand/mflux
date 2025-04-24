@@ -1,4 +1,4 @@
-from mflux import Config, ModelConfig, StopImageGenerationException
+from mflux import Config, StopImageGenerationException
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.callbacks.instances.memory_saver import MemorySaver
 from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
@@ -23,7 +23,6 @@ def main():
 
     # 1. Load the model
     flux = Flux1Fill(
-        model_config=ModelConfig.dev_fill(),
         quantize=args.quantize,
         local_path=args.path,
         lora_paths=args.lora_paths,
@@ -39,7 +38,7 @@ def main():
 
     memory_saver = None
     if args.low_ram:
-        memory_saver = MemorySaver(flux, keep_transformer=len(args.seed) > 1)
+        memory_saver = MemorySaver(flux=flux, keep_transformer=len(args.seed) > 1)
         CallbackRegistry.register_before_loop(memory_saver)
         CallbackRegistry.register_in_loop(memory_saver)
         CallbackRegistry.register_after_loop(memory_saver)

@@ -34,7 +34,6 @@ class ImageGeneratorFillTestHelper:
         try:
             # given
             flux = Flux1Fill(
-                model_config=model_config,
                 quantize=8,
                 lora_paths=lora_paths,
                 lora_scales=lora_scales,
