@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 
 import mlx.core as mx
 import PIL.Image
@@ -19,8 +20,8 @@ class DepthUtil:
         vae: VAE,
         depth_pro: DepthPro,
         config: RuntimeConfig,
-        image_path: str | None = None,
-        depth_image_path: str | None = None,
+        image_path: str | Path | None = None,
+        depth_image_path: str | Path | None = None,
     ) -> (mx.array, PIL.Image.Image):
         # 1. Create the depth map or use existing one
         depth_image_path, depth_image = DepthUtil.get_or_create_depth_map(
@@ -44,9 +45,9 @@ class DepthUtil:
     @staticmethod
     def get_or_create_depth_map(
         depth_pro: DepthPro,
-        image_path: str | None = None,
-        depth_map_path: str | None = None,
-    ) -> tuple[str, PIL.Image.Image | None]:
+        image_path: str | Path | None = None,
+        depth_map_path: str | Path | None = None,
+    ) -> tuple[str | Path, PIL.Image.Image | None]:
         # 1. If a depth map path is provided, use it directly
         if depth_map_path:
             if not os.path.exists(depth_map_path):
