@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import mlx.core as mx
 from mlx import nn
 from tqdm import tqdm
@@ -158,7 +160,7 @@ class Flux1Redux(nn.Module):
         clip_tokenizer: TokenizerCLIP,
         t5_text_encoder: T5Encoder,
         clip_text_encoder: CLIPEncoder,
-        image_paths: list[str],
+        image_paths: list[str] | list[Path],
         image_encoder: SiglipVisionTransformer,
         image_embedder: ReduxEncoder,
     ) -> (mx.array, mx.array):

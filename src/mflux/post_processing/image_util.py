@@ -1,7 +1,7 @@
 import json
 import logging
-import pathlib
 import typing as t
+from pathlib import Path
 
 import mlx.core as mx
 import numpy as np
@@ -27,12 +27,12 @@ class ImageUtil:
         generation_time: float,
         lora_paths: list[str],
         lora_scales: list[float],
-        controlnet_image_path: str | None = None,
-        image_path: str | None = None,
-        redux_image_paths: list[str] | None = None,
+        controlnet_image_path: str | Path | None = None,
+        image_path: str | Path | None = None,
+        redux_image_paths: list[str] | list[Path] | None = None,
         image_strength: float | None = None,
-        masked_image_path: str | None = None,
-        depth_image_path: str | None = None,
+        masked_image_path: str | Path | None = None,
+        depth_image_path: str | Path | None = None,
     ) -> GeneratedImage:
         normalized = ImageUtil._denormalize(decoded_latents)
         normalized_numpy = ImageUtil._to_numpy(normalized)
@@ -113,7 +113,7 @@ class ImageUtil:
         return array
 
     @staticmethod
-    def load_image(path: str | pathlib.Path) -> PIL.Image.Image:
+    def load_image(path: str | Path) -> PIL.Image.Image:
         return PIL.Image.open(path)
 
     @staticmethod
@@ -204,12 +204,12 @@ class ImageUtil:
     @staticmethod
     def save_image(
         image: PIL.Image.Image,
-        path: t.Union[str, pathlib.Path],
+        path: t.Union[str, Path],
         metadata: dict | None = None,
         export_json_metadata: bool = False,
         overwrite: bool = False,
     ) -> None:
-        file_path = pathlib.Path(path)
+        file_path = Path(path)
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_name = file_path.stem
         file_extension = file_path.suffix
@@ -240,7 +240,7 @@ class ImageUtil:
             log.error(f"Error saving image: {e}")
 
     @staticmethod
-    def _embed_metadata(metadata: dict, path: str) -> None:
+    def _embed_metadata(metadata: dict, path: str | Path) -> None:
         try:
             # Convert metadata dictionary to a string
             metadata_str = json.dumps(metadata)
