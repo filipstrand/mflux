@@ -1,7 +1,7 @@
 import json
 import logging
-import pathlib
 import typing as t
+from pathlib import Path
 
 import mlx.core as mx
 import numpy as np
@@ -113,7 +113,7 @@ class ImageUtil:
         return array
 
     @staticmethod
-    def load_image(path: str | pathlib.Path) -> PIL.Image.Image:
+    def load_image(path: str | Path) -> PIL.Image.Image:
         return PIL.Image.open(path)
 
     @staticmethod
@@ -204,12 +204,12 @@ class ImageUtil:
     @staticmethod
     def save_image(
         image: PIL.Image.Image,
-        path: t.Union[str, pathlib.Path],
+        path: t.Union[str, Path],
         metadata: dict | None = None,
         export_json_metadata: bool = False,
         overwrite: bool = False,
     ) -> None:
-        file_path = pathlib.Path(path)
+        file_path = Path(path)
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_name = file_path.stem
         file_extension = file_path.suffix
