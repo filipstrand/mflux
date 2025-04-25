@@ -6,7 +6,7 @@ from mflux.ui.cli.parsers import CommandLineParser
 def main():
     # 0. Parse command line arguments
     parser = CommandLineParser(description="Save a depth map of an input image")
-    parser.add_depth_arguments()
+    parser.add_save_depth_arguments()
     args = parser.parse_args()
 
     # 1. Create and save the depth map
