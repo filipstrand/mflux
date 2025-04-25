@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 class DepthProUtil:
     @staticmethod
-    def create_pyramid(x: mx.array) -> (mx.array, mx.array, mx.array):
+    def create_pyramid(x: mx.array) -> tuple[mx.array, mx.array, mx.array]:
         x0 = x
         x_np = np.array(x)
         x_torch = torch.from_numpy(x_np)

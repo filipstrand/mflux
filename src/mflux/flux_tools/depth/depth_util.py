@@ -22,7 +22,7 @@ class DepthUtil:
         config: RuntimeConfig,
         image_path: str | Path | None = None,
         depth_image_path: str | Path | None = None,
-    ) -> (mx.array, PIL.Image.Image):
+    ) -> tuple[mx.array, PIL.Image.Image]:
         # 1. Create the depth map or use existing one
         depth_image_path, depth_image = DepthUtil.get_or_create_depth_map(
             depth_pro=depth_pro,
