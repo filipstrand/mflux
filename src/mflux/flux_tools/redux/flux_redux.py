@@ -163,7 +163,7 @@ class Flux1Redux(nn.Module):
         image_paths: list[str] | list[Path],
         image_encoder: SiglipVisionTransformer,
         image_embedder: ReduxEncoder,
-    ) -> (mx.array, mx.array):
+    ) -> tuple[mx.array, mx.array]:
         # 1. Encode the prompt
         prompt_embeds_txt, pooled_prompt_embeds = PromptEncoder.encode_prompt(
             prompt=prompt,

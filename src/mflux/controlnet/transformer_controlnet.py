@@ -37,7 +37,7 @@ class TransformerControlnet(nn.Module):
         prompt_embeds: mx.array,
         pooled_prompt_embeds: mx.array,
         controlnet_condition: mx.array,
-    ) -> (list[mx.array], list[mx.array]):
+    ) -> tuple[list[mx.array], list[mx.array]]:
         # 1. Create embeddings
         hidden_states = self.x_embedder(hidden_states) + self.controlnet_x_embedder(controlnet_condition)
         encoder_hidden_states = self.context_embedder(prompt_embeds)

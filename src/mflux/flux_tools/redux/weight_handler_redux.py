@@ -26,11 +26,11 @@ class WeightHandlerRedux:
         )  # fmt:off
 
     @staticmethod
-    def _load_siglip_weights(root_path: Path) -> (dict, int, str | None):
+    def _load_siglip_weights(root_path: Path) -> tuple[dict, int, str | None]:
         weights, _, _ = WeightHandler.get_weights("image_encoder", root_path)
         return weights, _, _
 
     @staticmethod
-    def _load_redux_encoder_weights(root_path: Path) -> (dict, int, str | None):
+    def _load_redux_encoder_weights(root_path: Path) -> tuple[dict, int, str | None]:
         weights, _, _ = WeightHandler.get_weights("image_embedder", root_path)
         return weights, _, _
