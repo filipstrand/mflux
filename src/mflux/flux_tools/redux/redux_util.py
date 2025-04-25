@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import mlx.core as mx
 
 from mflux import ImageUtil
@@ -8,7 +10,7 @@ from mflux.models.siglip_vision_transformer.siglip_vision_transformer import Sig
 class ReduxUtil:
     @staticmethod
     def embed_images(
-        image_paths: list[str],
+        image_paths: list[str] | list[Path],
         image_encoder: SiglipVisionTransformer,
         image_embedder: ReduxEncoder,
     ) -> list[mx.array]:  # fmt:off
@@ -24,7 +26,7 @@ class ReduxUtil:
 
     @staticmethod
     def _embed_single_image(
-        image_path: str,
+        image_path: str | Path,
         image_encoder: SiglipVisionTransformer,
         image_embedder: ReduxEncoder,
     ) -> mx.array:  # fmt:off

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import mlx.core as mx
 
 from mflux.config.runtime_config import RuntimeConfig
@@ -12,8 +14,8 @@ class MaskUtil:
         vae: VAE,
         config: RuntimeConfig,
         latents: mx.array,
-        img_path: str,
-        mask_path: str | None,
+        img_path: str | Path,
+        mask_path: str | Path | None,
     ) -> mx.array:
         if not img_path or not mask_path:
             # Return empty latents if no image or mask is provided
