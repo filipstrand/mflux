@@ -50,6 +50,9 @@ dev = [
     "pytest-timer>=1.0,<2.0",
     "mlx==0.25.0",  # Used ONLY during test runs to ensure deterministic test results
 ]
+mcp = [
+  "fastmcp>=2.2,<3.0",
+]
 
 [project.urls]
 homepage = "https://github.com/filipstrand/mflux"
@@ -64,6 +67,7 @@ mflux-generate-redux = "mflux.generate_redux:main"
 mflux-save = "mflux.save:main"
 mflux-save-depth = "mflux.save_depth:main"
 mflux-train = "mflux.train:main"
+mflux-mcp-tools = "mflux.ui.mcp.tools:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
