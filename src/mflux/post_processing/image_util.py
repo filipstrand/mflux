@@ -1,6 +1,5 @@
 import json
 import logging
-import typing as t
 from pathlib import Path
 
 import mlx.core as mx
@@ -59,7 +58,7 @@ class ImageUtil:
         )
 
     @staticmethod
-    def to_composite_image(generated_images: t.List[GeneratedImage]) -> PIL.Image.Image:
+    def to_composite_image(generated_images: list[GeneratedImage]) -> PIL.Image.Image:
         # stitch horizontally
         total_width = sum(gen_img.image.width for gen_img in generated_images)
         max_height = max(gen_img.image.height for gen_img in generated_images)
@@ -119,7 +118,7 @@ class ImageUtil:
     @staticmethod
     def expand_image(
         image: PIL.Image.Image,
-        box_values: AbsoluteBoxValues = None,
+        box_values: AbsoluteBoxValues | None = None,
         top: int | str = 0,
         right: int | str = 0,
         bottom: int | str = 0,
@@ -161,7 +160,7 @@ class ImageUtil:
         orig_height: int,
         border_color: tuple,
         content_color: tuple,
-        box_values: AbsoluteBoxValues = None,
+        box_values: AbsoluteBoxValues | None = None,
         top: int | str = 0,
         right: int | str = 0,
         bottom: int | str = 0,
@@ -204,7 +203,7 @@ class ImageUtil:
     @staticmethod
     def save_image(
         image: PIL.Image.Image,
-        path: t.Union[str, Path],
+        path: str | Path,
         metadata: dict | None = None,
         export_json_metadata: bool = False,
         overwrite: bool = False,
