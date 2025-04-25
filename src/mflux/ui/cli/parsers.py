@@ -96,7 +96,10 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--image-path", type=Path, required=False, help="Local path to the source image")
         self.add_argument("--depth-image-path", type=Path, required=False, help="Local path to the depth image")
         self.add_argument("--save-depth-map", action="store_true", required=False, help="If set, save the depth map created from the source image.")
-        self.add_argument("--quantize",  "-q", type=int, choices=ui_defaults.QUANTIZE_CHOICES, default=None, help=f"Quantize the model ({' or '.join(map(str, ui_defaults.QUANTIZE_CHOICES))}, Default is None)")
+
+    def add_save_depth_arguments(self) -> None:
+        self.add_argument("--image-path", type=Path, required=True, help="Local path to the source image")
+        self.add_argument("--quantize",  "-q", type=int, choices=ui_defaults.QUANTIZE_CHOICES, default=None, required=False, help=f"Quantize the model ({' or '.join(map(str, ui_defaults.QUANTIZE_CHOICES))}, Default is None)")
 
     def add_redux_arguments(self) -> None:
         self.add_argument("--redux-image-paths", type=Path, nargs="*", required=True, help="Local path to the source image")
