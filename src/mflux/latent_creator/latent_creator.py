@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import mlx.core as mx
 
 from mflux.models.vae.vae import VAE
@@ -11,7 +13,7 @@ class Img2Img:
         vae: VAE,
         sigmas: mx.array,
         init_time_step: int,
-        image_path: int,
+        image_path: str | Path | None,
     ):
         self.vae = vae
         self.sigmas = sigmas
@@ -39,9 +41,7 @@ class LatentCreator:
         img2img: Img2Img,
     ) -> mx.array:
         # 0. Determine type of image generation
-        is_text2img = img2img.image_path is None
-
-        if is_text2img:
+        if img2img.image_path is None:
             # 1. Create the pure noise
             return LatentCreator.create(
                 seed=seed,
@@ -71,7 +71,7 @@ class LatentCreator:
             )
 
     @staticmethod
-    def encode_image(vae: VAE, image_path: str, height: int, width: int):
+    def encode_image(vae: VAE, image_path: str | Path, height: int, width: int):
         scaled_user_image = ImageUtil.scale_to_dimensions(
             image=ImageUtil.load_image(image_path).convert("RGB"),
             target_width=width,
