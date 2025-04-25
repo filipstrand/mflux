@@ -16,7 +16,7 @@ class DreamBoothInitializer:
     def initialize(
         config_path: str | None,
         checkpoint_path: str | None,
-    ) -> (Flux1, RuntimeConfig, TrainingSpec, TrainingState):
+    ) -> tuple[Flux1, RuntimeConfig, TrainingSpec, TrainingState]:
         # The training specification describing the details of the training process. It is resolved
         # differently depending on if training starts from scratch or resumes from checkpoint.
         training_spec = TrainingSpec.resolve(

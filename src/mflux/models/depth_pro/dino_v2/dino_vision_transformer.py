@@ -14,7 +14,7 @@ class DinoVisionTransformer(nn.Module):
         self.blocks = [TransformerBlock() for i in range(24)]
         self.norm = nn.LayerNorm(dims=1024, eps=1e-6, bias=True)
 
-    def __call__(self, x: mx.array) -> (mx.array, mx.array, mx.array):
+    def __call__(self, x: mx.array) -> tuple[mx.array, mx.array, mx.array]:
         backbone_highres_hook0 = None
         backbone_highres_hook1 = None
 

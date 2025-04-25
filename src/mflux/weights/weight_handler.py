@@ -65,12 +65,12 @@ class WeightHandler:
         return len(self.transformer["single_transformer_blocks"])
 
     @staticmethod
-    def _load_clip_encoder(root_path: Path) -> (dict, int, str | None):
+    def _load_clip_encoder(root_path: Path) -> tuple[dict, int, str | None]:
         weights, quantization_level, mflux_version = WeightHandler.get_weights("text_encoder", root_path)
         return weights, quantization_level, mflux_version
 
     @staticmethod
-    def _load_t5_encoder(root_path: Path) -> (dict, int, str | None):
+    def _load_t5_encoder(root_path: Path) -> tuple[dict, int, str | None]:
         weights, quantization_level, mflux_version = WeightHandler.get_weights("text_encoder_2", root_path)
 
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
@@ -97,7 +97,7 @@ class WeightHandler:
         return weights, quantization_level, mflux_version
 
     @staticmethod
-    def load_transformer(root_path: Path | None = None, lora_path: str | None = None) -> (dict, int, str | None):
+    def load_transformer(root_path: Path | None = None, lora_path: str | None = None) -> tuple[dict, int, str | None]:
         weights, quantization_level, mflux_version = WeightHandler.get_weights("transformer", root_path, lora_path)
 
         if lora_path:
@@ -125,7 +125,7 @@ class WeightHandler:
         return weights, quantization_level, mflux_version
 
     @staticmethod
-    def _load_vae(root_path: Path) -> (dict, int, str | None):
+    def _load_vae(root_path: Path) -> tuple[dict, int, str | None]:
         weights, quantization_level, mflux_version = WeightHandler.get_weights("vae", root_path)
 
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
@@ -146,7 +146,7 @@ class WeightHandler:
         model_name: str,
         root_path: Path | None = None,
         lora_path: str | None = None,
-    ) -> (dict, int, str | None):
+    ) -> tuple[dict, int, str | None]:
         weights = []
         quantization_level = None
         mflux_version = None

@@ -18,7 +18,7 @@ class ControlnetUtil:
         height: int,
         width: int,
         controlnet_image_path: str,
-    ) -> (mx.array, PIL.Image):
+    ) -> tuple[mx.array, PIL.Image.Image]:
         from mflux import ImageUtil
 
         control_image = ImageUtil.load_image(controlnet_image_path)
