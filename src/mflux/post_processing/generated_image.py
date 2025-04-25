@@ -1,5 +1,4 @@
 import importlib
-import typing as t
 from pathlib import Path
 
 import mlx.core as mx
@@ -78,7 +77,7 @@ class GeneratedImage:
 
     def save(
         self,
-        path: t.Union[str, Path],
+        path: str | Path,
         export_json_metadata: bool = False,
         overwrite: bool = False,
     ) -> None:

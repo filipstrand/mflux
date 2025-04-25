@@ -17,8 +17,8 @@ class ImageGeneratorDepthTestHelper:
         prompt: str,
         steps: int,
         seed: int,
-        height: int = None,
-        width: int = None,
+        height: int | None = None,
+        width: int | None = None,
         image_path: str | None = None,
         depth_image_path: str | None = None,
     ):
