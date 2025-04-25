@@ -1,6 +1,6 @@
 import importlib
-import pathlib
 import typing as t
+from pathlib import Path
 
 import mlx.core as mx
 import PIL.Image
@@ -23,13 +23,13 @@ class GeneratedImage:
         generation_time: float,
         lora_paths: list[str],
         lora_scales: list[float],
-        controlnet_image_path: str | pathlib.Path | None = None,
+        controlnet_image_path: str | Path | None = None,
         controlnet_strength: float | None = None,
-        image_path: str | pathlib.Path | None = None,
+        image_path: str | Path | None = None,
         image_strength: float | None = None,
-        masked_image_path: str | pathlib.Path | None = None,
-        depth_image_path: str | pathlib.Path | None = None,
-        redux_image_paths: list[str] | list[pathlib.Path] | None = None,
+        masked_image_path: str | Path | None = None,
+        depth_image_path: str | Path | None = None,
+        redux_image_paths: list[str] | list[Path] | None = None,
     ):
         self.image = image
         self.model_config = model_config
@@ -78,7 +78,7 @@ class GeneratedImage:
 
     def save(
         self,
-        path: t.Union[str, pathlib.Path],
+        path: t.Union[str, Path],
         export_json_metadata: bool = False,
         overwrite: bool = False,
     ) -> None:
@@ -129,7 +129,7 @@ class GeneratedImage:
     @staticmethod
     def _get_version_from_toml() -> str | None:
         # Search for pyproject.toml by traversing up from the current working directory
-        current_dir = pathlib.Path(__file__).resolve().parent
+        current_dir = Path(__file__).resolve().parent
         for parent in current_dir.parents:
             pyproject_path = parent / "pyproject.toml"
             if pyproject_path.exists():
