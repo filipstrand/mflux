@@ -1,10 +1,8 @@
 import io
-import json
-import os
-import subprocess
 import time
 import uuid
 from pathlib import Path
+from typing import Literal
 
 from fastmcp import (
     FastMCP,
@@ -13,12 +11,12 @@ from fastmcp import (
 from PIL import Image as PILImage
 from pydantic import BaseModel
 
-from mflux import Config, Flux1, GeneratedImage, ModelConfig
+from mflux import Config, Flux1, ModelConfig
 from mflux.ui import defaults as ui_defaults
 
 
 class ImageGenerationArgs(BaseModel):
-    model: str = "schnell"
+    model: str = Literal["dev", "schnell"]
     steps: int = ui_defaults.MODEL_INFERENCE_STEPS["schnell"]
     prompt: str
     width: int = 512
@@ -29,13 +27,6 @@ class ImageGenerationArgs(BaseModel):
 
 # Create an MCP server
 mcp = FastMCP("mflux")
-
-
-@mcp.resource("config://app-version")
-def get_app_version() -> str:
-    """Returns the application version."""
-    return GeneratedImage._get_version_from_toml()
-
 
 # use a macOS Downloads sub-dir for our outputs
 # consistent with web ux of downloading generated images to standard downloads dir
@@ -79,10 +70,11 @@ def generate_client_output_image(
     return client_image
 
 
+@mcp.tool(description="Generate an image using the 'dev' or 'schnell' model")
 def generate_image(args: ImageGenerationArgs) -> MCPImage:
     flux = Flux1(model_config=ModelConfig.from_name(model_name=args.model))
     generated_image = flux.generate_image(
-        seed=args.seed,
+        seed=args.seed or int(time.time()),
         prompt=args.prompt,
         config=Config(
             num_inference_steps=args.steps,
@@ -94,59 +86,6 @@ def generate_image(args: ImageGenerationArgs) -> MCPImage:
     # save original output as uuid-named output file - it won't be resized/compressed for client output
     generated_image.save(MCP_IMAGES_OUTPUT_DIR / f"output-{uuid.uuid4()}.png", export_json_metadata=True)
     return generate_client_output_image(generated_image.image)
-
-
-@mcp.tool(description="Generate an image using the Flux.1-Dev model")
-def dev_model_generate_image(
-    prompt: str, steps: int, width: int, height: int, guidance: float, seed: int = None
-) -> MCPImage:
-    seed = seed or int(time.time())
-    args = ImageGenerationArgs(
-        model="dev", steps=steps, prompt=prompt, width=width, height=height, guidance=guidance, seed=seed
-    )
-    return generate_image(args)
-
-
-@mcp.tool(description="Generate an image using the Flux.1-Schnell model")
-def schnell_model_generate_image(
-    prompt: str, steps: int, width: int, height: int, guidance: float, seed: int = None
-) -> MCPImage:
-    seed = seed or int(time.time())
-    args = ImageGenerationArgs(
-        model="schnell", steps=steps, prompt=prompt, width=width, height=height, guidance=guidance, seed=seed
-    )
-    return generate_image(args)
-
-
-@mcp.tool(description="generate a test image for mflux integration")
-def mflux_test_image() -> MCPImage:
-    """Returns a test image from a static file path."""
-    image_path = Path("~/Desktop/test-image.png").expanduser()
-    return generate_client_output_image(PILImage.open(image_path))
-
-
-class SystemInfo(BaseModel):
-    chipset_name: str
-    cpu_count: int
-    gpu_count: int
-
-
-# Get number of logical CPUs
-def get_system_info() -> SystemInfo:
-    try:
-        info = json.loads(subprocess.check_output(["system_profiler", "-json", "SPDisplaysDataType"], text=True))[
-            "SPDisplaysDataType"
-        ][0]
-    except (IndexError, KeyError) as e:
-        return f"Error parsing system profile: {e}"
-    return SystemInfo(chipset_name=info["_name"], cpu_count=os.cpu_count(), gpu_count=info["sppci_cores"])
-
-
-# Add a dynamic greeting resource
-@mcp.resource("greeting://{name}")
-def get_greeting(name: str) -> str:
-    """Get a personalized greeting"""
-    return f"Hello from mflux, {name}. You are running Flux.1 image generator on {get_system_info()}!"
 
 
 def main():
