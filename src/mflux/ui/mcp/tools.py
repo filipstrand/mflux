@@ -3,6 +3,7 @@ import json
 import os
 import subprocess
 import time
+import uuid
 from pathlib import Path
 
 from fastmcp import (
@@ -12,17 +13,18 @@ from fastmcp import (
 from PIL import Image as PILImage
 from pydantic import BaseModel
 
-from mflux import Config, Flux1, GeneratedImage, ModelConfig, StopImageGenerationException
+from mflux import Config, Flux1, GeneratedImage, ModelConfig
+from mflux.ui import defaults as ui_defaults
 
 
 class ImageGenerationArgs(BaseModel):
-    model: str
-    steps: int
+    model: str = "schnell"
+    steps: int = ui_defaults.MODEL_INFERENCE_STEPS["schnell"]
     prompt: str
-    width: int
-    height: int
-    guidance: float
-    seed: int
+    width: int = 512
+    height: int = 512
+    guidance: float = ui_defaults.GUIDANCE_SCALE
+    seed: int = 0
 
 
 # Create an MCP server
@@ -35,11 +37,16 @@ def get_app_version() -> str:
     return GeneratedImage._get_version_from_toml()
 
 
+# use a macOS Downloads sub-dir for our outputs
+# consistent with web ux of downloading generated images to standard downloads dir
+MCP_IMAGES_OUTPUT_DIR = Path.home() / "Downloads" / "mflux-mcp-output"
+
+
 @mcp.resource("dir://output")
 def output() -> list[str]:
-    """List the files in the user's desktop"""
-    desktop = Path.home() / "mflux-mcp-output"
-    return [str(f) for f in desktop.iterdir()]
+    """List the files in the user's output directory."""
+    MCP_IMAGES_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    return [str(f) for f in MCP_IMAGES_OUTPUT_DIR.iterdir()]
 
 
 def generate_client_output_image(
@@ -74,20 +81,19 @@ def generate_client_output_image(
 
 def generate_image(args: ImageGenerationArgs) -> MCPImage:
     flux = Flux1(model_config=ModelConfig.from_name(model_name=args.model))
-    try:
-        generated_image = flux.generate_image(
-            seed=args.seed,
-            prompt=args.prompt,
-            config=Config(
-                num_inference_steps=args.steps,
-                height=args.height,
-                width=args.width,
-                guidance=args.guidance,
-            ),
-        )
-        return generate_client_output_image(generated_image.image)
-    except StopImageGenerationException as stop_exc:
-        print(stop_exc)
+    generated_image = flux.generate_image(
+        seed=args.seed,
+        prompt=args.prompt,
+        config=Config(
+            num_inference_steps=args.steps,
+            height=args.height,
+            width=args.width,
+            guidance=args.guidance,
+        ),
+    )
+    # save original output as uuid-named output file - it won't be resized/compressed for client output
+    generated_image.save(MCP_IMAGES_OUTPUT_DIR / f"output-{uuid.uuid4()}.png", export_json_metadata=True)
+    return generate_client_output_image(generated_image.image)
 
 
 @mcp.tool(description="Generate an image using the Flux.1-Dev model")
@@ -113,7 +119,7 @@ def schnell_model_generate_image(
 
 
 @mcp.tool(description="generate a test image for mflux integration")
-def flux1_test_image() -> MCPImage:
+def mflux_test_image() -> MCPImage:
     """Returns a test image from a static file path."""
     image_path = Path("~/Desktop/test-image.png").expanduser()
     return generate_client_output_image(PILImage.open(image_path))
