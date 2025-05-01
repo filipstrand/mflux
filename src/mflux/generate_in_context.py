@@ -25,7 +25,7 @@ def main():
         quantize=args.quantize,
         lora_names=[get_lora_filename(args.lora_style)] if args.lora_style else None,
         lora_repo_id=LORA_REPO_ID if args.lora_style else None,
-        lora_paths=args.lora_paths if not args.lora_style else None,
+        lora_paths=args.lora_paths,
         lora_scales=args.lora_scales,
     )
 
