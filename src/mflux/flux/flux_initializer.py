@@ -85,7 +85,7 @@ class FluxInitializer:
         lora_weights = WeightHandlerLoRA.load_lora_weights(
             transformer=flux_model.transformer,
             lora_files=lora_paths + hf_lora_paths,
-            lora_scales=lora_scales,
+            lora_scales=lora_scales + [1.0] * len(hf_lora_paths),
         )
         WeightHandlerLoRA.set_lora_weights(
             transformer=flux_model.transformer,
