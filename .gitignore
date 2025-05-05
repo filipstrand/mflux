@@ -8,6 +8,7 @@
 .env.production.local
 
 .venv
+*.lock  # created by uv sync
 *.png
 *.jpg
 *.pyc

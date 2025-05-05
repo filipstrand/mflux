@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from mflux import Config, StopImageGenerationException
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.callbacks.instances.memory_saver import MemorySaver
@@ -17,6 +19,12 @@ def main():
     parser.add_image_generator_arguments(supports_metadata_config=True)
     parser.add_image_to_image_arguments(required=True)
     parser.add_output_arguments()
+    parser.add_argument(
+        "--save-full-image",
+        action="store_true",
+        default=False,
+        help="Additionally, save the full image containing the reference image. Useful for verifying the in-context usage of the reference image.",
+    )
     args = parser.parse_args()
 
     # 1. Load the model
@@ -25,7 +33,7 @@ def main():
         quantize=args.quantize,
         lora_names=[get_lora_filename(args.lora_style)] if args.lora_style else None,
         lora_repo_id=LORA_REPO_ID if args.lora_style else None,
-        lora_paths=args.lora_paths if not args.lora_style else None,
+        lora_paths=args.lora_paths,
         lora_scales=args.lora_scales,
     )
 
@@ -58,7 +66,10 @@ def main():
                 ),
             )
             # 4. Save the image
-            image.get_right_half().save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)
+            output_path = Path(args.output.format(seed=seed))
+            image.get_right_half().save(path=output_path, export_json_metadata=args.metadata)
+            if args.save_full_image:
+                image.save(path=output_path.with_stem(output_path.stem + "_full"))
     except StopImageGenerationException as stop_exc:
         print(stop_exc)
     finally:
