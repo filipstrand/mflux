@@ -33,8 +33,6 @@ class FluxInitializer:
         # 0. Set paths, configs, and prompt_cache for later
         lora_paths = lora_paths or []
         flux_model.prompt_cache = {}
-        flux_model.lora_paths = lora_paths
-        flux_model.lora_scales = lora_scales
         flux_model.model_config = model_config
 
         # 1. Initialize tokenizers
@@ -82,10 +80,12 @@ class FluxInitializer:
             lora_names=lora_names,
             repo_id=lora_repo_id,
         )
+        flux_model.lora_paths = lora_paths + hf_lora_paths
+        flux_model.lora_scales = (lora_scales or []) + [1.0] * len(hf_lora_paths)
         lora_weights = WeightHandlerLoRA.load_lora_weights(
             transformer=flux_model.transformer,
-            lora_files=lora_paths + hf_lora_paths,
-            lora_scales=lora_scales + [1.0] * len(hf_lora_paths),
+            lora_files=flux_model.lora_paths,
+            lora_scales=flux_model.lora_scales,
         )
         WeightHandlerLoRA.set_lora_weights(
             transformer=flux_model.transformer,
