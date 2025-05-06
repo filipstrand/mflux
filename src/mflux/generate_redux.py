@@ -40,6 +40,15 @@ def main():
         CallbackRegistry.register_in_loop(memory_saver)
         CallbackRegistry.register_after_loop(memory_saver)
 
+    # Validate redux_image_strengths if provided
+    if args.redux_image_strengths and len(args.redux_image_strengths) > 0:
+        # If strengths provided but not enough for all images, fill with default (1.0)
+        if len(args.redux_image_strengths) < len(args.redux_image_paths):
+            args.redux_image_strengths.extend([1.0] * (len(args.redux_image_paths) - len(args.redux_image_strengths)))
+        # If too many strengths provided, truncate to match image count
+        elif len(args.redux_image_strengths) > len(args.redux_image_paths):
+            args.redux_image_strengths = args.redux_image_strengths[: len(args.redux_image_paths)]
+
     try:
         for seed in args.seed:
             # 3. Generate an image for each seed value
@@ -52,6 +61,7 @@ def main():
                     width=args.width,
                     guidance=args.guidance,
                     redux_image_paths=args.redux_image_paths,
+                    redux_image_strengths=args.redux_image_strengths,  # Pass the strengths to the config
                 ),
             )
 

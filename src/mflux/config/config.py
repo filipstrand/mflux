@@ -19,6 +19,7 @@ class Config:
         image_strength: float | None = None,
         depth_image_path: Path | None = None,
         redux_image_paths: list[Path] | None = None,
+        redux_image_strengths: list[float] | None = None,  # Added parameter for redux image strengths
         masked_image_path: Path | None = None,
         controlnet_strength: float | None = None,
     ):
@@ -32,5 +33,6 @@ class Config:
         self.image_strength = image_strength
         self.depth_image_path = depth_image_path
         self.redux_image_paths = redux_image_paths
+        self.redux_image_strengths = redux_image_strengths  # Store redux image strengths
         self.masked_image_path = masked_image_path
         self.controlnet_strength = controlnet_strength
