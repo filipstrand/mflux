@@ -68,6 +68,10 @@ def _register_callbacks(args: Namespace, flux: Flux1Depth) -> MemorySaver | None
     battery_saver = BatterySaver(battery_percentage_stop_limit=args.battery_percentage_stop_limit)
     CallbackRegistry.register_before_loop(battery_saver)
 
+    # VAE Tiling
+    if args.vae_tiling:
+        flux.vae.decoder.enable_tiling = True
+
     # Depth Image Saver
     if args.save_depth_map:
         depth_image_saver = DepthImageSaver(path=args.output)

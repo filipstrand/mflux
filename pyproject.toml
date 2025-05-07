@@ -64,6 +64,7 @@ mflux-generate-redux = "mflux.generate_redux:main"
 mflux-save = "mflux.save:main"
 mflux-save-depth = "mflux.save_depth:main"
 mflux-train = "mflux.train:main"
+mflux-upscale = "mflux.upscale:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

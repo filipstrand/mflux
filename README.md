@@ -37,6 +37,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
   * [🔍 Depth](#-depth)
   * [🔄 Redux](#-redux)
 - [🕹️ Controlnet](#%EF%B8%8F-controlnet)
+- [🔎 Upscale](#-upscale)
 - [🎛️ Dreambooth fine-tuning](#-dreambooth-fine-tuning)
   * [Training configuration](#training-configuration)
   * [Training example](#training-example)
@@ -206,6 +207,8 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 - **`--lora-repo-id`** (optional, `str`, default: `"ali-vilab/In-Context-LoRA"`): The Hugging Face repository ID for LoRAs.
 
 - **`--stepwise-image-output-dir`** (optional, `str`, default: `None`): [EXPERIMENTAL] Output directory to write step-wise images and their final composite image to. This feature may change in future versions. When specified, MFLUX will save an image for each denoising step, allowing you to visualize the generation process from noise to final image.
+
+- **`--vae-tiling`** (optional, flag): Enable VAE tiling to reduce memory usage during the decoding phase. This splits the image into smaller chunks for processing, which can prevent out-of-memory errors when generating high-resolution images. Note that this optimization may occasionally produce a subtle horizontal seam in the middle of the image, but it's often worth the tradeoff for being able to generate images that would otherwise cause your system to run out of memory.
 
 #### 📜 In-Context LoRA Command-Line Arguments
 
@@ -1079,6 +1082,41 @@ Controlnet can also work well together with [LoRA adapters](#-lora). In the exam
 with different prompts and LoRA adapters active.
 
 ![image](src/mflux/assets/controlnet2.jpg)
+
+---
+
+### 🔎 Upscale
+
+The upscale tool allows you to increase the resolution of an existing image while maintaining or enhancing its quality and details. It uses a specialized ControlNet model that's trained to intelligently upscale images without introducing artifacts or losing image fidelity.
+
+Under the hood, this is simply the controlnet pipeline with [jasperai/Flux.1-dev-Controlnet-Upscaler](https://huggingface.co/jasperai/Flux.1-dev-Controlnet-Upscaler), with a small modification that we don't process the image with canny edge detection.
+
+![upscale example](src/mflux/assets/upscale_example.jpg)
+*Image credit: [Kevin Mueller on Unsplash](https://unsplash.com/photos/gray-owl-on-black-background-xvwZJNaiRNo)*
+
+#### How to use
+
+```sh
+mflux-upscale \
+  --prompt "A gray owl on black background" \
+  --steps 28 \
+  --seed 42 \
+  --height 1363 \
+  --width 908 \
+  -q 8 \
+  --controlnet-image-path "low_res_image.png" \
+  --controlnet-strength 0.6 
+```
+
+This will upscale your input image to the specified dimensions. The upscaler works best when increasing the resolution by a factor of 2-4x.
+
+⚠️ *Note: Depending on the capability of your machine, you might run out of memory when trying to export the image. Try the `--vae-tiling` flag to process the image in smaller chunks, which significantly reduces memory usage during the VAE decoding phase at a minimal cost to performance. This optimization may occasionally produce a subtle horizontal seam in the middle of the image, but it's often worth the tradeoff for being able to generate higher resolution images.*
+
+#### Tips for Best Results
+
+- For optimal results, try to maintain the same aspect ratio as the original image
+- Prompting matters: Try to acculturate describe the image when upscaling
+- The recommended `--controlnet-strength` is in the range between 0.5 to 0.7
 
 ---
 

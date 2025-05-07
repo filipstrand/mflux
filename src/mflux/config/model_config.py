@@ -10,6 +10,7 @@ class ModelConfig:
         alias: str | None,
         model_name: str,
         base_model: str | None,
+        controlnet_model: str | None,
         num_train_steps: int,
         max_sequence_length: int,
         supports_guidance: bool,
@@ -19,6 +20,7 @@ class ModelConfig:
         self.alias = alias
         self.model_name = model_name
         self.base_model = base_model
+        self.controlnet_model = controlnet_model
         self.num_train_steps = num_train_steps
         self.max_sequence_length = max_sequence_length
         self.supports_guidance = supports_guidance
@@ -47,6 +49,21 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
+    def dev_controlnet_canny() -> "ModelConfig":
+        return AVAILABLE_MODELS["dev-controlnet-canny"]
+
+    @staticmethod
+    @lru_cache
+    def schnell_controlnet_canny() -> "ModelConfig":
+        return AVAILABLE_MODELS["schnell-controlnet-canny"]
+
+    @staticmethod
+    @lru_cache
+    def dev_controlnet_upscaler() -> "ModelConfig":
+        return AVAILABLE_MODELS["dev-controlnet-upscaler"]
+
+    @staticmethod
+    @lru_cache
     def schnell() -> "ModelConfig":
         return AVAILABLE_MODELS["schnell"]
 
@@ -57,6 +74,9 @@ class ModelConfig:
             return 128
         else:
             return 64
+
+    def is_canny(self) -> bool:
+        return self.alias == "dev-controlnet-canny" or self.alias == "schnell-controlnet-canny"
 
     @staticmethod
     def from_name(
@@ -108,6 +128,7 @@ AVAILABLE_MODELS = {
         alias="schnell",
         model_name="black-forest-labs/FLUX.1-schnell",
         base_model=None,
+        controlnet_model=None,
         num_train_steps=1000,
         max_sequence_length=256,
         supports_guidance=False,
@@ -118,6 +139,7 @@ AVAILABLE_MODELS = {
         alias="dev",
         model_name="black-forest-labs/FLUX.1-dev",
         base_model=None,
+        controlnet_model=None,
         num_train_steps=1000,
         max_sequence_length=512,
         supports_guidance=True,
@@ -128,6 +150,7 @@ AVAILABLE_MODELS = {
         alias="dev-fill",
         model_name="black-forest-labs/FLUX.1-Fill-dev",
         base_model=None,
+        controlnet_model=None,
         num_train_steps=1000,
         max_sequence_length=512,
         supports_guidance=True,
@@ -138,6 +161,7 @@ AVAILABLE_MODELS = {
         alias="dev-depth",
         model_name="black-forest-labs/FLUX.1-Depth-dev",
         base_model=None,
+        controlnet_model=None,
         num_train_steps=1000,
         max_sequence_length=512,
         supports_guidance=True,
@@ -148,10 +172,44 @@ AVAILABLE_MODELS = {
         alias="dev-redux",
         model_name="black-forest-labs/FLUX.1-Redux-dev",
         base_model=None,
+        controlnet_model=None,
         num_train_steps=1000,
         max_sequence_length=512,
         supports_guidance=True,
         requires_sigma_shift=True,
         priority=3,
+    ),
+    "dev-controlnet-canny": ModelConfig(
+        alias="dev-controlnet-canny",
+        model_name="black-forest-labs/FLUX.1-dev",
+        base_model=None,
+        controlnet_model="InstantX/FLUX.1-dev-Controlnet-Canny",
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,
+        requires_sigma_shift=True,
+        priority=5,
+    ),
+    "schnell-controlnet-canny": ModelConfig(
+        alias="schnell-controlnet-canny",
+        model_name="black-forest-labs/FLUX.1-schnell",
+        base_model=None,
+        controlnet_model="InstantX/FLUX.1-dev-Controlnet-Canny",
+        num_train_steps=1000,
+        max_sequence_length=256,
+        supports_guidance=False,
+        requires_sigma_shift=False,
+        priority=6,
+    ),
+    "dev-controlnet-upscaler": ModelConfig(
+        alias="dev-controlnet-upscaler",
+        model_name="black-forest-labs/FLUX.1-dev",
+        base_model=None,
+        controlnet_model="jasperai/Flux.1-dev-Controlnet-Upscaler",
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=False,
+        requires_sigma_shift=False,
+        priority=7,
     ),
 }
