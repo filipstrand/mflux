@@ -23,7 +23,7 @@ class ControlnetUtil:
 
         control_image = ImageUtil.load_image(controlnet_image_path)
         control_image = ControlnetUtil._scale_image(height=height, width=width, img=control_image)
-        control_image = ControlnetUtil._preprocess_canny(control_image)
+        # control_image = ControlnetUtil._preprocess_canny(control_image)
         controlnet_cond = ImageUtil.to_array(control_image)
         controlnet_cond = vae.encode(controlnet_cond)
         controlnet_cond = (controlnet_cond / vae.scaling_factor) + vae.shift_factor

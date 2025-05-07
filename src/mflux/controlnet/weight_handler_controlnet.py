@@ -8,7 +8,7 @@ from mlx.utils import tree_unflatten
 from mflux.weights.weight_handler import MetaData
 from mflux.weights.weight_util import WeightUtil
 
-CONTROLNET_ID = "InstantX/FLUX.1-dev-Controlnet-Canny"
+CONTROLNET_ID = "jasperai/Flux.1-dev-Controlnet-Upscaler"
 
 
 class WeightHandlerControlnet:

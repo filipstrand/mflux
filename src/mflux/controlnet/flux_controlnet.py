@@ -47,6 +47,7 @@ class Flux1Controlnet(nn.Module):
             lora_paths=lora_paths,
             lora_scales=lora_scales,
         )
+        self.vae.decoder.enable_chunking = True
 
     def generate_image(
         self,
