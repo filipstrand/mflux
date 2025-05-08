@@ -43,6 +43,7 @@ class CommandLineParser(argparse.ArgumentParser):
 
     def add_general_arguments(self) -> None:
         self.add_argument("--low-ram", action="store_true", help="Enable low-RAM mode to reduce memory usage (may impact performance).")
+        self.add_argument("--vae-chunking", action="store_true", help="Enable chunking in VAE decoder to reduce memory usage for higher resolutions (may cause visible artifacts).")
 
     def add_model_arguments(self, path_type: t.Literal["load", "save"] = "load", require_model_arg: bool = True) -> None:
         self.require_model_arg = require_model_arg

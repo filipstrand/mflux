@@ -47,7 +47,6 @@ class Flux1Controlnet(nn.Module):
             lora_paths=lora_paths,
             lora_scales=lora_scales,
         )
-        self.vae.decoder.enable_chunking = True
 
     def generate_image(
         self,
@@ -66,6 +65,7 @@ class Flux1Controlnet(nn.Module):
             height=config.height,
             width=config.width,
             controlnet_image_path=controlnet_image_path,
+            is_canny=self.model_config.is_canny(),
         )
 
         # 2. Create the initial latents
