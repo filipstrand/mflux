@@ -28,7 +28,6 @@ class ControlnetUtil:
             control_image = ControlnetUtil._preprocess_canny(control_image)
         controlnet_cond = ImageUtil.to_array(control_image)
         controlnet_cond = vae.encode(controlnet_cond)
-        controlnet_cond = (controlnet_cond / vae.scaling_factor) + vae.shift_factor
         controlnet_cond = ArrayUtil.pack_latents(latents=controlnet_cond, height=height, width=width)
         return controlnet_cond, control_image
 
