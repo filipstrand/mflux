@@ -3,7 +3,9 @@ from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.callbacks.instances.canny_saver import CannyImageSaver
 from mflux.callbacks.instances.memory_saver import MemorySaver
 from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
+from mflux.error.exceptions import PromptFileReadError
 from mflux.ui.cli.parsers import CommandLineParser
+from mflux.ui.prompt_utils import get_effective_prompt
 
 
 def main():
@@ -44,10 +46,13 @@ def main():
 
     try:
         for seed in args.seed:
+            # Get prompt (either from --prompt arg or from --prompt-file)
+            prompt = get_effective_prompt(args)
+
             # 3. Generate an image for each seed value
             image = flux.generate_image(
                 seed=seed,
-                prompt=args.prompt,
+                prompt=prompt,
                 controlnet_image_path=args.controlnet_image_path,
                 config=Config(
                     num_inference_steps=args.steps,
@@ -60,8 +65,8 @@ def main():
 
             # 4. Save the image
             image.save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)
-    except StopImageGenerationException as stop_exc:
-        print(stop_exc)
+    except (StopImageGenerationException, PromptFileReadError) as exc:
+        print(exc)
     finally:
         if memory_saver:
             print(memory_saver.memory_stats())
