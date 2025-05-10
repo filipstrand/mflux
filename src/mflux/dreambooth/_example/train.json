@@ -20,7 +20,7 @@
   },
   "instrumentation": {
     "plot_frequency": 1,
-    "generate_image_frequency": 20,
+    "generate_image_frequency": 10,
     "validation_prompt": "photo of sks dog"
   },
   "lora_layers": {
@@ -44,23 +44,28 @@
       "images": [
         {
           "image": "01.jpeg",
-          "prompt": "photo of sks dog"
+          "prompt": "photo of sks dog",
+          "use_depth": true
         },
         {
           "image": "02.jpeg",
-          "prompt": "photo of sks dog"
+          "prompt": "photo of sks dog",
+          "use_depth": true
         },
         {
           "image": "03.jpeg",
-          "prompt": "photo of sks dog"
+          "prompt": "photo of sks dog",
+          "use_depth": true
         },
         {
           "image": "04.jpeg",
-          "prompt": "photo of sks dog"
+          "prompt": "photo of sks dog",
+          "use_depth": true
         },
         {
           "image": "05.jpeg",
-          "prompt": "photo of sks dog"
+          "prompt": "photo of sks dog",
+          "use_depth": true
         }
       ]
   }

@@ -65,23 +65,28 @@
     "images": [
         {
           "image": "01.jpeg",
-          "prompt": "photo of sks dog"
+          "prompt": "photo of sks dog",
+          "use_depth": true
         },
         {
           "image": "02.jpeg",
-          "prompt": "photo of sks dog"
+          "prompt": "photo of sks dog",
+          "use_depth": false
         },
         {
           "image": "03.jpeg",
-          "prompt": "photo of sks dog"
+          "prompt": "photo of sks dog",
+          "use_depth": false
         },
         {
           "image": "04.jpeg",
-          "prompt": "photo of sks dog"
+          "prompt": "photo of sks dog",
+          "use_depth": false
         },
         {
           "image": "05.jpeg",
-          "prompt": "photo of sks dog"
+          "prompt": "photo of sks dog",
+          "use_depth": false
         }
       ]
   }
