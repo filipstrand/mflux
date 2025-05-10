@@ -1,12 +1,13 @@
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
 import mlx.core as mx
-import mlx.nn as nn
 import numpy as np
 import torch
 from PIL import Image
 
+from mflux.models.depth_pro.depth_pro_initializer import DepthProInitializer
 from mflux.models.depth_pro.depth_pro_model import DepthProModel
 from mflux.post_processing.image_util import ImageUtil
 
@@ -19,15 +20,18 @@ class DepthResult:
     max_depth: float
 
 
-class DepthPro(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.depth_pro_model = DepthProModel()
+class DepthPro:
+    def __init__(self, quantize: int | None = None):
+        self._depth_pro_model = DepthProModel()
+        DepthProInitializer.init(self._depth_pro_model, quantize=quantize)
 
-    def __call__(self, image_path: str | Path, resize: bool = True) -> DepthResult:
+    def create_depth_map(self, image_path: str | Path) -> DepthResult:
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Image file not found: {image_path}")
+
         input_array, height, width = self._pre_process(image_path)
-        depth = self.depth_pro_model(input_array)
-        return self.post_process(depth, height=height, width=width)
+        depth = self._depth_pro_model(input_array)
+        return self._post_process(depth, height=height, width=width)
 
     @staticmethod
     def _pre_process(image_path):
@@ -37,7 +41,7 @@ class DepthPro(nn.Module):
         return input_array, image.height, image.width
 
     @staticmethod
-    def post_process(depth: mx.array, height: int, width: int):
+    def _post_process(depth: mx.array, height: int, width: int):
         depth_min = mx.min(depth)
         depth_max = mx.max(depth)
         normalized_depth = (depth - depth_min) / (depth_max - depth_min)

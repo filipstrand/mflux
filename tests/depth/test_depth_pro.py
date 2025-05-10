@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from mflux.models.depth_pro.depth_pro_initializer import DepthProInitializer
+from mflux.models.depth_pro.depth_pro import DepthPro
 
 
 class TestDepthPro:
@@ -17,10 +17,10 @@ class TestDepthPro:
 
         try:
             # Initialize DepthPro model
-            depth_pro = DepthProInitializer.init()
+            depth_pro = DepthPro()
 
             # Process the image to generate a depth map
-            depth_result = depth_pro(str(input_image_path))
+            depth_result = depth_pro.create_depth_map(str(input_image_path))
 
             # Save the output image
             depth_result.depth_image.save(output_image_path)
