@@ -19,7 +19,7 @@ def main():
 
     # 1. Load the model
     flux = Flux1Controlnet(
-        model_config=ModelConfig.from_name(model_name=args.model, base_model=args.base_model),
+        model_config=ModelConfig.dev_controlnet_canny(),
         quantize=args.quantize,
         local_path=args.path,
         lora_paths=args.lora_paths,
@@ -41,6 +41,9 @@ def main():
         CallbackRegistry.register_before_loop(memory_saver)
         CallbackRegistry.register_in_loop(memory_saver)
         CallbackRegistry.register_after_loop(memory_saver)
+
+    if args.vae_chunking:
+        flux.vae.decoder.enable_chunking = True
 
     try:
         for seed in args.seed:

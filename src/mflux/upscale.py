@@ -1,24 +1,24 @@
-from mflux import Config, Flux1, ModelConfig, StopImageGenerationException
+from mflux import Config, StopImageGenerationException
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.callbacks.instances.memory_saver import MemorySaver
 from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
+from mflux.controlnet.flux_upscaler import Flux1Upscaler
 from mflux.ui.cli.parsers import CommandLineParser
 
 
 def main():
     # 0. Parse command line arguments
-    parser = CommandLineParser(description="Generate an image based on a prompt.")
+    parser = CommandLineParser(description="Upscale an image.")
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
-    parser.add_image_generator_arguments(supports_metadata_config=True)
-    parser.add_image_to_image_arguments(required=False)
+    parser.add_image_generator_arguments(supports_metadata_config=False)
+    parser.add_controlnet_arguments()
     parser.add_output_arguments()
     args = parser.parse_args()
 
     # 1. Load the model
-    flux = Flux1(
-        model_config=ModelConfig.from_name(model_name=args.model, base_model=args.base_model),
+    flux = Flux1Upscaler(
         quantize=args.quantize,
         local_path=args.path,
         lora_paths=args.lora_paths,
@@ -44,19 +44,20 @@ def main():
 
     try:
         for seed in args.seed:
-            # 3. Generate an image for each seed value
+            # 3. Generate an upscaled image for each seed value
             image = flux.generate_image(
                 seed=seed,
                 prompt=args.prompt,
+                controlnet_image_path=args.controlnet_image_path,
                 config=Config(
                     num_inference_steps=args.steps,
                     height=args.height,
                     width=args.width,
                     guidance=args.guidance,
-                    image_path=args.image_path,
-                    image_strength=args.image_strength,
+                    controlnet_strength=args.controlnet_strength,
                 ),
             )
+
             # 4. Save the image
             image.save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)
     except StopImageGenerationException as stop_exc:

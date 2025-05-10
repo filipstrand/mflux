@@ -51,6 +51,9 @@ def main():
         CallbackRegistry.register_in_loop(memory_saver)
         CallbackRegistry.register_after_loop(memory_saver)
 
+    if args.vae_chunking:
+        flux.vae.decoder.enable_chunking = True
+
     try:
         for seed in args.seed:
             # 3. Generate an image for each seed value
