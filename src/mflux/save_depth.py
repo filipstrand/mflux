@@ -1,5 +1,5 @@
 from mflux.flux_tools.depth.depth_util import DepthUtil
-from mflux.models.depth_pro.depth_pro_initializer import DepthProInitializer
+from mflux.models.depth_pro.depth_pro import DepthPro
 from mflux.ui.cli.parsers import CommandLineParser
 
 
@@ -10,7 +10,7 @@ def main():
     args = parser.parse_args()
 
     # 1. Create and save the depth map
-    depth_pro = DepthProInitializer.init(quantize=args.quantize)
+    depth_pro = DepthPro(quantize=args.quantize)
     DepthUtil.get_or_create_depth_map(depth_pro=depth_pro, image_path=args.image_path)
 
 

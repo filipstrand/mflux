@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from PIL import Image
 
+from mflux.models.depth_pro.depth_pro_initializer import DepthProInitializer
 from mflux.models.depth_pro.depth_pro_model import DepthProModel
 from mflux.post_processing.image_util import ImageUtil
 
@@ -20,9 +21,10 @@ class DepthResult:
 
 
 class DepthPro(nn.Module):
-    def __init__(self):
+    def __init__(self, quantize: int | None = None):
         super().__init__()
         self.depth_pro_model = DepthProModel()
+        DepthProInitializer.init(self.depth_pro_model, quantize=quantize)
 
     def __call__(self, image_path: str | Path, resize: bool = True) -> DepthResult:
         input_array, height, width = self._pre_process(image_path)
