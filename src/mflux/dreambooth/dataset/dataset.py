@@ -9,6 +9,7 @@ from mflux import Flux1, ImageUtil
 from mflux.dreambooth.dataset.batch import Example
 from mflux.dreambooth.dataset.dreambooth_preprocessing import DreamBoothPreProcessing
 from mflux.dreambooth.state.training_spec import ExampleSpec
+from mflux.models.depth_pro.depth_pro import DepthPro
 from mflux.post_processing.array_util import ArrayUtil
 
 
@@ -45,13 +46,24 @@ class Dataset:
         height: int,
     ) -> list[Example]:
         examples = []
+        depth_pro = DepthPro()
+
         for i, entry in enumerate(tqdm(raw_data, desc="Encoding original dataset")):
             # Encode the image
-            encoded_image = Dataset._encode_image(flux.vae, entry.image, width=width, height=height)
+            encoded_image = Dataset._encode_image_from_path(flux.vae, entry.image, width=width, height=height)
 
             # Encode the prompt
             prompt_embeds = flux.t5_text_encoder(flux.t5_tokenizer.tokenize(entry.prompt))
             pooled_prompt_embeds = flux.clip_text_encoder(flux.clip_tokenizer.tokenize(entry.prompt))
+
+            # Create and encode the depth map if needed
+            depth_map = Dataset._create_and_encode_depth_map(
+                example_spec=entry,
+                depth_pro=depth_pro,
+                flux=flux,
+                height=height,
+                width=width,
+            )
 
             # Create the example object
             example = Example(
@@ -61,19 +73,42 @@ class Dataset:
                 encoded_image=encoded_image,
                 prompt_embeds=prompt_embeds,
                 pooled_prompt_embeds=pooled_prompt_embeds,
+                depth_map=depth_map,
             )
             examples.append(example)
 
             # Evaluate to enable progress tracking
-            mx.eval(encoded_image)
-            mx.eval(prompt_embeds)
-            mx.eval(pooled_prompt_embeds)
+            mx.eval(encoded_image, prompt_embeds, pooled_prompt_embeds)
+            if depth_map is not None:
+                mx.eval(depth_map)
 
         return examples
 
     @staticmethod
-    def _encode_image(vae: nn.Module, image_path: Path, width: int, height: int) -> mx.array:
+    def _create_and_encode_depth_map(
+        example_spec: ExampleSpec,
+        depth_pro: DepthPro,
+        flux: Flux1,
+        height: int,
+        width: int,
+    ) -> mx.array | None:
+        if example_spec.use_depth:
+            depth_result = depth_pro.create_depth_map(image_path=example_spec.image)
+            return Dataset._encode_image(
+                vae=flux.vae,
+                image=depth_result.depth_image.convert("RGB"),
+                width=width,
+                height=height,
+            )
+        return None
+
+    @staticmethod
+    def _encode_image_from_path(vae: nn.Module, image_path: Path, width: int, height: int) -> mx.array:
         image = PIL.Image.open(image_path.resolve()).convert("RGB")
+        return Dataset._encode_image(vae=vae, image=image, width=width, height=height)
+
+    @staticmethod
+    def _encode_image(vae: nn.Module, image: PIL.Image, width: int, height: int) -> mx.array:
         scaled_user_image = ImageUtil.scale_to_dimensions(image, target_width=width, target_height=height)
         encoded = vae.encode(ImageUtil.to_array(scaled_user_image))
         latents = ArrayUtil.pack_latents(encoded, width=width, height=height)

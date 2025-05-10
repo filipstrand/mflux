@@ -12,6 +12,7 @@ from mflux.dreambooth.state.zip_util import ZipUtil
 class ExampleSpec:
     image: Path
     prompt: str
+    use_depth: bool = False
 
     @classmethod
     def create(cls, param: dict[str, str], absolute_or_relative_path: str, base_path: Path) -> "ExampleSpec":
@@ -26,6 +27,7 @@ class ExampleSpec:
         return cls(
             image=image_path,
             prompt=param["prompt"],
+            use_depth=param.get("use_depth", False),
         )
 
 

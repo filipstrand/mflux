@@ -13,6 +13,7 @@ class Example:
         encoded_image: mx.array,
         prompt_embeds: mx.array,
         pooled_prompt_embeds: mx.array,
+        depth_map: mx.array | None = None,
     ):
         self.example_id = example_id
         self.prompt = prompt
@@ -20,6 +21,7 @@ class Example:
         self.clean_latents = encoded_image
         self.prompt_embeds = prompt_embeds
         self.pooled_prompt_embeds = pooled_prompt_embeds
+        self.depth_map = depth_map
 
 
 class Batch:

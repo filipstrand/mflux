@@ -62,4 +62,18 @@ class DreamBoothLoss:
         )
 
         # Construct the loss (derivation in src/mflux/dreambooth/optimization/_loss_derivation)
-        return (clean_image + predicted_noise - pure_noise).square().mean()
+        pixel_losses = (clean_image + predicted_noise - pure_noise).square()
+        if example.depth_map is not None:
+            return DreamBoothLoss.scale_loss_with_depth_map(example.depth_map, pixel_losses)
+        else:
+            return pixel_losses.mean()
+
+    @staticmethod
+    def scale_loss_with_depth_map(depth_map: mx.array, pixel_losses: mx.float16) -> mx.float16:
+        # 1. Normalize the depth map to [0, 1]
+        depth_map_normalized = (depth_map - mx.min(depth_map)) / (mx.max(depth_map) - mx.min(depth_map) + 1e-8)
+
+        # 2. Normalize weights to sum to 1
+        weights = depth_map_normalized / (mx.sum(depth_map_normalized) + 1e-8)
+        weighted_loss = mx.sum(pixel_losses * weights)
+        return weighted_loss
