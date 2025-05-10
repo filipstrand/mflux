@@ -20,7 +20,7 @@ class TestDepthPro:
             depth_pro = DepthPro()
 
             # Process the image to generate a depth map
-            depth_result = depth_pro(str(input_image_path))
+            depth_result = depth_pro.create_depth_map(str(input_image_path))
 
             # Save the output image
             depth_result.depth_image.save(output_image_path)
