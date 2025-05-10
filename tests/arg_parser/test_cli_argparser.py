@@ -222,6 +222,32 @@ def test_prompt_arg(mflux_generate_parser, mflux_generate_minimal_argv, base_met
         assert args.prompt == cli_prompt
 
 
+def test_prompt_file_arg(mflux_generate_parser, mflux_generate_minimal_argv, temp_dir):
+    # Create a prompt file
+    prompt_content = "prompt from a file being re-read for each generation"
+    prompt_file = temp_dir / "prompt.txt"
+    with prompt_file.open("wt") as pf:
+        pf.write(prompt_content)
+
+    # Test that prompt-file is correctly read
+    with patch('sys.argv', ["mflux-generate", "--prompt-file", prompt_file.as_posix()]):  # fmt: off
+        args = mflux_generate_parser.parse_args()
+        assert args.prompt_file == prompt_file
+        assert args.prompt is None  # prompt should be None since we're using prompt-file
+
+
+def test_prompt_and_prompt_file_mutually_exclusive(mflux_generate_parser, temp_dir):
+    # Create a prompt file
+    prompt_file = temp_dir / "prompt.txt"
+    with prompt_file.open("wt") as pf:
+        pf.write("some prompt content")
+
+    # Test that using both --prompt and --prompt-file raises an error
+    with pytest.raises(SystemExit):
+        with patch('sys.argv', ["mflux-generate", "--prompt", "direct prompt", "--prompt-file", prompt_file.as_posix()]):  # fmt: off
+            mflux_generate_parser.parse_args()
+
+
 def test_guidance_arg(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off
     metadata_file = temp_dir / "guidance.json"
     with metadata_file.open("wt") as m:

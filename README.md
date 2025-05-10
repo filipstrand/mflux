@@ -228,11 +228,50 @@ The `mflux-generate-controlnet` command supports most of the same arguments as `
 See the [Controlnet](#%EF%B8%8F-controlnet) section for more details on how to use this feature effectively.
 
 
-#### 📜 Batch Image Generation Arguments
+#### Dynamic Prompts with `--prompt-file`
 
-- **`--prompts-file`** (required, `str`): Local path for a file that holds a batch of prompts.
+MFlux supports dynamic prompt updates through the `--prompt-file` option. Instead of providing a fixed prompt with `--prompt`, you can specify a plain text file containing your prompt. The file is re-read before each generation, allowing you to modify prompts between iterations without restarting.
 
-- **`--global-seed`** (optional, `int`): Entropy Seed used for all prompts in the batch.
+##### Key Benefits
+
+- **Real-time Prompt Editing**: Edit prompts between generations while the program continues running
+- **Iterative Refinement**: Fine-tune prompts based on previous results in a batch
+- **Editor Integration**: Work with complex prompts in your preferred text editor
+- **Consistent Parameters**: Experiment with prompt variations while keeping all other settings constant
+
+##### Example Usage
+
+```bash
+# Generate 10 images using a prompt from a file
+mflux-generate --prompt-file my_prompt.txt --auto-seeds 10
+```
+
+##### Workflow Example
+
+1. Create a prompt file:
+   ```
+   echo "a surreal landscape with floating islands" > my_prompt.txt
+   ```
+
+2. Start a batch generation:
+   ```
+   mflux-generate --prompt-file my_prompt.txt --auto-seeds 10
+   ```
+
+3. After reviewing initial results, edit the prompt file while generation continues:
+   ```
+   echo "a surreal landscape with floating islands and waterfalls" > my_prompt.txt
+   ```
+
+4. Subsequent generations will automatically use your updated prompt
+
+5. Continue refining as needed between generations
+
+##### Notes
+
+- `--prompt` and `--prompt-file` are mutually exclusive options
+- Empty prompt files or non-existent files will raise appropriate errors
+- Each generated image's metadata will contain the actual prompt used for that specific generation
 
 #### 📜 Training Arguments
 
