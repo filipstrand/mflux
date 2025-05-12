@@ -1,5 +1,6 @@
 from mflux import Config, StopImageGenerationException
 from mflux.callbacks.callback_registry import CallbackRegistry
+from mflux.callbacks.instances.battery_saver import BatterySaver
 from mflux.callbacks.instances.memory_saver import MemorySaver
 from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
 from mflux.flux_tools.fill.flux_fill import Flux1Fill
@@ -29,7 +30,15 @@ def main():
         lora_scales=args.lora_scales,
     )
 
-    # 2. Register the optional callbacks
+    # 2. Register callbacks
+
+    # Add BatterySaver callback unconditionally
+    CallbackRegistry.register_before_loop(
+        BatterySaver(battery_percentage_stop_limit=args.battery_percentage_stop_limit)
+    )
+
+    # Register the optional callbacks
+
     if args.stepwise_image_output_dir:
         handler = StepwiseHandler(flux=flux, output_dir=args.stepwise_image_output_dir)
         CallbackRegistry.register_before_loop(handler)

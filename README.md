@@ -199,6 +199,8 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--low-ram`** (optional): Reduces GPU memory usage by limiting the MLX cache size and releasing text encoders and transformer components after use (single image generation only). While this may slightly decrease performance, it helps prevent system memory swapping to disk, allowing image generation on systems with limited RAM.
 
+- **`--battery-percentage-stop-limit`** or **`-B`** (optional, `int`, default: `5`): On Mac laptops powered by battery, automatically stops image generation when battery percentage reaches this threshold. Prevents your Mac from shutting down and becoming unresponsive during long generation sessions.
+
 - **`--lora-name`** (optional, `str`, default: `None`): The name of the LoRA to download from Hugging Face.
 
 - **`--lora-repo-id`** (optional, `str`, default: `"ali-vilab/In-Context-LoRA"`): The Hugging Face repository ID for LoRAs.
@@ -1180,6 +1182,7 @@ See `uv run tools/rename_images.py --help` for full CLI usage help.
   - shortcut for dev model: `alias mflux-dev='mflux-generate --model dev'`
   - shortcut for schnell model *and* always save metadata: `alias mflux-schnell='mflux-generate --model schnell --metadata'`
 - For systems with limited memory, use the `--low-ram` flag to reduce memory usage by constraining the MLX cache size and releasing components after use
+- On battery-powered Macs, use `--battery-percentage-stop-limit` (or `-B`) to prevent your laptop from shutting down during long generation sessions
 - When generating multiple images with different seeds, use `--seed` with multiple values or `--auto-seeds` to automatically generate a series of random seeds
 - Use `--stepwise-image-output-dir` to save intermediate images at each denoising step, which can be useful for debugging or creating animations of the generation process
 
