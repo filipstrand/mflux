@@ -24,12 +24,12 @@ def test_get_battery_percentage_success():
         assert percentage == 42
 
 
-def test_get_battery_percentage_no_match():
+def test_get_battery_percentage_while_charging():
     """Test that the function returns None when the output doesn't match the expected pattern."""
     with patch("subprocess.run") as mock_run:
         # Set up mock to return an output that doesn't match the expected pattern
         mock_result = MagicMock()
-        mock_result.stdout = "Now drawing from 'AC Power'\n-InternalBattery-0 (id=1234567)    No battery installed"
+        mock_result.stdout = "Now drawing from 'AC Power'"
         mock_run.return_value = mock_result
 
         # Call the function
