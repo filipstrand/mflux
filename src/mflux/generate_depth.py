@@ -1,5 +1,6 @@
 from mflux import Config, StopImageGenerationException
 from mflux.callbacks.callback_registry import CallbackRegistry
+from mflux.callbacks.instances.battery_saver import BatterySaver
 from mflux.callbacks.instances.depth_saver import DepthImageSaver
 from mflux.callbacks.instances.memory_saver import MemorySaver
 from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
@@ -30,7 +31,15 @@ def main():
         lora_scales=args.lora_scales,
     )
 
-    # 2. Register the optional callbacks
+    # 2. Register callbacks
+
+    # Add BatterySaver callback unconditionally
+    CallbackRegistry.register_before_loop(
+        BatterySaver(battery_percentage_stop_limit=args.battery_percentage_stop_limit)
+    )
+
+    # Register the optional callbacks
+
     if args.save_depth_map:
         CallbackRegistry.register_before_loop(DepthImageSaver(path=args.output))
     if args.stepwise_image_output_dir:
