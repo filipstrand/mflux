@@ -29,6 +29,7 @@ class ImageUtil:
         controlnet_image_path: str | Path | None = None,
         image_path: str | Path | None = None,
         redux_image_paths: list[str] | list[Path] | None = None,
+        redux_image_strengths: list[float] | None = None,  # Add parameter for redux image strengths
         image_strength: float | None = None,
         masked_image_path: str | Path | None = None,
         depth_image_path: str | Path | None = None,
@@ -55,6 +56,7 @@ class ImageUtil:
             masked_image_path=masked_image_path,
             depth_image_path=depth_image_path,
             redux_image_paths=redux_image_paths,
+            redux_image_strengths=redux_image_strengths,
         )
 
     @staticmethod
