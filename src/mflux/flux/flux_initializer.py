@@ -2,7 +2,7 @@ from mflux import ModelConfig
 from mflux.controlnet.transformer_controlnet import TransformerControlnet
 from mflux.controlnet.weight_handler_controlnet import WeightHandlerControlnet
 from mflux.flux_tools.redux.weight_handler_redux import WeightHandlerRedux
-from mflux.models.depth_pro.depth_pro_initializer import DepthProInitializer
+from mflux.models.depth_pro.depth_pro import DepthPro
 from mflux.models.redux_encoder.redux_encoder import ReduxEncoder
 from mflux.models.siglip_vision_transformer.siglip_vision_transformer import SiglipVisionTransformer
 from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
@@ -33,8 +33,6 @@ class FluxInitializer:
         # 0. Set paths, configs, and prompt_cache for later
         lora_paths = lora_paths or []
         flux_model.prompt_cache = {}
-        flux_model.lora_paths = lora_paths
-        flux_model.lora_scales = lora_scales
         flux_model.model_config = model_config
 
         # 1. Initialize tokenizers
@@ -82,10 +80,12 @@ class FluxInitializer:
             lora_names=lora_names,
             repo_id=lora_repo_id,
         )
+        flux_model.lora_paths = lora_paths + hf_lora_paths
+        flux_model.lora_scales = (lora_scales or []) + [1.0] * len(hf_lora_paths)
         lora_weights = WeightHandlerLoRA.load_lora_weights(
             transformer=flux_model.transformer,
-            lora_files=lora_paths + hf_lora_paths,
-            lora_scales=lora_scales + [1.0] * len(hf_lora_paths),
+            lora_files=flux_model.lora_paths,
+            lora_scales=flux_model.lora_scales,
         )
         WeightHandlerLoRA.set_lora_weights(
             transformer=flux_model.transformer,
@@ -115,8 +115,8 @@ class FluxInitializer:
             lora_repo_id=lora_repo_id,
         )
 
-        # 2. Initialize the DepthPro model and assign the weights
-        flux_model.depth_pro = DepthProInitializer.init()
+        # 2. Initialize the DepthPro model
+        flux_model.depth_pro = DepthPro()
 
     @staticmethod
     def init_redux(
