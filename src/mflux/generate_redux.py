@@ -47,7 +47,10 @@ def main():
             args.redux_image_strengths.extend([1.0] * (len(args.redux_image_paths) - len(args.redux_image_strengths)))
         # If too many strengths provided, truncate to match image count
         elif len(args.redux_image_strengths) > len(args.redux_image_paths):
-            args.redux_image_strengths = args.redux_image_strengths[: len(args.redux_image_paths)]
+            raise ValueError(
+                f"Too many strengths provided ({len(args.redux_image_strengths)}), "
+                f"expted at most {len(args.redux_image_paths)}."
+            )
 
     try:
         for seed in args.seed:
