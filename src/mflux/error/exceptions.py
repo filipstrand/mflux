@@ -14,6 +14,10 @@ class MFluxUserException(MFluxException):
     """an exception raised by user behavior or intention."""
 
 
+class PromptFileReadError(MFluxUserException):
+    """Exception raised for errors in reading the prompt file."""
+
+
 class StopImageGenerationException(MFluxUserException):
     """user has requested to stop a image generation in progress."""
 
