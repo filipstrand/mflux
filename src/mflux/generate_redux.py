@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from mflux import Config, ModelConfig, StopImageGenerationException
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.callbacks.instances.memory_saver import MemorySaver
@@ -16,6 +18,12 @@ def main():
     parser.add_redux_arguments()
     parser.add_output_arguments()
     args = parser.parse_args()
+
+    # Validate and normalize redux image strengths
+    redux_image_strengths = _validate_redux_image_strengths(
+        redux_image_paths=args.redux_image_paths,
+        redux_image_strengths=args.redux_image_strengths,
+    )
 
     # 1. Load the model
     flux = Flux1Redux(
@@ -52,6 +60,7 @@ def main():
                     width=args.width,
                     guidance=args.guidance,
                     redux_image_paths=args.redux_image_paths,
+                    redux_image_strengths=redux_image_strengths,
                 ),
             )
 
@@ -62,6 +71,26 @@ def main():
     finally:
         if memory_saver:
             print(memory_saver.memory_stats())
+
+
+def _validate_redux_image_strengths(
+    redux_image_paths: list[Path],
+    redux_image_strengths: list[float] | None,
+) -> list[float] | None:
+    if not redux_image_strengths or len(redux_image_strengths) == 0:
+        return redux_image_strengths
+
+    # If strengths provided but not enough for all images, fill with default (1.0)
+    if len(redux_image_strengths) < len(redux_image_paths):
+        redux_image_strengths.extend([1.0] * (len(redux_image_paths) - len(redux_image_strengths)))
+
+    # If too many strengths provided, raise error
+    elif len(redux_image_strengths) > len(redux_image_paths):
+        raise ValueError(
+            f"Too many strengths provided ({len(redux_image_strengths)}), expted at most {len(redux_image_paths)}."
+        )
+
+    return redux_image_strengths
 
 
 if __name__ == "__main__":

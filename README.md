@@ -215,6 +215,46 @@ The `mflux-generate-in-context` command supports most of the same arguments as `
 
 See the [In-Context LoRA](#-in-context-lora) section for more details on how to use this feature effectively.
 
+#### 📜 Redux Tool Command-Line Arguments
+
+The `mflux-generate-redux` command uses most of the same arguments as `mflux-generate`, with these specific parameters:
+
+- **`--redux-image-paths`** (required, `[str]`): Paths to one or more reference images to influence the generation.
+
+- **`--redux-image-strengths`** (optional, `[float]`, default: `[1.0, 1.0, ...]`): Strength values (between 0.0 and 1.0) for each reference image. Higher values give more influence to that reference image. If not provided, all images use a strength of 1.0.
+
+See the [Redux](#-redux) section for more details on this feature.
+
+#### 📜 Fill Tool Command-Line Arguments
+
+The `mflux-generate-fill` command supports most of the same arguments as `mflux-generate`, with these specific parameters:
+
+- **`--image-path`** (required, `str`): Path to the original image that will be modified.
+
+- **`--masked-image-path`** (required, `str`): Path to a binary mask image where white areas (255) will be regenerated and black areas (0) will be preserved.
+
+- **`--guidance`** (optional, `float`, default: `30.0`): The Fill tool works best with higher guidance values compared to regular image generation.
+
+See the [Fill](#-fill) section for more details on inpainting and outpainting.
+
+#### 📜 Depth Tool Command-Line Arguments
+
+The `mflux-generate-depth` command supports most of the same arguments as `mflux-generate`, with these specific parameters:
+
+- **`--image-path`** (optional, `str`, default: `None`): Path to the reference image from which to extract a depth map. Either this or `--depth-image-path` must be provided.
+
+- **`--depth-image-path`** (optional, `str`, default: `None`): Path to a pre-generated depth map image. Either this or `--image-path` must be provided.
+
+The `mflux-save-depth` command for extracting depth maps without generating images has these arguments:
+
+- **`--image-path`** (required, `str`): Path to the image from which to extract a depth map.
+
+- **`--output`** (optional, `str`, default: Uses the input filename with "_depth" suffix): Path where the generated depth map will be saved.
+
+- **`--quantize`** or **`-q`** (optional, `int`, default: `None`): Quantization for the Depth Pro model.
+
+See the [Depth](#-depth) section for more details on this feature.
+
 #### 📜 ControlNet Command-Line Arguments
 
 The `mflux-generate-controlnet` command supports most of the same arguments as `mflux-generate`, with these additional parameters:
@@ -941,6 +981,22 @@ mflux-generate-redux \
   --width 1154 \
   -q 8
 ```
+
+You can also control the influence of each reference image by specifying strength values (between 0.0 and 1.0) using the `--redux-image-strengths` parameter:
+
+```bash
+mflux-generate-redux \
+  --prompt "a grey statue of a cat on a white platform in front of a blue background" \
+  --redux-image-paths "image1.png" "image2.png" \
+  --redux-image-strengths 0.8 0.5 \
+  --steps 20 \
+  --height 1024 \
+  --width 768 \
+  -q 8
+```
+
+A higher strength value gives the reference image more influence over the final result. If you don't specify any strengths, a default value of 1.0 is used for all images.
+
 There is a tendency for the reference image to dominate over the input prompt.
 
 ⚠️ *Note: Using the Redux tool requires an additional 1.1GB download from [black-forest-labs/FLUX.1-Redux-dev](https://huggingface.co/black-forest-labs/FLUX.1-Redux-dev). The download happens automatically on first use.*

@@ -29,6 +29,7 @@ class GeneratedImage:
         masked_image_path: str | Path | None = None,
         depth_image_path: str | Path | None = None,
         redux_image_paths: list[str] | list[Path] | None = None,
+        redux_image_strengths: list[float] | None = None,
     ):
         self.image = image
         self.model_config = model_config
@@ -48,6 +49,7 @@ class GeneratedImage:
         self.masked_image_path = masked_image_path
         self.depth_image_path = depth_image_path
         self.redux_image_paths = redux_image_paths
+        self.redux_image_strengths = redux_image_strengths
 
     def get_right_half(self) -> "GeneratedImage":
         # Calculate the coordinates for the right half
@@ -85,13 +87,16 @@ class GeneratedImage:
 
         ImageUtil.save_image(self.image, path, self._get_metadata(), export_json_metadata, overwrite)
 
+    def _format_redux_strengths(self) -> list[float] | None:
+        if not self.redux_image_strengths:
+            return None
+        return [round(scale, 2) for scale in self.redux_image_strengths]
+
     def _get_metadata(self) -> dict:
         """Generate metadata for reference as well as input data for
         command line --config-from-metadata arg in future generations.
         """
         return {
-            # mflux_version is used by future metadata readers
-            # to determine supportability of metadata-derived workflows
             "mflux_version": GeneratedImage.get_version(),
             "model": self.model_config.model_name,
             "base_model": str(self.model_config.base_model),
@@ -110,6 +115,7 @@ class GeneratedImage:
             "masked_image_path": str(self.masked_image_path) if self.masked_image_path else None,
             "depth_image_path": str(self.depth_image_path) if self.depth_image_path else None,
             "redux_image_paths": str(self.redux_image_paths) if self.redux_image_paths else None,
+            "redux_image_strengths": self._format_redux_strengths(),
             "prompt": self.prompt,
         }
 
