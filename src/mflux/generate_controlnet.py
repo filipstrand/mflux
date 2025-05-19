@@ -46,13 +46,10 @@ def main():
 
     try:
         for seed in args.seed:
-            # Get prompt (either from --prompt arg or from --prompt-file)
-            prompt = get_effective_prompt(args)
-
             # 3. Generate an image for each seed value
             image = flux.generate_image(
                 seed=seed,
-                prompt=prompt,
+                prompt=get_effective_prompt(args),
                 controlnet_image_path=args.controlnet_image_path,
                 config=Config(
                     num_inference_steps=args.steps,

@@ -4,7 +4,7 @@ from mflux.callbacks.instances.memory_saver import MemorySaver
 from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
 from mflux.error.exceptions import PromptFileReadError
 from mflux.ui.cli.parsers import CommandLineParser
-from mflux.ui.prompt_utils import read_prompt_file
+from mflux.ui.prompt_utils import get_effective_prompt
 
 
 def main():
@@ -43,15 +43,10 @@ def main():
 
     try:
         for seed in args.seed:
-            # Get prompt from file if prompt_file is provided, otherwise use the static prompt
-            prompt = args.prompt
-            if args.prompt_file is not None:
-                prompt = read_prompt_file(args.prompt_file)
-
             # 3. Generate an image for each seed value
             image = flux.generate_image(
                 seed=seed,
-                prompt=prompt,
+                prompt=get_effective_prompt(args),
                 config=Config(
                     num_inference_steps=args.steps,
                     height=args.height,
