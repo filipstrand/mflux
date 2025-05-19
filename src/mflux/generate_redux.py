@@ -64,7 +64,7 @@ def main():
                     width=args.width,
                     guidance=args.guidance,
                     redux_image_paths=args.redux_image_paths,
-                    redux_image_strengths=args.redux_image_strengths,  # Pass the strengths to the config
+                    redux_image_strengths=args.redux_image_strengths,
                 ),
             )
 
