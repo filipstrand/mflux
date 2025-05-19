@@ -7,7 +7,9 @@ from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
 from mflux.community.in_context_lora.flux_in_context_lora import Flux1InContextLoRA
 from mflux.community.in_context_lora.in_context_loras import LORA_REPO_ID, get_lora_filename
 from mflux.config.model_config import ModelConfig
+from mflux.error.exceptions import PromptFileReadError
 from mflux.ui.cli.parsers import CommandLineParser
+from mflux.ui.prompt_utils import get_effective_prompt
 
 
 def main():
@@ -56,7 +58,7 @@ def main():
             # 3. Generate an image for each seed value
             image = flux.generate_image(
                 seed=seed,
-                prompt=args.prompt,
+                prompt=get_effective_prompt(args),
                 config=Config(
                     num_inference_steps=args.steps,
                     height=args.height,
@@ -70,8 +72,8 @@ def main():
             image.get_right_half().save(path=output_path, export_json_metadata=args.metadata)
             if args.save_full_image:
                 image.save(path=output_path.with_stem(output_path.stem + "_full"))
-    except StopImageGenerationException as stop_exc:
-        print(stop_exc)
+    except (StopImageGenerationException, PromptFileReadError) as exc:
+        print(exc)
     finally:
         if memory_saver:
             print(memory_saver.memory_stats())
