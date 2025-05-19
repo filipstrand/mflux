@@ -595,6 +595,7 @@ def test_redux_args(mflux_redux_parser, mflux_redux_minimal_argv):
         assert len(args.redux_image_paths) == 2
         assert args.redux_image_paths[0] == Path("image1.png")
         assert args.redux_image_paths[1] == Path("image2.png")
+        assert args.redux_image_strengths is None  # Default should be None
 
     # Test with more image paths
     with patch("sys.argv", ["mflux-redux", "--redux-image-paths", "image1.png", "image2.png", "image3.png"]):
@@ -603,6 +604,21 @@ def test_redux_args(mflux_redux_parser, mflux_redux_minimal_argv):
         assert args.redux_image_paths[0] == Path("image1.png")
         assert args.redux_image_paths[1] == Path("image2.png")
         assert args.redux_image_paths[2] == Path("image3.png")
+
+    # Test with redux_image_strengths parameter
+    with patch("sys.argv", mflux_redux_minimal_argv + ["--redux-image-strengths", "0.8", "0.5"]):
+        args = mflux_redux_parser.parse_args()
+        assert len(args.redux_image_paths) == 2
+        assert len(args.redux_image_strengths) == 2
+        assert args.redux_image_strengths[0] == pytest.approx(0.8)
+        assert args.redux_image_strengths[1] == pytest.approx(0.5)
+
+    # Test with single redux_image_strength
+    with patch("sys.argv", mflux_redux_minimal_argv + ["--redux-image-strengths", "0.3"]):
+        args = mflux_redux_parser.parse_args()
+        assert len(args.redux_image_paths) == 2
+        assert len(args.redux_image_strengths) == 1
+        assert args.redux_image_strengths[0] == pytest.approx(0.3)
 
     # Test with model argument
     with patch("sys.argv", mflux_redux_minimal_argv + ["--model", "dev"]):

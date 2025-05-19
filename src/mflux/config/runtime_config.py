@@ -65,6 +65,10 @@ class RuntimeConfig:
         return self.config.redux_image_paths
 
     @property
+    def redux_image_strengths(self) -> list[float] | None:
+        return self.config.redux_image_strengths
+
+    @property
     def masked_image_path(self) -> Path | None:
         return self.config.masked_image_path
 
