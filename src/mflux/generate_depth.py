@@ -1,3 +1,5 @@
+from argparse import Namespace
+
 from mflux import Config, StopImageGenerationException
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.callbacks.instances.battery_saver import BatterySaver
@@ -32,28 +34,7 @@ def main():
     )
 
     # 2. Register callbacks
-
-    # Add BatterySaver callback unconditionally
-    CallbackRegistry.register_before_loop(
-        BatterySaver(battery_percentage_stop_limit=args.battery_percentage_stop_limit)
-    )
-
-    # Register the optional callbacks
-
-    if args.save_depth_map:
-        CallbackRegistry.register_before_loop(DepthImageSaver(path=args.output))
-    if args.stepwise_image_output_dir:
-        handler = StepwiseHandler(flux=flux, output_dir=args.stepwise_image_output_dir)
-        CallbackRegistry.register_before_loop(handler)
-        CallbackRegistry.register_in_loop(handler)
-        CallbackRegistry.register_interrupt(handler)
-
-    memory_saver = None
-    if args.low_ram:
-        memory_saver = MemorySaver(flux=flux, keep_transformer=len(args.seed) > 1)
-        CallbackRegistry.register_before_loop(memory_saver)
-        CallbackRegistry.register_in_loop(memory_saver)
-        CallbackRegistry.register_after_loop(memory_saver)
+    memory_saver = _register_callbacks(args=args, flux=flux)
 
     try:
         for seed in args.seed:
@@ -78,6 +59,33 @@ def main():
     finally:
         if memory_saver:
             print(memory_saver.memory_stats())
+
+
+def _register_callbacks(args: Namespace, flux: Flux1Depth) -> MemorySaver | None:
+    # Battery saver
+    battery_saver = BatterySaver(battery_percentage_stop_limit=args.battery_percentage_stop_limit)
+    CallbackRegistry.register_before_loop(battery_saver)
+
+    # Depth Image Saver
+    if args.save_depth_map:
+        depth_image_saver = DepthImageSaver(path=args.output)
+        CallbackRegistry.register_before_loop(depth_image_saver)
+
+    # Stepwise Handler
+    if args.stepwise_image_output_dir:
+        handler = StepwiseHandler(flux=flux, output_dir=args.stepwise_image_output_dir)
+        CallbackRegistry.register_before_loop(handler)
+        CallbackRegistry.register_in_loop(handler)
+        CallbackRegistry.register_interrupt(handler)
+
+    # Memory Saver
+    memory_saver = None
+    if args.low_ram:
+        memory_saver = MemorySaver(flux=flux, keep_transformer=len(args.seed) > 1)
+        CallbackRegistry.register_before_loop(memory_saver)
+        CallbackRegistry.register_in_loop(memory_saver)
+        CallbackRegistry.register_after_loop(memory_saver)
+    return memory_saver
 
 
 if __name__ == "__main__":
