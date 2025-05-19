@@ -79,6 +79,7 @@ class Flux1Redux(nn.Module):
             image_paths=config.redux_image_paths,
             image_encoder=self.image_encoder,
             image_embedder=self.image_embedder,
+            image_strengths=config.redux_image_strengths,
         )  # fmt: off
 
         # (Optional) Call subscribers for beginning of loop
@@ -148,6 +149,7 @@ class Flux1Redux(nn.Module):
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
             redux_image_paths=config.redux_image_paths,
+            redux_image_strengths=config.redux_image_strengths,
             image_strength=config.image_strength,
             generation_time=time_steps.format_dict["elapsed"],
         )
@@ -163,6 +165,7 @@ class Flux1Redux(nn.Module):
         image_paths: list[str] | list[Path],
         image_encoder: SiglipVisionTransformer,
         image_embedder: ReduxEncoder,
+        image_strengths: list[float] | None = None,
     ) -> tuple[mx.array, mx.array]:
         # 1. Encode the prompt
         prompt_embeds_txt, pooled_prompt_embeds = PromptEncoder.encode_prompt(
@@ -179,6 +182,7 @@ class Flux1Redux(nn.Module):
             image_paths=image_paths,
             image_encoder=image_encoder,
             image_embedder=image_embedder,
+            image_strengths=image_strengths,
         )  # fmt:off
 
         # 3. Join text embeddings with all image embeddings
