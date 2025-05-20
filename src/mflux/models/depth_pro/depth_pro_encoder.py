@@ -22,10 +22,12 @@ class DepthProEncoder(nn.Module):
         self.fuse_lowres = nn.Conv2d(in_channels=1024 * 2, out_channels=1024, kernel_size=1, stride=1, padding=0, bias=True)  # fmt: off
 
     def __call__(self, x0: mx.array, x1: mx.array, x2: mx.array) -> list[mx.array]:
-        # 1: Run the backbone (BeiT) model and get the result of large batch size.
+        # 1: Run the backbone patch encoder model
         x_pyramid_patches = mx.concatenate((x0, x1, x2), axis=0)
         x_pyramid_encodings, backbone_highres_hook0, backbone_highres_hook1 = self.patch_encoder(x_pyramid_patches)
         x_pyramid_encodings = DepthProEncoder._reshape_feature(x_pyramid_encodings, width=24, height=24)
+        x_latent0_encodings = DepthProEncoder._reshape_feature(backbone_highres_hook0, width=24, height=24)
+        x_latent1_encodings = DepthProEncoder._reshape_feature(backbone_highres_hook1, width=24, height=24)
 
         # Calculate indices for splitting
         x0_encodings = x_pyramid_encodings[: len(x0)]
@@ -33,8 +35,6 @@ class DepthProEncoder(nn.Module):
         x2_encodings = x_pyramid_encodings[len(x0) + len(x1) :]
 
         # 2. Merging
-        x_latent0_encodings = DepthProEncoder._reshape_feature(backbone_highres_hook0, width=24, height=24)
-        x_latent1_encodings = DepthProEncoder._reshape_feature(backbone_highres_hook1, width=24, height=24)
         x_latent0_features = DepthProEncoder._merge(x_latent0_encodings[: 1 * 5 * 5], batch_size=1, padding=3)
         x_latent1_features = DepthProEncoder._merge(x_latent1_encodings[: 1 * 5 * 5], batch_size=1, padding=3)
         x0_features = DepthProEncoder._merge(x0_encodings, batch_size=1, padding=3)
