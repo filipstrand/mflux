@@ -29,9 +29,10 @@ class DepthPro:
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"Image file not found: {image_path}")
 
-        input_array, height, width = self._pre_process(image_path)
-        depth = self._depth_pro_model(input_array)
-        return self._post_process(depth, height=height, width=width)
+        input_array, height, width = DepthPro._pre_process(image_path)
+        x0, x1, x2 = DepthPro._create_patches(input_array)
+        depth = self._depth_pro_model(x0, x1, x2)
+        return DepthPro._post_process(depth, height=height, width=width)
 
     @staticmethod
     def _pre_process(image_path):
@@ -39,6 +40,18 @@ class DepthPro:
         input_array = ImageUtil.preprocess_for_depth_pro(image)
         input_array = DepthPro._resize(input_array)
         return input_array, image.height, image.width
+
+    @staticmethod
+    def _create_patches(input_array) -> tuple[mx.array, mx.array, mx.array]:
+        # 1. Create the image pyramid
+        x0, x1, x2 = DepthProUtil.create_pyramid(input_array)
+
+        # 2: Split to create batched overlapped mini-images at the backbone (BeiT/ViT/Dino) resolution.
+        x0_patches = DepthProUtil.split(x0, overlap_ratio=0.25)
+        x1_patches = DepthProUtil.split(x1, overlap_ratio=0.5)
+        x2_patches = x2
+
+        return x0_patches, x1_patches, x2_patches
 
     @staticmethod
     def _post_process(depth: mx.array, height: int, width: int):
