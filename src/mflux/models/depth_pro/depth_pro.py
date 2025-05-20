@@ -35,14 +35,14 @@ class DepthPro:
         return DepthPro._post_process(depth, height=height, width=width)
 
     @staticmethod
-    def _pre_process(image_path):
+    def _pre_process(image_path: str | Path) -> tuple[mx.array, int, int]:
         image = Image.open(image_path).convert("RGB")
         input_array = ImageUtil.preprocess_for_depth_pro(image)
         input_array = DepthPro._resize(input_array)
         return input_array, image.height, image.width
 
     @staticmethod
-    def _create_patches(input_array) -> tuple[mx.array, mx.array, mx.array]:
+    def _create_patches(input_array: mx.array) -> tuple[mx.array, mx.array, mx.array]:
         # 1. Create the image pyramid
         x0, x1, x2 = DepthProUtil.create_pyramid(input_array)
 
@@ -54,7 +54,7 @@ class DepthPro:
         return x0_patches, x1_patches, x2_patches
 
     @staticmethod
-    def _post_process(depth: mx.array, height: int, width: int):
+    def _post_process(depth: mx.array, height: int, width: int) -> DepthResult:
         depth_min = mx.min(depth)
         depth_max = mx.max(depth)
         normalized_depth = (depth - depth_min) / (depth_max - depth_min)
