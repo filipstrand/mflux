@@ -62,7 +62,7 @@ class DepthProUtil:
             for c_idx in range(C_proc):
                 channel_img_np = x_proc[b, c_idx]
                 pil_img = Image.fromarray(channel_img_np)
-                resized_pil_img = pil_img.resize((W_out, H_out), Image.BILINEAR)
+                resized_pil_img = pil_img.resize((W_out, H_out), Image.NEAREST)
                 result_proc[b, c_idx] = np.array(resized_pil_img)
 
         if original_ndim == 3:
