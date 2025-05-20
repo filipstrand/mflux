@@ -44,7 +44,9 @@ class DepthPro:
     @staticmethod
     def _create_patches(input_array: mx.array) -> tuple[mx.array, mx.array, mx.array]:
         # 1. Create the image pyramid
-        x0, x1, x2 = DepthProUtil.create_pyramid(input_array)
+        x0 = input_array
+        x1 = DepthProUtil.interpolate(x=input_array, scale_factor=0.5)
+        x2 = DepthProUtil.interpolate(x=input_array, scale_factor=0.25)
 
         # 2: Split to create batched overlapped mini-images at the backbone (BeiT/ViT/Dino) resolution.
         x0_patches = DepthProUtil.split(x0, overlap_ratio=0.25)

@@ -7,13 +7,6 @@ from PIL import Image
 
 class DepthProUtil:
     @staticmethod
-    def create_pyramid(x: mx.array) -> tuple[mx.array, mx.array, mx.array]:
-        x0 = x
-        x1 = DepthProUtil.interpolate(x=x, scale_factor=0.5)
-        x2 = DepthProUtil.interpolate(x=x, scale_factor=0.25)
-        return x0, x1, x2
-
-    @staticmethod
     def split(x: mx.array, overlap_ratio: float = 0.25) -> mx.array:
         patch_size = 384
         patch_stride = int(patch_size * (1 - overlap_ratio))
