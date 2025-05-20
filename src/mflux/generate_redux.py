@@ -1,5 +1,4 @@
 from argparse import Namespace
-
 from pathlib import Path
 
 from mflux import Config, ModelConfig, StopImageGenerationException
