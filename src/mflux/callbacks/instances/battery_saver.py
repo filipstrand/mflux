@@ -3,7 +3,6 @@ import logging
 import re
 import subprocess
 
-
 from mflux.callbacks.callback import BeforeLoopCallback
 from mflux.error.exceptions import StopImageGenerationException
 
