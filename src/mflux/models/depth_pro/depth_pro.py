@@ -4,11 +4,11 @@ from pathlib import Path
 
 import mlx.core as mx
 import numpy as np
-import torch
 from PIL import Image
 
 from mflux.models.depth_pro.depth_pro_initializer import DepthProInitializer
 from mflux.models.depth_pro.depth_pro_model import DepthProModel
+from mflux.models.depth_pro.depth_pro_util import DepthProUtil
 from mflux.post_processing.image_util import ImageUtil
 
 
@@ -58,13 +58,6 @@ class DepthPro:
 
     @staticmethod
     def _resize(x: mx.array) -> mx.array:
-        x_np = np.array(x)
-        x_torch = torch.from_numpy(x_np)
-        x_torch = x_torch.unsqueeze(0)
-        x_torch = torch.nn.functional.interpolate(
-            x_torch,
-            size=(1536, 1536),
-            mode="bilinear",
-            align_corners=False,
-        )
-        return mx.array(x_torch)
+        x = mx.expand_dims(x, 0)
+        x = DepthProUtil.interpolate(x=x, size=(1536, 1536))
+        return x

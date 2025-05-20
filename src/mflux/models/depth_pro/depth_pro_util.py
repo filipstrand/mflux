@@ -2,20 +2,15 @@ import math
 
 import mlx.core as mx
 import numpy as np
-import torch
-import torch.nn.functional as F
+from PIL import Image
 
 
 class DepthProUtil:
     @staticmethod
     def create_pyramid(x: mx.array) -> tuple[mx.array, mx.array, mx.array]:
         x0 = x
-        x_np = np.array(x)
-        x_torch = torch.from_numpy(x_np)
-        x1_torch = F.interpolate(x_torch, size=None, scale_factor=0.5, mode="bilinear", align_corners=False)
-        x2_torch = F.interpolate(x_torch, size=None, scale_factor=0.25, mode="bilinear", align_corners=False)
-        x1 = mx.array(x1_torch.numpy())
-        x2 = mx.array(x2_torch.numpy())
+        x1 = DepthProUtil.interpolate(x=x, scale_factor=0.5)
+        x2 = DepthProUtil.interpolate(x=x, scale_factor=0.25)
         return x0, x1, x2
 
     @staticmethod
@@ -37,3 +32,42 @@ class DepthProUtil:
                 x_patch_list.append(x[..., j0:j1, i0:i1])
 
         return mx.concatenate(x_patch_list, axis=0)
+
+    @staticmethod
+    def interpolate(x: mx.array, size=None, scale_factor=None):
+        x_np = np.array(x)
+        original_ndim = x_np.ndim
+
+        if original_ndim == 3:
+            C, H_in, W_in = x_np.shape
+            x_proc = np.expand_dims(x_np, 0)
+        elif original_ndim == 4:
+            _, C, H_in, W_in = x_np.shape
+            x_proc = x_np
+        else:
+            raise ValueError(f"Unsupported input shape: {x_np.shape}. Must be 3D (C,H,W) or 4D (B,C,H,W).")
+
+        if size is not None:
+            H_out, W_out = size
+        elif scale_factor is not None:
+            H_out, W_out = int(H_in * scale_factor), int(W_in * scale_factor)
+        else:
+            return x
+
+        B_proc, C_proc, _, _ = x_proc.shape
+
+        result_proc = np.zeros((B_proc, C_proc, H_out, W_out), dtype=x_np.dtype)
+
+        for b in range(B_proc):
+            for c_idx in range(C_proc):
+                channel_img_np = x_proc[b, c_idx]
+                pil_img = Image.fromarray(channel_img_np)
+                resized_pil_img = pil_img.resize((W_out, H_out), Image.BILINEAR)
+                result_proc[b, c_idx] = np.array(resized_pil_img)
+
+        if original_ndim == 3:
+            final_result_np = result_proc.squeeze(0)
+        else:
+            final_result_np = result_proc
+
+        return mx.array(final_result_np)
