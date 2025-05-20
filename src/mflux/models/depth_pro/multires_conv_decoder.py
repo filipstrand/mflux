@@ -23,16 +23,29 @@ class MultiresConvDecoder(nn.Module):
             FeatureFusionBlock2d(num_features=256, deconv=True),
         ]
 
-    def __call__(self, encodings: list[mx.array]) -> tuple[mx.array, mx.array]:
-        # Process last layer
-        encodings_last = encodings[4]
-        features = ConvUtils.apply_conv(encodings_last, self.convs[4])
+    def __call__(
+        self,
+        x0_latent: mx.array,
+        x1_latent: mx.array,
+        x0_features: mx.array,
+        x1_features: mx.array,
+        x_global_features: mx.array,
+    ) -> mx.array:
+        # Process global features:
+        features = ConvUtils.apply_conv(x_global_features, self.convs[4])
         features = self.fusions[4](features)
 
-        # Process remaining levels with skip connections
-        for i in [3, 2, 1, 0]:
-            enc = encodings[i]
-            features_i = ConvUtils.apply_conv(enc, self.convs[i])
-            features = self.fusions[i](features, features_i)
+        # Process remaining levels with skip connections:
+        x1_skip_features = ConvUtils.apply_conv(x1_features, self.convs[3])
+        features = self.fusions[3](features, x1_skip_features)
+
+        x0_skip_features = ConvUtils.apply_conv(x0_features, self.convs[2])
+        features = self.fusions[2](features, x0_skip_features)
+
+        x1_skip_latents = ConvUtils.apply_conv(x1_latent, self.convs[1])
+        features = self.fusions[1](features, x1_skip_latents)
+
+        x0_skip_latents = ConvUtils.apply_conv(x0_latent, self.convs[0])
+        features = self.fusions[0](features, x0_skip_latents)
 
         return features
