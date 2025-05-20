@@ -14,6 +14,6 @@ class DepthProModel(nn.Module):
         self.head = FOVHead()
 
     def __call__(self, x0: mx.array, x1: mx.array, x2: mx.array) -> tuple[mx.array, mx.array]:
-        encodings = self.encoder(x0, x1, x2)
-        features = self.decoder(encodings)
-        return self.head(features)
+        x0_lat, x1_lat, x0_feat, x1_feat, x_global = self.encoder(x0, x1, x2)
+        decoded = self.decoder(x0_lat, x1_lat, x0_feat, x1_feat, x_global)
+        return self.head(decoded)

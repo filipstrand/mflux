@@ -21,7 +21,12 @@ class DepthProEncoder(nn.Module):
         self.upsample_lowres = nn.ConvTranspose2d(in_channels=1024, out_channels=1024, kernel_size=2, stride=2, padding=0, bias=True)  # fmt: off
         self.fuse_lowres = nn.Conv2d(in_channels=1024 * 2, out_channels=1024, kernel_size=1, stride=1, padding=0, bias=True)  # fmt: off
 
-    def __call__(self, x0: mx.array, x1: mx.array, x2: mx.array) -> list[mx.array]:
+    def __call__(
+        self,
+        x0: mx.array,
+        x1: mx.array,
+        x2: mx.array,
+    ) -> tuple[mx.array, mx.array, mx.array, mx.array, mx.array]:
         # 1: Run the backbone patch encoder model
         x_pyramid_patches = mx.concatenate((x0, x1, x2), axis=0)
         x_pyramid_encodings, backbone_highres_hook0, backbone_highres_hook1 = self.patch_encoder(x_pyramid_patches)
@@ -55,13 +60,13 @@ class DepthProEncoder(nn.Module):
         x_global_features = mx.concatenate((x2_features, x_global_features), axis=1)
         x_global_features = ConvUtils.apply_conv(x_global_features, self.fuse_lowres)
 
-        return [
+        return (
             x_latent0_features,
             x_latent1_features,
             x0_features,
             x1_features,
             x_global_features,
-        ]
+        )
 
     @staticmethod
     def _reshape_feature(

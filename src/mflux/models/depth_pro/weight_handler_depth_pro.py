@@ -11,6 +11,8 @@ from mlx.utils import tree_unflatten
 from mflux.weights.weight_handler import MetaData
 from mflux.weights.weight_util import WeightUtil
 
+logger = logging.getLogger(__name__)
+
 
 class WeightHandlerDepthPro:
     def __init__(self, weights: dict, meta_data: MetaData):
@@ -51,13 +53,13 @@ class WeightHandlerDepthPro:
 
         # 2. Download if model doesn't exist
         if not model_path.exists():
-            logging.info("Downloading Depth Pro model from Apple...")
+            logger.info("Downloading Depth Pro model from Apple...")
             try:
                 urllib.request.urlretrieve(APPLE_MODEL_URL, model_path)
-                logging.info(f"Downloaded model to {model_path}")
+                logger.info(f"Downloaded model to {model_path}")
             except (urllib.error.URLError, urllib.error.HTTPError) as e:
-                logging.error(f"Failed to download model: {e}")
-                logging.info(f"Please manually download from: {APPLE_MODEL_URL}")
+                logger.error(f"Failed to download model: {e}")
+                logger.info(f"Please manually download from: {APPLE_MODEL_URL}")
                 if not model_path.exists():
                     raise FileNotFoundError(f"Model file not found at {model_path}")
 
