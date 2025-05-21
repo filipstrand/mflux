@@ -115,6 +115,7 @@ class ModelConfig:
             alias=default_base.alias,
             model_name=model_name,
             base_model=default_base.model_name,
+            controlnet_model=default_base.controlnet_model,
             num_train_steps=default_base.num_train_steps,
             max_sequence_length=default_base.max_sequence_length,
             supports_guidance=default_base.supports_guidance,
