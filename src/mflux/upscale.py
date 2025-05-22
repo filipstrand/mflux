@@ -65,6 +65,7 @@ def _register_callbacks(args: Namespace, flux: Flux1Controlnet) -> MemorySaver |
     # VAE Tiling
     if args.vae_tiling:
         flux.vae.decoder.enable_tiling = True
+        flux.vae.decoder.split_direction = args.vae_tiling_split
 
     # Stepwise Handler
     if args.stepwise_image_output_dir:

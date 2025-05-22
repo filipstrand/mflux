@@ -208,7 +208,9 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--stepwise-image-output-dir`** (optional, `str`, default: `None`): [EXPERIMENTAL] Output directory to write step-wise images and their final composite image to. This feature may change in future versions. When specified, MFLUX will save an image for each denoising step, allowing you to visualize the generation process from noise to final image.
 
-- **`--vae-tiling`** (optional, flag): Enable VAE tiling to reduce memory usage during the decoding phase. This splits the image into smaller chunks for processing, which can prevent out-of-memory errors when generating high-resolution images. Note that this optimization may occasionally produce a subtle horizontal seam in the middle of the image, but it's often worth the tradeoff for being able to generate images that would otherwise cause your system to run out of memory.
+- **`--vae-tiling`** (optional, flag): Enable VAE tiling to reduce memory usage during the decoding phase. This splits the image into smaller chunks for processing, which can prevent out-of-memory errors when generating high-resolution images. Note that this optimization may occasionally produce a subtle seam in the middle of the image, but it's often worth the tradeoff for being able to generate images that would otherwise cause your system to run out of memory.
+
+- **`--vae-tiling-split`** (optional, `str`, default: `"horizontal"`): When VAE tiling is enabled, this parameter controls the direction to split the latents. Options are `"horizontal"` (splits into top/bottom) or `"vertical"` (splits into left/right). Use this option to control where potential seams might appear in the final image.
 
 #### 📜 In-Context LoRA Command-Line Arguments
 
@@ -1110,7 +1112,7 @@ mflux-upscale \
 
 This will upscale your input image to the specified dimensions. The upscaler works best when increasing the resolution by a factor of 2-4x.
 
-⚠️ *Note: Depending on the capability of your machine, you might run out of memory when trying to export the image. Try the `--vae-tiling` flag to process the image in smaller chunks, which significantly reduces memory usage during the VAE decoding phase at a minimal cost to performance. This optimization may occasionally produce a subtle horizontal seam in the middle of the image, but it's often worth the tradeoff for being able to generate higher resolution images.*
+⚠️ *Note: Depending on the capability of your machine, you might run out of memory when trying to export the image. Try the `--vae-tiling` flag to process the image in smaller chunks, which significantly reduces memory usage during the VAE decoding phase at a minimal cost to performance. This optimization may occasionally produce a subtle seam in the middle of the image, but it's often worth the tradeoff for being able to generate higher resolution images. You can also use `--vae-tiling-split vertical` to change the split direction from the default horizontal (top/bottom) to vertical (left/right).*
 
 #### Tips for Best Results
 

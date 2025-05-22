@@ -71,6 +71,7 @@ def _register_callbacks(args: Namespace, flux: Flux1Depth) -> MemorySaver | None
     # VAE Tiling
     if args.vae_tiling:
         flux.vae.decoder.enable_tiling = True
+        flux.vae.decoder.split_direction = args.vae_tiling_split
 
     # Depth Image Saver
     if args.save_depth_map:

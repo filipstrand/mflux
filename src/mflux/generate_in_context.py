@@ -78,6 +78,7 @@ def _register_callbacks(args: Namespace, flux: Flux1InContextLoRA) -> MemorySave
     # VAE Tiling
     if args.vae_tiling:
         flux.vae.decoder.enable_tiling = True
+        flux.vae.decoder.split_direction = "vertical"
 
     # Stepwise Handler
     if args.stepwise_image_output_dir:
