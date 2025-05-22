@@ -2,7 +2,6 @@ from pathlib import Path
 
 import mlx.core as mx
 
-from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.vae.vae import VAE
 from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.image_util import ImageUtil
@@ -12,8 +11,8 @@ class MaskUtil:
     @staticmethod
     def create_masked_latents(
         vae: VAE,
-        config: RuntimeConfig,
-        latents: mx.array,
+        height: int,
+        width: int,
         img_path: str | Path,
         mask_path: str | Path | None,
     ) -> mx.array:
@@ -24,27 +23,27 @@ class MaskUtil:
         # 1. Get the reference image
         scaled_image = ImageUtil.scale_to_dimensions(
             image=ImageUtil.load_image(img_path).convert("RGB"),
-            target_width=config.width,
-            target_height=config.height,
+            target_width=width,
+            target_height=height,
         )
         image = ImageUtil.to_array(scaled_image)
 
         # 2. Get the mask
         scaled = ImageUtil.scale_to_dimensions(
             image=ImageUtil.load_image(mask_path).convert("RGB"),
-            target_width=config.width,
-            target_height=config.height,
+            target_width=width,
+            target_height=height,
         )
         the_mask = ImageUtil.to_array(scaled, is_mask=True)
 
         # 3. Create and pack the masked image
         masked_image = image * (1 - the_mask)
         masked_image = vae.encode(masked_image)
-        masked_image = ArrayUtil.pack_latents(latents=masked_image, height=config.height, width=config.width)
+        masked_image = ArrayUtil.pack_latents(latents=masked_image, height=height, width=width)
 
         # 4. Resize mask and pack latents
-        mask = MaskUtil._reshape_mask(the_mask=the_mask, height=config.height, width=config.width)
-        mask = ArrayUtil.pack_latents(latents=mask, height=config.height, width=config.width, num_channels_latents=64)
+        mask = MaskUtil._reshape_mask(the_mask=the_mask, height=height, width=width)
+        mask = ArrayUtil.pack_latents(latents=mask, height=height, width=width, num_channels_latents=64)
 
         # 5. Concat the masked_image and the mask
         masked_image_latents = mx.concatenate([masked_image, mask], axis=-1)
