@@ -24,7 +24,7 @@ def main():
 
     # 1. Load the model
     flux = Flux1Controlnet(
-        model_config=ModelConfig.from_name(model_name=args.model, base_model=args.base_model),
+        model_config=_get_controlnet_model_config(args.model),
         quantize=args.quantize,
         local_path=args.path,
         lora_paths=args.lora_paths,
@@ -59,10 +59,21 @@ def main():
             print(memory_saver.memory_stats())
 
 
+def _get_controlnet_model_config(model_name: str) -> ModelConfig:
+    if model_name == "schnell":
+        return ModelConfig.schnell_controlnet_canny()
+    return ModelConfig.dev_controlnet_canny()
+
+
 def _register_callbacks(args: Namespace, flux: Flux1Controlnet) -> MemorySaver | None:
     # Battery saver
     battery_saver = BatterySaver(battery_percentage_stop_limit=args.battery_percentage_stop_limit)
     CallbackRegistry.register_before_loop(battery_saver)
+
+    # VAE Tiling
+    if args.vae_tiling:
+        flux.vae.decoder.enable_tiling = True
+        flux.vae.decoder.split_direction = args.vae_tiling_split
 
     # Canny Image Saver
     if args.controlnet_save_canny:

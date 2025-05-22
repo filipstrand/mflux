@@ -115,7 +115,7 @@ class ImageUtil:
 
     @staticmethod
     def load_image(path: str | Path) -> PIL.Image.Image:
-        return PIL.Image.open(path)
+        return PIL.Image.open(path).convert("RGB")
 
     @staticmethod
     def expand_image(
