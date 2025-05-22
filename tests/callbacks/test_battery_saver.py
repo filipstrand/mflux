@@ -5,23 +5,6 @@ import pytest
 from mflux.callbacks.instances.battery_saver import BatterySaver, get_battery_percentage
 from mflux.error.exceptions import StopImageGenerationException
 
-# def test_get_battery_percentage_success():
-#     """Test that the battery percentage is correctly extracted when subprocess returns a valid output."""
-#     with patch("subprocess.run") as mock_run:
-#         # Set up mock to return a sample battery status output
-#         mock_result = MagicMock()
-#         mock_result.stdout = "Now drawing from 'Battery Power'\n -InternalBattery-0 (id=1234567)	42%;\n"
-#         mock_run.return_value = mock_result
-#
-#         # Call the function
-#         percentage = get_battery_percentage()
-#
-#         # Verify subprocess.run was called with the correct arguments
-#         mock_run.assert_called_once_with(["pmset", "-g", "batt"], capture_output=True, text=True, check=True)
-#
-#         # Assert the function properly extracted the battery percentage
-#         assert percentage == 42
-
 
 def test_get_battery_percentage_while_charging():
     """Test that the function returns None when the output doesn't match the expected pattern."""
