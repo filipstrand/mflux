@@ -64,6 +64,82 @@ def test_bfl_dev_fill_full_name():
     assert model.requires_sigma_shift is True
 
 
+def test_bfl_dev_depth():
+    model = ModelConfig.from_name("dev-depth")
+    assert model.alias == "dev-depth"
+    assert model.model_name == "black-forest-labs/FLUX.1-Depth-dev"
+    assert model.max_sequence_length == 512
+    assert model.num_train_steps == 1000
+    assert model.supports_guidance is True
+    assert model.requires_sigma_shift is True
+
+
+def test_bfl_dev_depth_full_name():
+    model = ModelConfig.from_name("black-forest-labs/FLUX.1-Depth-dev")
+    assert model.alias == "dev-depth"
+    assert model.model_name == "black-forest-labs/FLUX.1-Depth-dev"
+    assert model.max_sequence_length == 512
+    assert model.num_train_steps == 1000
+    assert model.supports_guidance is True
+    assert model.requires_sigma_shift is True
+
+
+def test_bfl_dev_redux():
+    model = ModelConfig.from_name("dev-redux")
+    assert model.alias == "dev-redux"
+    assert model.model_name == "black-forest-labs/FLUX.1-Redux-dev"
+    assert model.max_sequence_length == 512
+    assert model.num_train_steps == 1000
+    assert model.supports_guidance is True
+    assert model.requires_sigma_shift is True
+
+
+def test_bfl_dev_redux_full_name():
+    model = ModelConfig.from_name("black-forest-labs/FLUX.1-Redux-dev")
+    assert model.alias == "dev-redux"
+    assert model.model_name == "black-forest-labs/FLUX.1-Redux-dev"
+    assert model.max_sequence_length == 512
+    assert model.num_train_steps == 1000
+    assert model.supports_guidance is True
+    assert model.requires_sigma_shift is True
+
+
+def test_bfl_dev_controlnet_canny():
+    model = ModelConfig.from_name("dev-controlnet-canny")
+    assert model.alias == "dev-controlnet-canny"
+    assert model.model_name == "black-forest-labs/FLUX.1-dev"
+    assert model.controlnet_model == "InstantX/FLUX.1-dev-Controlnet-Canny"
+    assert model.max_sequence_length == 512
+    assert model.num_train_steps == 1000
+    assert model.supports_guidance is True
+    assert model.requires_sigma_shift is True
+    assert model.is_canny() is True
+
+
+def test_bfl_schnell_controlnet_canny():
+    model = ModelConfig.from_name("schnell-controlnet-canny")
+    assert model.alias == "schnell-controlnet-canny"
+    assert model.model_name == "black-forest-labs/FLUX.1-schnell"
+    assert model.controlnet_model == "InstantX/FLUX.1-dev-Controlnet-Canny"
+    assert model.max_sequence_length == 256
+    assert model.num_train_steps == 1000
+    assert model.supports_guidance is False
+    assert model.requires_sigma_shift is False
+    assert model.is_canny() is True
+
+
+def test_bfl_dev_controlnet_upscaler():
+    model = ModelConfig.from_name("dev-controlnet-upscaler")
+    assert model.alias == "dev-controlnet-upscaler"
+    assert model.model_name == "black-forest-labs/FLUX.1-dev"
+    assert model.controlnet_model == "jasperai/Flux.1-dev-Controlnet-Upscaler"
+    assert model.max_sequence_length == 512
+    assert model.num_train_steps == 1000
+    assert model.supports_guidance is False
+    assert model.requires_sigma_shift is False
+    assert model.is_canny() is False
+
+
 def test_community_dev_fill_implicit_base_model():
     model = ModelConfig.from_name("acme-lab/some-dev-fill-model")
     assert model.alias == "dev-fill"

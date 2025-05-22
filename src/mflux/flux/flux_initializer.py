@@ -175,7 +175,9 @@ class FluxInitializer:
         )
 
         # 2. Apply ControlNet-specific initialization
-        weights_controlnet = WeightHandlerControlnet.load_controlnet_transformer()
+        weights_controlnet = WeightHandlerControlnet.load_controlnet_transformer(
+            controlnet_model=model_config.controlnet_model
+        )
         flux_model.transformer_controlnet = TransformerControlnet(
             model_config=model_config,
             num_transformer_blocks=weights_controlnet.num_transformer_blocks(),
