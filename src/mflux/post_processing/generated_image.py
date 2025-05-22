@@ -30,6 +30,7 @@ class GeneratedImage:
         depth_image_path: str | Path | None = None,
         redux_image_paths: list[str] | list[Path] | None = None,
         redux_image_strengths: list[float] | None = None,
+        reference_garment_path: str | None = None,
     ):
         self.image = image
         self.model_config = model_config
@@ -50,6 +51,7 @@ class GeneratedImage:
         self.depth_image_path = depth_image_path
         self.redux_image_paths = redux_image_paths
         self.redux_image_strengths = redux_image_strengths
+        self.reference_garment_path = reference_garment_path
 
     def get_right_half(self) -> "GeneratedImage":
         # Calculate the coordinates for the right half
@@ -75,6 +77,7 @@ class GeneratedImage:
             image_strength=self.image_strength,
             masked_image_path=self.masked_image_path,
             depth_image_path=self.depth_image_path,
+            reference_garment_path=self.reference_garment_path,
         )
 
     def save(
@@ -117,6 +120,7 @@ class GeneratedImage:
             "redux_image_paths": str(self.redux_image_paths) if self.redux_image_paths else None,
             "redux_image_strengths": self._format_redux_strengths(),
             "prompt": self.prompt,
+            "reference_garment_path": self.reference_garment_path,
         }
 
     @staticmethod

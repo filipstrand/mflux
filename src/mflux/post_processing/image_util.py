@@ -22,17 +22,18 @@ class ImageUtil:
         config: RuntimeConfig,
         seed: int,
         prompt: str,
-        quantization: int,
         generation_time: float,
-        lora_paths: list[str],
-        lora_scales: list[float],
+        quantization: int | None = None,
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
         controlnet_image_path: str | Path | None = None,
         image_path: str | Path | None = None,
-        redux_image_paths: list[str] | list[Path] | None = None,
-        redux_image_strengths: list[float] | None = None,
         image_strength: float | None = None,
         masked_image_path: str | Path | None = None,
         depth_image_path: str | Path | None = None,
+        reference_garment_path: str | None = None,
+        redux_image_paths: list[str] | list[Path] | None = None,
+        redux_image_strengths: list[float] | None = None,
     ) -> GeneratedImage:
         normalized = ImageUtil._denormalize(decoded_latents)
         normalized_numpy = ImageUtil._to_numpy(normalized)
@@ -57,6 +58,7 @@ class ImageUtil:
             depth_image_path=depth_image_path,
             redux_image_paths=redux_image_paths,
             redux_image_strengths=redux_image_strengths,
+            reference_garment_path=reference_garment_path,
         )
 
     @staticmethod

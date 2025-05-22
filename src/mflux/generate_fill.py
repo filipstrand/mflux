@@ -8,7 +8,6 @@ from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
 from mflux.error.exceptions import PromptFileReadError
 from mflux.flux_tools.fill.flux_fill import Flux1Fill
 from mflux.ui.cli.parsers import CommandLineParser
-from mflux.ui.prompt_utils import get_effective_prompt
 
 
 def main():
@@ -28,7 +27,7 @@ def main():
 
     # 1. Load the model
     flux = Flux1Fill(
-        quantize=args.quantize,
+        quantize=8,
         local_path=args.path,
         lora_paths=args.lora_paths,
         lora_scales=args.lora_scales,
@@ -41,15 +40,16 @@ def main():
         for seed in args.seed:
             # 3. Generate an image for each seed value
             image = flux.generate_image(
-                seed=seed,
-                prompt=get_effective_prompt(args),
+                seed=42,
+                prompt="The pair of images highlights a clothing and its styling on a model, high resolution, 4K, 8K; [IMAGE1] Detailed product shot of a clothing; [IMAGE2] The same cloth is worn by a model in a lifestyle setting.",
+                reference_garment_path="/Users/filipstrand/Desktop/garment.jpg",
                 config=Config(
-                    num_inference_steps=args.steps,
-                    height=args.height,
-                    width=args.width,
+                    num_inference_steps=28,
+                    height=1024,
+                    width=768,
                     guidance=args.guidance,
-                    image_path=args.image_path,
-                    masked_image_path=args.masked_image_path,
+                    image_path="/Users/filipstrand/Desktop/model.jpg",
+                    masked_image_path="/Users/filipstrand/Desktop/mask.png",
                 ),
             )
 
@@ -73,8 +73,8 @@ def _register_callbacks(args: Namespace, flux: Flux1Fill) -> MemorySaver | None:
         flux.vae.decoder.split_direction = args.vae_tiling_split
 
     # Stepwise Handler
-    if args.stepwise_image_output_dir:
-        handler = StepwiseHandler(flux=flux, output_dir=args.stepwise_image_output_dir)
+    if True:
+        handler = StepwiseHandler(flux=flux, output_dir="/Users/filipstrand/Desktop/CATVTON")
         CallbackRegistry.register_before_loop(handler)
         CallbackRegistry.register_in_loop(handler)
         CallbackRegistry.register_interrupt(handler)
