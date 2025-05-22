@@ -73,8 +73,8 @@ class Flux1Fill(nn.Module):
         # 3. Create the static masked latents
         static_masked_latents = MaskUtil.create_masked_latents(
             vae=self.vae,
-            config=config,
-            latents=latents,
+            height=config.height,
+            width=config.width,
             img_path=config.image_path,
             mask_path=config.masked_image_path,
         )
