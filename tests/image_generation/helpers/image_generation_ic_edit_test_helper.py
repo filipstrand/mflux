@@ -5,56 +5,53 @@ import numpy as np
 from PIL import Image
 
 from mflux import Config, ModelConfig
-from mflux.community.in_context.flux_in_context_dev import Flux1InContextDev
-from mflux.community.in_context.utils.in_context_loras import LORA_REPO_ID, get_lora_filename
+from mflux.community.in_context.flux_in_context_fill import FluxInContextFill
+from mflux.community.in_context.utils.in_context_loras import prepare_ic_edit_loras
 
 
-class ImageGeneratorInContextTestHelper:
+class ImageGeneratorICEditTestHelper:
     @staticmethod
     def assert_matches_reference_image(
         reference_image_path: str,
         output_image_path: str,
-        model_config: ModelConfig,
         prompt: str,
         steps: int,
         seed: int,
         height: int | None = None,
         width: int | None = None,
-        image_path: str | None = None,
-        lora_style: str | None = None,
+        reference_image: str | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
     ):
         # resolve paths
-        reference_image_path = ImageGeneratorInContextTestHelper.resolve_path(reference_image_path)
-        output_image_path = ImageGeneratorInContextTestHelper.resolve_path(output_image_path)
-        image_path = ImageGeneratorInContextTestHelper.resolve_path(image_path)
-        lora_paths = (
-            [str(ImageGeneratorInContextTestHelper.resolve_path(p)) for p in lora_paths] if lora_paths else None
-        )
+        reference_image_path = ImageGeneratorICEditTestHelper.resolve_path(reference_image_path)
+        output_image_path = ImageGeneratorICEditTestHelper.resolve_path(output_image_path)
+        reference_image = ImageGeneratorICEditTestHelper.resolve_path(reference_image)
+        lora_paths = [str(ImageGeneratorICEditTestHelper.resolve_path(p)) for p in lora_paths] if lora_paths else None
 
         try:
             # given
-            flux = Flux1InContextDev(
-                model_config=model_config,
+            flux = FluxInContextFill(
+                model_config=ModelConfig.dev_fill(),
                 quantize=8,
-                lora_names=[get_lora_filename(lora_style)] if lora_style else None,
-                lora_repo_id=LORA_REPO_ID if lora_style else None,
-                lora_paths=lora_paths,
+                lora_paths=prepare_ic_edit_loras(lora_paths),
                 lora_scales=lora_scales,
             )
+
             # when
             image = flux.generate_image(
                 seed=seed,
                 prompt=prompt,
+                left_image_path=str(reference_image),
+                right_image_path=None,
                 config=Config(
                     num_inference_steps=steps,
-                    image_path=image_path,
                     height=height,
                     width=width,
                 ),
             )
-            # Save only the right half of the image (the generated part)
+
+            # Save the result
             image.get_right_half().save(path=output_image_path, overwrite=True)
 
             # then
