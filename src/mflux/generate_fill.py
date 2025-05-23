@@ -42,13 +42,13 @@ def main():
             image = flux.generate_image(
                 seed=42,
                 prompt="The pair of images highlights a clothing and its styling on a model, high resolution, 4K, 8K; [IMAGE1] Detailed product shot of a clothing; [IMAGE2] The same cloth is worn by a model in a lifestyle setting.",
-                reference_garment_path="/Users/filipstrand/Desktop/garment.jpg",
+                reference_garment_path="/Users/filipstrand/Desktop/garment.png",
                 config=Config(
                     num_inference_steps=28,
                     height=1024,
                     width=768,
                     guidance=args.guidance,
-                    image_path="/Users/filipstrand/Desktop/model.jpg",
+                    image_path="/Users/filipstrand/Desktop/model.png",
                     masked_image_path="/Users/filipstrand/Desktop/mask.png",
                 ),
             )
@@ -74,7 +74,7 @@ def _register_callbacks(args: Namespace, flux: Flux1Fill) -> MemorySaver | None:
 
     # Stepwise Handler
     if True:
-        handler = StepwiseHandler(flux=flux, output_dir="/Users/filipstrand/Desktop/CATVTON")
+        handler = StepwiseHandler(flux=flux, output_dir="/Users/filipstrand/Desktop/CATVTON___v2")
         CallbackRegistry.register_before_loop(handler)
         CallbackRegistry.register_in_loop(handler)
         CallbackRegistry.register_interrupt(handler)
