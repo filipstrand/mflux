@@ -94,9 +94,10 @@ class Dataset:
     ) -> mx.array | None:
         if example_spec.use_depth:
             depth_result = depth_pro.create_depth_map(image_path=example_spec.image)
+            transformed_depth_result = depth_result.apply_transformation(transform_type="sigmoid", strength=2.0)
             return Dataset._encode_image(
                 vae=flux.vae,
-                image=depth_result.depth_image.convert("RGB"),
+                image=transformed_depth_result.depth_image.convert("RGB"),
                 width=width,
                 height=height,
             )

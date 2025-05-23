@@ -1,5 +1,4 @@
 import os
-from dataclasses import dataclass
 from pathlib import Path
 
 import mlx.core as mx
@@ -9,15 +8,8 @@ from PIL import Image
 from mflux.models.depth_pro.depth_pro_initializer import DepthProInitializer
 from mflux.models.depth_pro.depth_pro_model import DepthProModel
 from mflux.models.depth_pro.depth_pro_util import DepthProUtil
+from mflux.models.depth_pro.depth_result import DepthResult
 from mflux.post_processing.image_util import ImageUtil
-
-
-@dataclass
-class DepthResult:
-    depth_image: Image.Image
-    depth_array: mx.array
-    min_depth: float
-    max_depth: float
 
 
 class DepthPro:
