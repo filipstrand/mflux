@@ -6,6 +6,7 @@ from mflux import Config, Flux1
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.dreambooth.dataset.batch import Batch
 from mflux.dreambooth.dataset.dataset import Example
+from mflux.dreambooth.optimization.depth_guided_loss import DepthGuidedLoss
 from mflux.latent_creator.latent_creator import LatentCreator
 
 
@@ -63,17 +64,19 @@ class DreamBoothLoss:
 
         # Construct the loss (derivation in src/mflux/dreambooth/optimization/_loss_derivation)
         pixel_losses = (clean_image + predicted_noise - pure_noise).square()
-        if example.depth_map is not None:
-            return DreamBoothLoss.scale_loss_with_depth_map(example.depth_map, pixel_losses)
+
+        # Use depth-guided loss if available
+        if example.raw_depth_map is not None:
+            depth_guided_loss = DepthGuidedLoss()
+            # Get the configuration from the example (defaults provided if not available)
+            emphasis_mode = getattr(example, "depth_emphasis_mode", "foreground")
+            emphasis_strength = getattr(example, "depth_emphasis_strength", 2.0)
+
+            return depth_guided_loss.apply_depth_emphasis_to_loss(
+                loss_tensor=pixel_losses,
+                raw_depth_map=example.raw_depth_map,
+                emphasis_mode=emphasis_mode,
+                emphasis_strength=emphasis_strength,
+            )
         else:
             return pixel_losses.mean()
-
-    @staticmethod
-    def scale_loss_with_depth_map(depth_map: mx.array, pixel_losses: mx.float16) -> mx.float16:
-        # 1. Normalize the depth map to [0, 1]
-        depth_map_normalized = (depth_map - mx.min(depth_map)) / (mx.max(depth_map) - mx.min(depth_map) + 1e-8)
-
-        # 2. Normalize weights to sum to 1
-        weights = depth_map_normalized / (mx.sum(depth_map_normalized) + 1e-8)
-        weighted_loss = mx.sum(pixel_losses * weights)
-        return weighted_loss

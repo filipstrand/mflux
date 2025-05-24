@@ -45,27 +45,37 @@
         {
           "image": "01.jpeg",
           "prompt": "photo of sks dog",
-          "use_depth": true
+          "use_depth": true,
+          "depth_emphasis_mode": "sigmoid",
+          "depth_emphasis_strength": 2.0
         },
         {
           "image": "02.jpeg",
           "prompt": "photo of sks dog",
-          "use_depth": false
+          "use_depth": true,
+          "depth_emphasis_mode": "sigmoid",
+          "depth_emphasis_strength": 2.0
         },
         {
           "image": "03.jpeg",
           "prompt": "photo of sks dog",
-          "use_depth": false
+          "use_depth": true,
+          "depth_emphasis_mode": "sigmoid",
+          "depth_emphasis_strength": 2.0
         },
         {
           "image": "04.jpeg",
           "prompt": "photo of sks dog",
-          "use_depth": false
+          "use_depth": true,
+          "depth_emphasis_mode": "sigmoid",
+          "depth_emphasis_strength": 2.0
         },
         {
           "image": "05.jpeg",
           "prompt": "photo of sks dog",
-          "use_depth": false
+          "use_depth": true,
+          "depth_emphasis_mode": "sigmoid",
+          "depth_emphasis_strength": 2.0
         }
       ]
   }
