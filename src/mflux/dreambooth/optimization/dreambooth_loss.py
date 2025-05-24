@@ -17,7 +17,8 @@ class DreamBoothLoss:
             DreamBoothLoss._single_example_loss(flux, config, example, batch.rng)
             for example in batch.examples
         ]  # fmt: off
-        return mx.mean(mx.array(losses))
+        mean_loss = mx.mean(mx.array(losses))
+        return mean_loss
 
     @staticmethod
     def _single_example_loss(flux: Flux1, config: RuntimeConfig, example: Example, rng: random.Random) -> mx.float16:
@@ -66,7 +67,9 @@ class DreamBoothLoss:
         pixel_losses = (clean_image + predicted_noise - pure_noise).square()
 
         # Use depth-guided loss if available
-        if example.raw_depth_map is not None:
+        has_depth = example.raw_depth_map is not None
+
+        if has_depth:
             depth_guided_loss = DepthGuidedLoss()
             # Get the configuration from the example (defaults provided if not available)
             emphasis_mode = getattr(example, "depth_emphasis_mode", "foreground")

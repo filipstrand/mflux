@@ -25,58 +25,58 @@
   },
   "lora_layers": {
     "single_transformer_blocks" : {
-        "block_range": {
-            "start": 0,
-            "end": 38
-        },
-        "layer_types": [
-            "proj_out",
-            "proj_mlp",
-            "attn.to_q",
-            "attn.to_k",
-            "attn.to_v"
-        ],
-        "lora_rank": 4
-        }
-    },
+      "block_range": {
+        "start": 0,
+        "end": 38
+      },
+      "layer_types": [
+        "proj_out",
+        "proj_mlp",
+        "attn.to_q",
+        "attn.to_k",
+        "attn.to_v"
+      ],
+      "lora_rank": 4
+    }
+  },
   "examples": {
-      "path": "images/",
-      "images": [
-        {
-          "image": "01.jpeg",
-          "prompt": "photo of sks dog",
-          "use_depth": true,
-          "depth_emphasis_mode": "sigmoid",
-          "depth_emphasis_strength": 2.0
-        },
-        {
-          "image": "02.jpeg",
-          "prompt": "photo of sks dog",
-          "use_depth": true,
-          "depth_emphasis_mode": "sigmoid",
-          "depth_emphasis_strength": 2.0
-        },
-        {
-          "image": "03.jpeg",
-          "prompt": "photo of sks dog",
-          "use_depth": true,
-          "depth_emphasis_mode": "sigmoid",
-          "depth_emphasis_strength": 2.0
-        },
-        {
-          "image": "04.jpeg",
-          "prompt": "photo of sks dog",
-          "use_depth": true,
-          "depth_emphasis_mode": "sigmoid",
-          "depth_emphasis_strength": 2.0
-        },
-        {
-          "image": "05.jpeg",
-          "prompt": "photo of sks dog",
-          "use_depth": true,
-          "depth_emphasis_mode": "sigmoid",
-          "depth_emphasis_strength": 2.0
-        }
-      ]
+    "path": "images/",
+    "images": [
+      {
+        "image": "01.jpeg",
+        "prompt": "photo of sks dog",
+        "use_depth": true,
+        "depth_emphasis_mode": "sigmoid",
+        "depth_emphasis_strength": 2.0
+      },
+      {
+        "image": "02.jpeg",
+        "prompt": "photo of sks dog",
+        "use_depth": true,
+        "depth_emphasis_mode": "sigmoid",
+        "depth_emphasis_strength": 2.0
+      },
+      {
+        "image": "03.jpeg",
+        "prompt": "photo of sks dog",
+        "use_depth": true,
+        "depth_emphasis_mode": "sigmoid",
+        "depth_emphasis_strength": 2.0
+      },
+      {
+        "image": "04.jpeg",
+        "prompt": "photo of sks dog",
+        "use_depth": true,
+        "depth_emphasis_mode": "sigmoid",
+        "depth_emphasis_strength": 2.0
+      },
+      {
+        "image": "05.jpeg",
+        "prompt": "photo of sks dog",
+        "use_depth": true,
+        "depth_emphasis_mode": "sigmoid",
+        "depth_emphasis_strength": 2.0
+      }
+    ]
   }
 }

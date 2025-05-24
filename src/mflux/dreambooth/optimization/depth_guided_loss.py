@@ -31,7 +31,6 @@ class DepthGuidedLoss:
         Returns:
             Emphasized loss value (scalar)
         """
-
         if emphasis_mode == "foreground":
             return self._apply_basic_emphasis(
                 pixel_losses=loss_tensor,
@@ -99,7 +98,6 @@ class DepthGuidedLoss:
             3. Final weights: weights = base_weight + emphasis * emphasis_strength
             4. Result: mean(pixel_losses * weights)
         """
-
         # Validate inputs
         if pixel_losses.size == 0 or raw_depth_map.size == 0:
             return pixel_losses.mean()
@@ -201,7 +199,6 @@ class DepthGuidedLoss:
         - Depth map with 1 channel, losses with multiple channels
         - Depth map with different spatial dimensions (requires interpolation)
         """
-
         target_shape = pixel_losses.shape
         current_shape = depth_map.shape
 
@@ -209,24 +206,61 @@ class DepthGuidedLoss:
         if current_shape == target_shape:
             return depth_map
 
-        # Handle channel dimension mismatch
+        # Handle the common case: depth map (1, H, W, 1) -> latent losses (1, C, spatial)
+        if len(current_shape) == 4 and len(target_shape) == 3:
+            batch, height, width, channels = current_shape
+            target_batch, target_channels, target_spatial = target_shape
+
+            # Flatten the spatial dimensions of the depth map
+            # Remove the channel dimension since it's 1
+            depth_flattened = depth_map.squeeze(-1)  # (1, H, W, 1) -> (1, H, W)
+            depth_spatial = depth_flattened.reshape(batch, height * width)  # (1, H, W) -> (1, H*W)
+
+            # If the spatial dimensions match, we can broadcast across channels
+            if height * width == target_spatial:
+                # Broadcast across the channel dimension: (1, spatial) -> (1, channels, spatial)
+                depth_expanded = mx.expand_dims(depth_spatial, axis=1)  # (1, 1, spatial)
+                result = mx.broadcast_to(depth_expanded, target_shape)  # (1, channels, spatial)
+                return result
+            else:
+                # Need to interpolate - for now use a simple approach
+                # Repeat/interpolate the depth values to match target spatial size
+                if height * width < target_spatial:
+                    # Upsample by repeating values
+                    repeat_factor = target_spatial // (height * width)
+                    remainder = target_spatial % (height * width)
+
+                    repeated = mx.repeat(depth_spatial, repeat_factor, axis=1)
+                    if remainder > 0:
+                        extra = depth_spatial[:, :remainder]
+                        depth_interpolated = mx.concatenate([repeated, extra], axis=1)
+                    else:
+                        depth_interpolated = repeated
+                else:
+                    # Downsample by taking every nth value
+                    step = (height * width) // target_spatial
+                    depth_interpolated = depth_spatial[:, ::step]
+                    # Ensure exact size
+                    depth_interpolated = depth_interpolated[:, :target_spatial]
+
+                # Broadcast across channels
+                depth_expanded = mx.expand_dims(depth_interpolated, axis=1)
+                result = mx.broadcast_to(depth_expanded, target_shape)
+                return result
+
+        # Handle channel dimension mismatch only
         if len(current_shape) == len(target_shape):
             if current_shape[:-1] == target_shape[:-1] and current_shape[-1] == 1:
                 # Broadcast last dimension: [B, H, W, 1] -> [B, H, W, C]
                 return mx.broadcast_to(depth_map, target_shape)
-
-        # Handle spatial dimension mismatch (simplified - in practice you'd want proper interpolation)
-        if len(current_shape) == len(target_shape) and current_shape[-1] == target_shape[-1]:
-            # For now, use simple approach - could be improved with proper interpolation
-            # This is mainly for demonstration; real implementation would need better resizing
-            return mx.broadcast_to(mx.mean(depth_map), target_shape)
 
         # Fallback: broadcast to target shape
         try:
             return mx.broadcast_to(depth_map, target_shape)
         except (ValueError, RuntimeError):
             # Last resort: use mean depth value everywhere
-            return mx.full(target_shape, mx.mean(depth_map))
+            mean_depth = mx.mean(depth_map)
+            return mx.full(target_shape, mean_depth)
 
     @staticmethod
     def compute_depth_statistics(raw_depth_map: mx.array) -> dict:
