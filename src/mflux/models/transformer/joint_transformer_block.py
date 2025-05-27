@@ -24,7 +24,7 @@ class JointTransformerBlock(nn.Module):
         encoder_hidden_states: mx.array,
         text_embeddings: mx.array,
         rotary_embeddings: mx.array,
-    ) -> (mx.array, mx.array):
+    ) -> tuple[mx.array, mx.array]:
         # 1a. Compute norm for hidden_states
         norm_hidden_states, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.norm1(
             hidden_states=hidden_states,

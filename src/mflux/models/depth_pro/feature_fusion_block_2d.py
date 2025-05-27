@@ -14,7 +14,7 @@ class FeatureFusionBlock2d(nn.Module):
         self.deconv = nn.ConvTranspose2d(in_channels=num_features, out_channels=num_features, kernel_size=2, stride=2, padding=0, bias=False)  # fmt: off
         self.out_conv = nn.Conv2d(in_channels=num_features, out_channels=num_features, kernel_size=1, stride=1, padding=0, bias=True)  # fmt: off
 
-    def __call__(self, x0: mx.array, x1: mx.array = None) -> mx.array:
+    def __call__(self, x0: mx.array, x1: mx.array | None = None) -> mx.array:
         x = x0
         if x1 is not None:
             res = self.resnet1(x1)

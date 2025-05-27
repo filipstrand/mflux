@@ -100,7 +100,44 @@ def mflux_fill_parser() -> CommandLineParser:
 
 @pytest.fixture
 def mflux_fill_minimal_argv() -> list[str]:
-    return ["mflux-fill", "--prompt", "meaning of life", "--image-path", "image.png", "--masked-image-path", "mask.png"]
+    return [
+        "mflux-generate-fill",
+        "--prompt",
+        "meaning of life",
+        "--image-path",
+        "image.png",
+        "--masked-image-path",
+        "mask.png",
+    ]
+
+
+@pytest.fixture
+def mflux_save_depth_parser() -> CommandLineParser:
+    parser = CommandLineParser(description="Save depth map from an image.")
+    parser.add_general_arguments()
+    parser.add_save_depth_arguments()
+    parser.add_output_arguments()
+    return parser
+
+
+@pytest.fixture
+def mflux_save_depth_minimal_argv() -> list[str]:
+    return ["mflux-save-depth", "--image-path", "image.png"]
+
+
+@pytest.fixture
+def mflux_redux_parser() -> CommandLineParser:
+    parser = CommandLineParser(description="Generate redux images.")
+    parser.add_general_arguments()
+    parser.add_model_arguments(require_model_arg=False)
+    parser.add_redux_arguments()
+    parser.add_output_arguments()
+    return parser
+
+
+@pytest.fixture
+def mflux_redux_minimal_argv() -> list[str]:
+    return ["mflux-generate-redux", "--redux-image-paths", "image1.png", "image2.png"]
 
 
 def test_model_path_requires_model_arg(mflux_generate_parser):
@@ -183,6 +220,32 @@ def test_prompt_arg(mflux_generate_parser, mflux_generate_minimal_argv, base_met
     with patch('sys.argv', mflux_generate_minimal_argv[:-2] + ['--prompt', cli_prompt, '--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
         args = mflux_generate_parser.parse_args()
         assert args.prompt == cli_prompt
+
+
+def test_prompt_file_arg(mflux_generate_parser, mflux_generate_minimal_argv, temp_dir):
+    # Create a prompt file
+    prompt_content = "prompt from a file being re-read for each generation"
+    prompt_file = temp_dir / "prompt.txt"
+    with prompt_file.open("wt") as pf:
+        pf.write(prompt_content)
+
+    # Test that prompt-file is correctly read
+    with patch('sys.argv', ["mflux-generate", "--prompt-file", prompt_file.as_posix()]):  # fmt: off
+        args = mflux_generate_parser.parse_args()
+        assert args.prompt_file == prompt_file
+        assert args.prompt is None  # prompt should be None since we're using prompt-file
+
+
+def test_prompt_and_prompt_file_mutually_exclusive(mflux_generate_parser, temp_dir):
+    # Create a prompt file
+    prompt_file = temp_dir / "prompt.txt"
+    with prompt_file.open("wt") as pf:
+        pf.write("some prompt content")
+
+    # Test that using both --prompt and --prompt-file raises an error
+    with pytest.raises(SystemExit):
+        with patch('sys.argv', ["mflux-generate", "--prompt", "direct prompt", "--prompt-file", prompt_file.as_posix()]):  # fmt: off
+            mflux_generate_parser.parse_args()
 
 
 def test_guidance_arg(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off
@@ -529,3 +592,68 @@ def test_fill_default_guidance():
 
         # Now check that guidance is correctly set to 30
         assert args.guidance == 30
+
+
+def test_save_depth_args(mflux_save_depth_parser, mflux_save_depth_minimal_argv):
+    # Test required arguments
+    with patch("sys.argv", mflux_save_depth_minimal_argv):
+        args = mflux_save_depth_parser.parse_args()
+        assert args.image_path == Path("image.png")
+        assert hasattr(args, "quantize")
+
+    # Test with quantized argument
+    with patch("sys.argv", mflux_save_depth_minimal_argv + ["--quantize", "4"]):
+        args = mflux_save_depth_parser.parse_args()
+        assert args.image_path == Path("image.png")
+        assert args.quantize == 4
+
+    # Test with output argument
+    with patch("sys.argv", mflux_save_depth_minimal_argv + ["--output", "depth_map.png"]):
+        args = mflux_save_depth_parser.parse_args()
+        assert args.image_path == Path("image.png")
+        assert args.output == "depth_map.png"
+
+
+def test_redux_args(mflux_redux_parser, mflux_redux_minimal_argv):
+    # Test required arguments
+    with patch("sys.argv", mflux_redux_minimal_argv):
+        args = mflux_redux_parser.parse_args()
+        assert len(args.redux_image_paths) == 2
+        assert args.redux_image_paths[0] == Path("image1.png")
+        assert args.redux_image_paths[1] == Path("image2.png")
+        assert args.redux_image_strengths is None  # Default should be None
+
+    # Test with more image paths
+    with patch("sys.argv", ["mflux-redux", "--redux-image-paths", "image1.png", "image2.png", "image3.png"]):
+        args = mflux_redux_parser.parse_args()
+        assert len(args.redux_image_paths) == 3
+        assert args.redux_image_paths[0] == Path("image1.png")
+        assert args.redux_image_paths[1] == Path("image2.png")
+        assert args.redux_image_paths[2] == Path("image3.png")
+
+    # Test with redux_image_strengths parameter
+    with patch("sys.argv", mflux_redux_minimal_argv + ["--redux-image-strengths", "0.8", "0.5"]):
+        args = mflux_redux_parser.parse_args()
+        assert len(args.redux_image_paths) == 2
+        assert len(args.redux_image_strengths) == 2
+        assert args.redux_image_strengths[0] == pytest.approx(0.8)
+        assert args.redux_image_strengths[1] == pytest.approx(0.5)
+
+    # Test with single redux_image_strength
+    with patch("sys.argv", mflux_redux_minimal_argv + ["--redux-image-strengths", "0.3"]):
+        args = mflux_redux_parser.parse_args()
+        assert len(args.redux_image_paths) == 2
+        assert len(args.redux_image_strengths) == 1
+        assert args.redux_image_strengths[0] == pytest.approx(0.3)
+
+    # Test with model argument
+    with patch("sys.argv", mflux_redux_minimal_argv + ["--model", "dev"]):
+        args = mflux_redux_parser.parse_args()
+        assert len(args.redux_image_paths) == 2
+        assert args.model == "dev"
+
+    # Test with output argument
+    with patch("sys.argv", mflux_redux_minimal_argv + ["--output", "redux_result.png"]):
+        args = mflux_redux_parser.parse_args()
+        assert len(args.redux_image_paths) == 2
+        assert args.output == "redux_result.png"

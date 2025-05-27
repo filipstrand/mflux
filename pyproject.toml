@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mflux"
-version = "0.6.2"
+version = "0.7.1"
 description = "A MLX port of FLUX based on the Huggingface Diffusers implementation."
 readme = "README.md"
 keywords = ["diffusers", "flux", "mlx"]
@@ -69,6 +69,7 @@ mflux-save = "mflux.save:main"
 mflux-save-depth = "mflux.save_depth:main"
 mflux-train = "mflux.train:main"
 mflux-mcp-tools = "mflux.ui.mcp.tools:main"
+mflux-upscale = "mflux.upscale:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

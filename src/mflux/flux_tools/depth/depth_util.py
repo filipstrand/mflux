@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 
 import mlx.core as mx
 import PIL.Image
@@ -19,10 +20,10 @@ class DepthUtil:
         vae: VAE,
         depth_pro: DepthPro,
         config: RuntimeConfig,
-        image_path: str | None = None,
-        depth_image_path: str | None = None,
-    ) -> (mx.array, PIL.Image.Image):
-        # 1. Create the depth map or use existing one
+        image_path: str | Path | None = None,
+        depth_image_path: str | Path | None = None,
+    ) -> tuple[mx.array, PIL.Image.Image]:
+        # 1. Get an existing depth map or create a new one
         depth_image_path, depth_image = DepthUtil.get_or_create_depth_map(
             depth_pro=depth_pro,
             image_path=image_path,
@@ -44,23 +45,23 @@ class DepthUtil:
     @staticmethod
     def get_or_create_depth_map(
         depth_pro: DepthPro,
-        image_path: str | None = None,
-        depth_map_path: str | None = None,
-    ) -> tuple[str, PIL.Image.Image | None]:
+        image_path: str | Path | None = None,
+        depth_map_path: str | Path | None = None,
+    ) -> tuple[str | Path, PIL.Image.Image]:
         # 1. If a depth map path is provided, use it directly
         if depth_map_path:
             if not os.path.exists(depth_map_path):
                 raise FileNotFoundError(f"Depth map file not found: {depth_map_path}")
             return depth_map_path, None
+
         if not image_path:
             raise ValueError("Either depth_map_path or image_path must be provided")
-        if not os.path.exists(image_path):
-            raise FileNotFoundError(f"Image file not found: {image_path}")
 
-        # 2. Generate a depth map from the image using the DepthPro model
-        depth_result = depth_pro(image_path)
+        # 2. Generate a depth map from the image
+        depth_result = depth_pro.create_depth_map(image_path=image_path)
 
         # 3. Save the depth map to a file with the same name + _depth suffix
         generated_depth_path = str(image_path).rsplit(".", 1)[0] + "_depth.png"
         depth_result.depth_image.save(generated_depth_path)
+
         return generated_depth_path, depth_result.depth_image

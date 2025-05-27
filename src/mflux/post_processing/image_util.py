@@ -1,7 +1,6 @@
 import json
 import logging
-import pathlib
-import typing as t
+from pathlib import Path
 
 import mlx.core as mx
 import numpy as np
@@ -27,12 +26,13 @@ class ImageUtil:
         generation_time: float,
         lora_paths: list[str],
         lora_scales: list[float],
-        controlnet_image_path: str | None = None,
-        image_path: str | None = None,
-        redux_image_paths: list[str] | None = None,
+        controlnet_image_path: str | Path | None = None,
+        image_path: str | Path | None = None,
+        redux_image_paths: list[str] | list[Path] | None = None,
+        redux_image_strengths: list[float] | None = None,
         image_strength: float | None = None,
-        masked_image_path: str | None = None,
-        depth_image_path: str | None = None,
+        masked_image_path: str | Path | None = None,
+        depth_image_path: str | Path | None = None,
     ) -> GeneratedImage:
         normalized = ImageUtil._denormalize(decoded_latents)
         normalized_numpy = ImageUtil._to_numpy(normalized)
@@ -56,10 +56,11 @@ class ImageUtil:
             masked_image_path=masked_image_path,
             depth_image_path=depth_image_path,
             redux_image_paths=redux_image_paths,
+            redux_image_strengths=redux_image_strengths,
         )
 
     @staticmethod
-    def to_composite_image(generated_images: t.List[GeneratedImage]) -> PIL.Image.Image:
+    def to_composite_image(generated_images: list[GeneratedImage]) -> PIL.Image.Image:
         # stitch horizontally
         total_width = sum(gen_img.image.width for gen_img in generated_images)
         max_height = max(gen_img.image.height for gen_img in generated_images)
@@ -113,13 +114,13 @@ class ImageUtil:
         return array
 
     @staticmethod
-    def load_image(path: str | pathlib.Path) -> PIL.Image.Image:
-        return PIL.Image.open(path)
+    def load_image(path: str | Path) -> PIL.Image.Image:
+        return PIL.Image.open(path).convert("RGB")
 
     @staticmethod
     def expand_image(
         image: PIL.Image.Image,
-        box_values: AbsoluteBoxValues = None,
+        box_values: AbsoluteBoxValues | None = None,
         top: int | str = 0,
         right: int | str = 0,
         bottom: int | str = 0,
@@ -161,7 +162,7 @@ class ImageUtil:
         orig_height: int,
         border_color: tuple,
         content_color: tuple,
-        box_values: AbsoluteBoxValues = None,
+        box_values: AbsoluteBoxValues | None = None,
         top: int | str = 0,
         right: int | str = 0,
         bottom: int | str = 0,
@@ -204,12 +205,12 @@ class ImageUtil:
     @staticmethod
     def save_image(
         image: PIL.Image.Image,
-        path: t.Union[str, pathlib.Path],
+        path: str | Path,
         metadata: dict | None = None,
         export_json_metadata: bool = False,
         overwrite: bool = False,
     ) -> None:
-        file_path = pathlib.Path(path)
+        file_path = Path(path)
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_name = file_path.stem
         file_extension = file_path.suffix
@@ -240,7 +241,7 @@ class ImageUtil:
             log.error(f"Error saving image: {e}")
 
     @staticmethod
-    def _embed_metadata(metadata: dict, path: str) -> None:
+    def _embed_metadata(metadata: dict, path: str | Path) -> None:
         try:
             # Convert metadata dictionary to a string
             metadata_str = json.dumps(metadata)

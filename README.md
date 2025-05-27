@@ -37,6 +37,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
   * [🔍 Depth](#-depth)
   * [🔄 Redux](#-redux)
 - [🕹️ Controlnet](#%EF%B8%8F-controlnet)
+- [🔎 Upscale](#-upscale)
 - [🎛️ Dreambooth fine-tuning](#-dreambooth-fine-tuning)
   * [Training configuration](#training-configuration)
   * [Training example](#training-example)
@@ -199,11 +200,17 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--low-ram`** (optional): Reduces GPU memory usage by limiting the MLX cache size and releasing text encoders and transformer components after use (single image generation only). While this may slightly decrease performance, it helps prevent system memory swapping to disk, allowing image generation on systems with limited RAM.
 
+- **`--battery-percentage-stop-limit`** or **`-B`** (optional, `int`, default: `5`): On Mac laptops powered by battery, automatically stops image generation when battery percentage reaches this threshold. Prevents your Mac from shutting down and becoming unresponsive during long generation sessions.
+
 - **`--lora-name`** (optional, `str`, default: `None`): The name of the LoRA to download from Hugging Face.
 
 - **`--lora-repo-id`** (optional, `str`, default: `"ali-vilab/In-Context-LoRA"`): The Hugging Face repository ID for LoRAs.
 
 - **`--stepwise-image-output-dir`** (optional, `str`, default: `None`): [EXPERIMENTAL] Output directory to write step-wise images and their final composite image to. This feature may change in future versions. When specified, MFLUX will save an image for each denoising step, allowing you to visualize the generation process from noise to final image.
+
+- **`--vae-tiling`** (optional, flag): Enable VAE tiling to reduce memory usage during the decoding phase. This splits the image into smaller chunks for processing, which can prevent out-of-memory errors when generating high-resolution images. Note that this optimization may occasionally produce a subtle seam in the middle of the image, but it's often worth the tradeoff for being able to generate images that would otherwise cause your system to run out of memory.
+
+- **`--vae-tiling-split`** (optional, `str`, default: `"horizontal"`): When VAE tiling is enabled, this parameter controls the direction to split the latents. Options are `"horizontal"` (splits into top/bottom) or `"vertical"` (splits into left/right). Use this option to control where potential seams might appear in the final image.
 
 #### 📜 In-Context LoRA Command-Line Arguments
 
@@ -214,6 +221,46 @@ The `mflux-generate-in-context` command supports most of the same arguments as `
 - **`--lora-style`** (optional, `str`, default: `None`): The style to use for In-Context LoRA generation. Choose from: `couple`, `storyboard`, `font`, `home`, `illustration`, `portrait`, `ppt`, `sandstorm`, `sparklers`, or `identity`.
 
 See the [In-Context LoRA](#-in-context-lora) section for more details on how to use this feature effectively.
+
+#### 📜 Redux Tool Command-Line Arguments
+
+The `mflux-generate-redux` command uses most of the same arguments as `mflux-generate`, with these specific parameters:
+
+- **`--redux-image-paths`** (required, `[str]`): Paths to one or more reference images to influence the generation.
+
+- **`--redux-image-strengths`** (optional, `[float]`, default: `[1.0, 1.0, ...]`): Strength values (between 0.0 and 1.0) for each reference image. Higher values give more influence to that reference image. If not provided, all images use a strength of 1.0.
+
+See the [Redux](#-redux) section for more details on this feature.
+
+#### 📜 Fill Tool Command-Line Arguments
+
+The `mflux-generate-fill` command supports most of the same arguments as `mflux-generate`, with these specific parameters:
+
+- **`--image-path`** (required, `str`): Path to the original image that will be modified.
+
+- **`--masked-image-path`** (required, `str`): Path to a binary mask image where white areas (255) will be regenerated and black areas (0) will be preserved.
+
+- **`--guidance`** (optional, `float`, default: `30.0`): The Fill tool works best with higher guidance values compared to regular image generation.
+
+See the [Fill](#-fill) section for more details on inpainting and outpainting.
+
+#### 📜 Depth Tool Command-Line Arguments
+
+The `mflux-generate-depth` command supports most of the same arguments as `mflux-generate`, with these specific parameters:
+
+- **`--image-path`** (optional, `str`, default: `None`): Path to the reference image from which to extract a depth map. Either this or `--depth-image-path` must be provided.
+
+- **`--depth-image-path`** (optional, `str`, default: `None`): Path to a pre-generated depth map image. Either this or `--image-path` must be provided.
+
+The `mflux-save-depth` command for extracting depth maps without generating images has these arguments:
+
+- **`--image-path`** (required, `str`): Path to the image from which to extract a depth map.
+
+- **`--output`** (optional, `str`, default: Uses the input filename with "_depth" suffix): Path where the generated depth map will be saved.
+
+- **`--quantize`** or **`-q`** (optional, `int`, default: `None`): Quantization for the Depth Pro model.
+
+See the [Depth](#-depth) section for more details on this feature.
 
 #### 📜 ControlNet Command-Line Arguments
 
@@ -228,11 +275,50 @@ The `mflux-generate-controlnet` command supports most of the same arguments as `
 See the [Controlnet](#%EF%B8%8F-controlnet) section for more details on how to use this feature effectively.
 
 
-#### 📜 Batch Image Generation Arguments
+#### Dynamic Prompts with `--prompt-file`
 
-- **`--prompts-file`** (required, `str`): Local path for a file that holds a batch of prompts.
+MFlux supports dynamic prompt updates through the `--prompt-file` option. Instead of providing a fixed prompt with `--prompt`, you can specify a plain text file containing your prompt. The file is re-read before each generation, allowing you to modify prompts between iterations without restarting.
 
-- **`--global-seed`** (optional, `int`): Entropy Seed used for all prompts in the batch.
+##### Key Benefits
+
+- **Real-time Prompt Editing**: Edit prompts between generations while the program continues running
+- **Iterative Refinement**: Fine-tune prompts based on previous results in a batch
+- **Editor Integration**: Work with complex prompts in your preferred text editor
+- **Consistent Parameters**: Experiment with prompt variations while keeping all other settings constant
+
+##### Example Usage
+
+```bash
+# Generate 10 images using a prompt from a file
+mflux-generate --prompt-file my_prompt.txt --auto-seeds 10
+```
+
+##### Workflow Example
+
+1. Create a prompt file:
+   ```
+   echo "a surreal landscape with floating islands" > my_prompt.txt
+   ```
+
+2. Start a batch generation:
+   ```
+   mflux-generate --prompt-file my_prompt.txt --auto-seeds 10
+   ```
+
+3. After reviewing initial results, edit the prompt file while generation continues:
+   ```
+   echo "a surreal landscape with floating islands and waterfalls" > my_prompt.txt
+   ```
+
+4. Subsequent generations will automatically use your updated prompt
+
+5. Continue refining as needed between generations
+
+##### Notes
+
+- `--prompt` and `--prompt-file` are mutually exclusive options
+- Empty prompt files or non-existent files will raise appropriate errors
+- Each generated image's metadata will contain the actual prompt used for that specific generation
 
 #### 📜 Training Arguments
 
@@ -941,6 +1027,22 @@ mflux-generate-redux \
   --width 1154 \
   -q 8
 ```
+
+You can also control the influence of each reference image by specifying strength values (between 0.0 and 1.0) using the `--redux-image-strengths` parameter:
+
+```bash
+mflux-generate-redux \
+  --prompt "a grey statue of a cat on a white platform in front of a blue background" \
+  --redux-image-paths "image1.png" "image2.png" \
+  --redux-image-strengths 0.8 0.5 \
+  --steps 20 \
+  --height 1024 \
+  --width 768 \
+  -q 8
+```
+
+A higher strength value gives the reference image more influence over the final result. If you don't specify any strengths, a default value of 1.0 is used for all images.
+
 There is a tendency for the reference image to dominate over the input prompt.
 
 ⚠️ *Note: Using the Redux tool requires an additional 1.1GB download from [black-forest-labs/FLUX.1-Redux-dev](https://huggingface.co/black-forest-labs/FLUX.1-Redux-dev). The download happens automatically on first use.*
@@ -982,6 +1084,41 @@ Controlnet can also work well together with [LoRA adapters](#-lora). In the exam
 with different prompts and LoRA adapters active.
 
 ![image](src/mflux/assets/controlnet2.jpg)
+
+---
+
+### 🔎 Upscale
+
+The upscale tool allows you to increase the resolution of an existing image while maintaining or enhancing its quality and details. It uses a specialized ControlNet model that's trained to intelligently upscale images without introducing artifacts or losing image fidelity.
+
+Under the hood, this is simply the controlnet pipeline with [jasperai/Flux.1-dev-Controlnet-Upscaler](https://huggingface.co/jasperai/Flux.1-dev-Controlnet-Upscaler), with a small modification that we don't process the image with canny edge detection.
+
+![upscale example](src/mflux/assets/upscale_example.jpg)
+*Image credit: [Kevin Mueller on Unsplash](https://unsplash.com/photos/gray-owl-on-black-background-xvwZJNaiRNo)*
+
+#### How to use
+
+```sh
+mflux-upscale \
+  --prompt "A gray owl on black background" \
+  --steps 28 \
+  --seed 42 \
+  --height 1363 \
+  --width 908 \
+  -q 8 \
+  --controlnet-image-path "low_res_image.png" \
+  --controlnet-strength 0.6 
+```
+
+This will upscale your input image to the specified dimensions. The upscaler works best when increasing the resolution by a factor of 2-4x.
+
+⚠️ *Note: Depending on the capability of your machine, you might run out of memory when trying to export the image. Try the `--vae-tiling` flag to process the image in smaller chunks, which significantly reduces memory usage during the VAE decoding phase at a minimal cost to performance. This optimization may occasionally produce a subtle seam in the middle of the image, but it's often worth the tradeoff for being able to generate higher resolution images. You can also use `--vae-tiling-split vertical` to change the split direction from the default horizontal (top/bottom) to vertical (left/right).*
+
+#### Tips for Best Results
+
+- For optimal results, try to maintain the same aspect ratio as the original image
+- Prompting matters: Try to acculturate describe the image when upscaling
+- The recommended `--controlnet-strength` is in the range between 0.5 to 0.7
 
 ---
 
@@ -1180,6 +1317,7 @@ See `uv run tools/rename_images.py --help` for full CLI usage help.
   - shortcut for dev model: `alias mflux-dev='mflux-generate --model dev'`
   - shortcut for schnell model *and* always save metadata: `alias mflux-schnell='mflux-generate --model schnell --metadata'`
 - For systems with limited memory, use the `--low-ram` flag to reduce memory usage by constraining the MLX cache size and releasing components after use
+- On battery-powered Macs, use `--battery-percentage-stop-limit` (or `-B`) to prevent your laptop from shutting down during long generation sessions
 - When generating multiple images with different seeds, use `--seed` with multiple values or `--auto-seeds` to automatically generate a series of random seeds
 - Use `--stepwise-image-output-dir` to save intermediate images at each denoising step, which can be useful for debugging or creating animations of the generation process
 
