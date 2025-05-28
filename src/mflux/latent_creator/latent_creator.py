@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import mlx.core as mx
 
 from mflux.models.vae.vae import VAE
@@ -11,7 +13,7 @@ class Img2Img:
         vae: VAE,
         sigmas: mx.array,
         init_time_step: int,
-        image_path: int,
+        image_path: str | Path | None,
     ):
         self.vae = vae
         self.sigmas = sigmas
@@ -39,9 +41,7 @@ class LatentCreator:
         img2img: Img2Img,
     ) -> mx.array:
         # 0. Determine type of image generation
-        is_text2img = img2img.image_path is None
-
-        if is_text2img:
+        if img2img.image_path is None:
             # 1. Create the pure noise
             return LatentCreator.create(
                 seed=seed,
@@ -57,7 +57,7 @@ class LatentCreator:
             )
 
             # 2. Encode the image
-            encoded = LatentCreator.encode_image(height=height, width=width, img2img=img2img)
+            encoded = LatentCreator.encode_image(vae=img2img.vae, image_path=img2img.image_path, height=height, width=width)  # fmt: off
             latents = ArrayUtil.pack_latents(latents=encoded, height=height, width=width)
 
             # 3. Find the appropriate sigma value
@@ -71,13 +71,13 @@ class LatentCreator:
             )
 
     @staticmethod
-    def encode_image(height: int, width: int, img2img: Img2Img):
+    def encode_image(vae: VAE, image_path: str | Path, height: int, width: int):
         scaled_user_image = ImageUtil.scale_to_dimensions(
-            image=ImageUtil.load_image(img2img.image_path).convert("RGB"),
+            image=ImageUtil.load_image(image_path).convert("RGB"),
             target_width=width,
             target_height=height,
         )
-        encoded = img2img.vae.encode(ImageUtil.to_array(scaled_user_image))
+        encoded = vae.encode(ImageUtil.to_array(scaled_user_image))
         return encoded
 
     @staticmethod

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mflux"
-version = "0.6.2"
+version = "0.7.1"
 description = "A MLX port of FLUX based on the Huggingface Diffusers implementation."
 readme = "README.md"
 keywords = ["diffusers", "flux", "mlx"]
@@ -15,7 +15,7 @@ requires-python = ">=3.10"
 dependencies = [
     "huggingface-hub>=0.24.5,<1.0",
     "matplotlib>=3.9.2,<4.0",
-    "mlx>=0.22.0,<0.25.0",
+    "mlx>=0.22.0,<0.26.0",
     "numpy>=2.0.1,<3.0",
     "opencv-python>=4.10.0,<5.0",
     "piexif>=1.1.3,<2.0",
@@ -48,6 +48,7 @@ classifiers = [
 dev = [
     "pytest>=8.3.0,<9.0",
     "pytest-timer>=1.0,<2.0",
+    "mlx==0.25.0",  # Used ONLY during test runs to ensure deterministic test results
 ]
 server = [
     # dependencies via fastapi and pydantic
@@ -69,9 +70,14 @@ mflux-generate = "mflux.generate:main"
 mflux-generate-controlnet = "mflux.generate_controlnet:main"
 mflux-generate-in-context = "mflux.generate_in_context:main"
 mflux-generate-fill = "mflux.generate_fill:main"
+mflux-generate-depth = "mflux.generate_depth:main"
+mflux-generate-redux = "mflux.generate_redux:main"
 mflux-save = "mflux.save:main"
+mflux-save-depth = "mflux.save_depth:main"
 mflux-train = "mflux.train:main"
 mflux-server = "mflux.server.cli:main"
+mflux-upscale = "mflux.upscale:main"
+mflux-lora-library = "mflux.lora_library:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

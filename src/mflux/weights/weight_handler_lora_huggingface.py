@@ -7,9 +7,9 @@ from huggingface_hub import snapshot_download
 class WeightHandlerLoRAHuggingFace:
     @staticmethod
     def download_loras(
-        lora_names: list[str] = None,
-        repo_id: str = None,
-        cache_dir: str = None,
+        lora_names: list[str] | None = None,
+        repo_id: str | None = None,
+        cache_dir: str | None = None,
     ) -> list[str]:
         if repo_id is None:
             return []
@@ -30,7 +30,7 @@ class WeightHandlerLoRAHuggingFace:
     def _download_lora(
         repo_id: str,
         lora_name: str,
-        cache_dir: str = None,
+        cache_dir: str | None = None,
     ) -> str:
         # Create cache directory if it doesn't exist
         if cache_dir is None:

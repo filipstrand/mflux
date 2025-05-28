@@ -29,7 +29,7 @@ class JointAttention(nn.Module):
         hidden_states: mx.array,
         encoder_hidden_states: mx.array,
         image_rotary_emb: mx.array,
-    ) -> (mx.array, mx.array):
+    ) -> tuple[mx.array, mx.array]:
         # 1a. Compute Q,K,V for hidden_states
         query, key, value = AttentionUtils.process_qkv(
             hidden_states=hidden_states,

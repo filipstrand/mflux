@@ -21,7 +21,7 @@ class SingleTransformerBlock(nn.Module):
         hidden_states: mx.array,
         text_embeddings: mx.array,
         rotary_embeddings: mx.array,
-    ) -> (mx.array, mx.array):
+    ) -> tuple[mx.array, mx.array]:
         # 0. Establish residual connection
         residual = hidden_states
 

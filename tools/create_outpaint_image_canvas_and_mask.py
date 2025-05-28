@@ -1,5 +1,5 @@
-import pathlib
 import sys
+from pathlib import Path
 
 from mflux.post_processing.image_util import ImageUtil
 from mflux.ui.box_values import AbsoluteBoxValues, BoxValues
@@ -8,7 +8,7 @@ from mflux.ui.cli.parsers import CommandLineParser
 
 def main():
     parser = CommandLineParser(description="Create expanded canvas and mask for outpainting")
-    parser.add_argument("image_path", type=pathlib.Path, help="Path to the input image file")
+    parser.add_argument("image_path", type=Path, help="Path to the input image file")
     parser.add_image_outpaint_arguments(required=True)
     args = parser.parse_args()
 

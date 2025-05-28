@@ -18,15 +18,18 @@ class ControlnetUtil:
         height: int,
         width: int,
         controlnet_image_path: str,
-    ) -> (mx.array, PIL.Image):
+        is_canny: bool,
+    ) -> tuple[mx.array, PIL.Image.Image]:
         from mflux import ImageUtil
 
         control_image = ImageUtil.load_image(controlnet_image_path)
         control_image = ControlnetUtil._scale_image(height=height, width=width, img=control_image)
-        control_image = ControlnetUtil._preprocess_canny(control_image)
+        if is_canny:
+            control_image = ControlnetUtil._preprocess_canny(control_image)
         controlnet_cond = ImageUtil.to_array(control_image)
         controlnet_cond = vae.encode(controlnet_cond)
-        controlnet_cond = (controlnet_cond / vae.scaling_factor) + vae.shift_factor
+        if is_canny:
+            controlnet_cond = (controlnet_cond / vae.scaling_factor) + vae.shift_factor
         controlnet_cond = ArrayUtil.pack_latents(latents=controlnet_cond, height=height, width=width)
         return controlnet_cond, control_image
 

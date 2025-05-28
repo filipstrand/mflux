@@ -1,4 +1,3 @@
-
 ![image](src/mflux/assets/logo.png)
 *A MLX port of FLUX based on the Huggingface Diffusers implementation.*
 
@@ -36,6 +35,10 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
   * [🖌️ Fill](#%EF%B8%8F-fill)
     + [Inpainting](#inpainting)
     + [Outpainting](#outpainting)
+  * [🔍 Depth](#-depth)
+  * [🔄 Redux](#-redux)
+- [🕹️ Controlnet](#%EF%B8%8F-controlnet)
+- [🔎 Upscale](#-upscale)
 - [🎛️ Dreambooth fine-tuning](#-dreambooth-fine-tuning)
   * [Training configuration](#training-configuration)
   * [Training example](#training-example)
@@ -43,13 +46,12 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
   * [Configuration details](#configuration-details)
   * [Memory issues](#memory-issues)
   * [Misc](#misc)
-- [🕹️ Controlnet](#%EF%B8%8F-controlnet)
 - [🚧 Current limitations](#-current-limitations)
 - [💡Workflow tips](#workflow-tips)
-- [✅ TODO](#-todo)
 - [🔬 Cool research / features to support](#-cool-research--features-to-support-)
 - [🌱‍ Related projects](#-related-projects)
-- [License](#license)
+- [🙏 Acknowledgements](#-acknowledgements)
+- [⚖️ License](#-license)
 
 <!-- TOC end -->
 
@@ -199,11 +201,17 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 - **`--low-ram`** (optional): Reduces GPU memory usage by limiting the MLX cache size and releasing text encoders and transformer components after use (single image generation only). While this may slightly decrease performance, it helps prevent system memory swapping to disk, allowing image generation on systems with limited RAM.
 
+- **`--battery-percentage-stop-limit`** or **`-B`** (optional, `int`, default: `5`): On Mac laptops powered by battery, automatically stops image generation when battery percentage reaches this threshold. Prevents your Mac from shutting down and becoming unresponsive during long generation sessions.
+
 - **`--lora-name`** (optional, `str`, default: `None`): The name of the LoRA to download from Hugging Face.
 
 - **`--lora-repo-id`** (optional, `str`, default: `"ali-vilab/In-Context-LoRA"`): The Hugging Face repository ID for LoRAs.
 
 - **`--stepwise-image-output-dir`** (optional, `str`, default: `None`): [EXPERIMENTAL] Output directory to write step-wise images and their final composite image to. This feature may change in future versions. When specified, MFLUX will save an image for each denoising step, allowing you to visualize the generation process from noise to final image.
+
+- **`--vae-tiling`** (optional, flag): Enable VAE tiling to reduce memory usage during the decoding phase. This splits the image into smaller chunks for processing, which can prevent out-of-memory errors when generating high-resolution images. Note that this optimization may occasionally produce a subtle seam in the middle of the image, but it's often worth the tradeoff for being able to generate images that would otherwise cause your system to run out of memory.
+
+- **`--vae-tiling-split`** (optional, `str`, default: `"horizontal"`): When VAE tiling is enabled, this parameter controls the direction to split the latents. Options are `"horizontal"` (splits into top/bottom) or `"vertical"` (splits into left/right). Use this option to control where potential seams might appear in the final image.
 
 #### 📜 In-Context LoRA Command-Line Arguments
 
@@ -214,6 +222,46 @@ The `mflux-generate-in-context` command supports most of the same arguments as `
 - **`--lora-style`** (optional, `str`, default: `None`): The style to use for In-Context LoRA generation. Choose from: `couple`, `storyboard`, `font`, `home`, `illustration`, `portrait`, `ppt`, `sandstorm`, `sparklers`, or `identity`.
 
 See the [In-Context LoRA](#-in-context-lora) section for more details on how to use this feature effectively.
+
+#### 📜 Redux Tool Command-Line Arguments
+
+The `mflux-generate-redux` command uses most of the same arguments as `mflux-generate`, with these specific parameters:
+
+- **`--redux-image-paths`** (required, `[str]`): Paths to one or more reference images to influence the generation.
+
+- **`--redux-image-strengths`** (optional, `[float]`, default: `[1.0, 1.0, ...]`): Strength values (between 0.0 and 1.0) for each reference image. Higher values give more influence to that reference image. If not provided, all images use a strength of 1.0.
+
+See the [Redux](#-redux) section for more details on this feature.
+
+#### 📜 Fill Tool Command-Line Arguments
+
+The `mflux-generate-fill` command supports most of the same arguments as `mflux-generate`, with these specific parameters:
+
+- **`--image-path`** (required, `str`): Path to the original image that will be modified.
+
+- **`--masked-image-path`** (required, `str`): Path to a binary mask image where white areas (255) will be regenerated and black areas (0) will be preserved.
+
+- **`--guidance`** (optional, `float`, default: `30.0`): The Fill tool works best with higher guidance values compared to regular image generation.
+
+See the [Fill](#-fill) section for more details on inpainting and outpainting.
+
+#### 📜 Depth Tool Command-Line Arguments
+
+The `mflux-generate-depth` command supports most of the same arguments as `mflux-generate`, with these specific parameters:
+
+- **`--image-path`** (optional, `str`, default: `None`): Path to the reference image from which to extract a depth map. Either this or `--depth-image-path` must be provided.
+
+- **`--depth-image-path`** (optional, `str`, default: `None`): Path to a pre-generated depth map image. Either this or `--image-path` must be provided.
+
+The `mflux-save-depth` command for extracting depth maps without generating images has these arguments:
+
+- **`--image-path`** (required, `str`): Path to the image from which to extract a depth map.
+
+- **`--output`** (optional, `str`, default: Uses the input filename with "_depth" suffix): Path where the generated depth map will be saved.
+
+- **`--quantize`** or **`-q`** (optional, `int`, default: `None`): Quantization for the Depth Pro model.
+
+See the [Depth](#-depth) section for more details on this feature.
 
 #### 📜 ControlNet Command-Line Arguments
 
@@ -228,11 +276,50 @@ The `mflux-generate-controlnet` command supports most of the same arguments as `
 See the [Controlnet](#%EF%B8%8F-controlnet) section for more details on how to use this feature effectively.
 
 
-#### 📜 Batch Image Generation Arguments
+#### Dynamic Prompts with `--prompt-file`
 
-- **`--prompts-file`** (required, `str`): Local path for a file that holds a batch of prompts.
+MFlux supports dynamic prompt updates through the `--prompt-file` option. Instead of providing a fixed prompt with `--prompt`, you can specify a plain text file containing your prompt. The file is re-read before each generation, allowing you to modify prompts between iterations without restarting.
 
-- **`--global-seed`** (optional, `int`): Entropy Seed used for all prompts in the batch.
+##### Key Benefits
+
+- **Real-time Prompt Editing**: Edit prompts between generations while the program continues running
+- **Iterative Refinement**: Fine-tune prompts based on previous results in a batch
+- **Editor Integration**: Work with complex prompts in your preferred text editor
+- **Consistent Parameters**: Experiment with prompt variations while keeping all other settings constant
+
+##### Example Usage
+
+```bash
+# Generate 10 images using a prompt from a file
+mflux-generate --prompt-file my_prompt.txt --auto-seeds 10
+```
+
+##### Workflow Example
+
+1. Create a prompt file:
+   ```
+   echo "a surreal landscape with floating islands" > my_prompt.txt
+   ```
+
+2. Start a batch generation:
+   ```
+   mflux-generate --prompt-file my_prompt.txt --auto-seeds 10
+   ```
+
+3. After reviewing initial results, edit the prompt file while generation continues:
+   ```
+   echo "a surreal landscape with floating islands and waterfalls" > my_prompt.txt
+   ```
+
+4. Subsequent generations will automatically use your updated prompt
+
+5. Continue refining as needed between generations
+
+##### Notes
+
+- `--prompt` and `--prompt-file` are mutually exclusive options
+- Empty prompt files or non-existent files will raise appropriate errors
+- Each generated image's metadata will contain the actual prompt used for that specific generation
 
 #### 📜 Training Arguments
 
@@ -741,6 +828,34 @@ mflux-generate \
 Just to see the difference, this image displays the four cases: One of having both adapters fully active, partially active and no LoRA at all.
 The example above also show the usage of `--lora-scales` flag.
 
+#### LoRA Library Path
+
+MFLUX supports a convenient LoRA library feature that allows you to reference LoRA files by their basename instead of full paths. This is particularly useful when you have a collection of LoRA files organized in one or more directories.
+
+To use this feature, set the `LORA_LIBRARY_PATH` environment variable to point to your LoRA directories. You can specify multiple directories separated by colons (`:`):
+
+```sh
+export LORA_LIBRARY_PATH="/path/to/loras:/another/path/to/more/loras"
+```
+
+Once set, MFLUX will automatically discover all `.safetensors` files in these directories (including subdirectories) and allow you to reference them by their basename:
+
+```sh
+# Instead of using full paths:
+mflux-generate --prompt "a portrait" --lora-paths "/path/to/loras/style1.safetensors" "/another/path/to/more/loras/style2.safetensors"
+
+# You can simply use basenames:
+mflux-generate --prompt "a portrait" --lora-paths "style1" "style2"
+```
+
+**Notes:**
+
+- The basename is the filename without the `.safetensors` extension
+- If multiple files have the same basename, the first directory in `LORA_LIBRARY_PATH` takes precedence
+  - to workaround this, rename or symlink to another name your `.safetensors` files to avoid conflicts
+- Full paths still work as before, making this feature fully backwards compatible
+- The library paths are scanned recursively, so LoRAs in subdirectories are also discovered. However, we do not recommend setting the library paths to a directory with a large number of files, as it can slow down the scanning process on every run.
+
 #### Supported LoRA formats (updated)
 
 Since different fine-tuning services can use different implementations of FLUX, the corresponding
@@ -931,6 +1046,170 @@ mflux-generate-fill \
 
 ⚠️ *Note: Using the Fill tool requires an additional 33.92 GB download from [black-forest-labs/FLUX.1-Fill-dev](https://huggingface.co/black-forest-labs/FLUX.1-Fill-dev). The download happens automatically on first use.*
 
+#### 🔍 Depth
+
+Using the depth tool, you can generate high-quality images constrained on a depth map from a reference image. These maps represent the estimated distance of each pixel from the camera, with brighter areas representing objects closer to the camera and darker areas representing objects farther away.
+
+For state-of-the-art depth extraction, MFLUX now supports the [Depth Pro](https://github.com/apple/ml-depth-pro) model, natively implemented in MLX based on the reference implementation. 
+
+![depth example](src/mflux/assets/depth_example.jpg)
+*Original hallway image credit: [Yuliya Matuzava on Unsplash](https://unsplash.com/photos/a-long-hallway-in-a-building-with-arches-and-arches-39NJt9jfGSU)*
+
+##### Example
+
+Using the `mflux-generate-depth` we can let MFLUX generate a new image conditioned on the depth map of the input image:
+
+```bash
+mflux-generate-depth \
+  --prompt "A hallway made of white carrara marble" \
+  -q 8 \
+  --height 1680 \
+  --width 1200 \
+  --image-path "original_image.png" \
+  --steps 20 \
+  --seed 7102725
+```
+
+Instead of automatically generating the depth map based on a reference image, you can instead input the depth map yourself using the `--depth-image-path`, like so:
+
+```bash
+mflux-generate-depth \
+  --prompt "A hallway made of white carrara marble" \
+  -q 8 \
+  --height 1680 \
+  --width 1200 \
+  --depth-image-path "depth_image.png" \
+  --steps 20
+```
+
+To generate and export the depth map from an image without triggering the image generation, run the following command:
+
+```bash
+mflux-save-depth --image-path "your_image.jpg" -q 8
+```
+
+This will create a depth map and save it with the same name as your image but with a "_depth" suffix (e.g., "your_image_depth.png").
+Quantization is supported for the Depth Pro model, however, output quality can very depend on the input image. 
+
+⚠️ *Note: The Depth Pro model requires an additional 1.9GB download from Apple. The download happens automatically on first use.*
+
+⚠️ *Note: Using the Depth tool requires an additional 33.92 GB download from [black-forest-labs/FLUX.1-Depth-dev](https://huggingface.co/black-forest-labs/FLUX.1-Depth-dev). The download happens automatically on first use.*
+
+#### 🔄 Redux
+
+The Redux tool is an adapter for FLUX.1 models that enables image variation generation similar to the [image-to-image](#-image-to-image) technique. 
+It can reproduce an input image with slight variations, allowing you to refine and enhance existing images. 
+Unlike the image-to-image technique which resumes the denoising process mid-way starting from the input image, the redux tool instead embeds the image and joins it with the T5 text encodings.
+
+![redux example](src/mflux/assets/redux_example.jpg)
+*Image credit: [Paris Bilal on Unsplash](https://unsplash.com/photos/a-cat-statue-sitting-on-top-of-a-white-base-Bedd4qHGWCg)*
+
+##### Example
+
+The following examples show how to use the Redux tool to generate variations:
+
+```bash
+mflux-generate-redux \
+  --prompt "a grey statue of a cat on a white platform in front of a blue background" \
+  --redux-image-paths "original.png" \
+  --steps 20 \
+  --height 1654 \
+  --width 1154 \
+  -q 8
+```
+
+You can also control the influence of each reference image by specifying strength values (between 0.0 and 1.0) using the `--redux-image-strengths` parameter:
+
+```bash
+mflux-generate-redux \
+  --prompt "a grey statue of a cat on a white platform in front of a blue background" \
+  --redux-image-paths "image1.png" "image2.png" \
+  --redux-image-strengths 0.8 0.5 \
+  --steps 20 \
+  --height 1024 \
+  --width 768 \
+  -q 8
+```
+
+A higher strength value gives the reference image more influence over the final result. If you don't specify any strengths, a default value of 1.0 is used for all images.
+
+There is a tendency for the reference image to dominate over the input prompt.
+
+⚠️ *Note: Using the Redux tool requires an additional 1.1GB download from [black-forest-labs/FLUX.1-Redux-dev](https://huggingface.co/black-forest-labs/FLUX.1-Redux-dev). The download happens automatically on first use.*
+
+---
+
+### 🕹️ Controlnet
+
+MFLUX has [Controlnet](https://huggingface.co/docs/diffusers/en/using-diffusers/controlnet) support for an even more fine-grained control
+of the image generation. By providing a reference image via `--controlnet-image-path` and a strength parameter via `--controlnet-strength`, you can guide the generation toward the reference image.
+
+```sh
+mflux-generate-controlnet \
+  --prompt "A comic strip with a joker in a purple suit" \
+  --model dev \
+  --steps 20 \
+  --seed 1727047657 \
+  --height 1066 \
+  --width 692 \
+  -q 8 \
+  --lora-paths "Dark Comic - s0_8 g4.safetensors" \
+  --controlnet-image-path "reference.png" \
+  --controlnet-strength 0.5 \
+  --controlnet-save-canny
+```
+![image](src/mflux/assets/controlnet1.jpg)
+
+*This example combines the controlnet reference image with the LoRA [Dark Comic Flux](https://civitai.com/models/742916/dark-comic-flux)*.
+
+⚠️ *Note: Controlnet requires an additional one-time download of ~3.58GB of weights from Huggingface. This happens automatically the first time you run the `generate-controlnet` command.
+At the moment, the Controlnet used is [InstantX/FLUX.1-dev-Controlnet-Canny](https://huggingface.co/InstantX/FLUX.1-dev-Controlnet-Canny), which was trained for the `dev` model.
+It can work well with `schnell`, but performance is not guaranteed.*
+
+⚠️ *Note: The output can be highly sensitive to the controlnet strength and is very much dependent on the reference image.
+Too high settings will corrupt the image. A recommended starting point a value like 0.4 and to play around with the strength.*
+
+
+Controlnet can also work well together with [LoRA adapters](#-lora). In the example below the same reference image is used as a controlnet input
+with different prompts and LoRA adapters active.
+
+![image](src/mflux/assets/controlnet2.jpg)
+
+---
+
+### 🔎 Upscale
+
+The upscale tool allows you to increase the resolution of an existing image while maintaining or enhancing its quality and details. It uses a specialized ControlNet model that's trained to intelligently upscale images without introducing artifacts or losing image fidelity.
+
+Under the hood, this is simply the controlnet pipeline with [jasperai/Flux.1-dev-Controlnet-Upscaler](https://huggingface.co/jasperai/Flux.1-dev-Controlnet-Upscaler), with a small modification that we don't process the image with canny edge detection.
+
+![upscale example](src/mflux/assets/upscale_example.jpg)
+*Image credit: [Kevin Mueller on Unsplash](https://unsplash.com/photos/gray-owl-on-black-background-xvwZJNaiRNo)*
+
+#### How to use
+
+```sh
+mflux-upscale \
+  --prompt "A gray owl on black background" \
+  --steps 28 \
+  --seed 42 \
+  --height 1363 \
+  --width 908 \
+  -q 8 \
+  --controlnet-image-path "low_res_image.png" \
+  --controlnet-strength 0.6 
+```
+
+This will upscale your input image to the specified dimensions. The upscaler works best when increasing the resolution by a factor of 2-4x.
+
+⚠️ *Note: Depending on the capability of your machine, you might run out of memory when trying to export the image. Try the `--vae-tiling` flag to process the image in smaller chunks, which significantly reduces memory usage during the VAE decoding phase at a minimal cost to performance. This optimization may occasionally produce a subtle seam in the middle of the image, but it's often worth the tradeoff for being able to generate higher resolution images. You can also use `--vae-tiling-split vertical` to change the split direction from the default horizontal (top/bottom) to vertical (left/right).*
+
+#### Tips for Best Results
+
+- For optimal results, try to maintain the same aspect ratio as the original image
+- Prompting matters: Try to acculturate describe the image when upscaling
+- The recommended `--controlnet-strength` is in the range between 0.5 to 0.7
+
 ---
 
 ### 🎛️ Dreambooth fine-tuning
@@ -1091,44 +1370,6 @@ The aim is to also gradually expand the scope of this feature with alternative t
 
 ---
 
-### 🕹️ Controlnet
-
-MFLUX has [Controlnet](https://huggingface.co/docs/diffusers/en/using-diffusers/controlnet) support for an even more fine-grained control
-of the image generation. By providing a reference image via `--controlnet-image-path` and a strength parameter via `--controlnet-strength`, you can guide the generation toward the reference image.
-
-```sh
-mflux-generate-controlnet \
-  --prompt "A comic strip with a joker in a purple suit" \
-  --model dev \
-  --steps 20 \
-  --seed 1727047657 \
-  --height 1066 \
-  --width 692 \
-  -q 8 \
-  --lora-paths "Dark Comic - s0_8 g4.safetensors" \
-  --controlnet-image-path "reference.png" \
-  --controlnet-strength 0.5 \
-  --controlnet-save-canny
-```
-![image](src/mflux/assets/controlnet1.jpg)
-
-*This example combines the controlnet reference image with the LoRA [Dark Comic Flux](https://civitai.com/models/742916/dark-comic-flux)*.
-
-⚠️ *Note: Controlnet requires an additional one-time download of ~3.58GB of weights from Huggingface. This happens automatically the first time you run the `generate-controlnet` command.
-At the moment, the Controlnet used is [InstantX/FLUX.1-dev-Controlnet-Canny](https://huggingface.co/InstantX/FLUX.1-dev-Controlnet-Canny), which was trained for the `dev` model.
-It can work well with `schnell`, but performance is not guaranteed.*
-
-⚠️ *Note: The output can be highly sensitive to the controlnet strength and is very much dependent on the reference image.
-Too high settings will corrupt the image. A recommended starting point a value like 0.4 and to play around with the strength.*
-
-
-Controlnet can also work well together with [LoRA adapters](#-lora). In the example below the same reference image is used as a controlnet input
-with different prompts and LoRA adapters active.
-
-![image](src/mflux/assets/controlnet2.jpg)
-
----
-
 ### 🚧 Current limitations
 
 - Images are generated one by one.
@@ -1166,17 +1407,13 @@ See `uv run tools/rename_images.py --help` for full CLI usage help.
   - shortcut for dev model: `alias mflux-dev='mflux-generate --model dev'`
   - shortcut for schnell model *and* always save metadata: `alias mflux-schnell='mflux-generate --model schnell --metadata'`
 - For systems with limited memory, use the `--low-ram` flag to reduce memory usage by constraining the MLX cache size and releasing components after use
+- On battery-powered Macs, use `--battery-percentage-stop-limit` (or `-B`) to prevent your laptop from shutting down during long generation sessions
 - When generating multiple images with different seeds, use `--seed` with multiple values or `--auto-seeds` to automatically generate a series of random seeds
 - Use `--stepwise-image-output-dir` to save intermediate images at each denoising step, which can be useful for debugging or creating animations of the generation process
-
-### ✅ TODO
-
-- [ ] [FLUX.1 Tools](https://blackforestlabs.ai/flux-1-tools/)
 
 ### 🔬 Cool research / features to support
 - [ ] [ConceptAttention](https://github.com/helblazer811/ConceptAttention)
 - [ ] [PuLID](https://github.com/ToTheBeginning/PuLID)
-- [ ] [depth based controlnet](https://huggingface.co/InstantX/SD3-Controlnet-Depth) via [ml-depth-pro](https://github.com/apple/ml-depth-pro) or similar?
 - [ ] [RF-Inversion](https://github.com/filipstrand/mflux/issues/91)
 - [ ] [catvton-flux](https://github.com/nftblackmagic/catvton-flux)
 
@@ -1187,6 +1424,16 @@ See `uv run tools/rename_images.py --help` for full CLI usage help.
 - [mflux-fasthtml](https://github.com/anthonywu/mflux-fasthtml) by [@anthonywu](https://github.com/anthonywu)
 - [mflux-streamlit](https://github.com/elitexp/mflux-streamlit) by [@elitexp](https://github.com/elitexp)
 
-### License
+### 🙏 Acknowledgements
+
+MFLUX would not be possible without the great work of:
+
+- The MLX Team for [MLX](https://github.com/ml-explore/mlx) and [MLX examples](https://github.com/ml-explore/mlx-examples)
+- Black Forest Labs for the [FLUX project](https://github.com/black-forest-labs/flux)
+- Hugging Face for the [Diffusers library implementation of Flux](https://huggingface.co/black-forest-labs/FLUX.1-dev) 
+- Depth Pro authors for the [Depth Pro model](https://github.com/apple/ml-depth-pro?tab=readme-ov-file#citation)
+- The MLX community and all [contributors and testers](https://github.com/filipstrand/mflux/graphs/contributors)
+
+### ⚖️ License
 
 This project is licensed under the [MIT License](LICENSE).

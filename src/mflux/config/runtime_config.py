@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 import mlx.core as mx
 import numpy as np
@@ -48,7 +49,7 @@ class RuntimeConfig:
         return self.model_config.num_train_steps
 
     @property
-    def image_path(self) -> str:
+    def image_path(self) -> Path | None:
         return self.config.image_path
 
     @property
@@ -56,7 +57,19 @@ class RuntimeConfig:
         return self.config.image_strength
 
     @property
-    def masked_image_path(self) -> str | None:
+    def depth_image_path(self) -> Path | None:
+        return self.config.depth_image_path
+
+    @property
+    def redux_image_paths(self) -> list[Path] | None:
+        return self.config.redux_image_paths
+
+    @property
+    def redux_image_strengths(self) -> list[float] | None:
+        return self.config.redux_image_strengths
+
+    @property
+    def masked_image_path(self) -> Path | None:
         return self.config.masked_image_path
 
     @property

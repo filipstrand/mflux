@@ -10,12 +10,12 @@ class PromptEncoder:
     @staticmethod
     def encode_prompt(
         prompt: str,
-        prompt_cache: dict[str, (mx.array, mx.array)],
+        prompt_cache: dict[str, tuple[mx.array, mx.array]],
         t5_tokenizer: TokenizerT5,
         clip_tokenizer: TokenizerCLIP,
         t5_text_encoder: T5Encoder,
         clip_text_encoder: CLIPEncoder,
-    ) -> (mx.array, mx.array):
+    ) -> tuple[mx.array, mx.array]:
         # 1. Return prompt encodings if already cached
         if prompt in prompt_cache:
             return prompt_cache[prompt]

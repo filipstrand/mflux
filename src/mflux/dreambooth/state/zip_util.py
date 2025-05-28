@@ -6,7 +6,9 @@ from zipfile import ZipFile
 
 class ZipUtil:
     @staticmethod
-    def unzip(zip_path: str | Path, filename: str, loader: callable):
+    def unzip(zip_path: str | Path | None, filename: str, loader: callable):
+        if not zip_path:  # Would be nicer to do this in typing, but that's more effort on the callers' side
+            raise ValueError("zip_path cannot be None")
         zip_path = Path(zip_path)
         if not zip_path.exists():
             raise FileNotFoundError(f"ZIP file not found at: {zip_path}")

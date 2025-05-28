@@ -1,6 +1,5 @@
 import importlib
-import pathlib
-import typing as t
+from pathlib import Path
 
 import mlx.core as mx
 import PIL.Image
@@ -23,11 +22,14 @@ class GeneratedImage:
         generation_time: float,
         lora_paths: list[str],
         lora_scales: list[float],
-        controlnet_image_path: str | pathlib.Path | None = None,
+        controlnet_image_path: str | Path | None = None,
         controlnet_strength: float | None = None,
-        image_path: str | pathlib.Path | None = None,
+        image_path: str | Path | None = None,
         image_strength: float | None = None,
-        masked_image_path: str | pathlib.Path | None = None,
+        masked_image_path: str | Path | None = None,
+        depth_image_path: str | Path | None = None,
+        redux_image_paths: list[str] | list[Path] | None = None,
+        redux_image_strengths: list[float] | None = None,
     ):
         self.image = image
         self.model_config = model_config
@@ -45,6 +47,9 @@ class GeneratedImage:
         self.image_path = image_path
         self.image_strength = image_strength
         self.masked_image_path = masked_image_path
+        self.depth_image_path = depth_image_path
+        self.redux_image_paths = redux_image_paths
+        self.redux_image_strengths = redux_image_strengths
 
     def get_right_half(self) -> "GeneratedImage":
         # Calculate the coordinates for the right half
@@ -69,11 +74,12 @@ class GeneratedImage:
             image_path=self.image_path,
             image_strength=self.image_strength,
             masked_image_path=self.masked_image_path,
+            depth_image_path=self.depth_image_path,
         )
 
     def save(
         self,
-        path: t.Union[str, pathlib.Path],
+        path: str | Path,
         export_json_metadata: bool = False,
         overwrite: bool = False,
     ) -> None:
@@ -81,13 +87,16 @@ class GeneratedImage:
 
         ImageUtil.save_image(self.image, path, self._get_metadata(), export_json_metadata, overwrite)
 
+    def _format_redux_strengths(self) -> list[float] | None:
+        if not self.redux_image_strengths:
+            return None
+        return [round(scale, 2) for scale in self.redux_image_strengths]
+
     def _get_metadata(self) -> dict:
         """Generate metadata for reference as well as input data for
         command line --config-from-metadata arg in future generations.
         """
         return {
-            # mflux_version is used by future metadata readers
-            # to determine supportability of metadata-derived workflows
             "mflux_version": GeneratedImage.get_version(),
             "model": self.model_config.model_name,
             "base_model": str(self.model_config.base_model),
@@ -104,6 +113,9 @@ class GeneratedImage:
             "controlnet_image_path": str(self.controlnet_image_path) if self.controlnet_image_path else None,
             "controlnet_strength": round(self.controlnet_strength, 2) if self.controlnet_strength else None,
             "masked_image_path": str(self.masked_image_path) if self.masked_image_path else None,
+            "depth_image_path": str(self.depth_image_path) if self.depth_image_path else None,
+            "redux_image_paths": str(self.redux_image_paths) if self.redux_image_paths else None,
+            "redux_image_strengths": self._format_redux_strengths(),
             "prompt": self.prompt,
         }
 
@@ -113,7 +125,7 @@ class GeneratedImage:
         if version:
             return version
 
-        # Fallback to installed package version
+        # Fallback to an installed package version
         try:
             return str(importlib.metadata.version("mflux"))
         except importlib.metadata.PackageNotFoundError:
@@ -122,7 +134,7 @@ class GeneratedImage:
     @staticmethod
     def _get_version_from_toml() -> str | None:
         # Search for pyproject.toml by traversing up from the current working directory
-        current_dir = pathlib.Path(__file__).resolve().parent
+        current_dir = Path(__file__).resolve().parent
         for parent in current_dir.parents:
             pyproject_path = parent / "pyproject.toml"
             if pyproject_path.exists():

@@ -10,6 +10,7 @@ from mflux.ui import (
     box_values,
     defaults as ui_defaults,
 )
+from mflux.weights.lora_library import get_lora_path
 
 
 class ModelSpecAction(argparse.Action):
@@ -42,7 +43,10 @@ class CommandLineParser(argparse.ArgumentParser):
         self.require_model_arg = True
 
     def add_general_arguments(self) -> None:
+        self.add_argument("--battery-percentage-stop-limit", "-B", type=lambda v: max(min(int(v), 99), 1), default=ui_defaults.BATTERY_PERCENTAGE_STOP_LIMIT, help=f"On Macs powered by battery, stop image generation when battery reaches this percentage. Default: {ui_defaults.BATTERY_PERCENTAGE_STOP_LIMIT}")
         self.add_argument("--low-ram", action="store_true", help="Enable low-RAM mode to reduce memory usage (may impact performance).")
+        self.add_argument("--vae-tiling", action="store_true", help="Enable VAE tiling to reduce memory usage at the cost of a potential seam")
+        self.add_argument("--vae-tiling-split", type=str, choices=["horizontal", "vertical"], default="horizontal", help="Direction to split the latents when using VAE tiling (horizontal = top/bottom, vertical = left/right). Default is horizontal.")
 
     def add_model_arguments(self, path_type: t.Literal["load", "save"] = "load", require_model_arg: bool = True) -> None:
         self.require_model_arg = require_model_arg
@@ -71,7 +75,9 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--guidance", type=float, default=ui_defaults.GUIDANCE_SCALE, help=f"Guidance Scale (Default is {ui_defaults.GUIDANCE_SCALE})")
 
     def add_image_generator_arguments(self, supports_metadata_config=False) -> None:
-        self.add_argument("--prompt", type=str, required=(not supports_metadata_config), default=None, help="The textual description of the image to generate.")
+        prompt_group = self.add_mutually_exclusive_group(required=(not supports_metadata_config))
+        prompt_group.add_argument("--prompt", type=str, help="The textual description of the image to generate.")
+        prompt_group.add_argument("--prompt-file", type=Path, help="Path to a file containing the prompt text. The file will be re-read before each generation, allowing you to edit the prompt between iterations when using multiple seeds without restarting the program.")
         self.add_argument("--seed", type=int, default=None, nargs='+', help="Specify 1+ Entropy Seeds (Default is 1 time-based random-seed)")
         self.add_argument("--auto-seeds", type=int, default=-1, help="Auto generate N Entropy Seeds (random ints between 0 and 1 billion")
         self._add_image_generator_common_arguments()
@@ -84,13 +90,26 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--image-strength", type=float, required=False, default=ui_defaults.IMAGE_STRENGTH, help=f"Controls how strongly the init image influences the output image. A value of 0.0 means no influence. (Default is {ui_defaults.IMAGE_STRENGTH})")
 
     def add_batch_image_generator_arguments(self) -> None:
-        self.add_argument("--prompts-file", type=Path, required=True, default=argparse.SUPPRESS, help="Local path for a file that holds a batch of prompts.")
+        self.add_argument("--batch-prompts-file", type=Path, required=True, default=argparse.SUPPRESS, help="Local path for a file that holds a batch of prompts.")
         self.add_argument("--global-seed", type=int, default=argparse.SUPPRESS, help="Entropy Seed (used for all prompts in the batch)")
         self._add_image_generator_common_arguments()
 
     def add_fill_arguments(self) -> None:
         self.add_argument("--image-path", type=Path, required=True, help="Local path to the source image")
         self.add_argument("--masked-image-path", type=Path, required=True, help="Local path to the mask image")
+
+    def add_depth_arguments(self) -> None:
+        self.add_argument("--image-path", type=Path, required=False, help="Local path to the source image")
+        self.add_argument("--depth-image-path", type=Path, required=False, help="Local path to the depth image")
+        self.add_argument("--save-depth-map", action="store_true", required=False, help="If set, save the depth map created from the source image.")
+
+    def add_save_depth_arguments(self) -> None:
+        self.add_argument("--image-path", type=Path, required=True, help="Local path to the source image")
+        self.add_argument("--quantize",  "-q", type=int, choices=ui_defaults.QUANTIZE_CHOICES, default=None, required=False, help=f"Quantize the model ({' or '.join(map(str, ui_defaults.QUANTIZE_CHOICES))}, Default is None)")
+
+    def add_redux_arguments(self) -> None:
+        self.add_argument("--redux-image-paths", type=Path, nargs="*", required=True, help="Local path to the source image")
+        self.add_argument("--redux-image-strengths", type=float, nargs="*", default=None, help="Strength values (between 0.0 and 1.0) for each reference image. Default is 1.0 for all images.")
 
     def add_output_arguments(self) -> None:
         self.add_argument("--metadata", action="store_true", help="Export image metadata as a JSON file.")
@@ -207,16 +226,27 @@ class CommandLineParser(argparse.ArgumentParser):
             output_path = Path(namespace.output)
             namespace.output = str(output_path.with_stem(output_path.stem + "_seed_{seed}"))
 
-        if self.supports_image_generation and namespace.prompt is None:
-            # not supplied by CLI and not supplied by metadata config file
-            self.error("--prompt argument required or 'prompt' required in metadata config file")
+        if self.supports_image_generation and namespace.prompt is None and namespace.prompt_file is None:
+            # when metadata config is supported but neither prompt nor prompt-file is provided
+            self.error("Either --prompt or --prompt-file argument is required, or 'prompt' required in metadata config file")
 
         if self.supports_image_generation and namespace.steps is None:
-            namespace.steps = ui_defaults.MODEL_INFERENCE_STEPS.get(namespace.model, None)
+            namespace.steps = ui_defaults.MODEL_INFERENCE_STEPS.get(namespace.model, 14)
 
         if self.supports_image_outpaint and namespace.image_outpaint_padding is not None:
             # parse and normalize any acceptable 1,2,3,4-tuple box value to 4-tuple
             namespace.image_outpaint_padding = box_values.parse_box_value(namespace.image_outpaint_padding)
             print(f"{namespace.image_outpaint_padding=}")
+
+        # Resolve lora paths from library if needed
+        if self.supports_lora and hasattr(namespace, "lora_paths") and namespace.lora_paths:
+            resolved_paths = []
+            for lora_path in namespace.lora_paths:
+                try:
+                    resolved_path = get_lora_path(lora_path)
+                    resolved_paths.append(resolved_path)
+                except FileNotFoundError as e:  # noqa: PERF203
+                    self.error(str(e))
+            namespace.lora_paths = resolved_paths
 
         return namespace

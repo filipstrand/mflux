@@ -17,6 +17,8 @@ class ImageGeneratorControlnetTestHelper:
         prompt: str,
         steps: int,
         seed: int,
+        height: int,
+        width: int,
         controlnet_strength: float,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
@@ -43,8 +45,8 @@ class ImageGeneratorControlnetTestHelper:
                 controlnet_image_path=controlnet_image_path,
                 config=Config(
                     num_inference_steps=steps,
-                    height=768,
-                    width=493,
+                    height=height,
+                    width=width,
                     controlnet_strength=controlnet_strength,
                 ),
             )
