@@ -780,19 +780,24 @@ Once set, MFLUX will automatically discover all `.safetensors` files in these di
 
 ```sh
 # Instead of using full paths:
-mflux-generate --prompt "a portrait" --lora-paths "/path/to/loras/style1.safetensors" "/another/path/to/more/loras/style2.safetensors"
+mflux-generate \
+    --prompt "a portrait" \
+    --lora-paths "/path/to/loras/style1.safetensors" "/another/path/to/more/loras/style2.safetensors"
 
 # You can simply use basenames:
-mflux-generate --prompt "a portrait" --lora-paths "style1" "style2"
+mflux-generate \
+    --prompt "a portrait" \
+    --lora-paths "style1" "style2"
 ```
 
-**Notes:**
-
+<details>
+<summary>Notes on organizing your LoRA files</summary>
 - The basename is the filename without the `.safetensors` extension
 - If multiple files have the same basename, the first directory in `LORA_LIBRARY_PATH` takes precedence
   - to workaround this, rename or symlink to another name your `.safetensors` files to avoid conflicts
 - Full paths still work as before, making this feature fully backwards compatible
 - The library paths are scanned recursively, so LoRAs in subdirectories are also discovered. However, we do not recommend setting the library paths to a directory with a large number of files, as it can slow down the scanning process on every run.
+</details>
 
 #### Supported LoRA formats (updated)
 
