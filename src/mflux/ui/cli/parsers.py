@@ -10,6 +10,7 @@ from mflux.ui import (
     box_values,
     defaults as ui_defaults,
 )
+from mflux.weights.lora_library import get_lora_path
 
 
 class ModelSpecAction(argparse.Action):
@@ -236,5 +237,16 @@ class CommandLineParser(argparse.ArgumentParser):
             # parse and normalize any acceptable 1,2,3,4-tuple box value to 4-tuple
             namespace.image_outpaint_padding = box_values.parse_box_value(namespace.image_outpaint_padding)
             print(f"{namespace.image_outpaint_padding=}")
+
+        # Resolve lora paths from library if needed
+        if self.supports_lora and hasattr(namespace, "lora_paths") and namespace.lora_paths:
+            resolved_paths = []
+            for lora_path in namespace.lora_paths:
+                try:
+                    resolved_path = get_lora_path(lora_path)
+                    resolved_paths.append(resolved_path)
+                except FileNotFoundError as e:  # noqa: PERF203
+                    self.error(str(e))
+            namespace.lora_paths = resolved_paths
 
         return namespace
