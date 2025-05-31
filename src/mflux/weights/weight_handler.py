@@ -39,11 +39,16 @@ class WeightHandler:
     ) -> "WeightHandler":
         # Load the weights from disk, huggingface cache, or download from huggingface
         root_path = Path(local_path) if local_path else WeightHandler._download_or_get_cached_weights(repo_id)
+        root_path2 = (
+            Path(local_path)
+            if local_path
+            else WeightHandler._download_or_get_cached_weights("xiaozaa/catvton-flux-beta")
+        )
 
         clip_encoder, _, _ = WeightHandler._load_clip_encoder(root_path=root_path)
         t5_encoder, _, _ = WeightHandler._load_t5_encoder(root_path=root_path)
         vae, _, _ = WeightHandler._load_vae(root_path=root_path)
-        transformer, quantization_level, mflux_version = WeightHandler.load_transformer(root_path=root_path)
+        transformer, quantization_level, mflux_version = WeightHandler.load_transformer(root_path=root_path2)
 
         return WeightHandler(
             clip_encoder=clip_encoder,
@@ -151,8 +156,13 @@ class WeightHandler:
         quantization_level = None
         mflux_version = None
 
+        if model_name == "transformer":
+            glob = root_path.glob("*.safetensors")
+        else:
+            glob = root_path.glob(model_name + "/*.safetensors")
+
         if root_path is not None:
-            for file in sorted(root_path.glob(model_name + "/*.safetensors")):
+            for file in sorted(glob):
                 data = mx.load(str(file), return_metadata=True)
                 weight = list(data[0].items())
                 if len(data) > 1:
