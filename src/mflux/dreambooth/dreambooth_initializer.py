@@ -33,6 +33,7 @@ class DreamBoothInitializer:
             model_config=model_config,
             quantize=training_spec.quantize,
         )
+
         runtime_config = RuntimeConfig(
             model_config=model_config,
             config=Config(
@@ -56,6 +57,7 @@ class DreamBoothInitializer:
             width=training_spec.width,
             height=training_spec.height,
         )
+
         iterator = Iterator.from_spec(
             training_spec=training_spec,
             dataset=dataset,
