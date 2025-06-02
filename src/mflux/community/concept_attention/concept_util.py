@@ -46,16 +46,29 @@ class ConceptUtil:
         concept_heatmaps_max = heatmap.max()
         colored_heatmaps = []
         for heatmap in heatmap:
-            heatmap = (heatmap - concept_heatmaps_min) / (
-                concept_heatmaps_max - concept_heatmaps_min + 1e-8  # Add small epsilon to prevent division by zero
-            )
+            heatmap = (heatmap - concept_heatmaps_min) / (concept_heatmaps_max - concept_heatmaps_min + 1e-8)
             colored_heatmap = plt.get_cmap("plasma")(heatmap)
             rgb_image = (colored_heatmap[:, :, :3] * 255).astype(np.uint8)
             colored_heatmaps.append(rgb_image)
-
-        heatmap = [PIL.Image.fromarray(concept_heatmap) for concept_heatmap in colored_heatmaps]
-        scaled_heatmap = heatmap[0].resize((width, height), PIL.Image.LANCZOS)
+        base_image = colored_heatmaps[0]
+        scaled_heatmap = ConceptUtil._pixel_perfect_resize(base_image, height, width)
         return scaled_heatmap
+
+    @staticmethod
+    def _pixel_perfect_resize(image_array: np.ndarray, target_height: int, target_width: int) -> PIL.Image.Image:
+        patch_h, patch_w, channels = image_array.shape
+        block_h = target_height // patch_h
+        block_w = target_width // patch_w
+        scaled_array = np.zeros((target_height, target_width, channels), dtype=np.uint8)
+        for i in range(patch_h):
+            for j in range(patch_w):
+                patch_color = image_array[i, j]
+                start_h = i * block_h
+                end_h = min(start_h + block_h, target_height)
+                start_w = j * block_w
+                end_w = min(start_w + block_w, target_width)
+                scaled_array[start_h:end_h, start_w:end_w] = patch_color
+        return PIL.Image.fromarray(scaled_array)
 
     @staticmethod
     def _compute_heatmap(
