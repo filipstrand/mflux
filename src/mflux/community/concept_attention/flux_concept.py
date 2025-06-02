@@ -7,9 +7,7 @@ from mflux.community.concept_attention.attention_data import (
     GenerationAttentionData,
 )
 from mflux.community.concept_attention.concept_util import ConceptUtil
-from mflux.community.concept_attention.transformer_concept import (
-    TransformerConcept,
-)
+from mflux.community.concept_attention.transformer_concept import TransformerConcept
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
@@ -40,8 +38,7 @@ class Flux1Concept(nn.Module):
         lora_scales: list[float] | None = None,
     ):
         super().__init__()
-        # 1. Start with the same init as regular Flux
-        FluxInitializer.init(
+        FluxInitializer.init_concept(
             flux_model=self,
             model_config=model_config,
             quantize=quantize,
@@ -49,9 +46,6 @@ class Flux1Concept(nn.Module):
             lora_paths=lora_paths,
             lora_scales=lora_scales,
         )
-
-        # 2. Replace the transformer with the concept attention version
-        self.transformer = TransformerConcept(model_config=model_config)
 
     def generate_image(
         self,
