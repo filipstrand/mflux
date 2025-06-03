@@ -1,19 +1,9 @@
-# Import for type annotation only
-import typing as t
-from argparse import Namespace
-
 from mflux import Config, ModelConfig, StopImageGenerationException
-from mflux.callbacks.callback_registry import CallbackRegistry
-from mflux.callbacks.instances.battery_saver import BatterySaver
-from mflux.callbacks.instances.memory_saver import MemorySaver
-from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
+from mflux.callbacks.callback_manager import CallbackManager
 from mflux.community.concept_attention.flux_concept import Flux1Concept
 from mflux.error.exceptions import PromptFileReadError
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_prompt
-
-if t.TYPE_CHECKING:
-    from mflux.community.concept_attention.flux_concept_from_image import FluxConceptFromImage
 
 
 def main():
@@ -26,7 +16,6 @@ def main():
     parser.add_image_to_image_arguments(required=False)
     parser.add_output_arguments()
     parser.add_concept_attention_arguments()
-
     args = parser.parse_args()
 
     # 1. Load the concept attention model
@@ -39,7 +28,7 @@ def main():
     )
 
     # 2. Register callbacks
-    memory_saver = _register_callbacks(args=args, flux=flux)
+    memory_saver = CallbackManager.register_callbacks(args=args, flux=flux)
 
     try:
         for seed in args.seed:
@@ -66,33 +55,6 @@ def main():
     finally:
         if memory_saver:
             print(memory_saver.memory_stats())
-
-
-def _register_callbacks(args: Namespace, flux: Flux1Concept | "FluxConceptFromImage") -> MemorySaver | None:
-    # Battery saver
-    battery_saver = BatterySaver(battery_percentage_stop_limit=args.battery_percentage_stop_limit)
-    CallbackRegistry.register_before_loop(battery_saver)
-
-    # VAE Tiling
-    if args.vae_tiling:
-        flux.vae.decoder.enable_tiling = True
-        flux.vae.decoder.split_direction = args.vae_tiling_split
-
-    # Stepwise Handler
-    if args.stepwise_image_output_dir:
-        handler = StepwiseHandler(flux=flux, output_dir=args.stepwise_image_output_dir)
-        CallbackRegistry.register_before_loop(handler)
-        CallbackRegistry.register_in_loop(handler)
-        CallbackRegistry.register_interrupt(handler)
-
-    # Memory Saver
-    memory_saver = None
-    if args.low_ram:
-        memory_saver = MemorySaver(flux=flux, keep_transformer=len(args.seed) > 1)
-        CallbackRegistry.register_before_loop(memory_saver)
-        CallbackRegistry.register_in_loop(memory_saver)
-        CallbackRegistry.register_after_loop(memory_saver)
-    return memory_saver
 
 
 if __name__ == "__main__":

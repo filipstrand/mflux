@@ -1,6 +1,6 @@
 from mflux import Config, ModelConfig, StopImageGenerationException
+from mflux.callbacks.callback_manager import CallbackManager
 from mflux.community.concept_attention.flux_concept_from_image import FluxConceptFromImage
-from mflux.concept import _register_callbacks
 from mflux.error.exceptions import PromptFileReadError
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_prompt
@@ -8,9 +8,7 @@ from mflux.ui.prompt_utils import get_effective_prompt
 
 def main():
     # 0. Parse command line arguments
-    parser = CommandLineParser(
-        description="Generate an image with concept attention based on a prompt, concept, and reference image."
-    )
+    parser = CommandLineParser(description="Generate an image with concept attention based on a prompt, concept, and reference image.")  # fmt: off
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
@@ -18,7 +16,6 @@ def main():
     parser.add_image_to_image_arguments(required=False)
     parser.add_output_arguments()
     parser.add_concept_from_image_arguments()
-
     args = parser.parse_args()
 
     # 1. Load the concept attention model
@@ -31,7 +28,7 @@ def main():
     )
 
     # 2. Register callbacks
-    memory_saver = _register_callbacks(args=args, flux=flux)
+    memory_saver = CallbackManager.register_callbacks(args=args, flux=flux)
 
     try:
         for seed in args.seed:
