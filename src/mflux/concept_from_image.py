@@ -1,36 +1,28 @@
-# Import for type annotation only
-import typing as t
-from argparse import Namespace
-
 from mflux import Config, ModelConfig, StopImageGenerationException
-from mflux.callbacks.callback_registry import CallbackRegistry
-from mflux.callbacks.instances.battery_saver import BatterySaver
-from mflux.callbacks.instances.memory_saver import MemorySaver
-from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
-from mflux.community.concept_attention.flux_concept import Flux1Concept
+from mflux.community.concept_attention.flux_concept_from_image import FluxConceptFromImage
+from mflux.concept import _register_callbacks
 from mflux.error.exceptions import PromptFileReadError
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_prompt
 
-if t.TYPE_CHECKING:
-    from mflux.community.concept_attention.flux_concept_from_image import FluxConceptFromImage
-
 
 def main():
     # 0. Parse command line arguments
-    parser = CommandLineParser(description="Generate an image with concept attention based on a prompt and concept.")
+    parser = CommandLineParser(
+        description="Generate an image with concept attention based on a prompt, concept, and reference image."
+    )
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
     parser.add_image_generator_arguments(supports_metadata_config=True)
     parser.add_image_to_image_arguments(required=False)
     parser.add_output_arguments()
-    parser.add_concept_attention_arguments()
+    parser.add_concept_from_image_arguments()
 
     args = parser.parse_args()
 
     # 1. Load the concept attention model
-    flux = Flux1Concept(
+    flux = FluxConceptFromImage(
         model_config=ModelConfig.from_name(model_name=args.model, base_model=args.base_model),
         quantize=args.quantize,
         local_path=args.path,
@@ -48,6 +40,7 @@ def main():
                 seed=seed,
                 prompt=get_effective_prompt(args),
                 concept=args.concept,
+                image_path=str(args.input_image_path),
                 heatmap_timesteps=args.heatmap_timesteps,
                 heatmap_layer_indices=args.heatmap_layer_indices,
                 config=Config(
@@ -66,33 +59,6 @@ def main():
     finally:
         if memory_saver:
             print(memory_saver.memory_stats())
-
-
-def _register_callbacks(args: Namespace, flux: Flux1Concept | "FluxConceptFromImage") -> MemorySaver | None:
-    # Battery saver
-    battery_saver = BatterySaver(battery_percentage_stop_limit=args.battery_percentage_stop_limit)
-    CallbackRegistry.register_before_loop(battery_saver)
-
-    # VAE Tiling
-    if args.vae_tiling:
-        flux.vae.decoder.enable_tiling = True
-        flux.vae.decoder.split_direction = args.vae_tiling_split
-
-    # Stepwise Handler
-    if args.stepwise_image_output_dir:
-        handler = StepwiseHandler(flux=flux, output_dir=args.stepwise_image_output_dir)
-        CallbackRegistry.register_before_loop(handler)
-        CallbackRegistry.register_in_loop(handler)
-        CallbackRegistry.register_interrupt(handler)
-
-    # Memory Saver
-    memory_saver = None
-    if args.low_ram:
-        memory_saver = MemorySaver(flux=flux, keep_transformer=len(args.seed) > 1)
-        CallbackRegistry.register_before_loop(memory_saver)
-        CallbackRegistry.register_in_loop(memory_saver)
-        CallbackRegistry.register_after_loop(memory_saver)
-    return memory_saver
 
 
 if __name__ == "__main__":

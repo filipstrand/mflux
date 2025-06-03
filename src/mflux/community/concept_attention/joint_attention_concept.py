@@ -32,16 +32,32 @@ class JointAttentionConcept(nn.Module):
         image_rotary_emb: mx.array,
         image_rotary_emb_concept: mx.array,
     ) -> tuple[mx.array, mx.array, mx.array, mx.array, mx.array]:
-        # Phase 1: Regular joint attention (identical to the non-concept version)
-        hidden_states_final, encoder_hidden_states_final, img_attn, _ = self._compute_joint_attention(
+        # Compute Q,K,V for hidden_states once (shared between both attention computations)
+        image_query, image_key, image_value = AttentionUtils.process_qkv(
             hidden_states=hidden_states,
+            to_q=self.to_q,
+            to_k=self.to_k,
+            to_v=self.to_v,
+            norm_q=self.norm_q,
+            norm_k=self.norm_k,
+            num_heads=self.num_heads,
+            head_dim=self.head_dimension,
+        )
+
+        # 1: Regular joint attention
+        hidden_states_final, encoder_hidden_states_final, img_attn, _ = self._compute_joint_attention_optimized(
+            image_query=image_query,
+            image_key=image_key,
+            image_value=image_value,
             encoder_hidden_states=encoder_hidden_states,
             image_rotary_emb=image_rotary_emb,
         )
 
-        # Phase 2: Concept-specific attention
-        _, encoder_hidden_states_concept_final, _, concept_attn = self._compute_joint_attention(
-            hidden_states=hidden_states,
+        # 2: Concept-specific attention
+        _, encoder_hidden_states_concept_final, _, concept_attn = self._compute_joint_attention_optimized(
+            image_query=image_query,
+            image_key=image_key,
+            image_value=image_value,
             encoder_hidden_states=encoder_hidden_states_concept,
             image_rotary_emb=image_rotary_emb_concept,
         )
@@ -54,25 +70,15 @@ class JointAttentionConcept(nn.Module):
             concept_attn,
         )
 
-    def _compute_joint_attention(
+    def _compute_joint_attention_optimized(
         self,
-        hidden_states: mx.array,
+        image_query: mx.array,
+        image_key: mx.array,
+        image_value: mx.array,
         encoder_hidden_states: mx.array,
         image_rotary_emb: mx.array,
     ) -> tuple[mx.array, mx.array, mx.array, mx.array]:
-        # 1a. Compute Q,K,V for hidden_states
-        query, key, value = AttentionUtils.process_qkv(
-            hidden_states=hidden_states,
-            to_q=self.to_q,
-            to_k=self.to_k,
-            to_v=self.to_v,
-            norm_q=self.norm_q,
-            norm_k=self.norm_k,
-            num_heads=self.num_heads,
-            head_dim=self.head_dimension,
-        )
-
-        # 1b. Compute Q,K,V for encoder_hidden_states
+        # 1. Compute Q,K,V for encoder_hidden_states
         enc_query, enc_key, enc_value = AttentionUtils.process_qkv(
             hidden_states=encoder_hidden_states,
             to_q=self.add_q_proj,
@@ -84,19 +90,19 @@ class JointAttentionConcept(nn.Module):
             head_dim=self.head_dimension,
         )
 
-        # 1c. Concatenate results
-        joint_query = mx.concatenate([enc_query, query], axis=2)
-        joint_key = mx.concatenate([enc_key, key], axis=2)
-        joint_value = mx.concatenate([enc_value, value], axis=2)
+        # 2. Concatenate results (using pre-computed hidden states QKV)
+        joint_query = mx.concatenate([enc_query, image_query], axis=2)
+        joint_key = mx.concatenate([enc_key, image_key], axis=2)
+        joint_value = mx.concatenate([enc_value, image_value], axis=2)
 
-        # 1d. Apply rope to Q,K
+        # 3. Apply rope to Q,K
         joint_query, joint_key = AttentionUtils.apply_rope(
             xq=joint_query,
             xk=joint_key,
             freqs_cis=image_rotary_emb,
         )
 
-        # 2. Compute attention
+        # 4. Compute attention
         joint_hidden_states = AttentionUtils.compute_attention(
             query=joint_query,
             key=joint_key,
@@ -106,13 +112,13 @@ class JointAttentionConcept(nn.Module):
             head_dim=self.head_dimension,
         )
 
-        # 3. Separate the results
+        # 5. Separate the results
         encoder_output, hidden_states_output = (
             joint_hidden_states[:, : encoder_hidden_states.shape[1]],
             joint_hidden_states[:, encoder_hidden_states.shape[1] :],
         )
 
-        # 4. Project outputs
+        # 6. Project outputs
         hidden_states_final = self.to_out[0](hidden_states_output)
         encoder_hidden_states_final = self.to_add_out(encoder_output)
 
