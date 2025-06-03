@@ -78,7 +78,7 @@ class ConceptUtil:
     ) -> mx.array:
         image_vectors = attention_data.stack_all_img_attentions()
         concept_vectors = attention_data.stack_all_concept_attentions()
-        heatmaps = mx.einsum("tlbpd,tlbcd->tlbcp", image_vectors, concept_vectors)
+        heatmaps = concept_vectors @ mx.transpose(image_vectors, (0, 1, 2, 4, 3))
         heatmaps = mx.softmax(heatmaps, axis=-2)
         heatmaps = heatmaps[timesteps]
         heatmaps = heatmaps[:, layer_indices]
