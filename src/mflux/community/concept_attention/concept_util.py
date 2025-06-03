@@ -21,6 +21,8 @@ class ConceptUtil:
     ) -> ConceptHeatmap:
         heatmap = ConceptUtil._compute_heatmap(
             attention_data=attention_data,
+            height=height,
+            width=width,
             layer_indices=layer_indices,
             timesteps=timesteps,
         )
@@ -73,6 +75,8 @@ class ConceptUtil:
     @staticmethod
     def _compute_heatmap(
         attention_data: GenerationAttentionData,
+        height: int,
+        width: int,
         layer_indices: list[int],
         timesteps: list[int] = list(range(4)),
     ) -> mx.array:
@@ -83,9 +87,7 @@ class ConceptUtil:
         heatmaps = heatmaps[timesteps]
         heatmaps = heatmaps[:, layer_indices]
         heatmaps = mx.mean(heatmaps, axis=(0, 1))
-        num_patches = heatmaps.shape[-1]
-        patch_side = int(num_patches**0.5)
         batch_dim, concept_dim, patch_dim = heatmaps.shape
-        heatmaps = mx.reshape(heatmaps, (batch_dim, concept_dim, patch_side, patch_side))
+        heatmaps = mx.reshape(heatmaps, (batch_dim, concept_dim, height // 16, width // 16))
         heatmap = np.array(heatmaps)[0]
         return heatmap
