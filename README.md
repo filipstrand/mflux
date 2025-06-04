@@ -793,6 +793,7 @@ mflux-generate \
 
 <details>
 <summary>Notes on organizing your LoRA files</summary>
+
 - The basename is the filename without the `.safetensors` extension
 - If multiple files have the same basename, the first directory in `LORA_LIBRARY_PATH` takes precedence
   - to workaround this, rename or symlink to another name your `.safetensors` files to avoid conflicts
