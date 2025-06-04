@@ -45,7 +45,7 @@ class JointTransformerBlock(nn.Module):
         )
 
         # 3a. Apply norm and feed forward for hidden states
-        hidden_states = JointTransformerBlock._apply_norm_and_feed_forward(
+        hidden_states = JointTransformerBlock.apply_norm_and_feed_forward(
             hidden_states=hidden_states,
             attn_output=attn_output,
             gate_mlp=gate_mlp,
@@ -57,7 +57,7 @@ class JointTransformerBlock(nn.Module):
         )
 
         # 3b. Apply norm and feed forward for encoder hidden states
-        encoder_hidden_states = JointTransformerBlock._apply_norm_and_feed_forward(
+        encoder_hidden_states = JointTransformerBlock.apply_norm_and_feed_forward(
             hidden_states=encoder_hidden_states,
             attn_output=context_attn_output,
             gate_mlp=c_gate_mlp,
@@ -71,7 +71,7 @@ class JointTransformerBlock(nn.Module):
         return encoder_hidden_states, hidden_states
 
     @staticmethod
-    def _apply_norm_and_feed_forward(
+    def apply_norm_and_feed_forward(
         hidden_states: mx.array,
         attn_output: mx.array,
         gate_mlp: mx.array,
