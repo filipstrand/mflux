@@ -1,11 +1,5 @@
-from argparse import Namespace
-
 from mflux import Config, StopImageGenerationException
-from mflux.callbacks.callback_registry import CallbackRegistry
-from mflux.callbacks.instances.battery_saver import BatterySaver
-from mflux.callbacks.instances.depth_saver import DepthImageSaver
-from mflux.callbacks.instances.memory_saver import MemorySaver
-from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
+from mflux.callbacks.callback_manager import CallbackManager
 from mflux.error.exceptions import PromptFileReadError
 from mflux.flux_tools.depth.flux_depth import Flux1Depth
 from mflux.ui.cli.parsers import CommandLineParser
@@ -36,7 +30,7 @@ def main():
     )
 
     # 2. Register callbacks
-    memory_saver = _register_callbacks(args=args, flux=flux)
+    memory_saver = CallbackManager.register_callbacks(args=args, flux=flux, enable_depth_saver=True)
 
     try:
         for seed in args.seed:
@@ -61,38 +55,6 @@ def main():
     finally:
         if memory_saver:
             print(memory_saver.memory_stats())
-
-
-def _register_callbacks(args: Namespace, flux: Flux1Depth) -> MemorySaver | None:
-    # Battery saver
-    battery_saver = BatterySaver(battery_percentage_stop_limit=args.battery_percentage_stop_limit)
-    CallbackRegistry.register_before_loop(battery_saver)
-
-    # VAE Tiling
-    if args.vae_tiling:
-        flux.vae.decoder.enable_tiling = True
-        flux.vae.decoder.split_direction = args.vae_tiling_split
-
-    # Depth Image Saver
-    if args.save_depth_map:
-        depth_image_saver = DepthImageSaver(path=args.output)
-        CallbackRegistry.register_before_loop(depth_image_saver)
-
-    # Stepwise Handler
-    if args.stepwise_image_output_dir:
-        handler = StepwiseHandler(flux=flux, output_dir=args.stepwise_image_output_dir)
-        CallbackRegistry.register_before_loop(handler)
-        CallbackRegistry.register_in_loop(handler)
-        CallbackRegistry.register_interrupt(handler)
-
-    # Memory Saver
-    memory_saver = None
-    if args.low_ram:
-        memory_saver = MemorySaver(flux=flux, keep_transformer=len(args.seed) > 1)
-        CallbackRegistry.register_before_loop(memory_saver)
-        CallbackRegistry.register_in_loop(memory_saver)
-        CallbackRegistry.register_after_loop(memory_saver)
-    return memory_saver
 
 
 if __name__ == "__main__":

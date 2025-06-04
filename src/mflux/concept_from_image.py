@@ -1,5 +1,6 @@
-from mflux import Config, Flux1, ModelConfig, StopImageGenerationException
+from mflux import Config, ModelConfig, StopImageGenerationException
 from mflux.callbacks.callback_manager import CallbackManager
+from mflux.community.concept_attention.flux_concept_from_image import FluxConceptFromImage
 from mflux.error.exceptions import PromptFileReadError
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_prompt
@@ -7,17 +8,18 @@ from mflux.ui.prompt_utils import get_effective_prompt
 
 def main():
     # 0. Parse command line arguments
-    parser = CommandLineParser(description="Generate an image based on a prompt.")
+    parser = CommandLineParser(description="Generate an image with concept attention based on a prompt, concept, and reference image.")  # fmt: off
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
     parser.add_image_generator_arguments(supports_metadata_config=True)
     parser.add_image_to_image_arguments(required=False)
     parser.add_output_arguments()
+    parser.add_concept_from_image_arguments()
     args = parser.parse_args()
 
-    # 1. Load the model
-    flux = Flux1(
+    # 1. Load the concept attention model
+    flux = FluxConceptFromImage(
         model_config=ModelConfig.from_name(model_name=args.model, base_model=args.base_model),
         quantize=args.quantize,
         local_path=args.path,
@@ -34,6 +36,10 @@ def main():
             image = flux.generate_image(
                 seed=seed,
                 prompt=get_effective_prompt(args),
+                concept=args.concept,
+                image_path=str(args.input_image_path),
+                heatmap_timesteps=args.heatmap_timesteps,
+                heatmap_layer_indices=args.heatmap_layer_indices,
                 config=Config(
                     num_inference_steps=args.steps,
                     height=args.height,
@@ -43,8 +49,8 @@ def main():
                     image_strength=args.image_strength,
                 ),
             )
-            # 4. Save the image
-            image.save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)
+            # 4. Save the image and heatmap
+            image.save_with_heatmap(path=args.output.format(seed=seed), export_json_metadata=args.metadata)
     except (StopImageGenerationException, PromptFileReadError) as exc:
         print(exc)
     finally:

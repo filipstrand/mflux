@@ -1,5 +1,6 @@
-from mflux import Config, Flux1Controlnet, ModelConfig, StopImageGenerationException
+from mflux import Config, ModelConfig, StopImageGenerationException
 from mflux.callbacks.callback_manager import CallbackManager
+from mflux.community.concept_attention.flux_concept import Flux1Concept
 from mflux.error.exceptions import PromptFileReadError
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_prompt
@@ -7,18 +8,19 @@ from mflux.ui.prompt_utils import get_effective_prompt
 
 def main():
     # 0. Parse command line arguments
-    parser = CommandLineParser(description="Generate an image based on a prompt and a controlnet reference image.")  # fmt: off
+    parser = CommandLineParser(description="Generate an image with concept attention based on a prompt and concept.")
     parser.add_general_arguments()
-    parser.add_model_arguments(require_model_arg=True)
+    parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
-    parser.add_image_generator_arguments(supports_metadata_config=False)
-    parser.add_controlnet_arguments()
+    parser.add_image_generator_arguments(supports_metadata_config=True)
+    parser.add_image_to_image_arguments(required=False)
     parser.add_output_arguments()
+    parser.add_concept_attention_arguments()
     args = parser.parse_args()
 
-    # 1. Load the model
-    flux = Flux1Controlnet(
-        model_config=_get_controlnet_model_config(args.model),
+    # 1. Load the concept attention model
+    flux = Flux1Concept(
+        model_config=ModelConfig.from_name(model_name=args.model, base_model=args.base_model),
         quantize=args.quantize,
         local_path=args.path,
         lora_paths=args.lora_paths,
@@ -26,7 +28,7 @@ def main():
     )
 
     # 2. Register callbacks
-    memory_saver = CallbackManager.register_callbacks(args=args, flux=flux, enable_canny_saver=True)
+    memory_saver = CallbackManager.register_callbacks(args=args, flux=flux)
 
     try:
         for seed in args.seed:
@@ -34,29 +36,25 @@ def main():
             image = flux.generate_image(
                 seed=seed,
                 prompt=get_effective_prompt(args),
-                controlnet_image_path=args.controlnet_image_path,
+                concept=args.concept,
+                heatmap_timesteps=args.heatmap_timesteps,
+                heatmap_layer_indices=args.heatmap_layer_indices,
                 config=Config(
                     num_inference_steps=args.steps,
                     height=args.height,
                     width=args.width,
                     guidance=args.guidance,
-                    controlnet_strength=args.controlnet_strength,
+                    image_path=args.image_path,
+                    image_strength=args.image_strength,
                 ),
             )
-
-            # 4. Save the image
-            image.save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)
+            # 4. Save the image and heatmap
+            image.save_with_heatmap(path=args.output.format(seed=seed), export_json_metadata=args.metadata)
     except (StopImageGenerationException, PromptFileReadError) as exc:
         print(exc)
     finally:
         if memory_saver:
             print(memory_saver.memory_stats())
-
-
-def _get_controlnet_model_config(model_name: str) -> ModelConfig:
-    if model_name == "schnell":
-        return ModelConfig.schnell_controlnet_canny()
-    return ModelConfig.dev_controlnet_canny()
 
 
 if __name__ == "__main__":

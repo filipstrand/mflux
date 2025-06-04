@@ -5,6 +5,7 @@ import mlx.core as mx
 import PIL.Image
 import toml
 
+from mflux.community.concept_attention.attention_data import ConceptHeatmap
 from mflux.config.model_config import ModelConfig
 
 
@@ -30,6 +31,7 @@ class GeneratedImage:
         depth_image_path: str | Path | None = None,
         redux_image_paths: list[str] | list[Path] | None = None,
         redux_image_strengths: list[float] | None = None,
+        concept_heatmap: ConceptHeatmap | None = None,
     ):
         self.image = image
         self.model_config = model_config
@@ -50,6 +52,7 @@ class GeneratedImage:
         self.depth_image_path = depth_image_path
         self.redux_image_paths = redux_image_paths
         self.redux_image_strengths = redux_image_strengths
+        self.concept_heatmap = concept_heatmap
 
     def get_right_half(self) -> "GeneratedImage":
         # Calculate the coordinates for the right half
@@ -75,6 +78,7 @@ class GeneratedImage:
             image_strength=self.image_strength,
             masked_image_path=self.masked_image_path,
             depth_image_path=self.depth_image_path,
+            concept_heatmap=self.concept_heatmap,
         )
 
     def save(
@@ -87,15 +91,43 @@ class GeneratedImage:
 
         ImageUtil.save_image(self.image, path, self._get_metadata(), export_json_metadata, overwrite)
 
+    def save_with_heatmap(
+        self,
+        path: str | Path,
+        export_json_metadata: bool = False,
+        overwrite: bool = False,
+    ) -> None:
+        # Save the main image
+        self.save(path=path, export_json_metadata=export_json_metadata, overwrite=overwrite)
+
+        # Save the concept heatmap if available
+        if self.concept_heatmap:
+            file_path = Path(path)
+            heatmap_path = file_path.with_stem(file_path.stem + "_heatmap")
+            self.save_concept_heatmap(path=heatmap_path, export_json_metadata=export_json_metadata, overwrite=overwrite)
+
+    def save_concept_heatmap(
+        self, path: str | Path, export_json_metadata: bool = False, overwrite: bool = False
+    ) -> None:
+        if self.concept_heatmap:
+            from mflux import ImageUtil
+
+            ImageUtil.save_image(
+                image=self.concept_heatmap.image,
+                path=path,
+                metadata=self.concept_heatmap.get_metadata(),
+                export_json_metadata=export_json_metadata,
+                overwrite=overwrite,
+            )
+        else:
+            raise ValueError("No concept heatmap available to save")
+
     def _format_redux_strengths(self) -> list[float] | None:
         if not self.redux_image_strengths:
             return None
         return [round(scale, 2) for scale in self.redux_image_strengths]
 
     def _get_metadata(self) -> dict:
-        """Generate metadata for reference as well as input data for
-        command line --config-from-metadata arg in future generations.
-        """
         return {
             "mflux_version": GeneratedImage.get_version(),
             "model": self.model_config.model_name,

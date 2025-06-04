@@ -46,6 +46,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
   * [Configuration details](#configuration-details)
   * [Memory issues](#memory-issues)
   * [Misc](#misc)
+- [🧠 Concept Attention](#-concept-attention)
 - [🚧 Current limitations](#-current-limitations)
 - [💡Workflow tips](#workflow-tips)
 - [🔬 Cool research / features to support](#-cool-research--features-to-support-)
@@ -232,6 +233,22 @@ The `mflux-generate-redux` command uses most of the same arguments as `mflux-gen
 - **`--redux-image-strengths`** (optional, `[float]`, default: `[1.0, 1.0, ...]`): Strength values (between 0.0 and 1.0) for each reference image. Higher values give more influence to that reference image. If not provided, all images use a strength of 1.0.
 
 See the [Redux](#-redux) section for more details on this feature.
+
+#### 📜 Concept Attention Command-Line Arguments
+
+The `mflux-concept` command supports most of the same arguments as `mflux-generate`, with these specific parameters:
+
+- **`--concept`** (required, `str`): The concept prompt to use for attention visualization. This defines what specific aspect or element you want to analyze within your generated image.
+
+- **`--heatmap-layer-indices`** (optional, `[int]`, default: `[15, 16, 17, 18]`): Transformer layer indices to use for heatmap generation. These layers capture different levels of abstraction in the attention mechanism.
+
+- **`--heatmap-timesteps`** (optional, `[int]`, default: `None`): Timesteps to use for heatmap generation. If not specified, all timesteps are used. Lower timestep values focus on early stages of generation.
+
+The `mflux-concept-from-image` command uses most of the same arguments as `mflux-concept`, with this additional parameter:
+
+- **`--input-image-path`** (required, `str`): Path to a reference image for concept attention analysis. The model will analyze how the concept appears in this reference image and apply similar attention patterns to the generated image.
+
+See the [Concept Attention](#-concept-attention) section for more details on this feature.
 
 #### 📜 Fill Tool Command-Line Arguments
 
@@ -1315,6 +1332,80 @@ The aim is to also gradually expand the scope of this feature with alternative t
 
 ---
 
+### 🧠 Concept Attention
+
+The Concept Attention feature allows you to visualize and understand how FLUX models focus on specific concepts within your prompts during image generation.
+
+![concept_example_1](src/mflux/assets/concept_example_1.jpg)
+
+This implementation is based on the research paper ["ConceptAttention: Diffusion Transformers Learn Highly Interpretable Features"](https://arxiv.org/abs/2502.04320) by [Helbling et al.](https://github.com/helblazer811/ConceptAttention), which demonstrates that multi-modal diffusion transformers like FLUX learn highly interpretable representations that can be leveraged to generate precise concept localization maps.
+
+MFLUX provides two concept attention tools:
+
+1. **Text-based Concept Analysis** (`mflux-concept`): Analyzes attention patterns for a specific concept within your text prompt
+2. **Image-guided Concept Analysis** (`mflux-concept-from-image`): Uses a reference image to guide concept attention analysis
+
+#### Text-based Concept Analysis
+
+This approach analyzes how the model attends to a specific concept mentioned in your prompt. The model generates an image while tracking attention patterns, then creates a heatmap showing where the model focused when processing your concept.
+
+##### Example
+
+```bash
+mflux-concept \
+  --prompt "A dragon on a hill" \
+  --concept "dragon" \
+  --model schnell \
+  --steps 4 \
+  --seed 9643208 \
+  --height 720 \
+  --width 1280 \
+  --heatmap-layer-indices 15 16 17 18 \
+  --heatmap-timesteps 0 1 2 3 \
+  -q 4
+```
+This will generate the following image
+
+![concept_example_1](src/mflux/assets/concept_example_2.jpg)
+
+This command will generate:
+- The main image based on your prompt
+- A concept attention heatmap showing where the model focused on the "dragon" concept
+- Both images are automatically saved with appropriate naming
+
+#### Image-guided Concept Analysis
+
+This approach uses a reference image to guide the concept attention analysis. The model analyzes how a concept appears in the reference image and applies similar attention patterns to generate a new image that maintains those conceptual relationships.
+
+##### Example
+
+```bash
+mflux-concept-from-image \
+  --model schnell \
+  --input-image-path "puffin.png" \
+  --prompt "Two puffins are perched on a grassy, flower-covered cliffside, with one appearing to call out while the other looks on silently against a blurred ocean backdrop" \
+  --concept "bird" \
+  --steps 4 \
+  --height 720 \
+  --width 1280 \
+  --seed 4529717 \
+  --heatmap-layer-indices 15 16 17 18 \
+  --heatmap-timesteps 0 1 2 3 \
+  -q 4
+```
+
+This will generate the following image
+
+![concept_example_1](src/mflux/assets/concept_example_3.jpg)
+
+#### Advanced Configuration
+
+- **`--heatmap-layer-indices`**: Controls which transformer layers to analyze (default: 15-18). Different layers capture different levels of abstraction
+
+- **`--heatmap-timesteps`**: Specifies which denoising steps to include in the analysis (default: all steps). Lower timestep values focus on early generation stages where broad composition is determined.
+
+---
+
 ### 🚧 Current limitations
 
 - Images are generated one by one.
@@ -1357,9 +1448,7 @@ See `uv run tools/rename_images.py --help` for full CLI usage help.
 - Use `--stepwise-image-output-dir` to save intermediate images at each denoising step, which can be useful for debugging or creating animations of the generation process
 
 ### 🔬 Cool research / features to support
-- [ ] [ConceptAttention](https://github.com/helblazer811/ConceptAttention)
 - [ ] [PuLID](https://github.com/ToTheBeginning/PuLID)
-- [ ] [RF-Inversion](https://github.com/filipstrand/mflux/issues/91)
 - [ ] [catvton-flux](https://github.com/nftblackmagic/catvton-flux)
 
 ### 🌱‍ Related projects
