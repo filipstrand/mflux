@@ -25,6 +25,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 - [🎨 Image-to-Image](#-image-to-image)
 - [🔌 LoRA](#-lora)
   * [Multi-LoRA](#multi-lora)
+  * [LoRA Library Path](#lora-library-path)
   * [Supported LoRA formats (updated)](#supported-lora-formats-updated)
 - [🎭 In-Context LoRA](#-in-context-lora)
   * [Available Styles](#available-styles)
