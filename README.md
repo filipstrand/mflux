@@ -25,6 +25,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 - [🎨 Image-to-Image](#-image-to-image)
 - [🔌 LoRA](#-lora)
   * [Multi-LoRA](#multi-lora)
+  * [LoRA Library Path](#lora-library-path)
   * [Supported LoRA formats (updated)](#supported-lora-formats-updated)
 - [🎭 In-Context LoRA](#-in-context-lora)
   * [Available Styles](#available-styles)
@@ -765,6 +766,40 @@ mflux-generate \
 
 Just to see the difference, this image displays the four cases: One of having both adapters fully active, partially active and no LoRA at all.
 The example above also show the usage of `--lora-scales` flag.
+
+#### LoRA Library Path
+
+MFLUX supports a convenient LoRA library feature that allows you to reference LoRA files by their basename instead of full paths. This is particularly useful when you have a collection of LoRA files organized in one or more directories.
+
+To use this feature, set the `LORA_LIBRARY_PATH` environment variable to point to your LoRA directories. You can specify multiple directories separated by colons (`:`):
+
+```sh
+export LORA_LIBRARY_PATH="/path/to/loras:/another/path/to/more/loras"
+```
+
+Once set, MFLUX will automatically discover all `.safetensors` files in these directories (including subdirectories) and allow you to reference them by their basename:
+
+```sh
+# Instead of using full paths:
+mflux-generate \
+    --prompt "a portrait" \
+    --lora-paths "/path/to/loras/style1.safetensors" "/another/path/to/more/loras/style2.safetensors"
+
+# You can simply use basenames:
+mflux-generate \
+    --prompt "a portrait" \
+    --lora-paths "style1" "style2"
+```
+
+<details>
+<summary>Notes on organizing your LoRA files</summary>
+
+- The basename is the filename without the `.safetensors` extension
+- If multiple files have the same basename, the first directory in `LORA_LIBRARY_PATH` takes precedence
+  - to workaround this, rename or symlink to another name your `.safetensors` files to avoid conflicts
+- Full paths still work as before, making this feature fully backwards compatible
+- The library paths are scanned recursively, so LoRAs in subdirectories are also discovered. However, we do not recommend setting the library paths to a directory with a large number of files, as it can slow down the scanning process on every run.
+</details>
 
 #### Supported LoRA formats (updated)
 
