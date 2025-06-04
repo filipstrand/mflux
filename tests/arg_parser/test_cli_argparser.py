@@ -392,20 +392,29 @@ def test_lora_args(mflux_generate_parser, mflux_generate_minimal_argv, base_meta
         assert args.lora_paths is None
         assert args.lora_scales is None
 
-    # test metadata config accepted
-    with patch('sys.argv', mflux_generate_minimal_argv + ['--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
-        args = mflux_generate_parser.parse_args()
-        assert args.lora_paths == test_paths
-        assert args.lora_scales == [pytest.approx(0.3), pytest.approx(0.7)]
+    # Mock get_lora_path to bypass file validation for test purposes
+    with patch("mflux.ui.cli.parsers.get_lora_path", side_effect=lambda x: x):
+        # test metadata config accepted
+        with patch('sys.argv', mflux_generate_minimal_argv + ['--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
+            args = mflux_generate_parser.parse_args()
+            assert args.lora_paths == test_paths
+            assert args.lora_scales == [pytest.approx(0.3), pytest.approx(0.7)]
 
-    # test CLI override that merges CLI loras and config file loras
-    new_loras = ["--lora-paths", "/some/lora/3.safetensors", "/some/lora/4.safetensors", "--lora-scales", "0.1", "0.9"]
-    with patch('sys.argv', mflux_generate_minimal_argv + new_loras + ['--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
-        args = mflux_generate_parser.parse_args()
-        assert len(args.lora_paths) == 4
-        assert args.lora_paths == test_paths + new_loras[1:3]
-        assert len(args.lora_scales) == 4
-        assert args.lora_scales == [pytest.approx(v) for v in [0.3, 0.7, 0.1, 0.9]]
+        # test CLI override that merges CLI loras and config file loras
+        new_loras = [
+            "--lora-paths",
+            "/some/lora/3.safetensors",
+            "/some/lora/4.safetensors",
+            "--lora-scales",
+            "0.1",
+            "0.9",
+        ]
+        with patch('sys.argv', mflux_generate_minimal_argv + new_loras + ['--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
+            args = mflux_generate_parser.parse_args()
+            assert len(args.lora_paths) == 4
+            assert args.lora_paths == test_paths + new_loras[1:3]
+            assert len(args.lora_scales) == 4
+            assert args.lora_scales == [pytest.approx(v) for v in [0.3, 0.7, 0.1, 0.9]]
 
 
 def test_image_to_image_args(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off
