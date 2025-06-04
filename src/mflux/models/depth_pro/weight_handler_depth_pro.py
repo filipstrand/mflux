@@ -1,13 +1,12 @@
 import logging
-import os
 import urllib.error
 import urllib.request
-from pathlib import Path
 
 import mlx.core as mx
 import torch
 from mlx.utils import tree_unflatten
 
+from mflux.ui.defaults import MFLUX_CACHE_DIR
 from mflux.weights.weight_handler import MetaData
 from mflux.weights.weight_util import WeightUtil
 
@@ -47,7 +46,8 @@ class WeightHandlerDepthPro:
         APPLE_MODEL_URL = "https://ml-site.cdn-apple.com/models/depth-pro/depth_pro.pt"
 
         # 1. Create cache directory for the model
-        cache_dir = Path(os.path.expanduser("~/.cache/mflux/depth_pro"))
+        cache_dir = MFLUX_CACHE_DIR / "depth_pro"
+
         cache_dir.mkdir(parents=True, exist_ok=True)
         model_path = cache_dir / "depth_pro.pt"
 
