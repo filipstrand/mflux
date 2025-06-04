@@ -29,6 +29,7 @@ class FluxInitializer:
         lora_scales: list[float] | None = None,
         lora_names: list[str] | None = None,
         lora_repo_id: str | None = None,
+        custom_transformer=None,
     ) -> None:
         # 0. Set paths, configs, and prompt_cache for later
         lora_paths = lora_paths or []
@@ -57,11 +58,17 @@ class FluxInitializer:
 
         # 3. Initialize all models
         flux_model.vae = VAE()
-        flux_model.transformer = Transformer(
-            model_config=model_config,
-            num_transformer_blocks=weights.num_transformer_blocks(),
-            num_single_transformer_blocks=weights.num_single_transformer_blocks(),
-        )
+
+        # Use custom transformer if provided, otherwise create default
+        if custom_transformer is not None:
+            flux_model.transformer = custom_transformer
+        else:
+            flux_model.transformer = Transformer(
+                model_config=model_config,
+                num_transformer_blocks=weights.num_transformer_blocks(),
+                num_single_transformer_blocks=weights.num_single_transformer_blocks(),
+            )
+
         flux_model.t5_text_encoder = T5Encoder()
         flux_model.clip_text_encoder = CLIPEncoder()
 
@@ -187,4 +194,44 @@ class FluxInitializer:
             quantize_arg=quantize,
             weights=weights_controlnet,
             transformer_controlnet=flux_model.transformer_controlnet,
+        )
+
+    @staticmethod
+    def init_concept(
+        flux_model,
+        model_config: ModelConfig,
+        quantize: int | None,
+        local_path: str | None,
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
+        lora_names: list[str] | None = None,
+        lora_repo_id: str | None = None,
+    ):
+        # Import here to avoid circular dependency
+        from mflux.community.concept_attention.transformer_concept import TransformerConcept
+
+        # 1. Load weights first to get transformer dimensions
+        weights = WeightHandler.load_regular_weights(
+            repo_id=model_config.model_name,
+            local_path=local_path,
+        )
+
+        # 2. Create custom TransformerConcept
+        custom_transformer = TransformerConcept(
+            model_config=model_config,
+            num_transformer_blocks=weights.num_transformer_blocks(),
+            num_single_transformer_blocks=weights.num_single_transformer_blocks(),
+        )
+
+        # 3. Use the improved FluxInitializer with custom transformer
+        FluxInitializer.init(
+            flux_model=flux_model,
+            model_config=model_config,
+            quantize=quantize,
+            local_path=local_path,
+            lora_paths=lora_paths,
+            lora_scales=lora_scales,
+            lora_names=lora_names,
+            lora_repo_id=lora_repo_id,
+            custom_transformer=custom_transformer,
         )

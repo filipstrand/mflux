@@ -8,6 +8,7 @@ import piexif
 import PIL.Image
 import PIL.ImageDraw
 
+from mflux.community.concept_attention.attention_data import ConceptHeatmap
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.ui.box_values import AbsoluteBoxValues, BoxValues
@@ -33,6 +34,7 @@ class ImageUtil:
         image_strength: float | None = None,
         masked_image_path: str | Path | None = None,
         depth_image_path: str | Path | None = None,
+        concept_heatmap: ConceptHeatmap | None = None,
     ) -> GeneratedImage:
         normalized = ImageUtil._denormalize(decoded_latents)
         normalized_numpy = ImageUtil._to_numpy(normalized)
@@ -57,6 +59,7 @@ class ImageUtil:
             depth_image_path=depth_image_path,
             redux_image_paths=redux_image_paths,
             redux_image_strengths=redux_image_strengths,
+            concept_heatmap=concept_heatmap,
         )
 
     @staticmethod

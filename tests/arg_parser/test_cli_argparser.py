@@ -140,6 +140,30 @@ def mflux_redux_minimal_argv() -> list[str]:
     return ["mflux-generate-redux", "--redux-image-paths", "image1.png", "image2.png"]
 
 
+@pytest.fixture
+def mflux_concept_parser() -> CommandLineParser:
+    parser = CommandLineParser(description="Generate an image with concept attention based on a prompt and concept.")
+    parser.add_general_arguments()
+    parser.add_model_arguments(require_model_arg=False)
+    parser.add_lora_arguments()
+    parser.add_image_generator_arguments(supports_metadata_config=True)
+    parser.add_image_to_image_arguments(required=False)
+    parser.add_output_arguments()
+    parser.add_concept_attention_arguments()
+    return parser
+
+
+@pytest.fixture
+def mflux_concept_minimal_argv() -> list[str]:
+    return [
+        "mflux-concept",
+        "--prompt",
+        "a beautiful landscape with a car",
+        "--concept",
+        "car",
+    ]
+
+
 def test_model_path_requires_model_arg(mflux_generate_parser):
     # when loading a model via --path, the model name still need to be specified
     with patch("sys.argv", "mflux-generate", "--path", "/some/saved/model"):
@@ -657,3 +681,40 @@ def test_redux_args(mflux_redux_parser, mflux_redux_minimal_argv):
         args = mflux_redux_parser.parse_args()
         assert len(args.redux_image_paths) == 2
         assert args.output == "redux_result.png"
+
+
+def test_concept_attention_args(mflux_concept_parser, mflux_concept_minimal_argv):
+    # Test required arguments
+    with patch("sys.argv", mflux_concept_minimal_argv):
+        args = mflux_concept_parser.parse_args()
+        assert args.prompt == "a beautiful landscape with a car"
+        assert args.concept == "car"
+        # Test defaults
+        assert args.heatmap_layer_indices == list(range(15, 19))
+        assert args.heatmap_timesteps is None
+
+    # Test with missing required concept - should raise SystemExit
+    with patch("sys.argv", ["mflux-concept", "--prompt", "test"]):
+        pytest.raises(SystemExit, mflux_concept_parser.parse_args)
+
+    # Test with missing regular prompt - should raise SystemExit
+    with patch("sys.argv", ["mflux-concept", "--concept", "test concept"]):
+        pytest.raises(SystemExit, mflux_concept_parser.parse_args)
+
+    # Test with custom heatmap parameters
+    custom_argv = mflux_concept_minimal_argv + [
+        "--heatmap-layer-indices",
+        "10",
+        "11",
+        "12",
+        "--heatmap-timesteps",
+        "0",
+        "1",
+        "2",
+    ]
+    with patch("sys.argv", custom_argv):
+        args = mflux_concept_parser.parse_args()
+        assert args.prompt == "a beautiful landscape with a car"
+        assert args.concept == "car"
+        assert args.heatmap_layer_indices == [10, 11, 12]
+        assert args.heatmap_timesteps == [0, 1, 2]

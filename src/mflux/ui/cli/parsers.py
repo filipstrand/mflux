@@ -126,6 +126,20 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--controlnet-strength", type=float, default=ui_defaults.CONTROLNET_STRENGTH, help=f"Controls how strongly the control image influences the output image. A value of 0.0 means no influence. (Default is {ui_defaults.CONTROLNET_STRENGTH})")
         self.add_argument("--controlnet-save-canny", action="store_true", help="If set, save the Canny edge detection reference input image.")
 
+    def add_concept_attention_arguments(self) -> None:
+        concept_group = self.add_argument_group("Concept Attention configuration")
+        concept_group.add_argument("--concept", type=str, required=True, help="The concept prompt to use for attention visualization")
+        concept_group.add_argument("--input-image-path", type=Path, required=False, default=None, help="Local path to reference image for concept attention analysis (uses FluxConceptFromImage instead of text-based concept)")
+        concept_group.add_argument("--heatmap-layer-indices", type=int, nargs="*", default=list(range(15, 19)), help="Layer indices to use for heatmap generation (default: 15-18)")
+        concept_group.add_argument("--heatmap-timesteps", type=int, nargs="*", default=None, help="Timesteps to use for heatmap generation (default: all timesteps)")
+
+    def add_concept_from_image_arguments(self) -> None:
+        concept_group = self.add_argument_group("Concept Attention from Image configuration")
+        concept_group.add_argument("--concept", type=str, required=True, help="The concept prompt to use for attention visualization")
+        concept_group.add_argument("--input-image-path", type=Path, required=True, help="Local path to reference image for concept attention analysis")
+        concept_group.add_argument("--heatmap-layer-indices", type=int, nargs="*", default=list(range(15, 19)), help="Layer indices to use for heatmap generation (default: 15-18)")
+        concept_group.add_argument("--heatmap-timesteps", type=int, nargs="*", default=None, help="Timesteps to use for heatmap generation (default: all timesteps)")
+
     def add_metadata_config(self) -> None:
         self.supports_metadata_config = True
         self.add_argument("--config-from-metadata", "-C", type=Path, required=False, default=argparse.SUPPRESS, help="Re-use the parameters from prior metadata. Params from metadata are secondary to other args you provide.")
