@@ -12,6 +12,9 @@ from mflux.dreambooth.state.zip_util import ZipUtil
 class ExampleSpec:
     image: Path
     prompt: str
+    use_depth: bool = False
+    depth_emphasis_mode: str = "foreground"  # NEW: foreground, background, sigmoid, log
+    depth_emphasis_strength: float = 2.0  # NEW: strength of depth emphasis (1.0 = no emphasis)
 
     @classmethod
     def create(cls, param: dict[str, str], absolute_or_relative_path: str, base_path: Path) -> "ExampleSpec":
@@ -26,6 +29,9 @@ class ExampleSpec:
         return cls(
             image=image_path,
             prompt=param["prompt"],
+            use_depth=param.get("use_depth", False),
+            depth_emphasis_mode=param.get("depth_emphasis_mode", "foreground"),
+            depth_emphasis_strength=float(param.get("depth_emphasis_strength", 2.0)),
         )
 
 
