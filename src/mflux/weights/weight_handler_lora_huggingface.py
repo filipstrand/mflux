@@ -17,7 +17,7 @@ class WeightHandlerLoRAHuggingFace:
         lora_paths = []
         if lora_names:
             for lora_name in lora_names:
-                lora_path = WeightHandlerLoRAHuggingFace._download_lora(
+                lora_path = WeightHandlerLoRAHuggingFace.download_lora(
                     repo_id=repo_id,
                     lora_name=lora_name,
                     cache_dir=cache_dir,
@@ -27,7 +27,7 @@ class WeightHandlerLoRAHuggingFace:
         return lora_paths
 
     @staticmethod
-    def _download_lora(
+    def download_lora(
         repo_id: str,
         lora_name: str,
         cache_dir: str | None = None,

@@ -138,6 +138,12 @@ class WeightHandlerLoRA:
     def set_lora_layers(transformer_module: nn.Module, lora_layers: LoRALayers) -> None:
         transformer = lora_layers.layers.transformer
 
+        # Handle top-level transformer components (x_embedder, context_embedder, proj_out, etc.)
+        for attr_name in ["x_embedder", "context_embedder", "proj_out"]:
+            component = transformer.get(attr_name, None)
+            if component is not None:
+                setattr(transformer_module, attr_name, component)
+
         # Handle transformer_blocks
         transformer_blocks = transformer.get("transformer_blocks", [])
         for i, weights in enumerate(transformer_blocks):

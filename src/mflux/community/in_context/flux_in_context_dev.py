@@ -19,7 +19,7 @@ from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
 
 
-class Flux1InContextLoRA(nn.Module):
+class Flux1InContextDev(nn.Module):
     vae: VAE
     transformer: Transformer
     t5_text_encoder: T5Encoder
@@ -66,7 +66,7 @@ class Flux1InContextLoRA(nn.Module):
         )
 
         # 2. Create the initial latents and keep the initial static noise for later blending
-        static_noise = Flux1InContextLoRA._create_in_context_latents(seed=seed, config=config)
+        static_noise = Flux1InContextDev._create_in_context_latents(seed=seed, config=config)
         latents = mx.array(static_noise)
 
         # 3. Encode the prompt
@@ -102,8 +102,8 @@ class Flux1InContextLoRA(nn.Module):
                 dt = config.sigmas[t + 1] - config.sigmas[t]
                 latents += noise * dt
 
-                # 6.t Override left hand side of latents by linearly interpolating between latents and static noise
-                latents = Flux1InContextLoRA._update_latents(
+                # 6.t Override the left-hand side of latents by linearly interpolating between latents and static noise
+                latents = Flux1InContextDev._update_latents(
                     t=t,
                     config=config,
                     latents=latents,

@@ -108,7 +108,7 @@ class LoRALayers:
                         base_path=base_path,
                     )
 
-                if parts[1] == "single_transformer_blocks":
+                elif parts[1] == "single_transformer_blocks":
                     LoRALayers._handle_single_transformer_blocks(
                         weights=weights,
                         scale=scale,
@@ -117,7 +117,43 @@ class LoRALayers:
                         base_path=base_path,
                     )
 
+                # Handle top-level transformer components like x_embedder, context_embedder, proj_out
+                elif len(parts) == 2 and parts[0] == "transformer":
+                    LoRALayers._handle_top_level_component(
+                        weights=weights,
+                        scale=scale,
+                        transformer=transformer,
+                        lora_layers=lora_layers,
+                        base_path=base_path,
+                        component_name=parts[1],
+                    )
+
         return lora_layers
+
+    @staticmethod
+    def _resolve_legacy_paths(module, module_name: str, attr_name: str, parts: list, block_idx: int) -> tuple:
+        # Handle legacy naming: ff.net.2 -> ff.linear2
+        if module_name == "ff" and attr_name == "net" and len(parts) >= 6 and parts[5] == "2":
+            return getattr(module, "linear2"), f"transformer.transformer_blocks.{block_idx}.ff.linear2"
+
+        # Handle attn.to_out.0 -> attn.to_out[0] (list access)
+        if module_name == "attn" and attr_name == "to_out" and len(parts) >= 6 and parts[5] == "0":
+            return module.to_out[0], f"transformer.transformer_blocks.{block_idx}.attn.to_out"
+
+        # Default case
+        original_layer = getattr(module, attr_name)
+        if len(parts) == 6:
+            original_layer = original_layer[0]
+        return original_layer, ".".join(parts)
+
+    @staticmethod
+    def _create_lora_layer(weights: dict, base_path: str, original_layer, scale: float):
+        lora_A = weights[f"{base_path}.lora_A"]
+        rank = lora_A.shape[1]
+        lora_layer = LoRALinear.from_linear(linear=original_layer, r=rank, scale=scale)
+        lora_layer.lora_A = lora_A
+        lora_layer.lora_B = weights[f"{base_path}.lora_B"]
+        return lora_layer
 
     @staticmethod
     def _handle_transformer_blocks(
@@ -129,22 +165,19 @@ class LoRALayers:
         attr_name = parts[4]
         block = transformer.transformer_blocks[block_idx]
         module = getattr(block, module_name)
-        original_layer = getattr(module, attr_name)
 
-        if len(parts) == 6:
-            original_layer = original_layer[0]  # Special case here
+        # Resolve legacy naming and get the actual layer and storage path
+        original_layer, storage_path = LoRALayers._resolve_legacy_paths(
+            module=module,
+            module_name=module_name,
+            attr_name=attr_name,
+            parts=parts,
+            block_idx=block_idx,
+        )
 
-        # Create LoRA layer
-        lora_A = weights[f"{base_path}.lora_A"]
-        rank = lora_A.shape[1]
-        lora_layer = LoRALinear.from_linear(linear=original_layer, r=rank, scale=scale)
-
-        # Set the weights
-        lora_layer.lora_A = weights[f"{base_path}.lora_A"]
-        lora_layer.lora_B = weights[f"{base_path}.lora_B"]
-
-        # Store the layer
-        lora_layers[base_path] = lora_layer
+        # Create and store LoRA layer
+        lora_layer = LoRALayers._create_lora_layer(weights, base_path, original_layer, scale)
+        lora_layers[storage_path] = lora_layer
 
     @staticmethod
     def _handle_single_transformer_blocks(
@@ -153,24 +186,25 @@ class LoRALayers:
         parts = base_path.split(".")
         block_idx = int(parts[2])
         module_name = parts[3]
+
         if len(parts) == 4:
             original_layer = getattr(transformer.single_transformer_blocks[block_idx], module_name)
-        elif len(parts) == 5:
+        else:
             attr_name = parts[4]
             block = transformer.single_transformer_blocks[block_idx]
             module = getattr(block, module_name)
             original_layer = getattr(module, attr_name)
 
-        # Create LoRA layer
-        lora_A = weights[f"{base_path}.lora_A"]
-        rank = lora_A.shape[1]
-        lora_layer = LoRALinear.from_linear(linear=original_layer, r=rank, scale=scale)
+        # Create and store LoRA layer
+        lora_layer = LoRALayers._create_lora_layer(weights, base_path, original_layer, scale)
+        lora_layers[base_path] = lora_layer
 
-        # Set the weights
-        lora_layer.lora_A = weights[f"{base_path}.lora_A"]
-        lora_layer.lora_B = weights[f"{base_path}.lora_B"]
-
-        # Store the layer
+    @staticmethod
+    def _handle_top_level_component(
+        weights: dict, scale: float, transformer: nn.Module, lora_layers: dict, base_path: str, component_name: str
+    ):
+        original_layer = getattr(transformer, component_name)
+        lora_layer = LoRALayers._create_lora_layer(weights, base_path, original_layer, scale)
         lora_layers[base_path] = lora_layer
 
     @staticmethod
@@ -210,7 +244,11 @@ class LoRALayers:
     @staticmethod
     def _set_attribute(block, key: str, val: dict, name: str):
         if block[key].get(name, False) and val.get(name, False):
-            block[key][name] = val[name]
+            if name == "to_out" and isinstance(block[key][name], list):
+                if len(block[key][name]) > 0:
+                    block[key][name][0] = val[name]
+            else:
+                block[key][name] = val[name]
 
     @staticmethod
     def _get_nested_attr(obj, attr_path):

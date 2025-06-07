@@ -42,7 +42,7 @@ class MaskUtil:
         masked_image = ArrayUtil.pack_latents(latents=masked_image, height=height, width=width)
 
         # 4. Resize mask and pack latents
-        mask = MaskUtil._reshape_mask(the_mask=the_mask, height=height, width=width)
+        mask = MaskUtil.reshape_mask(the_mask=the_mask, height=height, width=width)
         mask = ArrayUtil.pack_latents(latents=mask, height=height, width=width, num_channels_latents=64)
 
         # 5. Concat the masked_image and the mask
@@ -50,7 +50,7 @@ class MaskUtil:
         return masked_image_latents
 
     @staticmethod
-    def _reshape_mask(the_mask: mx.array, height: int, width: int) -> mx.array:
+    def reshape_mask(the_mask: mx.array, height: int, width: int) -> mx.array:
         mask = the_mask[:, 0, :, :]
         mask = mx.reshape(mask, (1, height // 8, 8, width // 8, 8))
         mask = mx.transpose(mask, (0, 2, 4, 1, 3))
