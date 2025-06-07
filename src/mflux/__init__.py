@@ -4,6 +4,7 @@ from mflux.controlnet.flux_controlnet import Flux1Controlnet
 from mflux.error.exceptions import StopImageGenerationException
 from mflux.flux.flux import Flux1
 from mflux.flux_tools.fill.flux_fill import Flux1Fill
+from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
 
 __all__ = [
@@ -11,6 +12,7 @@ __all__ = [
     "Flux1Controlnet",
     "Flux1Fill",
     "Config",
+    "GeneratedImage",
     "ModelConfig",
     "ImageUtil",
     "StopImageGenerationException",
