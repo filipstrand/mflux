@@ -164,6 +164,56 @@ def mflux_concept_minimal_argv() -> list[str]:
     ]
 
 
+@pytest.fixture
+def mflux_catvton_parser() -> CommandLineParser:
+    parser = CommandLineParser(description="Generate virtual try-on images using in-context learning.")
+    parser.add_general_arguments()
+    parser.add_model_arguments(require_model_arg=False)
+    parser.add_lora_arguments()
+    parser.add_image_generator_arguments(supports_metadata_config=False, require_prompt=False)
+    parser.add_catvton_arguments()
+    parser.add_in_context_arguments()
+    parser.add_output_arguments()
+    return parser
+
+
+@pytest.fixture
+def mflux_catvton_minimal_argv() -> list[str]:
+    return [
+        "mflux-generate-in-context-catvton",
+        "--person-image",
+        "person.png",
+        "--person-mask",
+        "person_mask.png",
+        "--garment-image",
+        "garment.png",
+    ]
+
+
+@pytest.fixture
+def mflux_in_context_edit_parser() -> CommandLineParser:
+    parser = CommandLineParser(description="Generate images using in-context editing.")
+    parser.add_general_arguments()
+    parser.add_model_arguments(require_model_arg=False)
+    parser.add_lora_arguments()
+    parser.add_image_generator_arguments(supports_metadata_config=False, require_prompt=False)
+    parser.add_in_context_edit_arguments()
+    parser.add_in_context_arguments()
+    parser.add_output_arguments()
+    return parser
+
+
+@pytest.fixture
+def mflux_in_context_edit_minimal_argv() -> list[str]:
+    return [
+        "mflux-generate-in-context-edit",
+        "--reference-image",
+        "reference.png",
+        "--instruction",
+        "make the hair black",
+    ]
+
+
 def test_model_path_requires_model_arg(mflux_generate_parser):
     # when loading a model via --path, the model name still need to be specified
     with patch("sys.argv", "mflux-generate", "--path", "/some/saved/model"):
@@ -727,3 +777,102 @@ def test_concept_attention_args(mflux_concept_parser, mflux_concept_minimal_argv
         assert args.concept == "car"
         assert args.heatmap_layer_indices == [10, 11, 12]
         assert args.heatmap_timesteps == [0, 1, 2]
+
+
+def test_catvton_args(mflux_catvton_parser, mflux_catvton_minimal_argv):
+    # Test required arguments
+    with patch("sys.argv", mflux_catvton_minimal_argv):
+        args = mflux_catvton_parser.parse_args()
+        assert args.person_image == "person.png"
+        assert args.person_mask == "person_mask.png"
+        assert args.garment_image == "garment.png"
+
+        # Test prompt is None by default (set by the app, not parser)
+        assert args.prompt is None
+
+    # Test missing required arguments
+    with patch("sys.argv", ["mflux-generate-in-context-catvton"]):
+        pytest.raises(SystemExit, mflux_catvton_parser.parse_args)
+
+    with patch("sys.argv", ["mflux-generate-in-context-catvton", "--person-image", "person.png"]):
+        pytest.raises(SystemExit, mflux_catvton_parser.parse_args)
+
+    with patch(
+        "sys.argv", ["mflux-generate-in-context-catvton", "--person-image", "person.png", "--person-mask", "mask.png"]
+    ):
+        pytest.raises(SystemExit, mflux_catvton_parser.parse_args)
+
+    # Test custom prompt can be set
+    with patch("sys.argv", mflux_catvton_minimal_argv + ["--prompt", "custom prompt"]):
+        args = mflux_catvton_parser.parse_args()
+        assert args.prompt == "custom prompt"
+
+    # Test VAE tiling split argument
+    with patch("sys.argv", mflux_catvton_minimal_argv + ["--vae-tiling"]):
+        args = mflux_catvton_parser.parse_args()
+        assert args.vae_tiling is True
+        assert args.vae_tiling_split == "horizontal"  # Default value from parser
+
+
+def test_in_context_edit_args(mflux_in_context_edit_parser, mflux_in_context_edit_minimal_argv):
+    # Test required arguments with instruction
+    with patch("sys.argv", mflux_in_context_edit_minimal_argv):
+        args = mflux_in_context_edit_parser.parse_args()
+        assert args.reference_image == "reference.png"
+        assert args.instruction == "make the hair black"
+        assert hasattr(mflux_in_context_edit_parser, "supports_in_context_edit")
+        assert mflux_in_context_edit_parser.supports_in_context_edit is True
+
+    # Test with prompt instead of instruction
+    with patch(
+        "sys.argv",
+        [
+            "mflux-generate-in-context-edit",
+            "--reference-image",
+            "reference.png",
+            "--prompt",
+            "A diptych with custom prompt",
+        ],
+    ):
+        args = mflux_in_context_edit_parser.parse_args()
+        assert args.reference_image == "reference.png"
+        assert args.prompt == "A diptych with custom prompt"
+
+    # Test missing required arguments
+    with patch("sys.argv", ["mflux-generate-in-context-edit"]):
+        pytest.raises(SystemExit, mflux_in_context_edit_parser.parse_args)
+
+    with patch("sys.argv", ["mflux-generate-in-context-edit", "--reference-image", "reference.png"]):
+        pytest.raises(SystemExit, mflux_in_context_edit_parser.parse_args)
+
+    # Test both prompt and instruction provided (should error)
+    with patch(
+        "sys.argv",
+        [
+            "mflux-generate-in-context-edit",
+            "--reference-image",
+            "reference.png",
+            "--prompt",
+            "test prompt",
+            "--instruction",
+            "test instruction",
+        ],
+    ):
+        pytest.raises(SystemExit, mflux_in_context_edit_parser.parse_args)
+
+    # Test VAE tiling split argument
+    with patch("sys.argv", mflux_in_context_edit_minimal_argv + ["--vae-tiling"]):
+        args = mflux_in_context_edit_parser.parse_args()
+        assert args.vae_tiling is True
+        assert args.vae_tiling_split == "horizontal"  # Default value from parser
+
+
+def test_in_context_args(mflux_catvton_parser, mflux_catvton_minimal_argv):
+    # Test save_full_image flag
+    with patch("sys.argv", mflux_catvton_minimal_argv):
+        args = mflux_catvton_parser.parse_args()
+        assert args.save_full_image is False
+
+    with patch("sys.argv", mflux_catvton_minimal_argv + ["--save-full-image"]):
+        args = mflux_catvton_parser.parse_args()
+        assert args.save_full_image is True

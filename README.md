@@ -27,7 +27,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
   * [Multi-LoRA](#multi-lora)
   * [LoRA Library Path](#lora-library-path)
   * [Supported LoRA formats (updated)](#supported-lora-formats-updated)
-- [🎭 In-Context LoRA](#-in-context-lora)
+- [🎭 In-Context Generation](#-in-context-generation)
   * [Available Styles](#available-styles)
   * [How It Works](#how-it-works)
   * [Tips for Best Results](#tips-for-best-results)
@@ -222,7 +222,35 @@ The `mflux-generate-in-context` command supports most of the same arguments as `
 
 - **`--lora-style`** (optional, `str`, default: `None`): The style to use for In-Context LoRA generation. Choose from: `couple`, `storyboard`, `font`, `home`, `illustration`, `portrait`, `ppt`, `sandstorm`, `sparklers`, or `identity`.
 
-See the [In-Context LoRA](#-in-context-lora) section for more details on how to use this feature effectively.
+See the [In-Context Generation](#-in-context-generation) section for more details on how to use this feature effectively.
+
+#### 📜 CatVTON Command-Line Arguments
+
+The `mflux-generate-in-context-catvton` command supports most of the same arguments as `mflux-generate`, with these specific parameters:
+
+- **`--person-image`** (required, `str`): Path to the person image who will "wear" the garment.
+
+- **`--person-mask`** (required, `str`): Path to a binary mask image indicating where the garment should be applied on the person.
+
+- **`--garment-image`** (required, `str`): Path to the garment image to be virtually worn.
+
+- **`--save-full-image`** (optional, flag): Additionally save the full side-by-side image containing both the garment reference and the result.
+
+See the [CatVTON (Virtual Try-On)](#-catvton-virtual-try-on) section for more details on this feature.
+
+#### 📜 IC-Edit Command-Line Arguments
+
+The `mflux-generate-in-context-edit` command supports most of the same arguments as `mflux-generate`, with these specific parameters:
+
+- **`--reference-image`** (required, `str`): Path to the reference image to be edited.
+
+- **`--instruction`** (optional, `str`): Simple text instruction describing the desired edit (e.g., "make the hair black"). This will be automatically formatted as a diptych template. Either `--instruction` or `--prompt` is required.
+
+- **`--save-full-image`** (optional, flag): Additionally save the full side-by-side image showing the original and edited versions.
+
+**Note**: The IC-Edit tool automatically downloads and applies the required LoRA, and optimizes the resolution to 512px width for best results.
+
+See the [IC-Edit (In-Context Editing)](#-ic-edit-in-context-editing) section for more details on this feature.
 
 #### 📜 Redux Tool Command-Line Arguments
 
@@ -834,9 +862,15 @@ To report additional formats, examples or other any suggestions related to LoRA 
 
 ---
 
-### 🎭 In-Context LoRA
+### 🎭 In-Context Generation
 
-In-Context LoRA is a powerful technique that allows you to generate images in a specific style based on a reference image, without requiring model fine-tuning. This approach uses specialized LoRA weights that enable the model to understand and apply the visual context from your reference image to a new generation.
+In-Context Generation is a powerful collection of techniques that allows you to generate images based on reference images and context, without requiring model fine-tuning. MFLUX supports multiple in-context approaches, each designed for specific use cases ranging from style transfer to virtual try-on and image editing.
+
+**Note**: Black Forest Labs has announced [FLUX.1 Kontext](https://bfl.ai/models/flux-kontext), a new model suite designed specifically for text-and-image-driven generation and editing with advanced in-context capabilities. This official model may replace existing third-party implementations in the future. FLUX.1 Kontext offers character consistency, local editing, style reference, and interactive speed optimizations. The dev variant is coming soon as an open-weights model.
+
+#### 🎨 In-Context LoRA
+
+In-Context LoRA allows you to generate images in a specific style based on a reference image. This approach uses specialized LoRA weights that enable the model to understand and apply the visual context from your reference image to a new generation.
 
 This feature is based on the [In-Context LoRA for Diffusion Transformers](https://github.com/ali-vilab/In-Context-LoRA) project by Ali-ViLab.
 
@@ -846,8 +880,7 @@ To use In-Context LoRA, you need:
 1. A reference image
 2. A style LoRA (optional - the in-context ability works without LoRAs, but they can significantly enhance the results)
 
-
-#### Available Styles
+##### Available Styles
 
 MFLUX provides several pre-defined styles from the [Hugging Face ali-vilab/In-Context-LoRA repository](https://huggingface.co/ali-vilab/In-Context-LoRA) that you can use with the `--lora-style` argument:
 
@@ -864,7 +897,7 @@ MFLUX provides several pre-defined styles from the [Hugging Face ali-vilab/In-Co
 | `sparklers`    | Sparklers visual effect                   |
 | `identity`     | Visual identity and branding design style |
 
-#### How It Works
+##### How It Works
 
 The In-Context LoRA generation creates a side-by-side image where:
 - The left side shows your reference image with noise applied
@@ -874,8 +907,7 @@ The final output is automatically cropped to show only the right half (the gener
 
 ![image](src/mflux/assets/in_context_how_it_works.jpg)
 
-
-#### Prompting for In-Context LoRA
+##### Prompting for In-Context LoRA
 
 For best results with In-Context LoRA, your prompt should describe both the reference image and the target image you want to generate. Use markers like `[IMAGE1]`, `[LEFT]`, or `[RIGHT]` to distinguish between the two parts.
 
@@ -901,7 +933,7 @@ This prompt clearly describes both the reference image (after `[IMAGE1]`) and th
 
 **Important**: In the current implementation, the reference image is ALWAYS placed on the left side of the composition, and the generated image on the right side. When using marker pairs in your prompt, the first marker (e.g., `[IMAGE1]`, `[LEFT]`, `[REFERENCE]`) always refers to your reference image, while the second marker (e.g., `[IMAGE2]`, `[RIGHT]`, `[OUTPUT]`) refers to what you want to generate.
 
-#### Tips for Best Results
+##### Tips for Best Results
 
 1. **Choose the right reference image**: Select a reference image with a clear composition and structure that matches your intended output.
 2. **Adjust guidance**: Higher guidance values (7.0-9.0) tend to produce results that more closely follow your prompt.
@@ -909,6 +941,95 @@ This prompt clearly describes both the reference image (after `[IMAGE1]`) and th
 4. **Increase steps**: For higher quality results, use 25-30 steps.
 5. **Detailed prompting**: Be specific about both the reference image and your desired output in your prompt.
 6. **Try without LoRA**: While LoRAs enhance the results, you can experiment without them to see the base in-context capabilities.
+
+#### 👕 CatVTON (Virtual Try-On)
+
+⚠️ **Experimental Feature**: CatVTON is an experimental feature and may be removed or significantly changed in future updates.
+
+CatVTON enables virtual try-on capabilities using in-context learning. This approach allows you to generate images of people wearing different garments by providing a person image, a person mask, and a garment image.
+
+The implementation is based on [@nftblackmagic/catvton-flux](https://github.com/nftblackmagic/catvton-flux) and uses the model weights from [xiaozaa/catvton-flux-beta](https://huggingface.co/xiaozaa/catvton-flux-beta) (approximately 24 GB download).
+
+##### How to Use CatVTON
+
+```sh
+mflux-generate-in-context-catvton \
+  --person-image "person.jpg" \
+  --person-mask "person_mask.png" \
+  --garment-image "garment.jpg" \
+  --steps 20 \
+  --seed 42 \
+  --height 1024 \
+  --width 1024
+```
+
+##### Required Inputs
+
+- **Person Image**: A photo of the person who will "wear" the garment
+- **Person Mask**: A binary mask indicating the areas where the garment should be applied
+- **Garment Image**: The clothing item to be virtually worn
+
+##### CatVTON Features
+
+- **Automatic Prompting**: If no prompt is provided, CatVTON uses an optimized default prompt designed for virtual try-on scenarios
+- **Side-by-Side Generation**: Creates a diptych showing the garment product shot alongside the styled result
+- **Optimized for Clothing**: Specifically tuned for clothing and fashion applications
+- **High-Quality Results**: Maintains realistic lighting, shadows, and fabric properties
+
+##### Tips for CatVTON
+
+1. **High-Quality Inputs**: Use high-resolution, well-lit images for best results
+2. **Accurate Masks**: Ensure the person mask precisely covers the areas where the garment should appear
+3. **Consistent Lighting**: Match lighting conditions between person and garment images when possible
+4. **Garment Type**: Works best with clearly defined clothing items (shirts, dresses, jackets, etc.)
+
+#### ✏️ IC-Edit (In-Context Editing)
+
+⚠️ **Experimental Feature**: IC-Edit is an experimental feature and may be removed or significantly changed in future updates.
+
+IC-Edit provides intuitive image editing capabilities using natural language instructions. This approach automatically applies a specialized LoRA and generates edited versions of your reference image based on simple text instructions.
+
+The implementation is based on [@River-Zhang/ICEdit](https://github.com/River-Zhang/ICEdit).
+
+##### How to Use IC-Edit
+
+```sh
+mflux-generate-in-context-edit \
+  --reference-image "original.jpg" \
+  --instruction "make the hair black" \
+  --steps 20 \
+  --seed 42
+```
+
+##### Key Features
+
+- **Natural Language Instructions**: Use simple, descriptive instructions like "make the hair black", "add sunglasses", or "change the background to a beach"
+- **Automatic Prompting**: Instructions are automatically wrapped in a diptych template for optimal results
+- **Optimal Resolution**: Automatically resizes to 512px width (the resolution IC-Edit was trained on) while maintaining aspect ratio
+- **Specialized LoRA**: Automatically downloads and applies the IC-Edit LoRA for enhanced editing capabilities
+
+##### IC-Edit Options
+
+You can use either `--instruction` for simple edits or `--prompt` for full control:
+
+```sh
+# Using instruction (recommended)
+mflux-generate-in-context-edit \
+  --reference-image "photo.jpg" \
+  --instruction "remove the glasses"
+
+# Using custom prompt (advanced)
+mflux-generate-in-context-edit \
+  --reference-image "photo.jpg" \
+  --prompt "A diptych with two side-by-side images of the same scene. On the right, the scene is exactly the same as on the left but with a vintage filter applied"
+```
+
+##### Tips for IC-Edit
+
+1. **Clear Instructions**: Use specific, actionable instructions for best results
+2. **Single Changes**: Focus on one edit at a time for more predictable results
+3. **Reference Quality**: Higher quality reference images generally produce better edits
+4. **Iterative Editing**: Use the output of one edit as input for the next to build complex changes
 
 ---
 
@@ -1414,7 +1535,7 @@ This will generate the following image
 - Some LoRA adapters does not work.
 - Currently, the supported controlnet is the [canny-only version](https://huggingface.co/InstantX/FLUX.1-dev-Controlnet-Canny).
 - Dreambooth training currently does not support sending in training parameters as flags.
-- In-Context LoRA currently only supports a left-right image setup (reference image on left, generated image on right).
+- In-Context Generation features currently only support a left-right image setup (reference image on left, generated image on right).
 
 ### Optional Tool: Batch Image Renamer
 
@@ -1449,7 +1570,6 @@ See `uv run tools/rename_images.py --help` for full CLI usage help.
 
 ### 🔬 Cool research / features to support
 - [ ] [PuLID](https://github.com/ToTheBeginning/PuLID)
-- [ ] [catvton-flux](https://github.com/nftblackmagic/catvton-flux)
 
 ### 🌱‍ Related projects
 
