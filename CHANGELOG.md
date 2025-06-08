@@ -18,6 +18,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Automatic diptych template formatting
   - Optimal resolution auto-sizing for 512px width
   - Specialized LoRA automatically downloaded and applied
+- **🎯 Concept Attention**: Enhanced image generation control using attention-based concepts
+  - Fine-grained control over image generation focus areas
+  - Improved composition and subject handling
+- **🔍 Image Upscaling**: Built-in upscaling capabilities for generated images
+  - Enhanced image quality and resolution enhancement
+  - Seamless integration with existing generation workflow
+- **🪫 Battery Saver**: Power management for long-running batch operations
+  - Automatic power optimization during extended generation sessions
+  - Configurable power-saving modes for laptop users
+- **📝 Prompt File Support**: File-based prompt input for batch operations via `--prompt-file`
+  - Dynamic prompt updates for large batch generation
+  - Support for external prompt management and automation
+- **⚖️ Redux Function Balancing**: Enhanced Redux image variation capabilities
+  - Improved control over image-to-image transformation strength
+  - Better quality variations with adjustable parameters
+- **🔧 LORA_LIBRARY_PATH**: Unix-style resource discovery for LoRA libraries
+  - Improved path handling for LoRA weight discovery
+  - Better cross-platform compatibility
 - New command-line arguments for both experimental features
 - Comprehensive argument parser tests for new functionality
 - Updated documentation with experimental feature warnings
@@ -26,9 +44,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Refactored "In-Context LoRA" section to "In-Context Generation" with subcategories
 - Enhanced documentation structure for better organization
+- Updated MLX dependency to latest version for improved performance
+- Removed PyTorch dependency for DepthPro model, reducing installation requirements
 
 ### Experimental
 - CatVTON and IC-Edit features may be removed or significantly changed in future updates
+
+### Contributors
+Special thanks to the following contributors for their work since v0.7.1:
+- **Anthony Wu (@anthonywu)**: Battery Saver, Prompt File Support, LORA_LIBRARY_PATH improvements
+- **Alessandro (@alessandro)**: Redux Function Balancing
+- **Filip Strand (@filipstrand)**: Core development, experimental features, infrastructure improvements
 
 ## [0.7.1] - 2025-05-06
 ### Added
