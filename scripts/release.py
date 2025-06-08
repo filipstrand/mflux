@@ -11,9 +11,9 @@ import requests
 
 
 class ReleaseManager:
-    def __init__(self, github_token: str, github_repo: str):
+    def __init__(self, github_token: str):
         self.github_token = github_token
-        self.github_repo = github_repo
+        self.github_repo = "filipstrand/mflux"
         self.base_url = "https://api.github.com"
         self.headers = {
             "Authorization": f"token {github_token}",
@@ -218,17 +218,38 @@ def main():
     parser = argparse.ArgumentParser(description="MFLUX Release Management")
     parser.add_argument("--github-ref", help="GitHub ref (e.g., refs/tags/v.0.8.0)")
     parser.add_argument("--github-token", help="GitHub token")
-    parser.add_argument("--github-repo", help="GitHub repository (e.g., username/repo)")
     parser.add_argument("--test-pypi-token", help="Test PyPI API token (optional)")
     parser.add_argument("--pypi-token", help="PyPI API token")
     parser.add_argument("--dry-run", action="store_true", help="Print what would be done without executing")
-
+    parser.add_argument("--show-changelog", help="Show changelog entry for a specific version (e.g., 0.8.0) and exit")
+    parser.add_argument("--markdown", action="store_true", help="Output changelog in markdown format (use with --show-changelog)")  # fmt:off
     args = parser.parse_args()
+
+    # Handle --show-changelog option
+    if args.show_changelog:
+        try:
+            changelog_entry = ReleaseManager.extract_changelog_entry(args.show_changelog)
+
+            if args.markdown:
+                # Output as Markdown
+                print(f"# Release {args.show_changelog}\n")
+                print(changelog_entry)
+                print(f"\n---\n*Changelog entry: {len(changelog_entry)} characters*")
+            else:
+                # Output with separators (original format)
+                print(f"📝 Changelog entry for version {args.show_changelog}:")
+                print("=" * 60)
+                print(changelog_entry)
+                print("=" * 60)
+                print(f"✅ Found changelog entry ({len(changelog_entry)} characters)")
+        except (ValueError, FileNotFoundError) as e:
+            print(f"❌ Failed to extract changelog: {e}")
+            sys.exit(1)
+        return
 
     # Get values from args or environment variables
     github_ref = args.github_ref or os.getenv("GITHUB_REF")
     github_token = args.github_token or os.getenv("GITHUB_TOKEN")
-    github_repo = args.github_repo or os.getenv("GITHUB_REPOSITORY")
     test_pypi_token = args.test_pypi_token or os.getenv("TEST_PYPI_API_TOKEN")
     pypi_token = args.pypi_token or os.getenv("PYPI_API_TOKEN")
 
@@ -241,10 +262,6 @@ def main():
         print("❌ GitHub token is required (--github-token or GITHUB_TOKEN env var)")
         sys.exit(1)
 
-    if not github_repo:
-        print("❌ GitHub repository is required (--github-repo or GITHUB_REPOSITORY env var)")
-        sys.exit(1)
-
     if not pypi_token:
         print("❌ PyPI token is required (--pypi-token or PYPI_API_TOKEN env var)")
         sys.exit(1)
@@ -252,13 +269,12 @@ def main():
     if args.dry_run:
         print("🔍 DRY RUN MODE - would execute release process with:")
         print(f"   GitHub ref: {github_ref}")
-        print(f"   GitHub repo: {github_repo}")
         print(f"   Has Test PyPI token: {bool(test_pypi_token)}")
         print(f"   Has PyPI token: {bool(pypi_token)}")
         return
 
     try:
-        release_manager = ReleaseManager(github_token, github_repo)
+        release_manager = ReleaseManager(github_token)
         release_manager.release(github_ref, test_pypi_token, pypi_token)
     except (ValueError, FileNotFoundError, requests.RequestException) as e:
         print(f"❌ Release failed: {e}")
