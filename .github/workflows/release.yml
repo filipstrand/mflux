@@ -1,9 +1,12 @@
 name: Create Release and Publish to PyPI
 
 on:
-  push:
-    tags:
-      - 'v.*'  # Triggers on version tags like v.1.0.0, v.1.2.3, etc.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 0.8.1)'
+        required: true
+        type: string
 
 jobs:
   release:
@@ -26,8 +29,8 @@ jobs:
       - name: Run release script
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REF: ${{ github.ref }}
+          VERSION: ${{ github.event.inputs.version }}
           TEST_PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
           PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          python scripts/release.py 
+          python scripts/release.py --version ${{ github.event.inputs.version }} 

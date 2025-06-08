@@ -174,11 +174,10 @@ class ReleaseManager:
 
         print("✅ Publishing to PyPI completed successfully")
 
-    def release(self, github_ref: str, test_pypi_token: Optional[str], pypi_token: str):
+    def release(self, version: str, test_pypi_token: Optional[str], pypi_token: str):
         print("🚀 Starting MFLUX release process...")
 
         # Extract version
-        version = self.extract_version_from_ref(github_ref)
         tag_name = f"v.{version}"
         print(f"📦 Releasing version: {version} (tag: {tag_name})")
 
@@ -216,13 +215,14 @@ class ReleaseManager:
 
 def main():
     parser = argparse.ArgumentParser(description="MFLUX Release Management")
-    parser.add_argument("--github-ref", help="GitHub ref (e.g., refs/tags/v.0.8.0)")
+    parser.add_argument("--version", help="Release version (e.g., 0.8.0)")
     parser.add_argument("--github-token", help="GitHub token")
     parser.add_argument("--test-pypi-token", help="Test PyPI API token (optional)")
     parser.add_argument("--pypi-token", help="PyPI API token")
     parser.add_argument("--dry-run", action="store_true", help="Print what would be done without executing")
     parser.add_argument("--show-changelog", help="Show changelog entry for a specific version (e.g., 0.8.0) and exit")
-    parser.add_argument("--markdown", action="store_true", help="Output changelog in markdown format (use with --show-changelog)")  # fmt:off
+    parser.add_argument("--markdown", action="store_true", help="Output changelog in markdown format (use with --show-changelog)")  # fmt: off
+
     args = parser.parse_args()
 
     # Handle --show-changelog option
@@ -248,14 +248,14 @@ def main():
         return
 
     # Get values from args or environment variables
-    github_ref = args.github_ref or os.getenv("GITHUB_REF")
+    version = args.version or os.getenv("VERSION")
     github_token = args.github_token or os.getenv("GITHUB_TOKEN")
     test_pypi_token = args.test_pypi_token or os.getenv("TEST_PYPI_API_TOKEN")
     pypi_token = args.pypi_token or os.getenv("PYPI_API_TOKEN")
 
     # Validate required parameters
-    if not github_ref:
-        print("❌ GitHub ref is required (--github-ref or GITHUB_REF env var)")
+    if not version:
+        print("❌ Version is required (--version or VERSION env var)")
         sys.exit(1)
 
     if not github_token:
@@ -268,14 +268,14 @@ def main():
 
     if args.dry_run:
         print("🔍 DRY RUN MODE - would execute release process with:")
-        print(f"   GitHub ref: {github_ref}")
+        print(f"   Version: {version}")
         print(f"   Has Test PyPI token: {bool(test_pypi_token)}")
         print(f"   Has PyPI token: {bool(pypi_token)}")
         return
 
     try:
         release_manager = ReleaseManager(github_token)
-        release_manager.release(github_ref, test_pypi_token, pypi_token)
+        release_manager.release(version, test_pypi_token, pypi_token)
     except (ValueError, FileNotFoundError, requests.RequestException) as e:
         print(f"❌ Release failed: {e}")
         sys.exit(1)
