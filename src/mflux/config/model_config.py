@@ -202,7 +202,7 @@ AVAILABLE_MODELS = {
         num_train_steps=1000,
         max_sequence_length=512,
         supports_guidance=True,
-        requires_sigma_shift=True,
+        requires_sigma_shift=False,  # Not sure why, but produced better results this way...
         priority=6,
     ),
     "dev-controlnet-canny": ModelConfig(
