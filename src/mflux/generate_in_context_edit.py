@@ -23,6 +23,10 @@ def main():
     parser.add_output_arguments()
     args = parser.parse_args()
 
+    # 0. Default to a higher guidance value for fill related tasks.
+    if args.guidance is None:
+        args.guidance = 30
+
     # Set sensible VAE tiling split for in-context generation (side-by-side images)
     if args.vae_tiling:
         args.vae_tiling_split = "vertical"

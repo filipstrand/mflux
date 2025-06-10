@@ -20,6 +20,10 @@ def main():
     parser.add_output_arguments()
     args = parser.parse_args()
 
+    # 0. Default to a higher guidance value for fill related tasks.
+    if args.guidance is None:
+        args.guidance = 30
+
     # Set default CATVTON prompt if none provided
     if not args.prompt and not args.prompt_file:
         args.prompt = "The pair of images highlights a clothing and its styling on a model, high resolution, 4K, 8K; [IMAGE1] Detailed product shot of a clothing; [IMAGE2] The same cloth is worn by a model in a lifestyle setting."
