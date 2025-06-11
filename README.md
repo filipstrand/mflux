@@ -150,6 +150,14 @@ This example uses the more powerful `dev` model with 25 time steps:
 mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2 -q 8
 ```
 
+You can also pipe prompts from other commands using stdin:
+
+```sh
+echo "A majestic mountain landscape" | mflux-generate --prompt - --model schnell --steps 2
+```
+
+This is useful for integrating MFLUX into shell scripts or dynamically generating prompts using LLM inference tools such as [`llm`](https://llm.datasette.io/en/stable/), [`mlx-lm`](https://github.com/ml-explore/mlx-lm), [`ollama`](https://ollama.ai/), etc.
+
 ⚠️ *If the specific model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell or Dev model respectively). See the [quantization](#%EF%B8%8F-quantization) section for running compressed versions of the model.* ⚠️
 
 *By default, model files are downloaded to the `.cache` folder within your home directory. For example, in my setup, the path looks like this:*
@@ -164,7 +172,7 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 
 #### 📜 Full list of Command-Line Arguments
 
-- **`--prompt`** (required, `str`): Text description of the image to generate.
+- **`--prompt`** (required, `str`): Text description of the image to generate. Use `-` to read the prompt from stdin (e.g., `echo "A beautiful sunset" | mflux-generate --prompt -`).
 
 - **`--model`** or **`-m`** (required, `str`): Model to use for generation. Can be one of the official models (`"schnell"` or `"dev"`) or a HuggingFace repository ID for a compatible third-party model (e.g., `"Freepik/flux.1-lite-8B-alpha"`).
 
