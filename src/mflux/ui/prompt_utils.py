@@ -1,7 +1,11 @@
-import typing as t
+import logging
+import sys
+from argparse import Namespace
 from pathlib import Path
 
 from mflux.error.exceptions import PromptFileReadError
+
+logger = logging.getLogger(__name__)
 
 
 def read_prompt_file(prompt_file_path: Path) -> str:
@@ -17,14 +21,28 @@ def read_prompt_file(prompt_file_path: Path) -> str:
         if not content:
             raise PromptFileReadError(f"Prompt file is empty: {prompt_file_path}")
 
-        print(f"Using prompt from file: {prompt_file_path}")
+        logger.info(f"Using prompt from file: {prompt_file_path}")
         return content
     except (IOError, OSError) as e:
         raise PromptFileReadError(f"Error reading prompt file '{prompt_file_path}': {e}")
 
 
-def get_effective_prompt(args: t.Any) -> str:
+def get_effective_prompt(args: Namespace) -> str:
+    # Handle stdin input when prompt is "-"
+    if args.prompt == "-":
+        try:
+            content = sys.stdin.read().strip()
+            if not content:
+                raise PromptFileReadError("No prompt provided via stdin")
+            logger.info("Using prompt from stdin")
+            return content
+        except (IOError, OSError, KeyboardInterrupt) as e:
+            raise PromptFileReadError(f"Error reading from stdin: {e}")
+
+    # Handle prompt file
     if args.prompt_file is not None:
         prompt = read_prompt_file(args.prompt_file)
         return prompt
+
+    # Return regular prompt
     return args.prompt
