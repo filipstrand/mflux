@@ -246,7 +246,8 @@ class LoRALayers:
         if block[key].get(name, False) and val.get(name, False):
             if name == "to_out" and isinstance(block[key][name], list):
                 if len(block[key][name]) > 0:
-                    block[key][name][0] = val[name]
+                    lora_layer = val[name][0] if isinstance(val[name], list) else val[name]
+                    block[key][name][0] = lora_layer
             else:
                 block[key][name] = val[name]
 
