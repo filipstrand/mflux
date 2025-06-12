@@ -5,7 +5,7 @@ import time
 import typing as t
 from pathlib import Path
 
-from mflux.community.in_context_lora.in_context_loras import LORA_NAME_MAP, LORA_REPO_ID
+from mflux.community.in_context.utils.in_context_loras import LORA_NAME_MAP, LORA_REPO_ID
 from mflux.ui import (
     box_values,
     defaults as ui_defaults,
@@ -72,10 +72,10 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--height", type=int, default=ui_defaults.HEIGHT, help=f"Image height (Default is {ui_defaults.HEIGHT})")
         self.add_argument("--width", type=int, default=ui_defaults.WIDTH, help=f"Image width (Default is {ui_defaults.HEIGHT})")
         self.add_argument("--steps", type=int, default=None, help="Inference Steps")
-        self.add_argument("--guidance", type=float, default=ui_defaults.GUIDANCE_SCALE, help=f"Guidance Scale (Default is {ui_defaults.GUIDANCE_SCALE})")
+        self.add_argument("--guidance", type=float, default=None, help=f"Guidance Scale (Default varies by tool: {ui_defaults.GUIDANCE_SCALE} for most, {ui_defaults.DEFAULT_DEV_FILL_GUIDANCE} for fill tools, {ui_defaults.DEFAULT_DEPTH_GUIDANCE} for depth)")
 
-    def add_image_generator_arguments(self, supports_metadata_config=False) -> None:
-        prompt_group = self.add_mutually_exclusive_group(required=(not supports_metadata_config))
+    def add_image_generator_arguments(self, supports_metadata_config=False, require_prompt=True) -> None:
+        prompt_group = self.add_mutually_exclusive_group(required=(require_prompt and not supports_metadata_config))
         prompt_group.add_argument("--prompt", type=str, help="The textual description of the image to generate.")
         prompt_group.add_argument("--prompt-file", type=Path, help="Path to a file containing the prompt text. The file will be re-read before each generation, allowing you to edit the prompt between iterations when using multiple seeds without restarting the program.")
         self.add_argument("--seed", type=int, default=None, nargs='+', help="Specify 1+ Entropy Seeds (Default is 1 time-based random-seed)")
@@ -83,6 +83,7 @@ class CommandLineParser(argparse.ArgumentParser):
         self._add_image_generator_common_arguments()
         if supports_metadata_config:
             self.add_metadata_config()
+        self.require_prompt = require_prompt
 
     def add_image_to_image_arguments(self, required=False) -> None:
         self.supports_image_to_image = True
@@ -97,6 +98,19 @@ class CommandLineParser(argparse.ArgumentParser):
     def add_fill_arguments(self) -> None:
         self.add_argument("--image-path", type=Path, required=True, help="Local path to the source image")
         self.add_argument("--masked-image-path", type=Path, required=True, help="Local path to the mask image")
+
+    def add_catvton_arguments(self) -> None:
+        self.add_argument("--person-image", type=str, required=True, help="Path to person image")
+        self.add_argument("--person-mask", type=str, required=True, help="Path to person mask image")
+        self.add_argument("--garment-image", type=str, required=True, help="Garment Image")
+
+    def add_in_context_edit_arguments(self) -> None:
+        self.supports_in_context_edit = True
+        self.add_argument("--reference-image", type=str, required=True, help="Path to reference image")
+        self.add_argument("--instruction", type=str, help="User instruction to be wrapped in diptych template (e.g., 'make the hair black'). This will be automatically formatted as 'A diptych with two side-by-side images of the same scene. On the right, the scene is exactly the same as on the left but {instruction}'. Either --instruction or --prompt is required.")  # fmt:off
+
+    def add_in_context_arguments(self) -> None:
+        self.add_argument("--save-full-image", action="store_true", default=False, help="Additionally, save the full image containing the reference image. Useful for verifying the in-context usage of the reference image.")
 
     def add_depth_arguments(self) -> None:
         self.add_argument("--image-path", type=Path, required=False, help="Local path to the source image")
@@ -242,10 +256,20 @@ class CommandLineParser(argparse.ArgumentParser):
 
         if self.supports_image_generation and namespace.prompt is None and namespace.prompt_file is None:
             # when metadata config is supported but neither prompt nor prompt-file is provided
-            self.error("Either --prompt or --prompt-file argument is required, or 'prompt' required in metadata config file")
+            # Only error if prompt is actually required
+            if getattr(self, 'require_prompt', True):
+                self.error("Either --prompt or --prompt-file argument is required, or 'prompt' required in metadata config file")
 
         if self.supports_image_generation and namespace.steps is None:
             namespace.steps = ui_defaults.MODEL_INFERENCE_STEPS.get(namespace.model, 14)
+
+        # In-context edit specific validations
+        if getattr(self, 'supports_in_context_edit', False):
+            if not getattr(namespace, 'prompt', None) and not getattr(namespace, 'instruction', None):
+                self.error("Either --prompt or --instruction argument is required for in-context editing")
+
+            if getattr(namespace, 'prompt', None) and getattr(namespace, 'instruction', None):
+                self.error("Cannot use both --prompt and --instruction. Choose one.")
 
         if self.supports_image_outpaint and namespace.image_outpaint_padding is not None:
             # parse and normalize any acceptable 1,2,3,4-tuple box value to 4-tuple

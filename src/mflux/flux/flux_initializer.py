@@ -54,12 +54,13 @@ class FluxInitializer:
         weights = WeightHandler.load_regular_weights(
             repo_id=model_config.model_name,
             local_path=local_path,
+            transformer_repo_id=model_config.custom_transformer_model,
         )
 
         # 3. Initialize all models
         flux_model.vae = VAE()
-
-        # Use custom transformer if provided, otherwise create default
+        flux_model.t5_text_encoder = T5Encoder()
+        flux_model.clip_text_encoder = CLIPEncoder()
         if custom_transformer is not None:
             flux_model.transformer = custom_transformer
         else:
@@ -68,9 +69,6 @@ class FluxInitializer:
                 num_transformer_blocks=weights.num_transformer_blocks(),
                 num_single_transformer_blocks=weights.num_single_transformer_blocks(),
             )
-
-        flux_model.t5_text_encoder = T5Encoder()
-        flux_model.clip_text_encoder = CLIPEncoder()
 
         # 4. Apply weights and quantize the models
         flux_model.bits = WeightUtil.set_weights_and_quantize(
