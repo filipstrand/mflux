@@ -590,7 +590,7 @@ def test_fill_args(mflux_fill_parser, mflux_fill_minimal_argv):
         assert args.image_path == Path("image.png")
         assert args.masked_image_path == Path("mask.png")
         # Default guidance for fill should be None (will be set to 30 in generate_fill.py)
-        assert args.guidance == pytest.approx(3.5)  # default guidance value
+        assert args.guidance is None  # Parser doesn't set default, app does
 
     # Test with missing required arguments
     with patch("sys.argv", ["mflux-fill", "--prompt", "test"]):
