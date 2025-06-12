@@ -663,18 +663,15 @@ def test_fill_default_guidance():
     ):
         args = parser.parse_args()
 
-        # Verify initial guidance value is the UI default
-        assert args.guidance == ui_defaults.GUIDANCE_SCALE
+        # Verify initial guidance value is None (no default set by parser)
+        assert args.guidance is None
 
         # Simulate what happens in generate_fill.py
         if args.guidance is None:
-            args.guidance = 30
-        else:
-            # In our test we'll just override it to simulate the behavior
-            args.guidance = 30
+            args.guidance = ui_defaults.DEFAULT_DEV_FILL_GUIDANCE
 
-        # Now check that guidance is correctly set to 30
-        assert args.guidance == 30
+        # Now check that guidance is correctly set to the default dev fill guidance
+        assert args.guidance == ui_defaults.DEFAULT_DEV_FILL_GUIDANCE
 
 
 def test_save_depth_args(mflux_save_depth_parser, mflux_save_depth_minimal_argv):

@@ -2,6 +2,7 @@ from mflux import Config, StopImageGenerationException
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.error.exceptions import PromptFileReadError
 from mflux.flux_tools.depth.flux_depth import Flux1Depth
+from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_prompt
 
@@ -19,7 +20,7 @@ def main():
 
     # 0. Default to a medium guidance value for depth related tasks.
     if args.guidance is None:
-        args.guidance = 10
+        args.guidance = ui_defaults.DEFAULT_DEPTH_GUIDANCE
 
     # 1. Load the model
     flux = Flux1Depth(

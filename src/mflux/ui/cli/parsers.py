@@ -72,7 +72,7 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--height", type=int, default=ui_defaults.HEIGHT, help=f"Image height (Default is {ui_defaults.HEIGHT})")
         self.add_argument("--width", type=int, default=ui_defaults.WIDTH, help=f"Image width (Default is {ui_defaults.HEIGHT})")
         self.add_argument("--steps", type=int, default=None, help="Inference Steps")
-        self.add_argument("--guidance", type=float, default=ui_defaults.GUIDANCE_SCALE, help=f"Guidance Scale (Default is {ui_defaults.GUIDANCE_SCALE})")
+        self.add_argument("--guidance", type=float, default=None, help=f"Guidance Scale (Default varies by tool: {ui_defaults.GUIDANCE_SCALE} for most, {ui_defaults.DEFAULT_DEV_FILL_GUIDANCE} for fill tools, {ui_defaults.DEFAULT_DEPTH_GUIDANCE} for depth)")
 
     def add_image_generator_arguments(self, supports_metadata_config=False, require_prompt=True) -> None:
         prompt_group = self.add_mutually_exclusive_group(required=(require_prompt and not supports_metadata_config))

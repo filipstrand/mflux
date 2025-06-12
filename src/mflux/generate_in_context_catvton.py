@@ -4,6 +4,7 @@ from mflux import Config, ModelConfig, StopImageGenerationException
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.community.in_context.flux_in_context_fill import FluxInContextFill
 from mflux.error.exceptions import PromptFileReadError
+from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_prompt
 
@@ -20,9 +21,9 @@ def main():
     parser.add_output_arguments()
     args = parser.parse_args()
 
-    # 0. Default to a higher guidance value for fill related tasks.
+    # 0. Default to a higher guidance value for fill
     if args.guidance is None:
-        args.guidance = 30
+        args.guidance = ui_defaults.DEFAULT_DEV_FILL_GUIDANCE
 
     # Set default CATVTON prompt if none provided
     if not args.prompt and not args.prompt_file:

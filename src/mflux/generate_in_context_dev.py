@@ -6,6 +6,7 @@ from mflux.community.in_context.flux_in_context_dev import Flux1InContextDev
 from mflux.community.in_context.utils.in_context_loras import LORA_REPO_ID, get_lora_filename
 from mflux.config.model_config import ModelConfig
 from mflux.error.exceptions import PromptFileReadError
+from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_prompt
 
@@ -21,6 +22,10 @@ def main():
     parser.add_in_context_arguments()
     parser.add_output_arguments()
     args = parser.parse_args()
+
+    # 0. Set default guidance value if not provided by user
+    if args.guidance is None:
+        args.guidance = ui_defaults.GUIDANCE_SCALE
 
     # Set sensible VAE tiling split for in-context generation (side-by-side images)
     if args.vae_tiling:

@@ -5,6 +5,7 @@ from PIL import Image
 
 from mflux import Config, ModelConfig
 from mflux.flux_tools.fill.flux_fill import Flux1Fill
+from mflux.ui import defaults as ui_defaults
 from tests.image_generation.helpers.image_generation_test_helper import ImageGeneratorTestHelper
 
 
@@ -49,7 +50,7 @@ class ImageGeneratorFillTestHelper:
                     width=width,
                     image_path=image_path,
                     masked_image_path=masked_image_path,
-                    guidance=30,
+                    guidance=ui_defaults.DEFAULT_DEV_FILL_GUIDANCE,
                 ),
             )
             image.save(path=output_image_path, overwrite=True)

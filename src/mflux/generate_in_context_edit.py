@@ -7,6 +7,7 @@ from mflux.callbacks.callback_manager import CallbackManager
 from mflux.community.in_context.flux_in_context_fill import FluxInContextFill
 from mflux.community.in_context.utils.in_context_loras import prepare_ic_edit_loras
 from mflux.error.exceptions import PromptFileReadError
+from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_prompt
 
@@ -25,7 +26,7 @@ def main():
 
     # 0. Default to a higher guidance value for fill related tasks.
     if args.guidance is None:
-        args.guidance = 30
+        args.guidance = ui_defaults.DEFAULT_DEV_FILL_GUIDANCE
 
     # Set sensible VAE tiling split for in-context generation (side-by-side images)
     if args.vae_tiling:

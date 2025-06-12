@@ -4,6 +4,7 @@ from mflux import Config, ModelConfig, StopImageGenerationException
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.error.exceptions import PromptFileReadError
 from mflux.flux_tools.redux.flux_redux import Flux1Redux
+from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_prompt
 
@@ -18,6 +19,10 @@ def main():
     parser.add_redux_arguments()
     parser.add_output_arguments()
     args = parser.parse_args()
+
+    # 0. Set default guidance value if not provided by user
+    if args.guidance is None:
+        args.guidance = ui_defaults.GUIDANCE_SCALE
 
     # Validate and normalize redux image strengths
     redux_image_strengths = _validate_redux_image_strengths(
