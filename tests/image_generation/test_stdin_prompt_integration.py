@@ -30,6 +30,12 @@ def test_stdin_prompt_with_actual_generation(temp_output_dir):
         "1",
         "--seed",
         "42",
+        "--height",
+        "256",
+        "--width",
+        "256",
+        "-q",
+        "4",
         "--output",
         str(output_image),
         "--metadata",
@@ -80,6 +86,12 @@ def test_stdin_prompt_multiline_with_actual_generation(temp_output_dir):
         "1",
         "--seed",
         "123",
+        "--height",
+        "256",
+        "--width",
+        "256",
+        "-q",
+        "4",
         "--output",
         str(output_image),
         "--metadata",
@@ -111,6 +123,12 @@ def test_empty_stdin_fails_generation(temp_output_dir):
         "dev",
         "--steps",
         "1",
+        "--height",
+        "256",
+        "--width",
+        "256",
+        "-q",
+        "4",
         "--output",
         str(output_image),
     ]
@@ -135,7 +153,7 @@ def test_pipe_from_echo_command(temp_output_dir):
     metadata_file = temp_output_dir / "test_echo.json"
 
     # Simulate: echo "prompt" | mflux-generate --prompt - ...
-    echo_cmd = f'echo "{prompt}" | {sys.executable} -m mflux.generate --prompt - --model dev --steps 1 --output {output_image} --metadata'
+    echo_cmd = f'echo "{prompt}" | {sys.executable} -m mflux.generate --prompt - --model dev --steps 1 --height 256 --width 256 -q 4 --output {output_image} --metadata'
 
     process = subprocess.run(echo_cmd, shell=True, capture_output=True, text=True)
 
