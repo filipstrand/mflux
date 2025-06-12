@@ -11,6 +11,7 @@ class ModelConfig:
         model_name: str,
         base_model: str | None,
         controlnet_model: str | None,
+        custom_transformer_model: str | None,
         num_train_steps: int,
         max_sequence_length: int,
         supports_guidance: bool,
@@ -21,6 +22,7 @@ class ModelConfig:
         self.model_name = model_name
         self.base_model = base_model
         self.controlnet_model = controlnet_model
+        self.custom_transformer_model = custom_transformer_model
         self.num_train_steps = num_train_steps
         self.max_sequence_length = max_sequence_length
         self.supports_guidance = supports_guidance
@@ -36,6 +38,11 @@ class ModelConfig:
     @lru_cache
     def dev_fill() -> "ModelConfig":
         return AVAILABLE_MODELS["dev-fill"]
+
+    @staticmethod
+    @lru_cache
+    def dev_fill_catvton() -> "ModelConfig":
+        return AVAILABLE_MODELS["dev-fill-catvton"]
 
     @staticmethod
     @lru_cache
@@ -68,7 +75,7 @@ class ModelConfig:
         return AVAILABLE_MODELS["schnell"]
 
     def x_embedder_input_dim(self) -> int:
-        if self.alias == "dev-fill":
+        if self.alias and "dev-fill" in self.alias:
             return 384
         if self.alias == "dev-depth":
             return 128
@@ -116,6 +123,7 @@ class ModelConfig:
             model_name=model_name,
             base_model=default_base.model_name,
             controlnet_model=default_base.controlnet_model,
+            custom_transformer_model=default_base.custom_transformer_model,
             num_train_steps=default_base.num_train_steps,
             max_sequence_length=default_base.max_sequence_length,
             supports_guidance=default_base.supports_guidance,
@@ -130,6 +138,7 @@ AVAILABLE_MODELS = {
         model_name="black-forest-labs/FLUX.1-schnell",
         base_model=None,
         controlnet_model=None,
+        custom_transformer_model=None,
         num_train_steps=1000,
         max_sequence_length=256,
         supports_guidance=False,
@@ -141,6 +150,7 @@ AVAILABLE_MODELS = {
         model_name="black-forest-labs/FLUX.1-dev",
         base_model=None,
         controlnet_model=None,
+        custom_transformer_model=None,
         num_train_steps=1000,
         max_sequence_length=512,
         supports_guidance=True,
@@ -152,6 +162,7 @@ AVAILABLE_MODELS = {
         model_name="black-forest-labs/FLUX.1-Fill-dev",
         base_model=None,
         controlnet_model=None,
+        custom_transformer_model=None,
         num_train_steps=1000,
         max_sequence_length=512,
         supports_guidance=True,
@@ -163,6 +174,7 @@ AVAILABLE_MODELS = {
         model_name="black-forest-labs/FLUX.1-Depth-dev",
         base_model=None,
         controlnet_model=None,
+        custom_transformer_model=None,
         num_train_steps=1000,
         max_sequence_length=512,
         supports_guidance=True,
@@ -174,17 +186,31 @@ AVAILABLE_MODELS = {
         model_name="black-forest-labs/FLUX.1-Redux-dev",
         base_model=None,
         controlnet_model=None,
+        custom_transformer_model=None,
         num_train_steps=1000,
         max_sequence_length=512,
         supports_guidance=True,
         requires_sigma_shift=True,
         priority=3,
     ),
+    "dev-fill-catvton": ModelConfig(
+        alias="dev-fill-catvton",
+        model_name="black-forest-labs/FLUX.1-Fill-dev",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model="xiaozaa/catvton-flux-beta",
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,
+        requires_sigma_shift=False,  # Not sure why, but produced better results this way...
+        priority=6,
+    ),
     "dev-controlnet-canny": ModelConfig(
         alias="dev-controlnet-canny",
         model_name="black-forest-labs/FLUX.1-dev",
         base_model=None,
         controlnet_model="InstantX/FLUX.1-dev-Controlnet-Canny",
+        custom_transformer_model=None,
         num_train_steps=1000,
         max_sequence_length=512,
         supports_guidance=True,
@@ -196,6 +222,7 @@ AVAILABLE_MODELS = {
         model_name="black-forest-labs/FLUX.1-schnell",
         base_model=None,
         controlnet_model="InstantX/FLUX.1-dev-Controlnet-Canny",
+        custom_transformer_model=None,
         num_train_steps=1000,
         max_sequence_length=256,
         supports_guidance=False,
@@ -207,6 +234,7 @@ AVAILABLE_MODELS = {
         model_name="black-forest-labs/FLUX.1-dev",
         base_model=None,
         controlnet_model="jasperai/Flux.1-dev-Controlnet-Upscaler",
+        custom_transformer_model=None,
         num_train_steps=1000,
         max_sequence_length=512,
         supports_guidance=False,

@@ -1,6 +1,7 @@
 from mflux import Config, Flux1Controlnet, ModelConfig, StopImageGenerationException
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.error.exceptions import PromptFileReadError
+from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_prompt
 
@@ -15,6 +16,10 @@ def main():
     parser.add_controlnet_arguments()
     parser.add_output_arguments()
     args = parser.parse_args()
+
+    # 0. Set default guidance value if not provided by user
+    if args.guidance is None:
+        args.guidance = ui_defaults.GUIDANCE_SCALE
 
     # 1. Load the model
     flux = Flux1Controlnet(

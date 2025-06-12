@@ -2,6 +2,7 @@ from mflux import Config, ModelConfig, StopImageGenerationException
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.community.concept_attention.flux_concept import Flux1Concept
 from mflux.error.exceptions import PromptFileReadError
+from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_prompt
 
@@ -17,6 +18,10 @@ def main():
     parser.add_output_arguments()
     parser.add_concept_attention_arguments()
     args = parser.parse_args()
+
+    # 0. Set default guidance value if not provided by user
+    if args.guidance is None:
+        args.guidance = ui_defaults.GUIDANCE_SCALE
 
     # 1. Load the concept attention model
     flux = Flux1Concept(
