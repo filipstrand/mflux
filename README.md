@@ -160,13 +160,9 @@ This is useful for integrating MFLUX into shell scripts or dynamically generatin
 
 ⚠️ *If the specific model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell or Dev model respectively). See the [quantization](#%EF%B8%8F-quantization) section for running compressed versions of the model.* ⚠️
 
-*By default, model files are downloaded to the `.cache` folder within your home directory. For example, in my setup, the path looks like this:*
+*By default, mflux caches files in `~/Library/Caches/mflux/`. The Hugging Face model files themselves are cached separately in the Hugging Face cache directory (e.g., `~/.cache/huggingface/`).*
 
-```
-/Users/filipstrand/.cache/huggingface/hub/models--black-forest-labs--FLUX.1-dev
-```
-
-*To change this default behavior, you can do so by modifying the `HF_HOME` environment variable. For more details on how to adjust this setting, please refer to the [Hugging Face documentation](https://huggingface.co/docs/huggingface_hub/en/package_reference/environment_variables)*.
+*To change the mflux cache location, set the `MFLUX_CACHE_DIR` environment variable. To change the Hugging Face cache location, you can modify the `HF_HOME` environment variable. For more details on Hugging Face cache settings, please refer to the [Hugging Face documentation](https://huggingface.co/docs/huggingface_hub/en/package_reference/environment_variables)*.
 
 🔒 [FLUX.1-dev currently requires granted access to its Huggingface repo. For troubleshooting, see the issue tracker](https://github.com/filipstrand/mflux/issues/14) 🔒
 
