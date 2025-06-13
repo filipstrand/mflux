@@ -3,7 +3,7 @@
 import argparse
 from pathlib import Path
 
-from mflux.community.in_context_lora.in_context_loras import LORA_NAME_MAP
+from mflux.community.in_context.utils.in_context_loras import LORA_NAME_MAP
 from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 
@@ -16,6 +16,8 @@ class CompletionGenerator:
             "mflux-generate",
             "mflux-generate-controlnet",
             "mflux-generate-in-context",
+            "mflux-generate-in-context-edit",
+            "mflux-generate-in-context-catvton",
             "mflux-generate-fill",
             "mflux-generate-depth",
             "mflux-generate-redux",
@@ -57,6 +59,24 @@ class CompletionGenerator:
             parser.add_output_arguments()
             # Add save-full-image manually since it's not in parsers.py
             parser.add_argument("--save-full-image", action="store_true")
+
+        elif command == "mflux-generate-in-context-edit":
+            parser.add_general_arguments()
+            parser.add_model_arguments(require_model_arg=False)
+            parser.add_lora_arguments()
+            parser.add_image_generator_arguments(supports_metadata_config=False, require_prompt=False)
+            parser.add_in_context_edit_arguments()
+            parser.add_in_context_arguments()
+            parser.add_output_arguments()
+
+        elif command == "mflux-generate-in-context-catvton":
+            parser.add_general_arguments()
+            parser.add_model_arguments(require_model_arg=False)
+            parser.add_lora_arguments()
+            parser.add_image_generator_arguments(supports_metadata_config=False, require_prompt=False)
+            parser.add_catvton_arguments()
+            parser.add_in_context_arguments()
+            parser.add_output_arguments()
 
         elif command == "mflux-generate-fill":
             parser.add_general_arguments()

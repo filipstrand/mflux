@@ -21,7 +21,7 @@ This module provides ZSH shell completion support for all mflux CLI commands.
 
 ## Features
 
-- **Auto-completion for all 13 mflux commands**: Generate, train, save, upscale, and more
+- **Auto-completion for all 15 mflux commands**: Generate, train, save, upscale, and more
 - **Smart completions**: 
   - Model names (dev, schnell, dev-fill, or HuggingFace repos)
   - Quantization levels (3, 4, 6, 8)
@@ -76,21 +76,22 @@ This will:
 
 1. **Completions not working after installation:**
    - Start a new shell: `exec zsh`
-   - Or reload completions: `rm -f ~/.zcompdump && compinit`
 
-2. **"command not found: compinit":**
-   - Add to your ~/.zshrc: `autoload -U compinit && compinit`
+2. **Completions not updated after mflux upgrade:**
+   - Update completions: `mflux-completions --update`
+   - Then force reload: `compinit -u`
 
 3. **Permission denied:**
    - Use `--dir` to specify a user-writable directory
-   - Or use sudo (not recommended)
 
 4. **Completion shows \} or other artifacts:**
    - Update to the latest version: `mflux-completions --update`
 
+For Zsh-specific configuration issues (fpath, compinit, etc.), please refer to the [official Zsh documentation](https://zsh.sourceforge.io/Doc/Release/Completion-System.html).
+
 ### Manual Installation
 
-If automatic installation fails, you can manually install:
+If automatic installation fails:
 
 ```bash
 # Generate completion script
@@ -100,9 +101,8 @@ mflux-completions --print > _mflux
 mkdir -p ~/.zsh/completions
 mv _mflux ~/.zsh/completions/
 
-# Add to ~/.zshrc if not already present
-echo 'fpath=(~/.zsh/completions $fpath)' >> ~/.zshrc
-echo 'autoload -U compinit && compinit' >> ~/.zshrc
+# Restart your shell
+exec zsh
 ```
 
 ## How It Works
