@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.8.0] - 2025-01-20
+## [0.8.0] - 2025-06-14
 
 # MFLUX v.0.8.0 Release Notes
 
@@ -58,6 +58,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Better quality variations with adjustable parameters for more predictable results
 - Refined Redux algorithm for more natural image variations
 
+### 📥 Stdin Prompt Support
+- **LLM Integration Ready**: Added support for providing prompts via stdin using `--prompt -`
+- Enables seamless integration with LLMs and other text generation tools
+- Supports both single-line and multi-line prompts through stdin
+- Perfect for automation workflows and dynamic prompt generation
+- Example usage: `echo "A beautiful landscape" | mflux-generate --prompt -`
+
 ## Developer Experience
 
 ### 🔧 LORA_LIBRARY_PATH Improvements
@@ -78,6 +85,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced documentation structure for better organization and user navigation
 - Improved categorization of experimental vs stable features
 
+### 🔄 Code Architecture Changes
+- **Class rename**: `Flux1InContextLora` is now `Flux1InContextDev` to better reflect the dev model variant
+- **Module reorganization**: Moved from `mflux.community.in_context_lora.flux_in_context_lora` to `mflux.community.in_context.flux_in_context_dev`
+- **Breaking change for library users**: If you import the class directly, update your imports accordingly
+
+
 ### ⚡ Performance Optimizations
 - Updated MLX dependency to latest version for improved performance and stability
 - Removed PyTorch dependency for DepthPro model, significantly reducing installation requirements
@@ -90,8 +103,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Contributors
 
 Special thanks to the following contributors for their exceptional work since v0.7.1:
-- **Anthony Wu (@anthonywu)**: Battery Saver implementation, Prompt File Support, LORA_LIBRARY_PATH improvements
-- **Alessandro (@alessandro)**: Redux Function Balancing enhancements
+- **Anthony Wu (@anthonywu)**: Battery Saver implementation, Prompt File Support, Stdin Prompt Support, LORA_LIBRARY_PATH improvements
+- **Alessandro (@azrahello)**: Redux Function Balancing enhancements
 - **Filip Strand (@filipstrand)**: Core development, experimental features integration, infrastructure improvements
 
 ## [0.7.1] - 2025-05-06
