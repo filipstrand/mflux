@@ -28,9 +28,12 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
   * [LoRA Library Path](#lora-library-path)
   * [Supported LoRA formats (updated)](#supported-lora-formats-updated)
 - [🎭 In-Context Generation](#-in-context-generation)
-  * [Available Styles](#available-styles)
-  * [How It Works](#how-it-works)
-  * [Tips for Best Results](#tips-for-best-results)
+  * [🎨 In-Context LoRA](#-in-context-lora)
+    + [Available Styles](#available-styles)
+    + [How It Works](#how-it-works)
+    + [Tips for Best Results](#tips-for-best-results)
+  * [👕 CatVTON (Virtual Try-On)](#-catvton-virtual-try-on)
+  * [✏️ IC-Edit (In-Context Editing)](#%EF%B8%8F-ic-edit-in-context-editing)
 - [🛠️ Flux Tools](#%EF%B8%8F-flux-tools)
   * [🖌️ Fill](#%EF%B8%8F-fill)
     + [Inpainting](#inpainting)
@@ -958,18 +961,41 @@ CatVTON enables virtual try-on capabilities using in-context learning. This appr
 
 The implementation is based on [@nftblackmagic/catvton-flux](https://github.com/nftblackmagic/catvton-flux) and uses the model weights from [xiaozaa/catvton-flux-beta](https://huggingface.co/xiaozaa/catvton-flux-beta) (approximately 24 GB download).
 
-##### How to Use CatVTON
+![catvton example](src/mflux/assets/catvton_example.jpg)
 
-```sh
+##### How it works
+
+CatVTON uses a sophisticated in-context learning approach that creates a side-by-side composition for virtual try-on:
+
+1. **Image Layout**: The garment image is placed on the left side, while the person image is positioned on the right side of the composition.
+
+2. **Selective Processing**: The model treats each side differently:
+   - **Left side (garment)**: The model can only *read* information from this area - no inpainting or modifications occur here. This serves as a reference for the garment's appearance, texture, and style.
+   - **Right side (person)**: Only the areas highlighted in the person mask are inpainted. The mask determines exactly which parts of the person image should be modified to "wear" the garment.
+
+3. **Contextual Understanding**: By reading the garment characteristics from the left and selectively applying them to the masked regions on the right, the model creates a realistic virtual try-on that maintains proper lighting, shadows, and fabric behavior.
+
+This approach allows the model to understand the garment's properties while precisely controlling which parts of the person image should be transformed, resulting in natural-looking virtual clothing fitting.
+
+![catvton how it works](src/mflux/assets/catvton_how_it_works.jpg)
+
+##### Example Command
+
+```bash
 mflux-generate-in-context-catvton \
-  --person-image "person.jpg" \
-  --person-mask "person_mask.png" \
-  --garment-image "garment.jpg" \
+  --person-image "person.png" \
+  --person-mask "mask.png" \
+  --garment-image "garment.png" \
+  --prompt "The pair of images highlights a clothing and its styling on a model, high resolution, 4K, 8K; [IMAGE1] Detailed product shot of a light blue shirt with designer details such as white and pink patterns; [IMAGE2] The *exact* same cloth (the light blue shirt with designer details such as white and pink patterns) is worn by a model in a lifestyle setting." \
   --steps 20 \
-  --seed 42 \
+  --seed 6269363 \
+  --guidance 30 \
   --height 1024 \
-  --width 1024
+  --width 891 \
+  -q 8
 ```
+
+
 
 ##### Required Inputs
 
@@ -990,6 +1016,8 @@ mflux-generate-in-context-catvton \
 2. **Accurate Masks**: Ensure the person mask precisely covers the areas where the garment should appear
 3. **Consistent Lighting**: Match lighting conditions between person and garment images when possible
 4. **Garment Type**: Works best with clearly defined clothing items (shirts, dresses, jackets, etc.)
+5. **Pattern Limitations**: Very intricate patterns, fine details, and complex textures may not transfer well - simpler, solid colors and basic patterns typically work better
+6. **Try Multiple Seeds**: Generate several variations with different seeds to find the best result, as outcomes can vary significantly
 
 #### ✏️ IC-Edit (In-Context Editing)
 
@@ -999,15 +1027,40 @@ IC-Edit provides intuitive image editing capabilities using natural language ins
 
 The implementation is based on [@River-Zhang/ICEdit](https://github.com/River-Zhang/ICEdit).
 
-##### How to Use IC-Edit
+![ic-edit example](src/mflux/assets/ic_edit_example.jpg)
+*Original images credit: [Jimmy Chang (flower)](https://unsplash.com/photos/closeup-photography-of-pink-lotus-flower-LP5WXkrnxX0), [Kar Ming Moo (tiger)](https://unsplash.com/photos/brown-and-black-tiger-lying-on-ground-Q_3WmguWgYg), [Martin Baron (car)](https://unsplash.com/photos/a-shiny-black-car-parks-on-a-street-8JoIWt2KzYI) on Unsplash*
 
-```sh
+##### How it works
+
+IC-Edit employs a streamlined diptych approach for natural language image editing:
+
+1. **Image Layout**: The reference image is placed on the left side, while the right side is reserved for the edited result.
+
+2. **Automatic Masking**: Unlike CatVTON, no user-provided mask is required. The system automatically creates a simple but effective mask:
+   - **Left side (reference)**: Completely black mask - no denoising occurs here, preserving the original image as reference
+   - **Right side (edit area)**: Completely white mask - the entire area is available for denoising and modification
+
+3. **Instruction Processing**: Your natural language instruction is automatically wrapped in a diptych template that tells the model to create the desired changes on the right side while using the left side as reference.
+
+4. **Guided Generation**: The model reads the visual information from the left side and applies the requested modifications to generate the edited result on the right side, maintaining visual coherence and context.
+
+This simplified approach removes the complexity of mask creation while still providing precise control through natural language instructions, making image editing accessible and intuitive.
+
+![ic-edit how it works](src/mflux/assets/ic_edit_how_it_works.jpg)
+
+##### Example Command
+
+```bash
 mflux-generate-in-context-edit \
-  --reference-image "original.jpg" \
-  --instruction "make the hair black" \
+  --reference-image "flower.jpg" \
+  --prompt "two images of the exact same flower in two different styles: On the left the photo has is in bright colors showing green leaves and a pink flower. On the right, the *exact* same photo (same flower, same leaves, same background, identical etc). but with where everything is black and white except for the flower which is still in color. The content is *exactly* the same between the left and right image, except only for the coloring (black and white for everything except for the colorful flower)" \
   --steps 20 \
-  --seed 42
+  --seed 8570325 \
+  --guidance 30 \
+  -q 8
 ```
+
+
 
 ##### Key Features
 
@@ -1038,6 +1091,9 @@ mflux-generate-in-context-edit \
 2. **Single Changes**: Focus on one edit at a time for more predictable results
 3. **Reference Quality**: Higher quality reference images generally produce better edits
 4. **Iterative Editing**: Use the output of one edit as input for the next to build complex changes
+5. **Try Multiple Seeds**: Generate several variations with different seeds to find the best result, as outcomes can vary significantly
+
+⚠️ *Note: Using the IC-Edit tool requires an additional ~230MB download for the specialized LoRA weights. The download happens automatically on first use. This remarkably small LoRA (less than 0.7% of the base model's ~34GB) enables sophisticated image editing capabilities, demonstrating that the base FLUX model is already highly competent at style transfers and transformations - the LoRA simply provides the user control and interface to access these latent capabilities.*
 
 ---
 
