@@ -12,6 +12,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 
 - [Philosophy](#philosophy)
 - [💿 Installation](#-installation)
+- [🚀 Shell Completions (Quick Start)](#-shell-completions-quick-start)
 - [🖼️ Generating an image](#%EF%B8%8F-generating-an-image)
   * [📜 Full list of Command-Line Arguments](#-full-list-of-command-line-arguments)
 - [⏱️ Image generation speed (updated)](#%EF%B8%8F-image-generation-speed-updated)
@@ -138,6 +139,31 @@ pip install -U mflux
 </details>
 
 *If you have trouble installing MFLUX, please see the [installation related issues section](https://github.com/filipstrand/mflux/issues?q=is%3Aissue+install+).* 
+
+### ⌨️ Shell Completions (Quick Start)
+
+MFLUX supports ZSH (default on macOS) shell completions for all CLI commands.
+
+To enable completions:
+
+```sh
+# Install completions
+mflux-completions
+
+# Reload your shell
+exec zsh
+
+# Now try tab completion!
+mflux-generate --<TAB>
+```
+
+If you encounter issues, check your installation:
+
+```sh
+mflux-completions --check
+```
+
+For more details, see the [completions documentation](src/mflux/completions/README.md).
 
 ### 🖼️ Generating an image
 
