@@ -3,8 +3,8 @@ name: Create Release and Publish to PyPI
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Release version (e.g., 0.8.1)'
+      confirm:
+        description: 'Type "publish" to confirm release'
         required: true
         type: string
 
@@ -16,6 +16,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         
+      - name: Validate confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "publish" ]; then
+            echo "❌ Must type 'publish' to confirm release"
+            exit 1
+          fi
+        
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -24,13 +31,12 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install requests
+          python -m pip install requests build twine toml
           
       - name: Run release script
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ github.event.inputs.version }}
           TEST_PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
           PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          python scripts/release.py --version ${{ github.event.inputs.version }} 
+          python scripts/release.py
