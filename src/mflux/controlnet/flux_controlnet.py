@@ -1,4 +1,5 @@
 import mlx.core as mx
+import PIL.Image
 from mlx import nn
 from tqdm import tqdm
 
@@ -52,7 +53,7 @@ class Flux1Controlnet(nn.Module):
         self,
         seed: int,
         prompt: str,
-        controlnet_image_path: str,
+        controlnet_image_path: PIL.Image.StrOrBytesPath,
         config: Config,
     ) -> GeneratedImage:
         # 0. Create a new runtime config based on the model type and input parameters

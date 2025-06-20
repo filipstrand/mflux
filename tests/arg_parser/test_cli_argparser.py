@@ -19,7 +19,7 @@ def _create_mflux_generate_parser(with_controlnet=False, require_model_arg=False
     parser.add_image_to_image_arguments(required=False)
     parser.add_image_outpaint_arguments()
     if with_controlnet:
-        parser.add_controlnet_arguments()
+        parser.add_controlnet_arguments(mode="canny")
     parser.add_output_arguments()
     return parser
 
