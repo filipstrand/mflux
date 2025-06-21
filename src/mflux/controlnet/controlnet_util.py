@@ -45,6 +45,8 @@ class ControlnetUtil:
     @staticmethod
     def _scale_image(height: int, width: int, img: PIL.Image.Image) -> PIL.Image.Image:
         if height != img.height or width != img.width:
-            log.warning(f"Control image has different dimensions than the model. Resizing to {width}x{height}")
+            log.warning(
+                f"Control image {img.width}x{img.height} has different dimensions than the model requirements or requested width x height. Resizing to {width}x{height}"
+            )
             img = img.resize((width, height), PIL.Image.LANCZOS)
         return img
