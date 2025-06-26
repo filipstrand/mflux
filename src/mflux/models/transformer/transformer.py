@@ -44,12 +44,13 @@ class Transformer(nn.Module):
         pooled_prompt_embeds: mx.array,
         controlnet_block_samples: list[mx.array] | None = None,
         controlnet_single_block_samples: list[mx.array] | None = None,
+        kontext_image_ids: mx.array | None = None,
     ) -> mx.array:
         # 1. Create embeddings
         hidden_states = self.x_embedder(hidden_states)
         encoder_hidden_states = self.context_embedder(prompt_embeds)
         text_embeddings = Transformer.compute_text_embeddings(t, pooled_prompt_embeds, self.time_text_embed, config)
-        image_rotary_embeddings = Transformer.compute_rotary_embeddings(prompt_embeds, self.pos_embed, config)
+        image_rotary_embeddings = Transformer.compute_rotary_embeddings(prompt_embeds, self.pos_embed, config, kontext_image_ids)  # fmt: off
 
         # 2. Run the joint transformer blocks
         for idx, block in enumerate(self.transformer_blocks):
@@ -132,9 +133,18 @@ class Transformer(nn.Module):
         return encoder_hidden_states, hidden_states
 
     @staticmethod
-    def compute_rotary_embeddings(prompt_embeds: mx.array, pos_embed: EmbedND, config: RuntimeConfig) -> mx.array:
+    def compute_rotary_embeddings(
+        prompt_embeds: mx.array,
+        pos_embed: EmbedND,
+        config: RuntimeConfig,
+        kontext_image_ids: mx.array | None = None,
+    ) -> mx.array:
         txt_ids = Transformer._prepare_text_ids(seq_len=prompt_embeds.shape[1])
         img_ids = Transformer._prepare_latent_image_ids(height=config.height, width=config.width)
+
+        if kontext_image_ids is not None:
+            img_ids = mx.concatenate([img_ids, kontext_image_ids], axis=1)
+
         ids = mx.concatenate((txt_ids, img_ids), axis=1)
         image_rotary_emb = pos_embed(ids)
         return image_rotary_emb

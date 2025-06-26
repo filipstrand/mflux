@@ -6,7 +6,7 @@ from PIL import Image
 
 from mflux import Config, ModelConfig
 from mflux.community.concept_attention.flux_concept import Flux1Concept
-from mflux.community.concept_attention.flux_concept_from_image import FluxConceptFromImage
+from mflux.community.concept_attention.flux_concept_from_image import Flux1ConceptFromImage
 
 
 class ImageGenerationConceptTestHelper:
@@ -92,7 +92,7 @@ class ImageGenerationConceptTestHelper:
 
         try:
             # given
-            flux = FluxConceptFromImage(
+            flux = Flux1ConceptFromImage(
                 model_config=model_config,
                 quantize=8,
                 lora_paths=lora_paths,

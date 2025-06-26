@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from mflux import Config, ModelConfig, StopImageGenerationException
+from mflux import Config, StopImageGenerationException
 from mflux.callbacks.callback_manager import CallbackManager
-from mflux.community.in_context.flux_in_context_fill import Flux1InContextFill
 from mflux.error.exceptions import PromptFileReadError
+from mflux.kontext.flux_kontext import Flux1Kontext
 from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_prompt
@@ -11,31 +11,21 @@ from mflux.ui.prompt_utils import get_effective_prompt
 
 def main():
     # 0. Parse command line arguments
-    parser = CommandLineParser(description="Generate virtual try-on images using in-context learning.")
+    parser = CommandLineParser(description="Generate an image using Flux Kontext with image conditioning.")
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
-    parser.add_image_generator_arguments(supports_metadata_config=False, require_prompt=False)
-    parser.add_catvton_arguments()
-    parser.add_in_context_arguments()
+    parser.add_image_generator_arguments(supports_metadata_config=True)
+    parser.add_image_to_image_arguments(required=True)
     parser.add_output_arguments()
     args = parser.parse_args()
 
-    # 0. Default to a higher guidance value for fill
+    # 0. Set default guidance value if not provided by user
     if args.guidance is None:
-        args.guidance = ui_defaults.DEFAULT_DEV_FILL_GUIDANCE
-
-    # Set default CATVTON prompt if none provided
-    if not args.prompt and not args.prompt_file:
-        args.prompt = "The pair of images highlights a clothing and its styling on a model, high resolution, 4K, 8K; [IMAGE1] Detailed product shot of a clothing; [IMAGE2] The same cloth is worn by a model in a lifestyle setting."
-
-    # Set sensible VAE tiling split for in-context generation (side-by-side images)
-    if args.vae_tiling:
-        args.vae_tiling_split = "vertical"
+        args.guidance = ui_defaults.GUIDANCE_SCALE_KONTEXT
 
     # 1. Load the model
-    flux = Flux1InContextFill(
-        model_config=ModelConfig.dev_fill_catvton(),
+    flux = Flux1Kontext(
         quantize=args.quantize,
         local_path=args.path,
         lora_paths=args.lora_paths,
@@ -51,23 +41,18 @@ def main():
             image = flux.generate_image(
                 seed=seed,
                 prompt=get_effective_prompt(args),
-                left_image_path=args.garment_image,
-                right_image_path=args.person_image,
                 config=Config(
                     num_inference_steps=args.steps,
                     height=args.height,
                     width=args.width,
                     guidance=args.guidance,
-                    image_path=args.person_image,
-                    masked_image_path=args.person_mask,
+                    image_path=args.image_path,
                 ),
             )
 
-            # 4. Save the image(s)
+            # 4. Save the image
             output_path = Path(args.output.format(seed=seed))
-            image.get_right_half().save(path=output_path, export_json_metadata=args.metadata)
-            if args.save_full_image:
-                image.save(path=output_path.with_stem(output_path.stem + "_full"))
+            image.save(path=output_path, export_json_metadata=args.metadata)
 
     except (StopImageGenerationException, PromptFileReadError) as exc:
         print(exc)
