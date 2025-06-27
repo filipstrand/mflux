@@ -5,12 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.9.0] - 2025-06-28
+
+# MFLUX v.0.9.0 Release Notes
+
+## Major New Features
 
 ### 📸 FLUX.1 Kontext
 
 - **Added FLUX.1 Kontext support**: Official Black Forest Labs model for character consistency, local editing, and style reference
 - **New command**: `mflux-generate-kontext` for image-guided generation with text instructions
+- **Advanced image editing capabilities**: Sequential editing, style transfer, character consistency, and local modifications
+- **Comprehensive documentation**: Detailed prompting guide with tips, templates, and best practices
+- **Automatic model handling**: Uses `dev-kontext` model configuration with optimized defaults
+
+### 🖼️ Scale Factor Support for Image Upscaling
+
+- **Enhanced upscaling dimensions**: Added support for scale factors (e.g., `2x`, `1.5x`) in addition to absolute pixel values
+- **Mixed dimension types**: Ability to combine scale factors and absolute values (e.g., `--height 2x --width 1024`)
+- **Auto dimension handling**: Use `auto` to preserve original image dimensions
+- **Safety warnings**: Automatic warnings when requested dimensions exceed recommended limits
+- **Pixel-perfect scaling**: Scale factors automatically align to 16-pixel boundaries for optimal results
+
+### ⌨️ Shell Completions
+
+- **ZSH completion support**: Full tab completion for all mflux CLI commands and arguments
+- **Smart completions**: Context-aware completions for model names, quantization levels, LoRA styles, and file paths
+- **Easy installation**: Simple `mflux-completions` command for automatic setup
+- **Dynamic generation**: Completions stay in sync with code changes and new commands
+- **Comprehensive coverage**: Supports all 15+ mflux commands with proper argument validation
+
+### 🗂️ Cache Management Improvements
+
+- **Platform-native caching**: Uses `platformdirs` for macOS-idiomatic cache locations (`~/Library/Caches/mflux/`)
+- **Automatic migration**: Seamless migration from legacy `~/.cache/mflux` to new platform-appropriate locations
+- **Environment variable support**: `MFLUX_CACHE_DIR` for custom cache locations
+- **Improved organization**: Separate cache directories for different types of data (models, LoRAs, etc.)
+- **Backward compatibility**: Automatic symlink creation for legacy path compatibility
 
 ## Breaking Changes
 
@@ -20,6 +51,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Class rename**: `FluxConceptFromImage` is now `Flux1ConceptFromImage` to follow consistent naming convention
 - **Breaking change for library users**: If you import these classes directly in Python code, you may need to update your imports
 - **CLI tools unaffected**: All command-line tools (`mflux-generate-*`) continue to work without changes
+
+## Contributors
+
+Contributors:
+- **Anthony Wu (@anthonywu)**: Scale factor support, shell completions, cache refactor
+- **Filip Strand (@filipstrand)**: Kontext support, class naming standardization, core development
 
 ## [0.8.0] - 2025-06-14
 
