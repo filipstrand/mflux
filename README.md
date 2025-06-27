@@ -154,13 +154,13 @@ exec zsh
 mflux-generate --<TAB>
 ```
 
-If you encounter issues, check your installation:
+If you encounter issues (ZSH completion setup can vary by system), check your installation:
 
 ```sh
 mflux-completions --check
 ```
 
-For more details, see the [completions documentation](src/mflux/completions/README.md).
+For more details and troubleshooting, see the [completions documentation](src/mflux/completions/README.md).
 
 ### 🖼️ Generating an image
 
