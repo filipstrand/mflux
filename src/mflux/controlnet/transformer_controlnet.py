@@ -42,7 +42,7 @@ class TransformerControlnet(nn.Module):
         hidden_states = self.x_embedder(hidden_states) + self.controlnet_x_embedder(controlnet_condition)
         encoder_hidden_states = self.context_embedder(prompt_embeds)
         text_embeddings = Transformer.compute_text_embeddings(t, pooled_prompt_embeds, self.time_text_embed, config)
-        image_rotary_embeddings = Transformer.compute_rotary_embeddings(prompt_embeds, self.pos_embed, config)
+        image_rotary_embeddings = Transformer.compute_rotary_embeddings(prompt_embeds, self.pos_embed, config, None)
 
         # 2. Run the joint transformer blocks
         controlnet_block_samples = []

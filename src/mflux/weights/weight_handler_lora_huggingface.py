@@ -44,9 +44,20 @@ class WeightHandlerLoRAHuggingFace:
 
         # Check if the file already exists in the cache
         cached_file_path = cache_path / lora_name
-        if cached_file_path.exists():
-            print(f"Using cached LoRA: {cached_file_path}")
-            return str(cached_file_path)
+        if cached_file_path.exists() and cached_file_path.is_file():
+            try:
+                # Verify the file is actually readable (catches broken symlinks)
+                with open(cached_file_path, "rb") as f:
+                    f.read(1)  # Try to read just 1 byte to verify it works
+                print(f"Using cached LoRA: {cached_file_path}")
+                return str(cached_file_path)
+            except (OSError, IOError):
+                # File exists but is not readable (broken symlink, permissions, etc.)
+                print(f"Cached LoRA file is corrupted or inaccessible, re-downloading: {cached_file_path}")
+                try:
+                    cached_file_path.unlink()  # Remove the broken file/symlink
+                except OSError:
+                    pass  # Ignore if we can't remove it
 
         # Download the LoRA from Hugging Face
         print(f"Downloading LoRA '{lora_name}' from {repo_id}...")

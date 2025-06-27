@@ -1,6 +1,6 @@
 from mflux import Config, ModelConfig, StopImageGenerationException
 from mflux.callbacks.callback_manager import CallbackManager
-from mflux.community.concept_attention.flux_concept_from_image import FluxConceptFromImage
+from mflux.community.concept_attention.flux_concept_from_image import Flux1ConceptFromImage
 from mflux.error.exceptions import PromptFileReadError
 from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
@@ -24,7 +24,7 @@ def main():
         args.guidance = ui_defaults.GUIDANCE_SCALE
 
     # 1. Load the concept attention model
-    flux = FluxConceptFromImage(
+    flux = Flux1ConceptFromImage(
         model_config=ModelConfig.from_name(model_name=args.model, base_model=args.base_model),
         quantize=args.quantize,
         local_path=args.path,

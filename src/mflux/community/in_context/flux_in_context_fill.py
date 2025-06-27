@@ -20,7 +20,7 @@ from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
 
 
-class FluxInContextFill(nn.Module):
+class Flux1InContextFill(nn.Module):
     vae: VAE
     transformer: Transformer
     t5_text_encoder: T5Encoder

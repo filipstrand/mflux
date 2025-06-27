@@ -22,6 +22,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 - [🎨 Image-to-Image](#-image-to-image)
 - [🔌 LoRA](#-lora)
 - [🎭 In-Context Generation](#-in-context-generation)
+  * [📸 Kontext](#-kontext)
   * [🎨 In-Context LoRA](#-in-context-lora)
   * [👕 CatVTON (Virtual Try-On)](#-catvton-virtual-try-on)
   * [✏️ IC-Edit (In-Context Editing)](#%EF%B8%8F-ic-edit-in-context-editing)
@@ -271,6 +272,23 @@ For more advanced Python usage and additional configuration options, you can exp
 - **`--vae-tiling`** (optional, flag): Enable VAE tiling to reduce memory usage during the decoding phase. This splits the image into smaller chunks for processing, which can prevent out-of-memory errors when generating high-resolution images. Note that this optimization may occasionally produce a subtle seam in the middle of the image, but it's often worth the tradeoff for being able to generate images that would otherwise cause your system to run out of memory.
 
 - **`--vae-tiling-split`** (optional, `str`, default: `"horizontal"`): When VAE tiling is enabled, this parameter controls the direction to split the latents. Options are `"horizontal"` (splits into top/bottom) or `"vertical"` (splits into left/right). Use this option to control where potential seams might appear in the final image.
+
+</details>
+
+#### Kontext Command-Line Arguments
+
+<details>
+<summary>Click to expand Kontext arguments</summary>
+
+The `mflux-generate-kontext` command supports most of the same arguments as `mflux-generate`, with these specific parameters:
+
+- **`--image-path`** (required, `str`): Path to the reference image that will be used as the base for editing. This image provides the visual context for the text-guided modifications.
+
+- **`--guidance`** (optional, `float`, default: `2.5`): Guidance scale for the generation. Kontext typically works well with values between 2.0-4.0, with lower values allowing more creative freedom and higher values adhering more closely to the prompt.
+
+**Note**: The Kontext tool automatically uses the appropriate model (`dev-kontext`), so you don't need to specify `--model`.
+
+See the [Kontext](#-kontext) section for more details on this feature and comprehensive prompting strategies.
 
 </details>
 
@@ -993,7 +1011,91 @@ To report additional formats, examples or other any suggestions related to LoRA 
 
 In-Context Generation is a powerful collection of techniques that allows you to generate images based on reference images and context, without requiring model fine-tuning. MFLUX supports multiple in-context approaches, each designed for specific use cases ranging from style transfer to virtual try-on and image editing.
 
-**Note**: Black Forest Labs has announced [FLUX.1 Kontext](https://bfl.ai/models/flux-kontext), a new model suite designed specifically for text-and-image-driven generation and editing with advanced in-context capabilities. This official model may replace existing third-party implementations in the future. FLUX.1 Kontext offers character consistency, local editing, style reference, and interactive speed optimizations. The dev variant is coming soon as an open-weights model.
+#### 📸 Kontext
+
+FLUX.1 Kontext, released in June 2025, is Black Forest Labs' [official model](https://bfl.ai/models/flux-kontext) that goes beyond text-to-image generation. Unlike previous flow models that only allow text-based generation, Kontext understands and creates from existing images, enabling flexible image editing through simple text instructions without complex workflows or finetuning.
+Out of the various in-context generation techniques, Kontext is the most advanced and versatile, allowing for a wide range of image editing and generation tasks. It is recommended to try Kontext first before exploring other in-context methods.
+
+![kontext example](src/mflux/assets/kontext_example.jpg)
+
+*Original images credit: [Jon Tyson (sign)](https://unsplash.com/photos/the-sign-urges-viewers-to-get-more-rest-a4Cm6EnYtls), [Daniel Seßler (town)](https://unsplash.com/photos/colorful-buildings-line-a-coastal-towns-harbor-haVcuj4buqE), [Liga Alksne (house)](https://unsplash.com/photos/a-building-with-a-mountain-in-the-background-jZV4jaycoxE) on Unsplash*
+
+Kontext's core capabilities include **character consistency** (preserving unique elements across scenes), **local editing** (targeted modifications without affecting the rest), **style reference** (generating novel scenes while preserving styles), and **interactive speed** for iterative refinement with minimal latency.
+
+
+##### Example Usage with sequential edits
+
+![kontext sequential edit example](src/mflux/assets/kontext_sequential_edit_example.jpg)
+
+The image above illustrates **sequential editing** with Kontext - making multiple individual edits to progressively refine an image. Each edit builds upon the previous result, allowing for precise, iterative modifications.
+
+Here's an example of one step in a sequential editing workflow, where we add atmospheric mist to the mountains:
+
+```bash
+mflux-generate-kontext \
+  --image-path "house_without_background_objects.png" \
+  --prompt "Make the mountains in the background be covered in white mist so that they are barely visible. Preserve the original camera angle, house placement etc" \
+  --steps 20 \
+  --seed 9375333 \
+  --guidance 2.5 \
+  --width 912 \
+  --height 1360 \
+  -q 8
+```
+
+##### Tips for Best Results
+
+For comprehensive prompting strategies, see the [official Black Forest Labs Kontext prompting guide](https://docs.bfl.ai/guides/prompting_guide_kontext_i2i).
+
+**Core Principles:**
+- **Be Specific and Clear**: Use precise descriptions, avoid vague terms
+- **Step-by-step Editing**: Break complex modifications into multiple simple steps  
+- **Explicit Preservation**: State what should remain unchanged
+- **Verb Selection**: Use "change", "replace" rather than "transform"
+
+**Prompting Techniques:**
+
+*Basic Modifications:*
+- Simple: `"Change the car color to red"`
+- Maintain style: `"Change to daytime while maintaining the same style of the painting"`
+
+*Character Consistency:*
+- Use specific descriptions: `"The woman with short black hair"` instead of `"she"`
+- Preserve features: `"while maintaining the same facial features, hairstyle, and expression"`
+
+*Style Transfer:*
+- Name the style: `"Transform to Bauhaus art style"`
+- Describe characteristics: `"Transform to oil painting with visible brushstrokes, thick paint texture"`
+- Preserve composition: `"Change to Bauhaus style while maintaining the original composition"`
+
+*Text Editing:*
+- Use quotes: `"Replace 'joy' with 'BFL'"`
+- Maintain format: `"Replace text while maintaining the same font style"`
+
+**Common Problems & Solutions:**
+
+❌ **Character changes too much**: `"Transform the person into a Viking"`  
+✅ **Better**: `"Change the clothes to be a viking warrior while preserving facial features"`
+
+❌ **Position changes**: `"Put him on a beach"`  
+✅ **Better**: `"Change the background to a beach while keeping the person in the exact same position, scale, and pose"`
+
+❌ **Vague style**: `"Make it a sketch"`  
+✅ **Better**: `"Convert to pencil sketch with natural graphite lines, cross-hatching, and visible paper texture"`
+
+**Ready-to-Use Templates:**
+- **Object Modification**: `"Change [object] to [new state], keep [content to preserve] unchanged"`
+- **Style Transfer**: `"Transform to [specific style], while maintaining [composition/character/other] unchanged"`
+- **Background Replacement**: `"Change the background to [new background], keep the subject in the exact same position and pose"`
+- **Text Editing**: `"Replace '[original text]' with '[new text]', maintain the same font style"`
+
+**Technical Tips:**
+1. **High-Quality References**: Use clear, well-lit reference images with distinct characteristics
+2. **Guidance Scale**: Experiment with guidance values between 2.5-4.0 for optimal balance
+3. **Multiple Seeds**: Try different seeds to explore variations while maintaining consistency
+4. **Resolution**: Use standard resolutions (1024x1024, 768x1024, etc.) for best results
+
+⚠️ *Note: Using the Kontext tool requires an additional ~34 GB download from [black-forest-labs/FLUX.1-Kontext-dev](https://huggingface.co/black-forest-labs/FLUX.1-Kontext-dev). The download happens automatically on first use.*
 
 #### 🎨 In-Context LoRA
 

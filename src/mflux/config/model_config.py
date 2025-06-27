@@ -36,23 +36,28 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
+    def schnell() -> "ModelConfig":
+        return AVAILABLE_MODELS["schnell"]
+
+    @staticmethod
+    @lru_cache
+    def dev_kontext() -> "ModelConfig":
+        return AVAILABLE_MODELS["dev-kontext"]
+
+    @staticmethod
+    @lru_cache
     def dev_fill() -> "ModelConfig":
         return AVAILABLE_MODELS["dev-fill"]
 
     @staticmethod
     @lru_cache
-    def dev_fill_catvton() -> "ModelConfig":
-        return AVAILABLE_MODELS["dev-fill-catvton"]
+    def dev_redux() -> "ModelConfig":
+        return AVAILABLE_MODELS["dev-redux"]
 
     @staticmethod
     @lru_cache
     def dev_depth() -> "ModelConfig":
         return AVAILABLE_MODELS["dev-depth"]
-
-    @staticmethod
-    @lru_cache
-    def dev_redux() -> "ModelConfig":
-        return AVAILABLE_MODELS["dev-redux"]
 
     @staticmethod
     @lru_cache
@@ -71,8 +76,8 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
-    def schnell() -> "ModelConfig":
-        return AVAILABLE_MODELS["schnell"]
+    def dev_fill_catvton() -> "ModelConfig":
+        return AVAILABLE_MODELS["dev-fill-catvton"]
 
     def x_embedder_input_dim(self) -> int:
         if self.alias and "dev-fill" in self.alias:
@@ -112,8 +117,13 @@ class ModelConfig:
             # Find by explicit base_model name
             default_base = next((b for b in base_models if base_model in (b.alias, b.model_name)), None)
         else:
-            # Infer from model_name substring (priority order via sorted base_models)
-            default_base = next((b for b in base_models if b.alias and b.alias in model_name), None)
+            # Infer from model_name substring - prefer longer matches (more specific)
+            matching_bases = [b for b in base_models if b.alias and b.alias in model_name]
+            if matching_bases:
+                # Sort by alias length descending, then by priority ascending
+                default_base = sorted(matching_bases, key=lambda x: (-len(x.alias), x.priority))[0]
+            else:
+                default_base = None
             if not default_base:
                 raise ModelConfigError(f"Cannot infer base_model from {model_name}")
 
@@ -133,18 +143,6 @@ class ModelConfig:
 
 
 AVAILABLE_MODELS = {
-    "schnell": ModelConfig(
-        alias="schnell",
-        model_name="black-forest-labs/FLUX.1-schnell",
-        base_model=None,
-        controlnet_model=None,
-        custom_transformer_model=None,
-        num_train_steps=1000,
-        max_sequence_length=256,
-        supports_guidance=False,
-        requires_sigma_shift=False,
-        priority=2,
-    ),
     "dev": ModelConfig(
         alias="dev",
         model_name="black-forest-labs/FLUX.1-dev",
@@ -155,7 +153,31 @@ AVAILABLE_MODELS = {
         max_sequence_length=512,
         supports_guidance=True,
         requires_sigma_shift=True,
+        priority=0,
+    ),
+    "schnell": ModelConfig(
+        alias="schnell",
+        model_name="black-forest-labs/FLUX.1-schnell",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=256,
+        supports_guidance=False,
+        requires_sigma_shift=False,
         priority=1,
+    ),
+    "dev-kontext": ModelConfig(
+        alias="dev-kontext",
+        model_name="black-forest-labs/FLUX.1-Kontext-dev",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,
+        requires_sigma_shift=True,
+        priority=2,
     ),
     "dev-fill": ModelConfig(
         alias="dev-fill",
@@ -167,19 +189,7 @@ AVAILABLE_MODELS = {
         max_sequence_length=512,
         supports_guidance=True,
         requires_sigma_shift=True,
-        priority=0,
-    ),
-    "dev-depth": ModelConfig(
-        alias="dev-depth",
-        model_name="black-forest-labs/FLUX.1-Depth-dev",
-        base_model=None,
-        controlnet_model=None,
-        custom_transformer_model=None,
-        num_train_steps=1000,
-        max_sequence_length=512,
-        supports_guidance=True,
-        requires_sigma_shift=True,
-        priority=4,
+        priority=3,
     ),
     "dev-redux": ModelConfig(
         alias="dev-redux",
@@ -191,19 +201,19 @@ AVAILABLE_MODELS = {
         max_sequence_length=512,
         supports_guidance=True,
         requires_sigma_shift=True,
-        priority=3,
+        priority=4,
     ),
-    "dev-fill-catvton": ModelConfig(
-        alias="dev-fill-catvton",
-        model_name="black-forest-labs/FLUX.1-Fill-dev",
+    "dev-depth": ModelConfig(
+        alias="dev-depth",
+        model_name="black-forest-labs/FLUX.1-Depth-dev",
         base_model=None,
         controlnet_model=None,
-        custom_transformer_model="xiaozaa/catvton-flux-beta",
+        custom_transformer_model=None,
         num_train_steps=1000,
         max_sequence_length=512,
         supports_guidance=True,
-        requires_sigma_shift=False,  # Not sure why, but produced better results this way...
-        priority=6,
+        requires_sigma_shift=True,
+        priority=5,
     ),
     "dev-controlnet-canny": ModelConfig(
         alias="dev-controlnet-canny",
@@ -215,7 +225,7 @@ AVAILABLE_MODELS = {
         max_sequence_length=512,
         supports_guidance=True,
         requires_sigma_shift=True,
-        priority=5,
+        priority=6,
     ),
     "schnell-controlnet-canny": ModelConfig(
         alias="schnell-controlnet-canny",
@@ -227,7 +237,7 @@ AVAILABLE_MODELS = {
         max_sequence_length=256,
         supports_guidance=False,
         requires_sigma_shift=False,
-        priority=6,
+        priority=7,
     ),
     "dev-controlnet-upscaler": ModelConfig(
         alias="dev-controlnet-upscaler",
@@ -239,6 +249,18 @@ AVAILABLE_MODELS = {
         max_sequence_length=512,
         supports_guidance=False,
         requires_sigma_shift=False,
-        priority=7,
+        priority=8,
+    ),
+    "dev-fill-catvton": ModelConfig(
+        alias="dev-fill-catvton",
+        model_name="black-forest-labs/FLUX.1-Fill-dev",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model="xiaozaa/catvton-flux-beta",
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,
+        requires_sigma_shift=False,  # Not sure why, but produced better results this way...
+        priority=9,
     ),
 }
