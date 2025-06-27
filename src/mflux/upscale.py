@@ -35,37 +35,8 @@ def main():
     memory_saver = CallbackManager.register_callbacks(args=args, flux=flux)
 
     try:
-        # Image.open is lazy/efficient, just need the dimension metadata
-        orig_image = PIL.Image.open(args.controlnet_image_path)
-        output_width, output_height = orig_image.size
-
-        if isinstance(args.height, ScaleFactor):
-            output_height: int = args.height.get_scaled_value(orig_image.height)
-        else:
-            output_height = args.height
-
-        if isinstance(args.width, ScaleFactor):
-            output_width: int = args.width.get_scaled_value(orig_image.width)
-        else:
-            output_width = args.width
-
-        # Check if dimensions exceed safe limits
-        total_pixels = output_height * output_width
-
-        if total_pixels > ui_defaults.MAX_PIXELS_WARNING_THRESHOLD:
-            print(
-                f"⚠️ WARNING: The requested dimensions {output_width}x{output_height} "
-                f"({total_pixels:,} pixels) exceed max recommended ({ui_defaults.MAX_PIXELS_WARNING_THRESHOLD:,} pixels)."
-            )
-            print("This generation is likely to exceed the capabilities of this computer and may:")
-            print("  ⏳ Take a very long time to complete")
-            print("  🔥 Run out of memory")
-            print("  💥 Cause the program and your Mac to crash")
-
-            user_input = input("\nPress Enter to continue at your own risk, or type 'n' to cancel: ")
-            if user_input.lower() in ["n", "no"]:
-                print("🛑 Generation cancelled by user.")
-                sys.exit(1)
+        # Calculate output dimensions and handle safety warnings
+        width, height = _calculate_output_dimensions(args)
 
         for seed in args.seed:
             # 3. Generate an upscaled image for each seed value
@@ -75,8 +46,8 @@ def main():
                 controlnet_image_path=args.controlnet_image_path,
                 config=Config(
                     num_inference_steps=args.steps,
-                    height=output_height,
-                    width=output_width,
+                    height=height,
+                    width=width,
                     controlnet_strength=args.controlnet_strength,
                 ),
             )
@@ -88,6 +59,43 @@ def main():
     finally:
         if memory_saver:
             print(memory_saver.memory_stats())
+
+
+def _calculate_output_dimensions(args) -> tuple[int, int]:
+    """Calculate output dimensions from args, handling scale factors and safety warnings."""
+    # Image.open is lazy/efficient, just need the dimension metadata
+    orig_image = PIL.Image.open(args.controlnet_image_path)
+    output_width, output_height = orig_image.size
+
+    if isinstance(args.height, ScaleFactor):
+        output_height: int = args.height.get_scaled_value(orig_image.height)
+    else:
+        output_height = args.height
+
+    if isinstance(args.width, ScaleFactor):
+        output_width: int = args.width.get_scaled_value(orig_image.width)
+    else:
+        output_width = args.width
+
+    # Check if dimensions exceed safe limits
+    total_pixels = output_height * output_width
+
+    if total_pixels > ui_defaults.MAX_PIXELS_WARNING_THRESHOLD:
+        print(
+            f"⚠️ WARNING: The requested dimensions {output_width}x{output_height} "
+            f"({total_pixels:,} pixels) exceed max recommended ({ui_defaults.MAX_PIXELS_WARNING_THRESHOLD:,} pixels)."
+        )
+        print("This generation is likely to exceed the capabilities of this computer and may:")
+        print("  ⏳ Take a very long time to complete")
+        print("  🔥 Run out of memory")
+        print("  💥 Cause the program and your Mac to crash")
+
+        user_input = input("\nPress Enter to continue at your own risk, or type 'n' to cancel: ")
+        if user_input.lower() in ["n", "no"]:
+            print("🛑 Generation cancelled by user.")
+            sys.exit(1)
+
+    return output_width, output_height
 
 
 if __name__ == "__main__":
