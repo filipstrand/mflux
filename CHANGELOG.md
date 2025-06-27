@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 📸 FLUX.1 Kontext
+
+- **Added FLUX.1 Kontext support**: Official Black Forest Labs model for character consistency, local editing, and style reference
+- **New command**: `mflux-generate-kontext` for image-guided generation with text instructions
+
+## Breaking Changes
+
+### 🔧 Python API Class Naming Standardization
+
+- **Class rename**: `FluxInContextFill` is now `Flux1InContextFill` to follow consistent naming convention
+- **Class rename**: `FluxConceptFromImage` is now `Flux1ConceptFromImage` to follow consistent naming convention
+- **Breaking change for library users**: If you import these classes directly in Python code, you may need to update your imports
+- **CLI tools unaffected**: All command-line tools (`mflux-generate-*`) continue to work without changes
+
 ## [0.8.0] - 2025-06-14
 
 # MFLUX v.0.8.0 Release Notes

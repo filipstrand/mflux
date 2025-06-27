@@ -53,8 +53,8 @@ class TransformerConcept(nn.Module):
         encoder_hidden_states_concept = self.context_embedder(prompt_embeds_concept)
         text_embeddings = Transformer.compute_text_embeddings(t, pooled_prompt_embeds, self.time_text_embed, config)  # fmt: off
         text_embeddings_concept = Transformer.compute_text_embeddings(t, pooled_prompt_embeds_concept, self.time_text_embed, config)  # fmt: off
-        image_rotary_embeddings = Transformer.compute_rotary_embeddings(prompt_embeds, self.pos_embed, config)  # fmt: off
-        image_rotary_embeddings_concept = Transformer.compute_rotary_embeddings(prompt_embeds_concept, self.pos_embed, config)  # fmt: off
+        image_rotary_embeddings = Transformer.compute_rotary_embeddings(prompt_embeds, self.pos_embed, config, None)  # fmt: off
+        image_rotary_embeddings_concept = Transformer.compute_rotary_embeddings(prompt_embeds_concept, self.pos_embed, config, None)  # fmt: off
 
         # 2. Run the joint transformer blocks
         attention_information = []

@@ -13,15 +13,17 @@ DEFAULT_DEV_FILL_GUIDANCE = 30
 DEFAULT_DEPTH_GUIDANCE = 10
 DIMENSION_STEP_PIXELS = 16
 GUIDANCE_SCALE = 3.5
+GUIDANCE_SCALE_KONTEXT = 2.5
 HEIGHT, WIDTH = 1024, 1024
 MAX_PIXELS_WARNING_THRESHOLD = 2048 * 2048
 IMAGE_STRENGTH = 0.4
-MODEL_CHOICES = ["dev", "dev-fill", "schnell"]
+MODEL_CHOICES = ["dev", "schnell", "dev-kontext", "dev-fill"]
 MODEL_INFERENCE_STEPS = {
     "dev": 14,
     "dev-fill": 14,
     "dev-depth": 14,
     "dev-redux": 14,
+    "dev-kontext": 14,
     "schnell": 4,
 }
 QUANTIZE_CHOICES = [3, 4, 6, 8]

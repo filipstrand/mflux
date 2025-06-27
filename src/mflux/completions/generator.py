@@ -15,6 +15,7 @@ class CompletionGenerator:
         self.commands = [
             "mflux-generate",
             "mflux-generate-controlnet",
+            "mflux-generate-kontext",
             "mflux-generate-in-context",
             "mflux-generate-in-context-edit",
             "mflux-generate-in-context-catvton",
@@ -49,6 +50,14 @@ class CompletionGenerator:
             parser.add_lora_arguments()
             parser.add_controlnet_arguments()
             parser.add_image_generator_arguments()
+            parser.add_output_arguments()
+
+        elif command == "mflux-generate-kontext":
+            parser.add_general_arguments()
+            parser.add_model_arguments(require_model_arg=False)
+            parser.add_lora_arguments()
+            parser.add_image_generator_arguments(supports_metadata_config=True)
+            parser.add_image_to_image_arguments(required=True)
             parser.add_output_arguments()
 
         elif command == "mflux-generate-in-context":

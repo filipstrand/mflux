@@ -4,7 +4,7 @@ from PIL import Image
 
 from mflux import Config, ModelConfig, StopImageGenerationException
 from mflux.callbacks.callback_manager import CallbackManager
-from mflux.community.in_context.flux_in_context_fill import FluxInContextFill
+from mflux.community.in_context.flux_in_context_fill import Flux1InContextFill
 from mflux.community.in_context.utils.in_context_loras import prepare_ic_edit_loras
 from mflux.error.exceptions import PromptFileReadError
 from mflux.ui import defaults as ui_defaults
@@ -36,7 +36,7 @@ def main():
     width, height = _resize_for_ic_edit_optimal_width(args)
 
     # 1. Load the model with IC-Edit LoRA
-    flux = FluxInContextFill(
+    flux = Flux1InContextFill(
         model_config=ModelConfig.dev_fill(),
         quantize=args.quantize,
         local_path=args.path,
