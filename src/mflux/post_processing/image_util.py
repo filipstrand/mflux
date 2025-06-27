@@ -7,6 +7,7 @@ import numpy as np
 import piexif
 import PIL.Image
 import PIL.ImageDraw
+from PIL._typing import StrOrBytesPath
 
 from mflux.community.concept_attention.attention_data import ConceptHeatmap
 from mflux.config.runtime_config import RuntimeConfig
@@ -117,8 +118,11 @@ class ImageUtil:
         return array
 
     @staticmethod
-    def load_image(path: str | Path) -> PIL.Image.Image:
-        return PIL.Image.open(path).convert("RGB")
+    def load_image(image_or_path: PIL.Image.Image | StrOrBytesPath) -> PIL.Image.Image:
+        if isinstance(image_or_path, PIL.Image.Image):
+            return image_or_path.convert("RGB")
+        else:
+            return PIL.Image.open(image_or_path).convert("RGB")
 
     @staticmethod
     def expand_image(
