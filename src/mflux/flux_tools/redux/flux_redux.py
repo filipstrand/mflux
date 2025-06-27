@@ -58,14 +58,14 @@ class Flux1Redux(nn.Module):
         config: Config,
     ) -> GeneratedImage:
         # 0. Create a new runtime config based on the model type and input parameters
-        config = RuntimeConfig(config, self.model_config)
-        time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
+        runtime_config = RuntimeConfig(config, self.model_config)
+        time_steps = tqdm(range(runtime_config.init_time_step, runtime_config.num_inference_steps))
 
         # 1. Create the initial latents
         latents = LatentCreator.create(
             seed=seed,
-            height=config.height,
-            width=config.width,
+            height=runtime_config.height,
+            width=runtime_config.width,
         )
 
         # 2. Get prompt embeddings by fusing the prompt and image embeddings
@@ -76,10 +76,10 @@ class Flux1Redux(nn.Module):
             clip_tokenizer=self.clip_tokenizer,
             t5_text_encoder=self.t5_text_encoder,
             clip_text_encoder=self.clip_text_encoder,
-            image_paths=config.redux_image_paths,
+            image_paths=runtime_config.redux_image_paths,
             image_encoder=self.image_encoder,
             image_embedder=self.image_embedder,
-            image_strengths=config.redux_image_strengths,
+            image_strengths=runtime_config.redux_image_strengths,
         )  # fmt: off
 
         # (Optional) Call subscribers for beginning of loop
@@ -87,7 +87,7 @@ class Flux1Redux(nn.Module):
             seed=seed,
             prompt=prompt,
             latents=latents,
-            config=config,
+            config=runtime_config,
         )  # fmt: off
 
         for t in time_steps:
@@ -95,14 +95,14 @@ class Flux1Redux(nn.Module):
                 # 3.t Predict the noise
                 noise = self.transformer(
                     t=t,
-                    config=config,
+                    config=runtime_config,
                     hidden_states=latents,
                     prompt_embeds=prompt_embeds,
                     pooled_prompt_embeds=pooled_prompt_embeds,
                 )
 
                 # 4.t Take one denoise step
-                dt = config.sigmas[t + 1] - config.sigmas[t]
+                dt = runtime_config.sigmas[t + 1] - runtime_config.sigmas[t]
                 latents += noise * dt
 
                 # (Optional) Call subscribers in-loop
@@ -111,7 +111,7 @@ class Flux1Redux(nn.Module):
                     seed=seed,
                     prompt=prompt,
                     latents=latents,
-                    config=config,
+                    config=runtime_config,
                     time_steps=time_steps,
                 )  # fmt: off
 
@@ -124,7 +124,7 @@ class Flux1Redux(nn.Module):
                     seed=seed,
                     prompt=prompt,
                     latents=latents,
-                    config=config,
+                    config=runtime_config,
                     time_steps=time_steps,
                 )
                 raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(time_steps)}")
@@ -134,23 +134,23 @@ class Flux1Redux(nn.Module):
             seed=seed,
             prompt=prompt,
             latents=latents,
-            config=config,
+            config=runtime_config,
         )  # fmt: off
 
         # 7. Decode the latent array and return the image
-        latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
+        latents = ArrayUtil.unpack_latents(latents=latents, height=runtime_config.height, width=runtime_config.width)
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,
-            config=config,
+            config=runtime_config,
             seed=seed,
             prompt=prompt,
             quantization=self.bits,
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
-            redux_image_paths=config.redux_image_paths,
-            redux_image_strengths=config.redux_image_strengths,
-            image_strength=config.image_strength,
+            redux_image_paths=runtime_config.redux_image_paths,
+            redux_image_strengths=runtime_config.redux_image_strengths,
+            image_strength=runtime_config.image_strength,
             generation_time=time_steps.format_dict["elapsed"],
         )
 

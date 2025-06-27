@@ -144,3 +144,23 @@ section-order = [
     "first-party",
     "local-folder",
 ]
+
+[tool.mypy]
+disable_error_code = [
+    # TODO: for each error code - clean them up in a single PR then remove entry
+    "annotation-unchecked",
+    "arg-type",
+    "assignment",
+    "attr-defined",
+    "import-untyped",
+    "index",
+    "union-attr",
+    "return",
+    "return-value",
+    "var-annotated"
+]
+error_summary = true
+ignore_missing_imports = true
+implicit_optional = true
+# we should feel free to use new hinting features even if we back support to earlier versions
+python_version = 3.12

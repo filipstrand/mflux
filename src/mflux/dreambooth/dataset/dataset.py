@@ -27,10 +27,9 @@ class Dataset:
         examples = Dataset._create_examples(flux, raw_data, width=width, height=height)
 
         # Expend the original dataset to get more training data with variations
-        augmented_examples = []
-        for example in examples:
-            [augmented_examples.append(variation) for variation in DreamBoothPreProcessing.augment(example)]
-
+        augmented_examples = [
+            variation for example in examples for variation in DreamBoothPreProcessing.augment(example)
+        ]
         # Dataset is now prepared
         return Dataset(augmented_examples)
 
