@@ -56,7 +56,7 @@ class BatterySaver(BeforeLoopCallback):
     def __init__(self, battery_percentage_stop_limit=10):
         self.limit = battery_percentage_stop_limit
 
-    def call_before_loop(self, **kwargs) -> None:
+    def call_before_loop(self, **kwargs) -> None:  # type: ignore
         current_pct: int | None = get_battery_percentage()
         if current_pct is not None and current_pct <= self.limit:
             raise StopImageGenerationException(f"Battery below {self.limit}% threshold: {current_pct}%")

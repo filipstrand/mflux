@@ -74,7 +74,7 @@ class TrainingState:
                     if file_path.exists():
                         zipf.write(file_path, file_path.name)
 
-    def _create_checkpoint_data(self, training_spec: TrainingSpec, start_date_time: datetime) -> dict:
+    def _create_checkpoint_data(self, training_spec: TrainingSpec, start_date_time: datetime.datetime) -> dict:
         now = datetime.datetime.now()
         return {
             "metadata": {
@@ -122,7 +122,7 @@ class TrainingState:
         return None if path is None else str(Path(path).resolve())
 
     @staticmethod
-    def _format_duration(start: datetime, end: datetime) -> str:
+    def _format_duration(start: datetime.datetime, end: datetime.datetime) -> str:
         # Calculate the duration
         duration = end - start
         total_seconds = int(duration.total_seconds())

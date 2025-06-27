@@ -68,14 +68,16 @@ def _calculate_output_dimensions(args) -> tuple[int, int]:
     output_width, output_height = orig_image.size
 
     if isinstance(args.height, ScaleFactor):
-        output_height: int = args.height.get_scaled_value(orig_image.height)
+        output_height: int = args.height.get_scaled_value(orig_image.height)  # type: ignore
+
     else:
-        output_height = args.height
+        output_height = args.height  # type: ignore
 
     if isinstance(args.width, ScaleFactor):
-        output_width: int = args.width.get_scaled_value(orig_image.width)
+        output_width: int = args.width.get_scaled_value(orig_image.width)  # type: ignore
+
     else:
-        output_width = args.width
+        output_width = args.width  # type: ignore
 
     # Check if dimensions exceed safe limits
     total_pixels = output_height * output_width

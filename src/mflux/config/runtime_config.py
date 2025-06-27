@@ -33,7 +33,7 @@ class RuntimeConfig:
         self.config.width = value
 
     @property
-    def guidance(self) -> float | None:
+    def guidance(self) -> float:
         return self.config.guidance
 
     @property
@@ -82,10 +82,10 @@ class RuntimeConfig:
 
         if is_img2img:
             # 1. Clamp strength to [0, 1]
-            strength = max(0.0, min(1.0, self.config.image_strength))
+            strength = max(0.0, min(1.0, self.config.image_strength))  # type: ignore
 
             # 2. Return start time in [1, floor(num_steps * strength)]
-            return max(1, int(self.num_inference_steps * strength))
+            return max(1, int(self.num_inference_steps * strength))  # type: ignore
         else:
             return 0
 
