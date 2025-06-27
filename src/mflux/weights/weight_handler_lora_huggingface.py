@@ -1,7 +1,9 @@
-import os
+import shutil
 from pathlib import Path
 
 from huggingface_hub import snapshot_download
+
+from mflux.ui.defaults import MFLUX_LORA_CACHE_DIR
 
 
 class WeightHandlerLoRAHuggingFace:
@@ -9,7 +11,7 @@ class WeightHandlerLoRAHuggingFace:
     def download_loras(
         lora_names: list[str] | None = None,
         repo_id: str | None = None,
-        cache_dir: str | None = None,
+        cache_dir: Path | str | None = None,
     ) -> list[str]:
         if repo_id is None:
             return []
@@ -30,19 +32,21 @@ class WeightHandlerLoRAHuggingFace:
     def download_lora(
         repo_id: str,
         lora_name: str,
-        cache_dir: str | None = None,
+        cache_dir: Path | str | None = None,
     ) -> str:
-        # Create cache directory if it doesn't exist
+        # Ensure cache_dir is a Path object
         if cache_dir is None:
-            cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "mflux", "loras")
+            cache_path = MFLUX_LORA_CACHE_DIR
+        else:
+            cache_path = Path(cache_dir)
 
-        os.makedirs(cache_dir, exist_ok=True)
+        cache_path.mkdir(parents=True, exist_ok=True)
 
         # Check if the file already exists in the cache
-        cached_file_path = os.path.join(cache_dir, lora_name)
-        if os.path.exists(cached_file_path):
+        cached_file_path = cache_path / lora_name
+        if cached_file_path.exists():
             print(f"Using cached LoRA: {cached_file_path}")
-            return cached_file_path
+            return str(cached_file_path)
 
         # Download the LoRA from Hugging Face
         print(f"Downloading LoRA '{lora_name}' from {repo_id}...")
@@ -50,7 +54,7 @@ class WeightHandlerLoRAHuggingFace:
             snapshot_download(
                 repo_id=repo_id,
                 allow_patterns=[f"*{lora_name}*"],
-                cache_dir=cache_dir,
+                cache_dir=str(cache_path),
             )
         )
 
@@ -58,17 +62,15 @@ class WeightHandlerLoRAHuggingFace:
         for file in download_path.glob(f"**/*{lora_name}*"):
             if file.is_file() and file.suffix in [".safetensors", ".bin"]:
                 # Copy or link the file to the cache directory with the expected name
-                target_path = os.path.join(cache_dir, lora_name)
-                if not os.path.exists(target_path):
+                target_path = cache_path / lora_name
+                if not target_path.exists():
                     # Create a symlink or copy the file
                     try:
-                        os.symlink(file, target_path)
+                        target_path.symlink_to(file)
                     except (OSError, AttributeError):
-                        import shutil
-
                         shutil.copy2(file, target_path)
 
                 print(f"LoRA downloaded to: {target_path}")
-                return target_path
+                return str(target_path)
 
         raise FileNotFoundError(f"Could not find LoRA file '{lora_name}' in the downloaded repository.")
