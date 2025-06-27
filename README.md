@@ -12,53 +12,37 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 
 - [Philosophy](#philosophy)
 - [💿 Installation](#-installation)
-- [🚀 Shell Completions (Quick Start)](#-shell-completions-quick-start)
 - [🖼️ Generating an image](#%EF%B8%8F-generating-an-image)
   * [📜 Full list of Command-Line Arguments](#-full-list-of-command-line-arguments)
 - [⏱️ Image generation speed (updated)](#%EF%B8%8F-image-generation-speed-updated)
 - [↔️ Equivalent to Diffusers implementation](#%EF%B8%8F-equivalent-to-diffusers-implementation)
 - [🗜️ Quantization](#%EF%B8%8F-quantization)
-  * [📊 Size comparisons for quantized models](#-size-comparisons-for-quantized-models)
-  * [💾 Saving a quantized version to disk](#-saving-a-quantized-version-to-disk)
-  * [💽 Loading and running a quantized version from disk](#-loading-and-running-a-quantized-version-from-disk)
 - [💽 Running a non-quantized model directly from disk](#-running-a-non-quantized-model-directly-from-disk)
 - [🌐 Third-Party HuggingFace Model Support](#-third-party-huggingface-model-support)
 - [🎨 Image-to-Image](#-image-to-image)
 - [🔌 LoRA](#-lora)
-  * [Multi-LoRA](#multi-lora)
-  * [LoRA Library Path](#lora-library-path)
-  * [Supported LoRA formats (updated)](#supported-lora-formats-updated)
 - [🎭 In-Context Generation](#-in-context-generation)
   * [🎨 In-Context LoRA](#-in-context-lora)
-    + [Available Styles](#available-styles)
-    + [How It Works](#how-it-works)
-    + [Tips for Best Results](#tips-for-best-results)
   * [👕 CatVTON (Virtual Try-On)](#-catvton-virtual-try-on)
   * [✏️ IC-Edit (In-Context Editing)](#%EF%B8%8F-ic-edit-in-context-editing)
 - [🛠️ Flux Tools](#%EF%B8%8F-flux-tools)
   * [🖌️ Fill](#%EF%B8%8F-fill)
-    + [Inpainting](#inpainting)
-    + [Outpainting](#outpainting)
   * [🔍 Depth](#-depth)
   * [🔄 Redux](#-redux)
 - [🕹️ Controlnet](#%EF%B8%8F-controlnet)
 - [🔎 Upscale](#-upscale)
-- [🎛️ Dreambooth fine-tuning](#-dreambooth-fine-tuning)
-  * [Training configuration](#training-configuration)
-  * [Training example](#training-example)
-  * [Resuming a training run](#resuming-a-training-run)
-  * [Configuration details](#configuration-details)
-  * [Memory issues](#memory-issues)
-  * [Misc](#misc)
+- [🎛️ Dreambooth fine-tuning](#%EF%B8%8F-dreambooth-fine-tuning)
 - [🧠 Concept Attention](#-concept-attention)
 - [🚧 Current limitations](#-current-limitations)
 - [💡Workflow tips](#workflow-tips)
-- [🔬 Cool research / features to support](#-cool-research--features-to-support-)
+- [🔬 Cool research](#-cool-research)
 - [🌱‍ Related projects](#-related-projects)
 - [🙏 Acknowledgements](#-acknowledgements)
-- [⚖️ License](#-license)
+- [⚖️ License](#%EF%B8%8F-license)
 
 <!-- TOC end -->
+
+---
 
 ### Philosophy
 
@@ -71,6 +55,7 @@ All models are implemented from scratch in MLX and only the tokenizers are used 
 [Huggingface Transformers](https://github.com/huggingface/transformers) library. Other than that, there are only minimal dependencies
 like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) for simple image post-processing.
 
+---
 
 ### 💿 Installation
 For users, the easiest way to install MFLUX is to use `uv tool`: If you have [installed `uv`](https://github.com/astral-sh/uv?tab=readme-ov-file#installation), simply:
@@ -140,9 +125,10 @@ pip install -U mflux
 
 *If you have trouble installing MFLUX, please see the [installation related issues section](https://github.com/filipstrand/mflux/issues?q=is%3Aissue+install+).* 
 
-### ⌨️ Shell Completions (Quick Start)
+<details>
+<summary>⌨️ <strong>Shell Completions (Optional)</strong></summary>
 
-MFLUX supports ZSH (default on macOS) shell completions for all CLI commands.
+MFLUX supports ZSH (default on macOS) shell completions for all CLI commands. This provides tab completion for all [command-line arguments](#-full-list-of-command-line-arguments) and options.
 
 To enable completions:
 
@@ -164,6 +150,10 @@ mflux-completions --check
 ```
 
 For more details and troubleshooting, see the [completions documentation](src/mflux/completions/README.md).
+
+</details>
+
+---
 
 ### 🖼️ Generating an image
 
@@ -187,6 +177,33 @@ echo "A majestic mountain landscape" | mflux-generate --prompt - --model schnell
 
 This is useful for integrating MFLUX into shell scripts or dynamically generating prompts using LLM inference tools such as [`llm`](https://llm.datasette.io/en/stable/), [`mlx-lm`](https://github.com/ml-explore/mlx-lm), [`ollama`](https://ollama.ai/), etc.
 
+Alternatively, you can use MFLUX directly in Python:
+
+```python
+from mflux import Flux1, Config
+
+# Load the model
+flux = Flux1.from_name(
+   model_name="schnell",  # "schnell" or "dev"
+   quantize=8,            # 4 or 8
+)
+
+# Generate an image
+image = flux.generate_image(
+   seed=2,
+   prompt="Luxury food photograph",
+   config=Config(
+      num_inference_steps=2,  # "schnell" works well with 2-4 steps, "dev" works well with 20-25 steps
+      height=1024,
+      width=1024,
+   )
+)
+
+image.save(path="image.png")
+```
+
+For more advanced Python usage and additional configuration options, you can explore the entry point files in the source code, such as [`generate.py`](src/mflux/generate.py), [`generate_controlnet.py`](src/mflux/generate_controlnet.py), [`generate_fill.py`](src/mflux/generate_fill.py), and others in the [`src/mflux/`](src/mflux/) directory. These files demonstrate how to use the Python API for various features and provide examples of advanced configurations.
+
 ⚠️ *If the specific model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell or Dev model respectively). See the [quantization](#%EF%B8%8F-quantization) section for running compressed versions of the model.* ⚠️
 
 *By default, mflux caches files in `~/Library/Caches/mflux/`. The Hugging Face model files themselves are cached separately in the Hugging Face cache directory (e.g., `~/.cache/huggingface/`).*
@@ -196,6 +213,14 @@ This is useful for integrating MFLUX into shell scripts or dynamically generatin
 🔒 [FLUX.1-dev currently requires granted access to its Huggingface repo. For troubleshooting, see the issue tracker](https://github.com/filipstrand/mflux/issues/14) 🔒
 
 #### 📜 Full list of Command-Line Arguments
+
+<details>
+<summary>📜 <strong>Command-Line Arguments Reference</strong></summary>
+
+#### General Command-Line Arguments
+
+<details>
+<summary>Click to expand General arguments</summary>
 
 - **`--prompt`** (required, `str`): Text description of the image to generate. Use `-` to read the prompt from stdin (e.g., `echo "A beautiful sunset" | mflux-generate --prompt -`).
 
@@ -247,7 +272,12 @@ This is useful for integrating MFLUX into shell scripts or dynamically generatin
 
 - **`--vae-tiling-split`** (optional, `str`, default: `"horizontal"`): When VAE tiling is enabled, this parameter controls the direction to split the latents. Options are `"horizontal"` (splits into top/bottom) or `"vertical"` (splits into left/right). Use this option to control where potential seams might appear in the final image.
 
-#### 📜 In-Context LoRA Command-Line Arguments
+</details>
+
+#### In-Context LoRA Command-Line Arguments
+
+<details>
+<summary>Click to expand In-Context LoRA arguments</summary>
 
 The `mflux-generate-in-context` command supports most of the same arguments as `mflux-generate`, with these additional parameters:
 
@@ -257,7 +287,12 @@ The `mflux-generate-in-context` command supports most of the same arguments as `
 
 See the [In-Context Generation](#-in-context-generation) section for more details on how to use this feature effectively.
 
-#### 📜 CatVTON Command-Line Arguments
+</details>
+
+#### CatVTON Command-Line Arguments
+
+<details>
+<summary>Click to expand CatVTON arguments</summary>
 
 The `mflux-generate-in-context-catvton` command supports most of the same arguments as `mflux-generate`, with these specific parameters:
 
@@ -271,7 +306,12 @@ The `mflux-generate-in-context-catvton` command supports most of the same argume
 
 See the [CatVTON (Virtual Try-On)](#-catvton-virtual-try-on) section for more details on this feature.
 
-#### 📜 IC-Edit Command-Line Arguments
+</details>
+
+#### IC-Edit Command-Line Arguments
+
+<details>
+<summary>Click to expand IC-Edit arguments</summary>
 
 The `mflux-generate-in-context-edit` command supports most of the same arguments as `mflux-generate`, with these specific parameters:
 
@@ -285,7 +325,12 @@ The `mflux-generate-in-context-edit` command supports most of the same arguments
 
 See the [IC-Edit (In-Context Editing)](#-ic-edit-in-context-editing) section for more details on this feature.
 
-#### 📜 Redux Tool Command-Line Arguments
+</details>
+
+#### Redux Tool Command-Line Arguments
+
+<details>
+<summary>Click to expand Redux arguments</summary>
 
 The `mflux-generate-redux` command uses most of the same arguments as `mflux-generate`, with these specific parameters:
 
@@ -295,7 +340,12 @@ The `mflux-generate-redux` command uses most of the same arguments as `mflux-gen
 
 See the [Redux](#-redux) section for more details on this feature.
 
-#### 📜 Concept Attention Command-Line Arguments
+</details>
+
+#### Concept Attention Command-Line Arguments
+
+<details>
+<summary>Click to expand Concept Attention arguments</summary>
 
 The `mflux-concept` command supports most of the same arguments as `mflux-generate`, with these specific parameters:
 
@@ -311,7 +361,12 @@ The `mflux-concept-from-image` command uses most of the same arguments as `mflux
 
 See the [Concept Attention](#-concept-attention) section for more details on this feature.
 
-#### 📜 Fill Tool Command-Line Arguments
+</details>
+
+#### Fill Tool Command-Line Arguments
+
+<details>
+<summary>Click to expand Fill Tool arguments</summary>
 
 The `mflux-generate-fill` command supports most of the same arguments as `mflux-generate`, with these specific parameters:
 
@@ -323,7 +378,12 @@ The `mflux-generate-fill` command supports most of the same arguments as `mflux-
 
 See the [Fill](#-fill) section for more details on inpainting and outpainting.
 
-#### 📜 Depth Tool Command-Line Arguments
+</details>
+
+#### Depth Tool Command-Line Arguments
+
+<details>
+<summary>Click to expand Depth Tool arguments</summary>
 
 The `mflux-generate-depth` command supports most of the same arguments as `mflux-generate`, with these specific parameters:
 
@@ -341,7 +401,12 @@ The `mflux-save-depth` command for extracting depth maps without generating imag
 
 See the [Depth](#-depth) section for more details on this feature.
 
-#### 📜 ControlNet Command-Line Arguments
+</details>
+
+#### ControlNet Command-Line Arguments
+
+<details>
+<summary>Click to expand ControlNet arguments</summary>
 
 The `mflux-generate-controlnet` command supports most of the same arguments as `mflux-generate`, with these additional parameters:
 
@@ -353,8 +418,57 @@ The `mflux-generate-controlnet` command supports most of the same arguments as `
 
 See the [Controlnet](#%EF%B8%8F-controlnet) section for more details on how to use this feature effectively.
 
+</details>
 
-#### Dynamic Prompts with `--prompt-file`
+#### Upscale Command-Line Arguments
+
+<details>
+<summary>Click to expand Upscale arguments</summary>
+
+The `mflux-upscale` command supports most of the same arguments as `mflux-generate`, with these specific parameters:
+
+- **`--height`** (optional, `int` or scale factor, default: `auto`): Image height. Can be specified as pixels (e.g., `1024`), scale factors (e.g., `2x`, `1.5x`), or `auto` to use the source image height.
+
+- **`--width`** (optional, `int` or scale factor, default: `auto`): Image width. Can be specified as pixels (e.g., `1024`), scale factors (e.g., `2x`, `1.5x`), or `auto` to use the source image width.
+
+- **`--controlnet-image-path`** (required, `str`): Path to the source image to upscale.
+
+- **`--controlnet-strength`** (optional, `float`, default: `0.4`): Degree of influence the control image has on the output. Ranges from `0.0` (no influence) to `1.0` (full influence).
+
+**Scale Factor Examples:**
+```bash
+# Scale by 2x in both dimensions
+mflux-upscale --height 2x --width 2x --controlnet-image-path source.png
+
+# Scale height by 1.5x, set width to specific pixels
+mflux-upscale --height 1.5x --width 1920 --controlnet-image-path source.png
+
+# Use auto (keeps original dimensions)
+mflux-upscale --height auto --width auto --controlnet-image-path source.png
+
+# Mix scale factors and absolute values
+mflux-upscale --height 2x --width 1024 --controlnet-image-path source.png
+```
+
+See the [Upscale](#-upscale) section for more details on how to use this feature effectively.
+
+</details>
+
+#### Training Arguments
+
+<details>
+<summary>Click to expand Training arguments</summary>
+
+- **`--train-config`** (optional, `str`): Local path of the training configuration file. This file defines all aspects of the training process including model parameters, optimizer settings, and training data. See the [Training configuration](#training-configuration) section for details on the structure of this file.
+
+- **`--train-checkpoint`** (optional, `str`): Local path of the checkpoint file which specifies how to continue the training process. Used when resuming an interrupted training run.
+
+</details>
+
+</details>
+
+<details>
+<summary>📝 <strong>Dynamic Prompts with `--prompt-file`</strong></summary>
 
 MFlux supports dynamic prompt updates through the `--prompt-file` option. Instead of providing a fixed prompt with `--prompt`, you can specify a plain text file containing your prompt. The file is re-read before each generation, allowing you to modify prompts between iterations without restarting.
 
@@ -399,15 +513,10 @@ mflux-generate --prompt-file my_prompt.txt --auto-seeds 10
 - Empty prompt files or non-existent files will raise appropriate errors
 - Each generated image's metadata will contain the actual prompt used for that specific generation
 
-#### 📜 Training Arguments
-
-- **`--train-config`** (optional, `str`): Local path of the training configuration file. This file defines all aspects of the training process including model parameters, optimizer settings, and training data. See the [Training configuration](#training-configuration) section for details on the structure of this file.
-
-- **`--train-checkpoint`** (optional, `str`): Local path of the checkpoint file which specifies how to continue the training process. Used when resuming an interrupted training run.
-
+</details>
 
 <details>
-<summary>parameters supported by config files</summary>
+<summary>⚙️ <strong>Parameters supported by config files</strong></summary>
 
 #### How configs are used
 
@@ -474,32 +583,7 @@ mflux-generate --prompt-file my_prompt.txt --auto-seeds 10
 ```
 </details>
 
-Or, with the correct python environment active, create and run a separate script like the following:
-
-```python
-from mflux import Flux1, Config
-
-# Load the model
-flux = Flux1.from_name(
-   model_name="schnell",  # "schnell" or "dev"
-   quantize=8,            # 4 or 8
-)
-
-# Generate an image
-image = flux.generate_image(
-   seed=2,
-   prompt="Luxury food photograph",
-   config=Config(
-      num_inference_steps=2,  # "schnell" works well with 2-4 steps, "dev" works well with 20-25 steps
-      height=1024,
-      width=1024,
-   )
-)
-
-image.save(path="image.png")
-```
-
-For more options on how to configure MFLUX, please see [generate.py](src/mflux/generate.py).
+---
 
 ### ⏱️ Image generation speed (updated)
 
@@ -541,6 +625,8 @@ system_profiler SPHardwareDataType SPDisplaysDataType
 If we assume that the model is already loaded, you can inspect the image metadata using `exiftool image.png` and see the total duration of the denoising loop (excluding text embedding).*
 
 *These benchmarks are not very scientific and is only intended to give ballpark numbers. They were performed during different times with different MFLUX and MLX-versions etc. Additional hardware information such as number of GPU cores, Mac device etc. are not always known.*
+
+---
 
 ### ↔️ Equivalent to Diffusers implementation
 
@@ -697,6 +783,8 @@ mflux-generate \
 
 </details>
 
+---
+
 ### 💽 Running a non-quantized model directly from disk
 
 MFLUX also supports running a non-quantized model directly from a custom location.
@@ -715,6 +803,9 @@ Note that the `--model` flag must be set when loading a model from disk.
 
 Also note that unlike when using the typical `alias` way of initializing the model (which internally handles that the required resources are downloaded),
 when loading a model directly from disk, we require the downloaded models to look like the following:
+
+<details>
+<summary>📁 <strong>Required directory structure</strong></summary>
 
 ```
 .
@@ -740,6 +831,9 @@ when loading a model directly from disk, we require the downloaded models to loo
 └── vae
     └── diffusion_pytorch_model.safetensors
 ```
+
+</details>
+
 This mirrors how the resources are placed in the [HuggingFace Repo](https://huggingface.co/black-forest-labs/FLUX.1-schnell/tree/main) for FLUX.1.
 *Huggingface weights, unlike quantized ones exported directly from this project, have to be
 processed a bit differently, which is why we require this structure above.*
@@ -1437,7 +1531,8 @@ The zip file will contain configuration files which point to the original datase
 *⚠️ Note: One current limitation is that a training run can only be resumed if it has not yet been completed. 
 In other words, only checkpoints that represent an interrupted training-run can be resumed and run until completion.*
 
-#### Configuration details
+<details>
+<summary>⚙️ <strong>Configuration details</strong></summary>
 
 Currently, MFLUX supports fine-tuning only for the transformer part of the model.
 In the training configuration, under `lora_layers`, you can specify which layers you want to train. The available ones are: 
@@ -1499,7 +1594,10 @@ In other words, training later layers, such as only the `single_transformer_bloc
 
 *Under the `examples` section, there is an argument called `"path"` which specifies where the images are located. This path is relative to the config file itself.*
 
-#### Memory issues
+</details>
+
+<details>
+<summary>⚠️ <strong>Memory issues</strong></summary>
 
 Depending on the configuration of the training setup, fine-tuning can be quite memory intensive.
 In the worst case, if your Mac runs out of memory it might freeze completely and crash!
@@ -1518,9 +1616,12 @@ will allow a 32GB M1 Pro to perform a successful fine-tuning run.
 Note, however, that reducing the trainable parameters might lead to worse performance.
  
 
-*Additional techniques such as gradient checkpoint and other strategies might be implemented in the future.* 
+*Additional techniques such as gradient checkpoint and other strategies might be implemented in the future.*
 
-#### Misc
+</details> 
+
+<details>
+<summary>📝 <strong>Misc</strong></summary>
 
 This feature is currently v1 and can be considered a bit experimental. Interfaces might change (configuration file setup etc.)
 The aim is to also gradually expand the scope of this feature with alternative techniques, data augmentation etc.
@@ -1535,6 +1636,8 @@ The aim is to also gradually expand the scope of this feature with alternative t
 - Two great resources that heavily inspired this feature are: 
   - The fine-tuning script in [mlx-examples](https://github.com/ml-explore/mlx-examples/tree/main/flux#finetuning)
   - The original fine-tuning script in [Diffusers](https://huggingface.co/docs/diffusers/v0.11.0/en/training/dreambooth)
+
+</details>
 
 
 ---
@@ -1623,6 +1726,8 @@ This will generate the following image
 - Dreambooth training currently does not support sending in training parameters as flags.
 - In-Context Generation features currently only support a left-right image setup (reference image on left, generated image on right).
 
+---
+
 ### Optional Tool: Batch Image Renamer
 
 With a large number of generated images, some users want to automatically rename their image outputs to reflect the prompts and configs.
@@ -1642,6 +1747,8 @@ and `uv run your/path/rename_images.py`.
 This script's renaming logic can be customized to your needs.
 See `uv run tools/rename_images.py --help` for full CLI usage help.
 
+---
+
 ### 💡Workflow Tips
 
 - To hide the model fetching status progress bars, `export HF_HUB_DISABLE_PROGRESS_BARS=1`
@@ -1654,8 +1761,12 @@ See `uv run tools/rename_images.py --help` for full CLI usage help.
 - When generating multiple images with different seeds, use `--seed` with multiple values or `--auto-seeds` to automatically generate a series of random seeds
 - Use `--stepwise-image-output-dir` to save intermediate images at each denoising step, which can be useful for debugging or creating animations of the generation process
 
-### 🔬 Cool research / features to support
+---
+
+### 🔬 Cool research
 - [ ] [PuLID](https://github.com/ToTheBeginning/PuLID)
+
+---
 
 ### 🌱‍ Related projects
 
@@ -1663,6 +1774,8 @@ See `uv run tools/rename_images.py --help` for full CLI usage help.
 - [MFLUX-WEBUI](https://github.com/CharafChnioune/MFLUX-WEBUI) by [@CharafChnioune](https://github.com/CharafChnioune)
 - [mflux-fasthtml](https://github.com/anthonywu/mflux-fasthtml) by [@anthonywu](https://github.com/anthonywu)
 - [mflux-streamlit](https://github.com/elitexp/mflux-streamlit) by [@elitexp](https://github.com/elitexp)
+
+---
 
 ### 🙏 Acknowledgements
 
@@ -1673,6 +1786,8 @@ MFLUX would not be possible without the great work of:
 - Hugging Face for the [Diffusers library implementation of Flux](https://huggingface.co/black-forest-labs/FLUX.1-dev) 
 - Depth Pro authors for the [Depth Pro model](https://github.com/apple/ml-depth-pro?tab=readme-ov-file#citation)
 - The MLX community and all [contributors and testers](https://github.com/filipstrand/mflux/graphs/contributors)
+
+---
 
 ### ⚖️ License
 

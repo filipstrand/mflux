@@ -9,6 +9,7 @@ from mflux.community.in_context.utils.in_context_loras import LORA_NAME_MAP, LOR
 from mflux.ui import (
     box_values,
     defaults as ui_defaults,
+    scale_factor,
 )
 from mflux.weights.lora_library import get_lora_path
 
@@ -29,6 +30,25 @@ class ModelSpecAction(argparse.Action):
         setattr(namespace, self.dest, values)
 
 
+def int_or_special_value(value) -> int | scale_factor.ScaleFactor:
+    if value.lower() == "auto":
+        return scale_factor.ScaleFactor(value=1)
+
+    # Try to parse as integer first
+    try:
+        return int(value)
+    except ValueError:
+        pass
+
+    # If not an integer, try to parse as scale factor
+    try:
+        return scale_factor.parse_scale_factor(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"'{value}' is not a valid integer or 'auto' or a scale factor like '2x' or '3.5x'"
+        )
+
+
 # fmt: off
 class CommandLineParser(argparse.ArgumentParser):
 
@@ -37,6 +57,7 @@ class CommandLineParser(argparse.ArgumentParser):
         self.supports_metadata_config = False
         self.supports_image_generation = False
         self.supports_controlnet = False
+        self.supports_dimension_scale_factor = False
         self.supports_image_to_image = False
         self.supports_image_outpaint = False
         self.supports_lora = False
@@ -67,20 +88,26 @@ class CommandLineParser(argparse.ArgumentParser):
         lora_group.add_argument("--lora-name", type=str, help="Name of the LoRA to download from Hugging Face")
         lora_group.add_argument("--lora-repo-id", type=str, default=LORA_REPO_ID, help=f"Hugging Face repository ID for LoRAs (default: {LORA_REPO_ID})")
 
-    def _add_image_generator_common_arguments(self) -> None:
+    def _add_image_generator_common_arguments(self, supports_dimension_scale_factor=False) -> None:
         self.supports_image_generation = True
-        self.add_argument("--height", type=int, default=ui_defaults.HEIGHT, help=f"Image height (Default is {ui_defaults.HEIGHT})")
-        self.add_argument("--width", type=int, default=ui_defaults.WIDTH, help=f"Image width (Default is {ui_defaults.HEIGHT})")
+        if supports_dimension_scale_factor:
+            self.supports_dimension_scale_factor = True
+            self.add_argument("--height", type=int_or_special_value, default="auto", help="Image height (Default is source image height)")
+            self.add_argument("--width", type=int_or_special_value, default="auto", help="Image width (Default is source image width)")
+        else:
+            self.add_argument("--height", type=int, default=ui_defaults.HEIGHT, help=f"Image height (Default is {ui_defaults.HEIGHT})")
+            self.add_argument("--width", type=int, default=ui_defaults.WIDTH, help=f"Image width (Default is {ui_defaults.HEIGHT})")
+
         self.add_argument("--steps", type=int, default=None, help="Inference Steps")
         self.add_argument("--guidance", type=float, default=None, help=f"Guidance Scale (Default varies by tool: {ui_defaults.GUIDANCE_SCALE} for most, {ui_defaults.DEFAULT_DEV_FILL_GUIDANCE} for fill tools, {ui_defaults.DEFAULT_DEPTH_GUIDANCE} for depth)")
 
-    def add_image_generator_arguments(self, supports_metadata_config=False, require_prompt=True) -> None:
+    def add_image_generator_arguments(self, supports_metadata_config=False, require_prompt=True, supports_dimension_scale_factor=False) -> None:
         prompt_group = self.add_mutually_exclusive_group(required=(require_prompt and not supports_metadata_config))
         prompt_group.add_argument("--prompt", type=str, help="The textual description of the image to generate.")
         prompt_group.add_argument("--prompt-file", type=Path, help="Path to a file containing the prompt text. The file will be re-read before each generation, allowing you to edit the prompt between iterations when using multiple seeds without restarting the program.")
         self.add_argument("--seed", type=int, default=None, nargs='+', help="Specify 1+ Entropy Seeds (Default is 1 time-based random-seed)")
         self.add_argument("--auto-seeds", type=int, default=-1, help="Auto generate N Entropy Seeds (random ints between 0 and 1 billion")
-        self._add_image_generator_common_arguments()
+        self._add_image_generator_common_arguments(supports_dimension_scale_factor=supports_dimension_scale_factor)
         if supports_metadata_config:
             self.add_metadata_config()
         self.require_prompt = require_prompt
@@ -134,11 +161,12 @@ class CommandLineParser(argparse.ArgumentParser):
         self.supports_image_outpaint = True
         self.add_argument("--image-outpaint-padding", type=str, default=None, required=required, help="For outpainting mode: CSS-style box padding values to extend the canvas of image specified by--image-path. E.g. '20', '50%%'")
 
-    def add_controlnet_arguments(self) -> None:
+    def add_controlnet_arguments(self, mode: str | None = None, require_image=False) -> None:
         self.supports_controlnet = True
-        self.add_argument("--controlnet-image-path", type=str, required=False, help="Local path of the image to use as input for controlnet.")
+        self.add_argument("--controlnet-image-path", type=str, required=require_image, help="Local path of the image to use as input for controlnet.")
         self.add_argument("--controlnet-strength", type=float, default=ui_defaults.CONTROLNET_STRENGTH, help=f"Controls how strongly the control image influences the output image. A value of 0.0 means no influence. (Default is {ui_defaults.CONTROLNET_STRENGTH})")
-        self.add_argument("--controlnet-save-canny", action="store_true", help="If set, save the Canny edge detection reference input image.")
+        if mode == 'canny':
+            self.add_argument("--controlnet-save-canny", action="store_true", help="If set, save the Canny edge detection reference input image.")
 
     def add_concept_attention_arguments(self) -> None:
         concept_group = self.add_argument_group("Concept Attention configuration")
