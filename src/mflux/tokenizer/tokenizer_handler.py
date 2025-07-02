@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import transformers
-from huggingface_hub import snapshot_download
 
 from mflux.tokenizer.clip_tokenizer import TokenizerCLIP
 
