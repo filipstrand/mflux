@@ -2,9 +2,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import mlx.core as mx
-from huggingface_hub import snapshot_download
 from mlx.utils import tree_unflatten
 
+from mflux.weights.download import snapshot_download
 from mflux.weights.lora_converter import LoRAConverter
 from mflux.weights.weight_util import WeightUtil
 
