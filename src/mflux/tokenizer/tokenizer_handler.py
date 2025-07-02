@@ -3,6 +3,7 @@ from pathlib import Path
 import transformers
 
 from mflux.tokenizer.clip_tokenizer import TokenizerCLIP
+from mflux.weights.download import snapshot_download
 
 
 class TokenizerHandler:
