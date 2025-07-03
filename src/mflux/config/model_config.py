@@ -127,13 +127,19 @@ class ModelConfig:
             if not default_base:
                 raise ModelConfigError(f"Cannot infer base_model from {model_name}")
 
+        if not model_name.startswith("black-forest-labs"):
+            # assume third party derivative model with its own transformers safetensors
+            custom_transformer_model = model_name
+        else:
+            custom_transformer_model = default_base.custom_transformer_model
+
         # 4. Construct the config
         return ModelConfig(
             alias=default_base.alias,
             model_name=model_name,
             base_model=default_base.model_name,
             controlnet_model=default_base.controlnet_model,
-            custom_transformer_model=default_base.custom_transformer_model,
+            custom_transformer_model=custom_transformer_model,
             num_train_steps=default_base.num_train_steps,
             max_sequence_length=default_base.max_sequence_length,
             supports_guidance=default_base.supports_guidance,

@@ -37,6 +37,7 @@ class FluxInitializer:
         flux_model.model_config = model_config
 
         # 1. Initialize tokenizers
+        # TODO: tokenizers needs to also refer to base model tokenizer assets
         tokenizers = TokenizerHandler(
             repo_id=model_config.model_name,
             max_t5_length=model_config.max_sequence_length,
