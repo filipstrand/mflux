@@ -49,5 +49,5 @@ def snapshot_download(repo_id: str, fallback_repo_id="black-forest-labs/FLUX.1-d
             # TODO: does dev/schnell official resources differ? if so need a repo_id -> fallback map
             #       similar to model/base_model setup
             cache_path = snapshot_download(fallback_repo_id, **kwargs)
-            print(f"{repo_id} serving as fallback repo_id for resources {kwargs.get('allow_patterns', '')}")
+            print(f"{fallback_repo_id} serving as fallback repo_id for resources {kwargs.get('allow_patterns', '')}")
             return cache_path
