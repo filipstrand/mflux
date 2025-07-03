@@ -876,6 +876,7 @@ mflux-generate \
 Some examples of compatible third-party models include:
 - [Freepik/flux.1-lite-8B-alpha](https://huggingface.co/Freepik/flux.1-lite-8B-alpha) - A lighter version of FLUX
 - [shuttleai/shuttle-3-diffusion](https://huggingface.co/shuttleai/shuttle-3-diffusion) - Shuttle's implementation based on FLUX
+- [XLabs-AI/flux-dev-fp8](https://huggingface.co/XLabs-AI/flux-dev-fp8)
 
 The model will be automatically downloaded from HuggingFace the first time you use it, similar to the official FLUX models.
 

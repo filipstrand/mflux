@@ -4,7 +4,7 @@ from huggingface_hub import snapshot_download as hf_snapshot_download
 from huggingface_hub.utils import LocalEntryNotFoundError
 
 
-def snapshot_download(repo_id: str, **kwargs) -> str:
+def snapshot_download(repo_id: str, fallback_repo_id="black-forest-labs/FLUX.1-schnell", **kwargs) -> str:
     """Download repo files with cache-first behavior.
 
     This wrapper function attempts to use cached files first before downloading.
@@ -33,9 +33,24 @@ def snapshot_download(repo_id: str, **kwargs) -> str:
         # Override local_files_only to True for cache check
         cache_kwargs = kwargs.copy()
         cache_kwargs["local_files_only"] = True
-        return hf_snapshot_download(repo_id=repo_id, **cache_kwargs)
+        cache_path = hf_snapshot_download(repo_id=repo_id, **cache_kwargs)
+        print(f"{repo_id} cache found for {kwargs}")
+        return cache_path
     except LocalEntryNotFoundError:
         # Cache doesn't exist, download from Hugging Face
+        # optimistically assuming provider has the target files
         download_kwargs = kwargs.copy()
         download_kwargs["local_files_only"] = False
-        return hf_snapshot_download(repo_id=repo_id, **download_kwargs)
+        try:
+            cache_path = hf_snapshot_download(repo_id=repo_id, **download_kwargs)
+            print(f"Did not find prior local cache. {repo_id} now cached for {kwargs}")
+            return cache_path
+        except LocalEntryNotFoundError as lenf_err:
+            # most likely: third party derivative model re-uses official resources
+            # TODO: does dev/schnell official resources differ? if so need a repo_id -> fallback map
+            #       similar to model/base_model setup
+            if fallback_repo_id is None:
+                raise lenf_err
+            cache_path = hf_snapshot_download(fallback_repo_id, **download_kwargs)
+            print(f"{fallback_repo_id} serving as fallback repo_id for resources {kwargs.get('allow_patterns', '')} not found in {repo_id}")
+            return cache_path
