@@ -1,12 +1,13 @@
 import os
 import tempfile
 from pathlib import Path
+from typing import Callable
 from zipfile import ZipFile
 
 
 class ZipUtil:
     @staticmethod
-    def unzip(zip_path: str | Path | None, filename: str, loader: callable):
+    def unzip(zip_path: str | Path | None, filename: str, loader: Callable):
         if not zip_path:  # Would be nicer to do this in typing, but that's more effort on the callers' side
             raise ValueError("zip_path cannot be None")
         zip_path = Path(zip_path)

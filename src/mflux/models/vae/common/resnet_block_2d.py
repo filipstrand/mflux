@@ -66,7 +66,7 @@ class ResnetBlock2D(nn.Module):
         hidden_states = self.norm2(hidden_states.astype(mx.float32)).astype(Config.precision)
         hidden_states = nn.silu(hidden_states)
         hidden_states = self.conv2(hidden_states)
-        if self.is_conv_shortcut:
+        if self.conv_shortcut is not None:
             input_array = self.conv_shortcut(input_array)
         output_tensor = input_array + hidden_states
         return mx.transpose(output_tensor, (0, 3, 1, 2))

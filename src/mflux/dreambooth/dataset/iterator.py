@@ -156,7 +156,7 @@ class Iterator:
         return Batch(examples=examples, rng=self.rng)
 
     def total_number_of_steps(self) -> int:
-        return self.total_examples * self.num_epochs
+        return self.total_examples * self.num_epochs  # type: ignore
 
     def save(self, path: Path) -> None:
         self.to_json(str(path))
