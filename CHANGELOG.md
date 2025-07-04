@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2025-07-04
+
+# MFLUX v0.9.1 Release Notes
+
+### 🛠️ Dependency Fixes
+
+- Restricted MLX dependency upper bound to **0.26.1** (`mlx>=0.22.0,<=0.26.1`) to prevent incompatibility issues with MLX 0.26.2.
+
+### 🎨 Inpaint Mask Tool Improvements
+
+- Enhanced interactive inpaint masking tool with additional shape options (ellipse, rectangle, and free-hand drawing).
+- Added eraser mode for precise mask corrections.
+- Implemented undo/redo history for non-destructive editing when crafting masks.
+
+### 👩‍💻 Developer Experience
+
+- Introduced initial `mypy` static-type checking configuration and performed a first round of type-hint clean-up across the codebase.
+- Upgraded *pre-commit* hooks and addressed newly surfaced lint warnings for a cleaner commit experience.
+
+## Contributors
+
+- **Filip Strand (@filipstrand)**
+- **Anthony Wu (@anthonywu)**
+
+---
+
 ## [0.9.0] - 2025-06-28
 
 # MFLUX v.0.9.0 Release Notes
