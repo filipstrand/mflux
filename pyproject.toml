@@ -7,7 +7,7 @@ default-excludes = true  # __pycache__, *.pyc, and *.pyo
 source-exclude = [
     # documentation assets were 27MB on 2025-07-05
     "**/assets/**",
-    # # dreambooth examples ~=5MB on 2025-07-05
+    # dreambooth examples ~=5MB on 2025-07-05
     "**/dreambooth/_example/images/**",
     # loss pdf/tex does not need to be distributed
     "**/optimization/_loss_derivation/**",
@@ -15,7 +15,7 @@ source-exclude = [
 
 [project]
 name = "mflux"
-version = "0.9.1"
+version = "0.9.2"
 description = "A MLX port of FLUX based on the Huggingface Diffusers implementation."
 readme = "README.md"
 keywords = ["diffusers", "flux", "mlx"]
