@@ -1,8 +1,7 @@
 from pathlib import Path
 
-from huggingface_hub import snapshot_download
-
 from mflux import ModelConfig
+from mflux.weights.download import snapshot_download
 from mflux.weights.weight_handler import MetaData, WeightHandler
 
 
