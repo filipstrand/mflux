@@ -32,10 +32,12 @@ class DreamBooth:
         )
 
         # Setup progress bar
+        total_steps = training_state.iterator.total_number_of_steps()
+        current_step = training_state.iterator.num_iterations
         batches = tqdm(
             training_state.iterator,
-            total=training_state.iterator.total_number_of_steps(),
-            initial=training_state.iterator.num_iterations,
+            total=total_steps,
+            initial=current_step,
         )
 
         # Training loop
@@ -60,7 +62,8 @@ class DreamBooth:
                     config=runtime_config.config,
                     prompt=training_spec.instrumentation.validation_prompt,
                 )
-                image.save(path=training_state.get_current_validation_image_path(training_spec))
+                save_path = training_state.get_current_validation_image_path(training_spec)
+                image.save(path=save_path)
                 del image
                 flux.prompt_cache = {}
 
