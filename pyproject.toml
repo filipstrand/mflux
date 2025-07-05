@@ -1,6 +1,17 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.7.19,<0.8.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+default-excludes = true  # __pycache__, *.pyc, and *.pyo
+source-exclude = [
+    # documentation assets were 27MB on 2025-07-05
+    "**/assets/**",
+    # # dreambooth examples ~=5MB on 2025-07-05
+    "**/dreambooth/_example/images/**",
+    # loss pdf/tex does not need to be distributed
+    "**/optimization/_loss_derivation/**",
+]
 
 [project]
 name = "mflux"
@@ -74,9 +85,6 @@ mflux-upscale = "mflux.upscale:main"
 mflux-lora-library = "mflux.lora_library:main"
 mflux-completions = "mflux.completions.install:main"
 
-[tool.setuptools.packages.find]
-where = ["src"]
-include = ["mflux*"]
 
 [tool.ruff]
 line-length = 120
