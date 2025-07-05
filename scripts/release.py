@@ -175,12 +175,6 @@ class ReleaseManager:
         return result
 
     def build_package(self):
-        # Install build dependencies
-        self.run_command(
-            [sys.executable, "-m", "pip", "install", "--upgrade", "pip", "build", "twine"],
-            "Installing build dependencies",
-        )
-
         # Clean dist directory to ensure fresh build
         import shutil
 
@@ -190,7 +184,8 @@ class ReleaseManager:
             print("🧹 Cleaned dist/ directory")
 
         # Build the package
-        self.run_command([sys.executable, "-m", "build"], "Building package")
+        self.run_command([sys.executable, "-m", "uv", "--version"], "Verify 'uv build' version")
+        self.run_command([sys.executable, "-m", "uv", "build"], "Building package with 'uv build'")
 
     def verify_package(self):
         """Run *twine check* to verify that README / long_description renders on PyPI."""
