@@ -97,6 +97,22 @@ test: ensure-pytest
 	$(PYTHON) -m pytest
 	# ✅ Tests completed
 
+
+# Run uv build and check dist sizes for optimized user installs
+.PHONE: build
+build:
+	rm -rf dist/mflux-*
+	# fresh build
+	uv build
+	# check the artifact sizes - we expect < 1MB
+	du -sh dist/*
+	# create a temp directory for extraction
+	# then find/list the largest 5 files - we should not see image artifacts
+	@TEMP_DIR=$$(mktemp -d -t mflux-dist) && \
+	mkdir -p "$$TEMP_DIR/this-build" && \
+	tar -xzf dist/mflux-*.tar.gz -C "$$TEMP_DIR/this-build" && \
+	find "$$TEMP_DIR/this-build" -type f -exec du -h {} \; | sort -rh | head -n 5
+
 # Clean up
 .PHONY: clean
 clean:
