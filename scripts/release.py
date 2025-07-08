@@ -219,11 +219,20 @@ class ReleaseManager:
         env["TWINE_USERNAME"] = "__token__"
         env["TWINE_PASSWORD"] = pypi_token
 
-        self.run_command(
-            [sys.executable, "-m", "twine", "upload", "dist/*", "--verbose"],
-            "Publishing to PyPI",
-            env=env,
-        )
+        try:
+            self.run_command(
+                [sys.executable, "-m", "twine", "upload", "dist/*", "--verbose"],
+                "Publishing to PyPI",
+                env=env,
+            )
+        except Exception as e:
+            if "already been used" in str(e) or "filename has already been used" in str(e):
+                print(f"⚠️  Version {version} already exists on PyPI (detected during upload)")
+                print("   This can happen due to race conditions or previous partial uploads")
+                print("   The release process will continue, but PyPI publishing was skipped")
+                return
+            else:
+                raise
 
     def version_exists_on_pypi(self, version: str, test_pypi: bool = False) -> bool:
         """Return True if *version* of this package is already published on (Test)PyPI."""
@@ -309,6 +318,11 @@ class ReleaseManager:
         # Build & verify package
         self.build_package()
         self.verify_package()
+
+        # Check if version already exists on PyPI before attempting to publish
+        if self.version_exists_on_pypi(version, test_pypi=False):
+            print(f"⚠️  Version {version} already exists on PyPI, skipping all PyPI publishing")
+            return
 
         # Only publish to PyPI if this is a new release (both git tag and GitHub release were created)
         if not skip_github_release and not git_tag_exists:
