@@ -99,7 +99,7 @@ test: ensure-pytest
 
 
 # Run uv build and check dist sizes for optimized user installs
-.PHONE: build
+.PHONY: build
 build:
 	rm -rf dist/mflux-*
 	# fresh build
@@ -130,5 +130,6 @@ help:
 	@echo "  make format      - Run ruff code formatter"
 	@echo "  make check       - Run linters auto fixes *and* style formatter via pre-commit hook"
 	@echo "  make test        - Run tests"
+	@echo "  make build       - Build distribution packages and check sizes"
 	@echo "  make clean       - Remove the virtual environment"
 	@echo "  make help        - Show this help message"
