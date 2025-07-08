@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.2] - 2025-07-08
+
+# MFLUX v0.9.2 Release Notes
+
+### 🏗️ Build System Improvements
+
+- **Updated build backend**: Migrated from setuptools to modern `uv build` backend for faster and more reliable package builds
+- **Enhanced artifact exclusion**: Optimized distribution packages by excluding documentation assets (~27MB) and example images (~5MB) from published packages
+- **New `make build` command**: Added development build command for testing distribution packages and validating sizes
+
+### 🗃️ Offline Resilience
+
+- **Local-first behavior**: Implemented cache-first downloading to improve resilience when HuggingFace Hub or network connectivity is unavailable
+- **Graceful fallback**: System automatically uses cached model files when available, falling back to downloads only when necessary
+- **Improved reliability**: Enhanced model loading reliability in environments with unstable internet connections
+
+### 🔧 Developer Experience
+
+- **Release script improvements**: Enhanced release automation with better error handling and duplicate version detection
+- **Build system fixes**: Fixed minor typos in Makefile that could cause build issues
+
+## Contributors
+
+- **Anthony Wu (@anthonywu)**: Build system modernization, offline resilience implementation
+- **Filip Strand (@filipstrand)**: Release automation improvements, build fixes
+
+---
+
 ## [0.9.1] - 2025-07-04
 
 # MFLUX v0.9.1 Release Notes
