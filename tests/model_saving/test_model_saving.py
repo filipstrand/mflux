@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 
 from mflux import Config, Flux1, ModelConfig
-from mflux.post_processing.generated_image import GeneratedImage
+from mflux.utils.version_util import VersionUtil
 from mflux.weights.weight_handler import WeightHandler
 
 PATH = "tests/4bit/"
@@ -36,7 +36,7 @@ class TestModelSaving:
 
             # Verify that the mflux version is correctly saved in the model's metadata
             _, quantization_level, mflux_version = WeightHandler._load_vae(root_path=Path(PATH))
-            assert mflux_version == GeneratedImage.get_version(), "mflux version not correctly saved in metadata"  # fmt: off
+            assert mflux_version == VersionUtil.get_mflux_version(), "mflux version not correctly saved in metadata"  # fmt: off
             assert quantization_level == "4", "quantization level not correctly saved in metadata"  # fmt: off
 
             # when loading the quantized model (also without specifying bits)

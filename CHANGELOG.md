@@ -5,7 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.4] - 2025-07-17
+
+# MFLUX v.0.9.4 Release Notes
+
+### 🛠️ Dependency Updates
+
+- Expanded MLX dependency range from `mlx>=0.22.0,<=0.26.1` to `mlx>=0.22.0,<0.27.0` to support newer MLX versions
+
+### 🔧 Developer Experience
+
+- Refactor the release script into a reusable Python module for better maintainability
+
 ## [0.9.3] - 2025-07-08
+
+# MFLUX v.0.9.3 Release Notes
 
 ### 😖 Revert "Offline Resilience" change
 
@@ -13,7 +27,7 @@ On a "cold start" where user has not previously downloaded the requested model, 
 
 ## [0.9.2] - 2025-07-08
 
-# MFLUX v0.9.2 Release Notes
+# MFLUX v.0.9.2 Release Notes
 
 ### 🏗️ Build System Improvements
 
@@ -41,7 +55,7 @@ On a "cold start" where user has not previously downloaded the requested model, 
 
 ## [0.9.1] - 2025-07-04
 
-# MFLUX v0.9.1 Release Notes
+# MFLUX v.0.9.1 Release Notes
 
 ### 🛠️ Dependency Fixes
 
