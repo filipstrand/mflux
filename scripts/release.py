@@ -315,14 +315,17 @@ class ReleaseManager:
         else:
             print(f"✅ GitHub release {tag_name} already exists, skipping creation")
 
+        # Check if version already exists on PyPI before doing anything else
+        print("🔍 Checking if version already exists on PyPI...")
+        if self.version_exists_on_pypi(version, test_pypi=False):
+            print(f"⚠️  Version {version} already exists on PyPI, skipping all PyPI publishing")
+            print("   This can happen due to race conditions or previous partial uploads")
+            print("   The GitHub release and git tag have been created, but PyPI publishing was skipped")
+            return
+
         # Build & verify package
         self.build_package()
         self.verify_package()
-
-        # Check if version already exists on PyPI before attempting to publish
-        if self.version_exists_on_pypi(version, test_pypi=False):
-            print(f"⚠️  Version {version} already exists on PyPI, skipping all PyPI publishing")
-            return
 
         # Only publish to PyPI if this is a new release (both git tag and GitHub release were created)
         if not skip_github_release and not git_tag_exists:
