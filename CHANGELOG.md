@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.3] - 2025-07-08
+
+### 😖 Revert "Offline Resilience" change
+
+On a "cold start" where user has not previously downloaded the requested model, the workflow does not successfully request the download of all the expected files, blocking the image generation workflow for first time users. The feature will be re-evaluated carefully after this hot fix.
+
 ## [0.9.2] - 2025-07-08
 
 # MFLUX v0.9.2 Release Notes
@@ -552,4 +558,4 @@ Previously saved quantized models will not work for v.0.6.0 and later.  See #149
 ### 📦 Distribution
 - Official packaging and distribution through PyPI
 - Simplified installation process for end users
-- Professional project structure and naming 
+- Professional project structure and naming
