@@ -36,7 +36,14 @@ class FluxInitializer:
         flux_model.prompt_cache = {}
         flux_model.model_config = model_config
 
-        # 1. Initialize tokenizers
+        # 1. Load the regular weights
+        weights = WeightHandler.load_regular_weights(
+            repo_id=model_config.model_name,
+            local_path=local_path,
+            transformer_repo_id=model_config.custom_transformer_model,
+        )
+
+        # 2. Initialize tokenizers
         tokenizers = TokenizerHandler(
             repo_id=model_config.model_name,
             max_t5_length=model_config.max_sequence_length,
@@ -48,13 +55,6 @@ class FluxInitializer:
         )
         flux_model.clip_tokenizer = TokenizerCLIP(
             tokenizer=tokenizers.clip,
-        )
-
-        # 2. Load the regular weights
-        weights = WeightHandler.load_regular_weights(
-            repo_id=model_config.model_name,
-            local_path=local_path,
-            transformer_repo_id=model_config.custom_transformer_model,
         )
 
         # 3. Initialize all models
