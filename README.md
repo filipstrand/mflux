@@ -1854,6 +1854,7 @@ See `uv run tools/rename_images.py --help` for full CLI usage help.
 ### 💡Workflow Tips
 
 - To hide the model fetching status progress bars, `export HF_HUB_DISABLE_PROGRESS_BARS=1`
+- To opt-out of [HuggingFace telemetry](https://huggingface.co/docs/huggingface_hub/main/en/package_reference/environment_variables#hfhubdisabletelemetry), `export HF_HUB_DISABLE_TELEMETRY=1`
 - Use config files to save complex job parameters in a file instead of passing many `--args`
 - Set up shell aliases for required args examples:
   - shortcut for dev model: `alias mflux-dev='mflux-generate --model dev'`
