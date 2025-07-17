@@ -5,11 +5,12 @@ import PIL.Image
 from mlx import nn
 from tqdm import tqdm
 
-from mflux import Flux1, ImageUtil
 from mflux.dreambooth.dataset.batch import Example
 from mflux.dreambooth.dataset.dreambooth_preprocessing import DreamBoothPreProcessing
 from mflux.dreambooth.state.training_spec import ExampleSpec
+from mflux.flux.flux import Flux1
 from mflux.post_processing.array_util import ArrayUtil
+from mflux.post_processing.image_util import ImageUtil
 
 
 class Dataset:

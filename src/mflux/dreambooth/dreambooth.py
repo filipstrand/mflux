@@ -1,12 +1,12 @@
 from mlx import nn
 from tqdm import tqdm
 
-from mflux import Flux1
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.dreambooth.optimization.dreambooth_loss import DreamBoothLoss
 from mflux.dreambooth.state.training_spec import TrainingSpec
 from mflux.dreambooth.state.training_state import TrainingState
 from mflux.dreambooth.statistics.plotter import Plotter
+from mflux.flux.flux import Flux1
 from mflux.weights.weight_handler_lora import WeightHandlerLoRA
 
 

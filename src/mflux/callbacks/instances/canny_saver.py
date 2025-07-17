@@ -4,9 +4,9 @@ from pathlib import Path
 import mlx.core as mx
 import PIL.Image
 
-from mflux import ImageUtil
 from mflux.callbacks.callback import BeforeLoopCallback
 from mflux.config.runtime_config import RuntimeConfig
+from mflux.post_processing.image_util import ImageUtil
 
 
 class CannyImageSaver(BeforeLoopCallback):

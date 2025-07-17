@@ -1,4 +1,5 @@
-from mflux import Flux1, ModelConfig
+from mflux.config.model_config import ModelConfig
+from mflux.flux.flux import Flux1
 from mflux.ui.cli.parsers import CommandLineParser
 
 

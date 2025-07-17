@@ -15,7 +15,7 @@ from mflux.utils.version_util import VersionUtil
 from mflux.weights.weight_handler import MetaData, WeightHandler
 
 if TYPE_CHECKING:
-    from mflux import Flux1
+    from mflux.flux.flux import Flux1
 
 
 class LoRALayers:

@@ -4,7 +4,9 @@ from pathlib import Path
 
 import numpy as np
 
-from mflux import Config, Flux1, ModelConfig
+from mflux.config.config import Config
+from mflux.config.model_config import ModelConfig
+from mflux.flux.flux import Flux1
 
 PATH = "tests/4bit/"
 

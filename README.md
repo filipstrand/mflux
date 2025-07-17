@@ -181,7 +181,8 @@ This is useful for integrating MFLUX into shell scripts or dynamically generatin
 Alternatively, you can use MFLUX directly in Python:
 
 ```python
-from mflux import Flux1, Config
+from mflux.flux.flux import Flux1
+from mflux.config.config import Config
 
 # Load the model
 flux = Flux1.from_name(

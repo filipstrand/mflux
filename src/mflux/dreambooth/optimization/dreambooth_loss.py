@@ -2,10 +2,11 @@ import random
 
 import mlx.core as mx
 
-from mflux import Config, Flux1
+from mflux.config.config import Config
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.dreambooth.dataset.batch import Batch
 from mflux.dreambooth.dataset.dataset import Example
+from mflux.flux.flux import Flux1
 from mflux.latent_creator.latent_creator import LatentCreator
 
 

@@ -86,7 +86,7 @@ class GeneratedImage:
         export_json_metadata: bool = False,
         overwrite: bool = False,
     ) -> None:
-        from mflux import ImageUtil
+        from mflux.post_processing.image_util import ImageUtil
 
         ImageUtil.save_image(self.image, path, self._get_metadata(), export_json_metadata, overwrite)
 
@@ -112,7 +112,7 @@ class GeneratedImage:
         overwrite: bool = False,
     ) -> None:
         if self.concept_heatmap:
-            from mflux import ImageUtil
+            from mflux.post_processing.image_util import ImageUtil
 
             ImageUtil.save_image(
                 image=self.concept_heatmap.image,
