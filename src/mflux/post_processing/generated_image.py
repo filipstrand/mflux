@@ -1,12 +1,11 @@
-import importlib
 from pathlib import Path
 
 import mlx.core as mx
 import PIL.Image
-import toml
 
 from mflux.community.concept_attention.attention_data import ConceptHeatmap
 from mflux.config.model_config import ModelConfig
+from mflux.utils.version_util import VersionUtil
 
 
 class GeneratedImage:
@@ -107,7 +106,10 @@ class GeneratedImage:
             self.save_concept_heatmap(path=heatmap_path, export_json_metadata=export_json_metadata, overwrite=overwrite)
 
     def save_concept_heatmap(
-        self, path: str | Path, export_json_metadata: bool = False, overwrite: bool = False
+        self,
+        path: str | Path,
+        export_json_metadata: bool = False,
+        overwrite: bool = False,
     ) -> None:
         if self.concept_heatmap:
             from mflux import ImageUtil
@@ -129,7 +131,7 @@ class GeneratedImage:
 
     def _get_metadata(self) -> dict:
         return {
-            "mflux_version": GeneratedImage.get_version(),
+            "mflux_version": VersionUtil.get_mflux_version(),
             "model": self.model_config.model_name,
             "base_model": str(self.model_config.base_model),
             "seed": self.seed,
@@ -150,29 +152,3 @@ class GeneratedImage:
             "redux_image_strengths": self._format_redux_strengths(),
             "prompt": self.prompt,
         }
-
-    @staticmethod
-    def get_version() -> str:
-        version = GeneratedImage._get_version_from_toml()
-        if version:
-            return version
-
-        # Fallback to an installed package version
-        try:
-            return str(importlib.metadata.version("mflux"))
-        except importlib.metadata.PackageNotFoundError:
-            return "unknown"
-
-    @staticmethod
-    def _get_version_from_toml() -> str | None:
-        # Search for pyproject.toml by traversing up from the current working directory
-        current_dir = Path(__file__).resolve().parent
-        for parent in current_dir.parents:
-            pyproject_path = parent / "pyproject.toml"
-            if pyproject_path.exists():
-                try:
-                    pyproject_data = toml.load(pyproject_path)
-                    return pyproject_data.get("project", {}).get("version")
-                except (toml.TomlDecodeError, KeyError, TypeError):
-                    return None
-        return None

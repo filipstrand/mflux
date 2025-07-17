@@ -11,7 +11,7 @@ from mflux.dreambooth.state.training_spec import SingleTransformerBlocks, Traini
 from mflux.dreambooth.state.zip_util import ZipUtil
 from mflux.models.transformer.joint_transformer_block import JointTransformerBlock
 from mflux.models.transformer.single_transformer_block import SingleTransformerBlock
-from mflux.post_processing.generated_image import GeneratedImage
+from mflux.utils.version_util import VersionUtil
 from mflux.weights.weight_handler import MetaData, WeightHandler
 
 if TYPE_CHECKING:
@@ -58,7 +58,7 @@ class LoRALayers:
             lora_layers = {**transformer_lora_layers, **single_transformer_lora_layers}
 
             weights = WeightHandler(
-                meta_data=MetaData(mflux_version=GeneratedImage.get_version()),
+                meta_data=MetaData(mflux_version=VersionUtil.get_mflux_version()),
                 transformer=mlx.utils.tree_unflatten(list(lora_layers.items()))["transformer"],
             )
 
@@ -272,7 +272,7 @@ class LoRALayers:
             str(path),
             dict(tree_flatten(weights)),
             metadata={
-                "mflux_version": GeneratedImage.get_version(),
+                "mflux_version": VersionUtil.get_mflux_version(),
                 "transformer_blocks": str(training_spec.lora_layers.transformer_blocks),
                 "single_transformer_blocks": str(training_spec.lora_layers.single_transformer_blocks),
             },
