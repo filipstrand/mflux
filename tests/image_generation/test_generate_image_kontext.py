@@ -1,4 +1,4 @@
-from mflux import ModelConfig
+from mflux.config.model_config import ModelConfig
 from tests.image_generation.helpers.image_generation_kontext_test_helper import ImageGeneratorKontextTestHelper
 
 

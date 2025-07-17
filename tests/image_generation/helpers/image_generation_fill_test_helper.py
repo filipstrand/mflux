@@ -3,7 +3,8 @@ import os
 import numpy as np
 from PIL import Image
 
-from mflux import Config, ModelConfig
+from mflux.config.config import Config
+from mflux.config.model_config import ModelConfig
 from mflux.flux_tools.fill.flux_fill import Flux1Fill
 from mflux.ui import defaults as ui_defaults
 from tests.image_generation.helpers.image_generation_test_helper import ImageGeneratorTestHelper

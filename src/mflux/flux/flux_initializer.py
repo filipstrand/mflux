@@ -1,4 +1,4 @@
-from mflux import ModelConfig
+from mflux.config.model_config import ModelConfig
 from mflux.controlnet.transformer_controlnet import TransformerControlnet
 from mflux.controlnet.weight_handler_controlnet import WeightHandlerControlnet
 from mflux.flux_tools.redux.weight_handler_redux import WeightHandlerRedux

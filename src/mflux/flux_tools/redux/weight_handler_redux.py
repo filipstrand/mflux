@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from mflux import ModelConfig
+from mflux.config.model_config import ModelConfig
 from mflux.weights.download import snapshot_download
 from mflux.weights.weight_handler import MetaData, WeightHandler
 

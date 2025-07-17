@@ -2,9 +2,9 @@ from pathlib import Path
 
 import mlx.core as mx
 
-from mflux import ImageUtil
 from mflux.models.redux_encoder.redux_encoder import ReduxEncoder
 from mflux.models.siglip_vision_transformer.siglip_vision_transformer import SiglipVisionTransformer
+from mflux.post_processing.image_util import ImageUtil
 
 
 class ReduxUtil:

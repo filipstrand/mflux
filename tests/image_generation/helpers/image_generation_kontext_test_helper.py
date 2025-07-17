@@ -4,7 +4,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from mflux import Config, ModelConfig
+from mflux.config.config import Config
+from mflux.config.model_config import ModelConfig
 from mflux.kontext.flux_kontext import Flux1Kontext
 
 

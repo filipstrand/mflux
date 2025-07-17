@@ -2,7 +2,7 @@ import mlx.core as mx
 from mlx import nn
 from mlx.core.fast import scaled_dot_product_attention
 
-from mflux import Config
+from mflux.config.config import Config
 
 
 class CLIPSdpaAttention(nn.Module):

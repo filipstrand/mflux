@@ -4,9 +4,10 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from mflux import Config, ModelConfig
 from mflux.community.in_context.flux_in_context_dev import Flux1InContextDev
 from mflux.community.in_context.utils.in_context_loras import LORA_REPO_ID, get_lora_filename
+from mflux.config.config import Config
+from mflux.config.model_config import ModelConfig
 
 
 class ImageGeneratorInContextTestHelper:

@@ -3,10 +3,12 @@ import shutil
 
 import numpy as np
 
-from mflux import Config, Flux1, ModelConfig
+from mflux.config.config import Config
+from mflux.config.model_config import ModelConfig
 from mflux.dreambooth.dreambooth import DreamBooth
 from mflux.dreambooth.dreambooth_initializer import DreamBoothInitializer
 from mflux.dreambooth.state.zip_util import ZipUtil
+from mflux.flux.flux import Flux1
 
 CHECKPOINT = "tests/dreambooth/tmp/_checkpoints/0000005_checkpoint.zip"
 OUTPUT_DIR = "tests/dreambooth/tmp/_checkpoints/0000005_checkpoint"

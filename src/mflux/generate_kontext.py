@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from mflux import Config, StopImageGenerationException
 from mflux.callbacks.callback_manager import CallbackManager
-from mflux.error.exceptions import PromptFileReadError
+from mflux.config.config import Config
+from mflux.error.exceptions import PromptFileReadError, StopImageGenerationException
 from mflux.kontext.flux_kontext import Flux1Kontext
 from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser

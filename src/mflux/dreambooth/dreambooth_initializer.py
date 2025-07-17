@@ -1,6 +1,7 @@
 import mlx.core.random as random
 
-from mflux import Config, Flux1, ModelConfig
+from mflux.config.config import Config
+from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.dreambooth.dataset.dataset import Dataset
 from mflux.dreambooth.dataset.iterator import Iterator
@@ -9,6 +10,7 @@ from mflux.dreambooth.optimization.optimizer import Optimizer
 from mflux.dreambooth.state.training_spec import TrainingSpec
 from mflux.dreambooth.state.training_state import TrainingState
 from mflux.dreambooth.statistics.statistics import Statistics
+from mflux.flux.flux import Flux1
 
 
 class DreamBoothInitializer:
