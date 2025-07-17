@@ -5,7 +5,7 @@ from mlx import nn
 from mlx.utils import tree_flatten
 from transformers import CLIPTokenizer, T5Tokenizer
 
-from mflux.post_processing.generated_image import GeneratedImage
+from mflux.utils.version_util import VersionUtil
 
 
 class ModelSaver:
@@ -38,7 +38,7 @@ class ModelSaver:
                 weight,
                 {
                     "quantization_level": str(bits),
-                    "mflux_version": GeneratedImage.get_version(),
+                    "mflux_version": VersionUtil.get_mflux_version(),
                 },
             )
 
