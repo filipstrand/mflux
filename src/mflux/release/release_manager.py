@@ -37,20 +37,20 @@ class ReleaseManager:
         if ReleaseManager._is_release_complete(git_tag_exists, github_release_exists):
             return
 
-        # 4. Create git tag if needed
-        if not git_tag_exists:
-            GitOperations.create_and_push_tag(tag_name, version)
-
-        # 5. Create GitHub release if needed
-        if not github_release_exists:
-            release_notes = ChangelogParser.extract_release_notes_from_changelog(version)
-            GitHubAPI.create_github_release(github_token, github_repo, tag_name, version, release_notes)
-
-        # 6. Handle PyPI publishing
+        # 4. Handle PyPI publishing FIRST (before creating git artifacts)
         if ReleaseManager._should_publish_to_pypi(git_tag_exists, github_release_exists, package_name, version):
             PyPIPublisher.build_and_verify_package()
             PyPIPublisher.publish_to_test_pypi(test_pypi_token, package_name, version)
             PyPIPublisher.publish_to_pypi(pypi_token, package_name, version)
+
+        # 5. Create git tag if needed
+        if not git_tag_exists:
+            GitOperations.create_and_push_tag(tag_name, version)
+
+        # 6. Create GitHub release if needed
+        if not github_release_exists:
+            release_notes = ChangelogParser.extract_release_notes_from_changelog(version)
+            GitHubAPI.create_github_release(github_token, github_repo, tag_name, version, release_notes)
 
         print(f"🎉 Release process completed successfully for version {version}!")
 

@@ -126,7 +126,12 @@ class PyPIPublisher:
                 comment="Automated release via mflux-release-script",
             )
 
-            dist_files = list(Path("dist").glob("*"))
+            # Only select valid distribution files (.whl and .tar.gz)
+            dist_files = []
+            dist_dir = Path("dist")
+            dist_files.extend(dist_dir.glob("*.whl"))
+            dist_files.extend(dist_dir.glob("*.tar.gz"))
+
             if not dist_files:
                 raise ValueError("No distribution files found in dist/")
 
