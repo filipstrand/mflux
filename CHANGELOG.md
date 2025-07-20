@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.6] - 2025-07-20
+
+# MFLUX v.0.9.6 Release Notes
+
+### 🔧 Technical Details
+
+- Cap the upper MLX dependency to a known working version (0.26.1) to avoid compatibility issues with newer MLX releases that enforce stricter weight validation (see [#238](https://github.com/filipstrand/mflux/pull/238))
+
 ## [0.9.5] - 2025-07-17
 
 # MFLUX v.0.9.5 Release Notes
