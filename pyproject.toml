@@ -61,7 +61,7 @@ classifiers = [
 dev = [
     "pytest>=8.3.0,<9.0",
     "pytest-timer>=1.0,<2.0",
-    "mlx==0.26.5",  # Used ONLY during test runs to ensure deterministic test results
+    "mlx==0.26.1",  # Used ONLY during test runs to ensure deterministic test results
 ]
 
 [project.urls]
