@@ -193,3 +193,187 @@ class Flux1ConceptFromImage(nn.Module):
             generation_time=time_steps.format_dict["elapsed"],
             concept_heatmap=concept_heatmap,
         )
+
+    def generate_contrastive_image(
+        self,
+        seed: int,
+        prompt: str,
+        concept: str,
+        image_path: str,
+        config: Config,
+        anti_concept: str = "background",
+        heatmap_layer_indices: list[int] | None = None,
+        heatmap_timesteps: list[int] | None = None,
+        sharpening_exponent: float = 2.0,
+        temperature: float = 0.1,
+    ) -> GeneratedImage:
+        """
+        Generate contrastive concept attention from image using specified anti-concept.
+        """
+        # 0. Create a new runtime config based on the model type and input parameters
+        config = RuntimeConfig(config, self.model_config)
+        time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
+
+        # 1. Create the initial latents from the reference image
+        encoded_image = LatentCreator.encode_image(
+            vae=self.vae,
+            image_path=image_path,
+            height=config.height,
+            width=config.width,
+        )
+
+        # Create static noise for blending at each timestep
+        static_noise = LatentCreator.create(
+            seed=seed,
+            height=config.height,
+            width=config.width,
+        )
+
+        # Start with an appropriately noised version of the encoded image
+        latents = LatentCreator.add_noise_by_interpolation(
+            clean=ArrayUtil.pack_latents(latents=encoded_image, height=config.height, width=config.width),
+            noise=static_noise,
+            sigma=config.sigmas[config.init_time_step],
+        )
+
+        # 2. Encode the main prompt
+        prompt_embeds, pooled_prompt_embeds = PromptEncoder.encode_prompt(
+            prompt=prompt,
+            prompt_cache=self.prompt_cache,
+            t5_tokenizer=self.t5_tokenizer,
+            clip_tokenizer=self.clip_tokenizer,
+            t5_text_encoder=self.t5_text_encoder,
+            clip_text_encoder=self.clip_text_encoder,
+        )
+
+        # 3. Encode the concept prompt
+        prompt_embeds_concept, pooled_prompt_embeds_concept = PromptEncoder.encode_prompt(
+            prompt=concept,
+            prompt_cache=self.prompt_cache,
+            t5_tokenizer=self.t5_tokenizer,
+            clip_tokenizer=self.clip_tokenizer,
+            t5_text_encoder=self.t5_text_encoder,
+            clip_text_encoder=self.clip_text_encoder,
+        )
+
+        # 4. Encode the anti-concept prompt
+        prompt_embeds_background, pooled_prompt_embeds_background = PromptEncoder.encode_prompt(
+            prompt=anti_concept,
+            prompt_cache=self.prompt_cache,
+            t5_tokenizer=self.t5_tokenizer,
+            clip_tokenizer=self.clip_tokenizer,
+            t5_text_encoder=self.t5_text_encoder,
+            clip_text_encoder=self.clip_text_encoder,
+        )
+
+        # (Optional) Call subscribers for beginning of loop
+        Callbacks.before_loop(
+            seed=seed,
+            prompt=prompt,
+            latents=latents,
+            config=config,
+        )
+
+        concept_attention_data = GenerationAttentionData()
+        background_attention_data = GenerationAttentionData()
+
+        for t in time_steps:
+            try:
+                # 4.t Get concept attention (we don't use the noise, only the attention)
+                _, concept_attention = self.transformer(
+                    t=t,
+                    config=config,
+                    hidden_states=latents,
+                    prompt_embeds=prompt_embeds,
+                    prompt_embeds_concept=prompt_embeds_concept,
+                    pooled_prompt_embeds=pooled_prompt_embeds,
+                    pooled_prompt_embeds_concept=pooled_prompt_embeds_concept,
+                )
+                concept_attention_data.append(concept_attention)
+
+                # 5.t Get background attention (reuse same latents state)
+                _, background_attention = self.transformer(
+                    t=t,
+                    config=config,
+                    hidden_states=latents,
+                    prompt_embeds=prompt_embeds,
+                    prompt_embeds_concept=prompt_embeds_background,
+                    pooled_prompt_embeds=pooled_prompt_embeds,
+                    pooled_prompt_embeds_concept=pooled_prompt_embeds_background,
+                )
+                background_attention_data.append(background_attention)
+
+                # 6.t Follow reverse diffusion trajectory
+                latents = LatentCreator.add_noise_by_interpolation(
+                    clean=ArrayUtil.pack_latents(latents=encoded_image, height=config.height, width=config.width),
+                    noise=static_noise,
+                    sigma=config.sigmas[t + 1],
+                )
+
+                # (Optional) Call subscribers in-loop
+                Callbacks.in_loop(
+                    t=t,
+                    seed=seed,
+                    prompt=prompt,
+                    latents=latents,
+                    config=config,
+                    time_steps=time_steps,
+                )
+
+                # Evaluate attention data to force MLX computation for progress tracking
+                mx.eval(
+                    [layer.img_attention for layer in concept_attention.attention_information]
+                    + [layer.concept_attention for layer in concept_attention.attention_information]
+                    + [layer.img_attention for layer in background_attention.attention_information]
+                    + [layer.concept_attention for layer in background_attention.attention_information]
+                )
+
+            except KeyboardInterrupt:  # noqa: PERF203
+                Callbacks.interruption(
+                    t=t,
+                    seed=seed,
+                    prompt=prompt,
+                    latents=latents,
+                    config=config,
+                    time_steps=time_steps,
+                )
+                raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(time_steps)}")
+
+        # (Optional) Call subscribers after loop
+        Callbacks.after_loop(
+            seed=seed,
+            prompt=prompt,
+            latents=latents,
+            config=config,
+        )
+
+        # 7. Generate contrastive concept attention heatmap
+        concept_heatmap = ConceptUtil.create_contrastive_heatmap(
+            concept=concept,
+            attention_data=concept_attention_data,
+            background_attention_data=background_attention_data,
+            height=config.height,
+            width=config.width,
+            layer_indices=heatmap_layer_indices or list(range(15, 19)),
+            timesteps=heatmap_timesteps or list(range(config.num_inference_steps)),
+            sharpening_exponent=sharpening_exponent,
+            temperature=temperature,
+        )
+
+        # 8. Decode the latent array and return the image
+        latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
+        decoded = self.vae.decode(latents)
+
+        return ImageUtil.to_image(
+            decoded_latents=decoded,
+            config=config,
+            seed=seed,
+            prompt=prompt,
+            quantization=self.bits,
+            lora_paths=self.lora_paths,
+            lora_scales=self.lora_scales,
+            image_path=image_path,
+            image_strength=config.image_strength,
+            generation_time=time_steps.format_dict["elapsed"],
+            concept_heatmap=concept_heatmap,
+        )
