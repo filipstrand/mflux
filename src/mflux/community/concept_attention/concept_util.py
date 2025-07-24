@@ -135,23 +135,25 @@ class ConceptUtil:
         temperature: float = 0.1,
     ) -> mx.array:
         """
-        Core contrastive attention computation with spectral sharpening.
+        Core contrastive attention computation using Gram-Schmidt orthogonalization.
         """
         # Get concept and background attention vectors
         concept_image_vectors = concept_attention_data.stack_all_img_attentions()
         concept_concept_vectors = concept_attention_data.stack_all_concept_attentions()
 
-        background_image_vectors = background_attention_data.stack_all_img_attentions()
+        # background_image_vectors = background_attention_data.stack_all_img_attentions()
         background_concept_vectors = background_attention_data.stack_all_concept_attentions()
 
-        # Compute concept similarities
-        concept_similarities = concept_concept_vectors @ mx.transpose(concept_image_vectors, (0, 1, 2, 4, 3))
+        # Apply Gram-Schmidt orthogonalization to concept vectors
+        orthogonal_concept_vectors = ConceptUtil._gram_schmidt_orthogonalize(
+            concept_concept_vectors, background_concept_vectors
+        )
 
-        # Compute background similarities
-        background_similarities = background_concept_vectors @ mx.transpose(background_image_vectors, (0, 1, 2, 4, 3))
+        # Compute similarities using orthogonalized concept vectors
+        concept_similarities = orthogonal_concept_vectors @ mx.transpose(concept_image_vectors, (0, 1, 2, 4, 3))
 
-        # The key operation: contrastive subtraction
-        contrastive_similarities = concept_similarities - background_similarities
+        # Use the orthogonalized similarities directly (no subtraction needed)
+        contrastive_similarities = concept_similarities
 
         # Apply temperature-scaled softmax for sharper boundaries
         heatmaps = ConceptUtil._temperature_softmax(contrastive_similarities, temperature)
@@ -169,6 +171,33 @@ class ConceptUtil:
         heatmap = np.array(heatmaps)[0]
 
         return heatmap
+
+    @staticmethod
+    def _gram_schmidt_orthogonalize(concept_vectors: mx.array, anti_concept_vectors: mx.array) -> mx.array:
+        """
+        Apply Gram-Schmidt orthogonalization to make concept vectors orthogonal to anti-concept vectors.
+
+        Args:
+            concept_vectors: The concept attention vectors (e.g., "dragon")
+            anti_concept_vectors: The anti-concept attention vectors (e.g., "sky")
+
+        Returns:
+            Orthogonalized concept vectors with anti-concept components removed
+        """
+        # Normalize the anti-concept vectors
+        anti_concept_norm = mx.linalg.norm(anti_concept_vectors, axis=-1, keepdims=True)
+        # Add small epsilon to avoid division by zero
+        anti_concept_normalized = anti_concept_vectors / (anti_concept_norm + 1e-8)
+
+        # Compute projection of concept onto anti-concept
+        # projection = (concept · anti_concept) * anti_concept_normalized
+        dot_product = mx.sum(concept_vectors * anti_concept_normalized, axis=-1, keepdims=True)
+        projection = dot_product * anti_concept_normalized
+
+        # Remove the anti-concept component from concept vectors
+        orthogonal_concept = concept_vectors - projection
+
+        return orthogonal_concept
 
     @staticmethod
     def _temperature_softmax(similarities: mx.array, temperature: float) -> mx.array:
