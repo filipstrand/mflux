@@ -24,6 +24,13 @@ def test_contrastive_attention():
     parser.add_argument("--prompt", type=str, required=True, help="Main generation prompt")
     parser.add_argument("--concept", type=str, required=True, help="Concept to analyze")
     parser.add_argument("--anti-concept", type=str, default="background", help="Anti-concept for contrastive attention")
+    parser.add_argument(
+        "--method",
+        type=str,
+        default="gram_schmidt",
+        choices=["gram_schmidt", "competitive", "gating"],
+        help="Isolation method for contrastive attention",
+    )
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--height", type=int, default=512, help="Image height")
     parser.add_argument("--width", type=int, default=512, help="Image width")
@@ -43,6 +50,7 @@ def test_contrastive_attention():
     print(f"  Prompt: {args.prompt}")
     print(f"  Concept: {args.concept}")
     print(f"  Anti-concept: {args.anti_concept}")
+    print(f"  Method: {args.method}")
     print(f"  Sharpening exponent: {args.sharpening}")
     print(f"  Temperature: {args.temperature}")
     print()
@@ -70,6 +78,7 @@ def test_contrastive_attention():
         anti_concept=args.anti_concept,
         sharpening_exponent=args.sharpening,
         temperature=args.temperature,
+        method=args.method,
     )
 
     # Save contrastive result

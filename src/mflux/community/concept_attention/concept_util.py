@@ -53,6 +53,7 @@ class ConceptUtil:
         timesteps: list[int] = list(range(4)),
         sharpening_exponent: float = 2.0,
         temperature: float = 0.1,
+        method: str = "gram_schmidt",
     ) -> ConceptHeatmap:
         """
         Create a contrastive concept heatmap using background as anti-concept.
@@ -66,6 +67,7 @@ class ConceptUtil:
             timesteps: Which timesteps to use
             sharpening_exponent: Spectral sharpening power (>1 for sharper)
             temperature: Softmax temperature (<1 for sharper)
+            method: Isolation method ("gram_schmidt", "competitive", "gating")
         """
         heatmap = ConceptUtil._compute_contrastive_heatmap(
             concept_attention_data=attention_data,
@@ -76,6 +78,7 @@ class ConceptUtil:
             timesteps=timesteps,
             sharpening_exponent=sharpening_exponent,
             temperature=temperature,
+            method=method,
         )
 
         colorized_image = ConceptUtil._to_heatmap_image(
@@ -133,27 +136,54 @@ class ConceptUtil:
         timesteps: list[int] = list(range(4)),
         sharpening_exponent: float = 2.0,
         temperature: float = 0.1,
+        method: str = "gram_schmidt",
     ) -> mx.array:
         """
-        Core contrastive attention computation using Gram-Schmidt orthogonalization.
+        Core contrastive attention computation with multiple isolation methods.
+
+        Args:
+            method: Isolation method - "gram_schmidt", "competitive", or "gating"
         """
         # Get concept and background attention vectors
         concept_image_vectors = concept_attention_data.stack_all_img_attentions()
         concept_concept_vectors = concept_attention_data.stack_all_concept_attentions()
 
-        # background_image_vectors = background_attention_data.stack_all_img_attentions()
+        background_image_vectors = background_attention_data.stack_all_img_attentions()
         background_concept_vectors = background_attention_data.stack_all_concept_attentions()
 
-        # Apply Gram-Schmidt orthogonalization to concept vectors
-        orthogonal_concept_vectors = ConceptUtil._gram_schmidt_orthogonalize(
-            concept_concept_vectors, background_concept_vectors
-        )
+        if method == "gram_schmidt":
+            # Apply Gram-Schmidt orthogonalization to concept vectors
+            orthogonal_concept_vectors = ConceptUtil._gram_schmidt_orthogonalize(
+                concept_concept_vectors, background_concept_vectors
+            )
+            # Compute similarities using orthogonalized concept vectors
+            contrastive_similarities = orthogonal_concept_vectors @ mx.transpose(concept_image_vectors, (0, 1, 2, 4, 3))
 
-        # Compute similarities using orthogonalized concept vectors
-        concept_similarities = orthogonal_concept_vectors @ mx.transpose(concept_image_vectors, (0, 1, 2, 4, 3))
+        elif method == "competitive":
+            # Winner-takes-all competitive attention
+            concept_similarities = concept_concept_vectors @ mx.transpose(concept_image_vectors, (0, 1, 2, 4, 3))
+            background_similarities = background_concept_vectors @ mx.transpose(
+                background_image_vectors, (0, 1, 2, 4, 3)
+            )
 
-        # Use the orthogonalized similarities directly (no subtraction needed)
-        contrastive_similarities = concept_similarities
+            # Concept wins where it has higher activation
+            concept_wins = concept_similarities >= background_similarities
+            contrastive_similarities = concept_similarities * concept_wins.astype(mx.float32)
+
+        elif method == "gating":
+            # Use anti-concept as suppression gate
+            concept_similarities = concept_concept_vectors @ mx.transpose(concept_image_vectors, (0, 1, 2, 4, 3))
+            background_similarities = background_concept_vectors @ mx.transpose(
+                background_image_vectors, (0, 1, 2, 4, 3)
+            )
+
+            # Create suppression mask (sigmoid for smooth gating)
+            gate_strength = 3.0  # Controls how strong the gating is
+            suppression_mask = 1.0 / (1.0 + mx.exp(background_similarities * gate_strength))
+            contrastive_similarities = concept_similarities * suppression_mask
+
+        else:
+            raise ValueError(f"Unknown method: {method}. Choose from 'gram_schmidt', 'competitive', 'gating'")
 
         # Apply temperature-scaled softmax for sharper boundaries
         heatmaps = ConceptUtil._temperature_softmax(contrastive_similarities, temperature)

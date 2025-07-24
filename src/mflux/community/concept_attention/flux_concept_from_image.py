@@ -206,9 +206,13 @@ class Flux1ConceptFromImage(nn.Module):
         heatmap_timesteps: list[int] | None = None,
         sharpening_exponent: float = 2.0,
         temperature: float = 0.1,
+        method: str = "gram_schmidt",
     ) -> GeneratedImage:
         """
         Generate contrastive concept attention from image using specified anti-concept.
+
+        Args:
+            method: Isolation method - "gram_schmidt", "competitive", or "gating"
         """
         # 0. Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
@@ -358,6 +362,7 @@ class Flux1ConceptFromImage(nn.Module):
             timesteps=heatmap_timesteps or list(range(config.num_inference_steps)),
             sharpening_exponent=sharpening_exponent,
             temperature=temperature,
+            method=method,
         )
 
         # 8. Decode the latent array and return the image
