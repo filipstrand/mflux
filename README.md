@@ -787,6 +787,7 @@ In other words, you can reclaim the 34GB diskspace (per model) by deleting the f
 - For mflux >= v.0.6.0:
   - [dhairyashil/FLUX.1-schnell-mflux-v0.6.2-4bit](https://huggingface.co/dhairyashil/FLUX.1-schnell-mflux-v0.6.2-4bit)
   - [dhairyashil/FLUX.1-dev-mflux-4bit](https://huggingface.co/dhairyashil/FLUX.1-dev-mflux-4bit)
+  - [akx/FLUX.1-Kontext-dev-mflux-4bit](https://huggingface.co/akx/FLUX.1-Kontext-dev-mflux-4bit)
 
 <details>
 <summary>Using the community model support, the quantized weights can be also be automatically downloaded</summary>
