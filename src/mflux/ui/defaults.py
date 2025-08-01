@@ -17,13 +17,14 @@ GUIDANCE_SCALE_KONTEXT = 2.5
 HEIGHT, WIDTH = 1024, 1024
 MAX_PIXELS_WARNING_THRESHOLD = 2048 * 2048
 IMAGE_STRENGTH = 0.4
-MODEL_CHOICES = ["dev", "schnell", "dev-kontext", "dev-fill"]
+MODEL_CHOICES = ["dev", "schnell", "dev-kontext", "dev-fill", "dev-krea"]
 MODEL_INFERENCE_STEPS = {
     "dev": 14,
     "dev-fill": 14,
     "dev-depth": 14,
     "dev-redux": 14,
     "dev-kontext": 14,
+    "dev-krea": 14,
     "schnell": 4,
 }
 QUANTIZE_CHOICES = [3, 4, 6, 8]

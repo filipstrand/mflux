@@ -79,6 +79,11 @@ class ModelConfig:
     def dev_fill_catvton() -> "ModelConfig":
         return AVAILABLE_MODELS["dev-fill-catvton"]
 
+    @staticmethod
+    @lru_cache
+    def dev_krea() -> "ModelConfig":
+        return AVAILABLE_MODELS["dev-krea"]
+
     def x_embedder_input_dim(self) -> int:
         if self.alias and "dev-fill" in self.alias:
             return 384
@@ -93,7 +98,7 @@ class ModelConfig:
     @staticmethod
     def from_name(
         model_name: str,
-        base_model: Literal["dev", "schnell", "dev-fill"] | None = None,
+        base_model: Literal["dev", "schnell", "dev-fill", "dev-krea"] | None = None,
     ) -> "ModelConfig":
         # 0. Get all base models (where base_model is None) sorted by priority
         base_models = sorted(
@@ -262,5 +267,17 @@ AVAILABLE_MODELS = {
         supports_guidance=True,
         requires_sigma_shift=False,  # Not sure why, but produced better results this way...
         priority=9,
+    ),
+    "dev-krea": ModelConfig(
+        alias="dev-krea",
+        model_name="black-forest-labs/FLUX.1-Krea-dev",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,
+        requires_sigma_shift=True,
+        priority=10,
     ),
 }

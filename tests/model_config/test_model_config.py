@@ -17,7 +17,27 @@ def test_bfl_dev():
 def test_bfl_dev_full_name():
     model = ModelConfig.from_name("black-forest-labs/FLUX.1-dev")
     assert model.alias == "dev"
-    assert model.model_name.startswith("black-forest-labs/")
+    assert model.model_name == "black-forest-labs/FLUX.1-dev"
+    assert model.max_sequence_length == 512
+    assert model.num_train_steps == 1000
+    assert model.supports_guidance is True
+    assert model.requires_sigma_shift is True
+
+
+def test_bfl_dev_krea():
+    model = ModelConfig.from_name("dev-krea")
+    assert model.alias == "dev-krea"
+    assert model.model_name == "black-forest-labs/FLUX.1-Krea-dev"
+    assert model.max_sequence_length == 512
+    assert model.num_train_steps == 1000
+    assert model.supports_guidance is True
+    assert model.requires_sigma_shift is True
+
+
+def test_bfl_dev_krea_full_name():
+    model = ModelConfig.from_name("black-forest-labs/FLUX.1-Krea-dev")
+    assert model.alias == "dev-krea"
+    assert model.model_name == "black-forest-labs/FLUX.1-Krea-dev"
     assert model.max_sequence_length == 512
     assert model.num_train_steps == 1000
     assert model.supports_guidance is True

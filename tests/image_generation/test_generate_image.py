@@ -27,6 +27,18 @@ class TestImageGenerator:
             prompt="Luxury food photograph",
         )
 
+    def test_image_generation_dev_krea(self):
+        ImageGeneratorTestHelper.assert_matches_reference_image(
+            reference_image_path="reference_dev_krea.png",
+            output_image_path="output_dev_krea.png",
+            model_config=ModelConfig.dev_krea(),
+            steps=15,
+            seed=42,
+            height=341,
+            width=768,
+            prompt="Luxury food photograph",
+        )
+
     def test_image_generation_dev_lora(self):
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_dev_lora.png",
