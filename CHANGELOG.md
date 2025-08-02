@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2025-08-02
+
+# MFLUX v.0.10.0 Release Notes
+
+### 🎨 Model Improvements
+
+- **FLUX.1 Krea [dev] Support!**
+
+### ✨ New Features
+
+- **5-bit Quantization Support**: Added support for 5-bit quantization as a new option alongside existing 3, 4, 6, and 8-bit quantization levels
+
+### 🔧 Improvements
+
+- **Enhanced Default Inference Steps**: Increased default inference steps for dev models from 14 to 25 for improved image quality
+- **Multiple Model Aliases Support**: Improved model configuration system to properly support multiple aliases per model, making model selection more flexible and robust
+
+### 🔧 Technical Requirements
+
+- **MLX Compatibility**: This release assumes MLX 0.27.0 and upwards for optimal performance and compatibility
+- **MLX Compatibility for test**: Fix MLX version to 0.27.1 for image generation tests
+- **Non-strict Weight Updates**: Explicitly added non-strict mode (`strict=False`) for weight updates to maintain compatibility with later MLX versions that enforce stricter weight validation by default
+
+### 👩‍💻 Developer Experience
+
+- **Streamlined Release Process**: Removed TestPyPi publishing step from release workflow for simplified deployment
+---
+
 ## [0.9.6] - 2025-07-20
 
 # MFLUX v.0.9.6 Release Notes

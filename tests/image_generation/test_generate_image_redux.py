@@ -3,8 +3,6 @@ from tests.image_generation.helpers.image_generation_redux_test_helper import Im
 
 
 class TestImageGeneratorRedux:
-    SOURCE_IMAGE_FILENAME = "reference_dev_image_to_image_result.png"
-
     def test_image_generation_redux(self):
         ImageGeneratorReduxTestHelper.assert_matches_reference_image(
             reference_image_path="reference_redux_dev.png",
@@ -15,5 +13,5 @@ class TestImageGeneratorRedux:
             height=341,
             width=768,
             prompt="A delicious burger",
-            redux_image_path=TestImageGeneratorRedux.SOURCE_IMAGE_FILENAME,
+            redux_image_path="reference_dev_image_to_image.png",
         )

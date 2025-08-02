@@ -17,16 +17,13 @@ GUIDANCE_SCALE_KONTEXT = 2.5
 HEIGHT, WIDTH = 1024, 1024
 MAX_PIXELS_WARNING_THRESHOLD = 2048 * 2048
 IMAGE_STRENGTH = 0.4
-MODEL_CHOICES = ["dev", "schnell", "dev-kontext", "dev-fill"]
+MODEL_CHOICES = ["dev", "schnell", "krea-dev"]
 MODEL_INFERENCE_STEPS = {
-    "dev": 14,
-    "dev-fill": 14,
-    "dev-depth": 14,
-    "dev-redux": 14,
-    "dev-kontext": 14,
+    "dev": 25,
+    "krea-dev": 25,
     "schnell": 4,
 }
-QUANTIZE_CHOICES = [3, 4, 6, 8]
+QUANTIZE_CHOICES = [3, 5, 4, 6, 8]
 
 
 def _migrate_legacy_cache(new_cache_dir: Path) -> None:
