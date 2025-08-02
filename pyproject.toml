@@ -173,4 +173,4 @@ error_summary = true
 ignore_missing_imports = true
 implicit_optional = true
 # we should feel free to use new hinting features even if we back support to earlier versions
-python_version = 3.12
+python_version = "3.12"
