@@ -1,5 +1,3 @@
-from typing import Optional
-
 import requests
 
 from mflux.release.changelog_parser import ChangelogParser
@@ -15,7 +13,6 @@ class ReleaseManager:
     def create_release(
         github_token: str,
         pypi_token: str,
-        test_pypi_token: Optional[str] = None,
         github_repo: str = "filipstrand/mflux",
         package_name: str = "mflux",
     ) -> None:
@@ -40,7 +37,6 @@ class ReleaseManager:
         # 4. Handle PyPI publishing FIRST (before creating git artifacts)
         if ReleaseManager._should_publish_to_pypi(git_tag_exists, github_release_exists, package_name, version):
             PyPIPublisher.build_and_verify_package()
-            PyPIPublisher.publish_to_test_pypi(test_pypi_token, package_name, version)
             PyPIPublisher.publish_to_pypi(pypi_token, package_name, version)
 
         # 5. Create git tag if needed
@@ -76,7 +72,7 @@ class ReleaseManager:
 
         # Check if version already exists on PyPI
         try:
-            if PyPIPublisher.version_exists_on_pypi(package_name, version, test_pypi=False):
+            if PyPIPublisher.version_exists_on_pypi(package_name, version):
                 return False
         except (requests.RequestException, ValueError, OSError) as e:
             print(f"❌ Failed to check PyPI version: {e}")

@@ -18,7 +18,7 @@ class DepthProInitializer:
         WeightHandlerDepthPro.reshape_transposed_convolution_weights(depth_pro_weights)
 
         # 2. Assign the weights to the model
-        depth_pro_model.update(depth_pro_weights.weights)
+        depth_pro_model.update(depth_pro_weights.weights, strict=False)
 
         # 3. Optionally quantize the model
         if quantize:

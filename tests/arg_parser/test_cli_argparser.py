@@ -410,7 +410,7 @@ def test_steps_arg(mflux_generate_parser, mflux_generate_minimal_argv, base_meta
     # test user default value for dev
     with patch("sys.argv", mflux_generate_minimal_argv + ["--model", "dev"]):
         args = mflux_generate_parser.parse_args()
-        assert args.steps == 14
+        assert args.steps == 25
 
     # test user default value for schnell
     with patch("sys.argv", mflux_generate_minimal_argv + ["--model", "schnell"]):

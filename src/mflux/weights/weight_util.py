@@ -57,19 +57,19 @@ class WeightUtil:
         transformer_controlnet: nn.Module,
     ) -> int | None:
         if weights.meta_data.quantization_level is None and quantize_arg is None:
-            transformer_controlnet.update(weights.controlnet_transformer)
+            transformer_controlnet.update(weights.controlnet_transformer, strict=False)
             return None
 
         if weights.meta_data.quantization_level is None and quantize_arg is not None:
             bits = quantize_arg
-            transformer_controlnet.update(weights.controlnet_transformer)
+            transformer_controlnet.update(weights.controlnet_transformer, strict=False)
             QuantizationUtil.quantize_controlnet(bits, weights, transformer_controlnet)
             return bits
 
         if weights.meta_data.quantization_level is not None:
             bits = weights.meta_data.quantization_level
             QuantizationUtil.quantize_controlnet(bits, weights, transformer_controlnet)
-            transformer_controlnet.update(weights.controlnet_transformer)
+            transformer_controlnet.update(weights.controlnet_transformer, strict=False)
             return bits
 
     @staticmethod
@@ -80,10 +80,10 @@ class WeightUtil:
         t5_text_encoder: nn.Module,
         clip_text_encoder: nn.Module,
     ):
-        vae.update(weights.vae)
-        transformer.update(weights.transformer)
-        t5_text_encoder.update(weights.t5_encoder)
-        clip_text_encoder.update(weights.clip_encoder)
+        vae.update(weights.vae, strict=False)
+        transformer.update(weights.transformer, strict=False)
+        t5_text_encoder.update(weights.t5_encoder, strict=False)
+        clip_text_encoder.update(weights.clip_encoder, strict=False)
 
     @staticmethod
     def _set_redux_model_weights(
@@ -91,8 +91,8 @@ class WeightUtil:
         redux_encoder: nn.Module,
         siglip_vision_transformer: nn.Module,
     ):
-        redux_encoder.update(weights.redux_encoder)
-        siglip_vision_transformer.update(weights.siglip["vision_model"])
+        redux_encoder.update(weights.redux_encoder, strict=False)
+        siglip_vision_transformer.update(weights.siglip["vision_model"], strict=False)
 
     @staticmethod
     def set_redux_weights_and_quantize(

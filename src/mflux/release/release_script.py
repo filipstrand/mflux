@@ -11,14 +11,12 @@ def main():
     parser = argparse.ArgumentParser(description="MFLUX Release Management")
     parser.add_argument("--github-token", help="GitHub token")
     parser.add_argument("--pypi-token", help="PyPI API token")
-    parser.add_argument("--test-pypi-token", help="Test PyPI API token (optional)")
     args = parser.parse_args()
 
     try:
         ReleaseManager.create_release(
             github_token=args.github_token or os.getenv("GITHUB_TOKEN"),
             pypi_token=args.pypi_token or os.getenv("PYPI_API_TOKEN"),
-            test_pypi_token=args.test_pypi_token or os.getenv("TEST_PYPI_API_TOKEN"),
         )
     except (ValueError, FileNotFoundError, requests.RequestException) as e:
         print(f"❌ Release failed: {e}")

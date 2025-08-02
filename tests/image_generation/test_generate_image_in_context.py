@@ -6,8 +6,8 @@ from tests.image_generation.helpers.image_generation_in_context_test_helper impo
 class TestImageGeneratorInContext:
     def test_in_context_lora_identity(self):
         ImageGeneratorInContextTestHelper.assert_matches_reference_image(
-            reference_image_path="ic_lora_reference_in_context_identity.png",
-            output_image_path="output_ic_lora_reference_in_context_identity.png",
+            reference_image_path="reference_ic_lora_identity.png",
+            output_image_path="output_ic_lora_identity.png",
             model_config=ModelConfig.dev(),
             steps=25,
             seed=42,
@@ -20,7 +20,7 @@ class TestImageGeneratorInContext:
 
     def test_ic_edit_with_instruction(self):
         ImageGeneratorICEditTestHelper.assert_matches_reference_image(
-            reference_image_path="ic_edit_reference.png",
+            reference_image_path="reference_ic_edit.png",
             output_image_path="output_ic_edit.png",
             steps=20,
             seed=2799665,
