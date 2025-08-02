@@ -217,7 +217,7 @@ For more advanced Python usage and additional configuration options, you can exp
 #### 🎨 FLUX.1 Krea [dev]: Enhanced Photorealism
 
 MFLUX now supports **FLUX.1 Krea [dev]**, an 'opinionated' text-to-image model developed in collaboration with [Krea AI](https://krea.ai). This model overcomes the oversaturated 'AI look' commonly found in generated images, achieving exceptional photorealism with distinctive aesthetics.
-This model can be used where the `dev` model is used, and it is available as `krea-dev` in MFLUX, this includes dreambooth fine-tuning.
+This model can be used where the `dev` model is used, and it is available as `krea-dev` in MFLUX (also supports the alias `dev-krea`), this includes dreambooth fine-tuning.
 
 ![image](src/mflux/assets/krea_dev_example.jpg)
 

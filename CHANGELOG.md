@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🔧 Improvements
 
 - **Enhanced Default Inference Steps**: Increased default inference steps for dev models from 14 to 25 for improved image quality
+- **Multiple Model Aliases Support**: Improved model configuration system to properly support multiple aliases per model, making model selection more flexible and robust
 
 ### 🔧 Technical Requirements
 

@@ -7,7 +7,7 @@ from mflux.error.error import InvalidBaseModel, ModelConfigError
 class ModelConfig:
     def __init__(
         self,
-        alias: str | None,
+        aliases: list[str],
         model_name: str,
         base_model: str | None,
         controlnet_model: str | None,
@@ -18,7 +18,7 @@ class ModelConfig:
         requires_sigma_shift: bool,
         priority: int,
     ):
-        self.alias = alias
+        self.aliases = aliases
         self.model_name = model_name
         self.base_model = base_model
         self.controlnet_model = controlnet_model
@@ -85,15 +85,15 @@ class ModelConfig:
         return AVAILABLE_MODELS["krea-dev"]
 
     def x_embedder_input_dim(self) -> int:
-        if self.alias and "dev-fill" in self.alias:
+        if "Fill" in self.model_name:
             return 384
-        if self.alias == "dev-depth":
+        if "Depth" in self.model_name:
             return 128
         else:
             return 64
 
     def is_canny(self) -> bool:
-        return self.alias == "dev-controlnet-canny" or self.alias == "schnell-controlnet-canny"
+        return self.controlnet_model is not None and "Canny" in self.controlnet_model
 
     @staticmethod
     def from_name(
@@ -105,28 +105,29 @@ class ModelConfig:
             [model for model in AVAILABLE_MODELS.values() if model.base_model is None], key=lambda x: x.priority
         )
 
-        # 1. Check if model_name matches any base model's alias or full name
+        # 1. Check if model_name matches any base model's aliases or full name
         for base in base_models:
-            if model_name in (base.alias, base.model_name):
+            if model_name == base.model_name or model_name in base.aliases:
                 return base
 
         # 2. Validate explicit base_model
         allowed_names = []
         for base in base_models:
-            allowed_names.extend([base.alias, base.model_name])
+            allowed_names.extend(base.aliases + [base.model_name])
         if base_model and base_model not in allowed_names:
             raise InvalidBaseModel(f"Invalid base_model. Choose one of {allowed_names}")
 
         # 3. Determine the base model (explicit or inferred)
         if base_model:
-            # Find by explicit base_model name
-            default_base = next((b for b in base_models if base_model in (b.alias, b.model_name)), None)
+            # Find by explicit base_model name (check all aliases)
+            default_base = next((b for b in base_models if base_model == b.model_name or base_model in b.aliases), None)
         else:
             # Infer from model_name substring - prefer longer matches (more specific)
-            matching_bases = [b for b in base_models if b.alias and b.alias in model_name]
+            matching_bases = [(b, alias) for b in base_models for alias in b.aliases if alias and alias in model_name]
+
             if matching_bases:
                 # Sort by alias length descending, then by priority ascending
-                default_base = sorted(matching_bases, key=lambda x: (-len(x.alias), x.priority))[0]
+                default_base = sorted(matching_bases, key=lambda x: (-len(x[1]), x[0].priority))[0][0]
             else:
                 default_base = None
             if not default_base:
@@ -134,7 +135,7 @@ class ModelConfig:
 
         # 4. Construct the config
         return ModelConfig(
-            alias=default_base.alias,
+            aliases=default_base.aliases,
             model_name=model_name,
             base_model=default_base.model_name,
             controlnet_model=default_base.controlnet_model,
@@ -149,7 +150,7 @@ class ModelConfig:
 
 AVAILABLE_MODELS = {
     "dev": ModelConfig(
-        alias="dev",
+        aliases=["dev"],
         model_name="black-forest-labs/FLUX.1-dev",
         base_model=None,
         controlnet_model=None,
@@ -161,7 +162,7 @@ AVAILABLE_MODELS = {
         priority=0,
     ),
     "schnell": ModelConfig(
-        alias="schnell",
+        aliases=["schnell"],
         model_name="black-forest-labs/FLUX.1-schnell",
         base_model=None,
         controlnet_model=None,
@@ -173,7 +174,7 @@ AVAILABLE_MODELS = {
         priority=1,
     ),
     "dev-kontext": ModelConfig(
-        alias="dev-kontext",
+        aliases=["dev-kontext"],
         model_name="black-forest-labs/FLUX.1-Kontext-dev",
         base_model=None,
         controlnet_model=None,
@@ -185,7 +186,7 @@ AVAILABLE_MODELS = {
         priority=2,
     ),
     "dev-fill": ModelConfig(
-        alias="dev-fill",
+        aliases=["dev-fill"],
         model_name="black-forest-labs/FLUX.1-Fill-dev",
         base_model=None,
         controlnet_model=None,
@@ -197,7 +198,7 @@ AVAILABLE_MODELS = {
         priority=3,
     ),
     "dev-redux": ModelConfig(
-        alias="dev-redux",
+        aliases=["dev-redux"],
         model_name="black-forest-labs/FLUX.1-Redux-dev",
         base_model=None,
         controlnet_model=None,
@@ -209,7 +210,7 @@ AVAILABLE_MODELS = {
         priority=4,
     ),
     "dev-depth": ModelConfig(
-        alias="dev-depth",
+        aliases=["dev-depth"],
         model_name="black-forest-labs/FLUX.1-Depth-dev",
         base_model=None,
         controlnet_model=None,
@@ -221,7 +222,7 @@ AVAILABLE_MODELS = {
         priority=5,
     ),
     "dev-controlnet-canny": ModelConfig(
-        alias="dev-controlnet-canny",
+        aliases=["dev-controlnet-canny"],
         model_name="black-forest-labs/FLUX.1-dev",
         base_model=None,
         controlnet_model="InstantX/FLUX.1-dev-Controlnet-Canny",
@@ -233,7 +234,7 @@ AVAILABLE_MODELS = {
         priority=6,
     ),
     "schnell-controlnet-canny": ModelConfig(
-        alias="schnell-controlnet-canny",
+        aliases=["schnell-controlnet-canny"],
         model_name="black-forest-labs/FLUX.1-schnell",
         base_model=None,
         controlnet_model="InstantX/FLUX.1-dev-Controlnet-Canny",
@@ -245,7 +246,7 @@ AVAILABLE_MODELS = {
         priority=7,
     ),
     "dev-controlnet-upscaler": ModelConfig(
-        alias="dev-controlnet-upscaler",
+        aliases=["dev-controlnet-upscaler"],
         model_name="black-forest-labs/FLUX.1-dev",
         base_model=None,
         controlnet_model="jasperai/Flux.1-dev-Controlnet-Upscaler",
@@ -257,7 +258,7 @@ AVAILABLE_MODELS = {
         priority=8,
     ),
     "dev-fill-catvton": ModelConfig(
-        alias="dev-fill-catvton",
+        aliases=["dev-fill-catvton"],
         model_name="black-forest-labs/FLUX.1-Fill-dev",
         base_model=None,
         controlnet_model=None,
@@ -269,7 +270,7 @@ AVAILABLE_MODELS = {
         priority=9,
     ),
     "krea-dev": ModelConfig(
-        alias="krea-dev",
+        aliases=["krea-dev", "dev-krea"],
         model_name="black-forest-labs/FLUX.1-Krea-dev",
         base_model=None,
         controlnet_model=None,
