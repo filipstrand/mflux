@@ -3,13 +3,11 @@ from tests.image_generation.helpers.image_generation_controlnet_test_helper impo
 
 
 class TestImageGeneratorControlnet:
-    CONTROLNET_REFERENCE_FILENAME = "controlnet_reference.png"
-
     def test_image_generation_schnell_controlnet(self):
         ImageGeneratorControlnetTestHelper.assert_matches_reference_image(
             reference_image_path="reference_controlnet_schnell.png",
             output_image_path="output_controlnet_schnell.png",
-            controlnet_image_path=TestImageGeneratorControlnet.CONTROLNET_REFERENCE_FILENAME,
+            controlnet_image_path="controlnet_reference.png",
             model_config=ModelConfig.schnell_controlnet_canny(),
             steps=2,
             seed=43,
@@ -23,7 +21,7 @@ class TestImageGeneratorControlnet:
         ImageGeneratorControlnetTestHelper.assert_matches_reference_image(
             reference_image_path="reference_controlnet_dev.png",
             output_image_path="output_controlnet_dev.png",
-            controlnet_image_path=TestImageGeneratorControlnet.CONTROLNET_REFERENCE_FILENAME,
+            controlnet_image_path="controlnet_reference.png",
             model_config=ModelConfig.dev_controlnet_canny(),
             steps=15,
             seed=42,
@@ -37,7 +35,7 @@ class TestImageGeneratorControlnet:
         ImageGeneratorControlnetTestHelper.assert_matches_reference_image(
             reference_image_path="reference_controlnet_dev_lora.png",
             output_image_path="output_controlnet_dev_lora.png",
-            controlnet_image_path=TestImageGeneratorControlnet.CONTROLNET_REFERENCE_FILENAME,
+            controlnet_image_path="controlnet_reference.png",
             model_config=ModelConfig.dev_controlnet_canny(),
             steps=15,
             seed=43,
