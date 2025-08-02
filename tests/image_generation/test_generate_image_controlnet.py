@@ -52,7 +52,7 @@ class TestImageGeneratorControlnet:
     def test_image_upscaling(self):
         ImageGeneratorControlnetTestHelper.assert_matches_reference_image(
             reference_image_path="reference_upscaled.png",
-            output_image_path="output_upscaler.png",
+            output_image_path="output_upscaled.png",
             controlnet_image_path="low_res.jpg",
             model_config=ModelConfig.dev_controlnet_upscaler(),
             steps=20,
