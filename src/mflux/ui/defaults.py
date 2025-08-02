@@ -20,14 +20,10 @@ IMAGE_STRENGTH = 0.4
 MODEL_CHOICES = ["dev", "schnell", "dev-kontext", "dev-fill", "dev-krea"]
 MODEL_INFERENCE_STEPS = {
     "dev": 25,
-    "dev-fill": 25,
-    "dev-depth": 25,
-    "dev-redux": 25,
-    "dev-kontext": 25,
     "dev-krea": 25,
     "schnell": 4,
 }
-QUANTIZE_CHOICES = [3, 4, 6, 8]
+QUANTIZE_CHOICES = [3, 5, 4, 6, 8]
 
 
 def _migrate_legacy_cache(new_cache_dir: Path) -> None:

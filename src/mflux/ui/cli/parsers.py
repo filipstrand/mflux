@@ -289,7 +289,7 @@ class CommandLineParser(argparse.ArgumentParser):
                 self.error("Either --prompt or --prompt-file argument is required, or 'prompt' required in metadata config file")
 
         if self.supports_image_generation and namespace.steps is None:
-            namespace.steps = ui_defaults.MODEL_INFERENCE_STEPS.get(namespace.model, 14)
+            namespace.steps = ui_defaults.MODEL_INFERENCE_STEPS.get(namespace.model, 25)
 
         # In-context edit specific validations
         if getattr(self, 'supports_in_context_edit', False):

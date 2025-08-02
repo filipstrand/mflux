@@ -187,7 +187,7 @@ from mflux.config.config import Config
 # Load the model
 flux = Flux1.from_name(
    model_name="schnell",  # "schnell", "dev", or "dev-krea"
-   quantize=8,            # 4 or 8
+       quantize=8,            # 3, 4, 5, 6, or 8
 )
 
 # Generate an image
@@ -217,15 +217,10 @@ For more advanced Python usage and additional configuration options, you can exp
 #### 🎨 FLUX.1 Krea [dev]: Enhanced Photorealism
 
 MFLUX now supports **FLUX.1 Krea [dev]**, an 'opinionated' text-to-image model developed in collaboration with [Krea AI](https://krea.ai). This model overcomes the oversaturated 'AI look' commonly found in generated images, achieving exceptional photorealism with distinctive aesthetics.
-
-Key features of FLUX.1 Krea [dev]:
-- **Enhanced realism**: Generates more realistic and diverse images without oversaturated textures
-- **Distinctive aesthetics**: Offers pleasant surprises with visually interesting, varied outputs  
-- **Compatible architecture**: Fully compatible with the FLUX.1 [dev] ecosystem and parameters
-- **Superior performance**: Outperforms previous open models and matches closed solutions in human preference assessments
+This model can be used where the `dev` model is used, and it is available as `dev-krea` in MFLUX, this includes dreambooth fine-tuning.
 
 ```sh
-mflux-generate --model dev-krea --prompt "Luxury food photograph" --steps 20 --seed 2 -q 8
+mflux-generate --model dev-krea --prompt "Luxury food photograph" --steps 25 --seed 2 -q 8
 ```
 
 *Learn more about FLUX.1 Krea [dev] in the [official announcement](https://bfl.ai/announcements/flux-1-krea-dev).*
@@ -262,7 +257,7 @@ mflux-generate --model dev-krea --prompt "Luxury food photograph" --steps 20 --s
 
 - **`--path`** (optional, `str`, default: `None`): Path to a local model on disk.
 
-- **`--quantize`** or **`-q`** (optional, `int`, default: `None`): [Quantization](#%EF%B8%8F-quantization) (choose between `3`, `4`, `6`, or `8` bits).
+- **`--quantize`** or **`-q`** (optional, `int`, default: `None`): [Quantization](#%EF%B8%8F-quantization) (choose between `3`, `4`, `5`, `6`, or `8` bits).
 
 - **`--lora-paths`** (optional, `[str]`, default: `None`): The paths to the [LoRA](#-LoRA) weights.
 
@@ -714,7 +709,7 @@ Luxury food photograph of an italian Linguine pasta alle vongole dish with lots 
 
 ### 🗜️ Quantization
 
-MFLUX supports running FLUX in 3, 4, 6, or 8-bit quantized mode. Running a quantized version can greatly speed up the
+MFLUX supports running FLUX in 3, 4, 5, 6, or 8-bit quantized mode. Running a quantized version can greatly speed up the
 generation process and reduce the memory consumption by several gigabytes. [Quantized models also take up less disk space](#-size-comparisons-for-quantized-models).
 
 ```sh
@@ -742,9 +737,9 @@ For systems with limited RAM, you can also use the `--low-ram` option which redu
 
 The model sizes for both `schnell` and `dev` at various quantization levels are as follows:
 
-| 3 bit  | 4 bit  | 6 bit   | 8 bit   | Original (16 bit) |
-|--------|--------|---------|---------|-------------------|
-| 7.52GB | 9.61GB | 13.81GB | 18.01GB | 33.73GB           |
+| 3 bit  | 4 bit  | 5 bit   | 6 bit   | 8 bit   | Original (16 bit) |
+|--------|--------|---------|---------|---------|-------------------|
+| 7.52GB | 9.61GB | 11.71GB | 13.81GB | 18.01GB | 33.73GB           |
 
 
 #### 💾 Saving a quantized version to disk
