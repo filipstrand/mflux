@@ -24,9 +24,9 @@ def test_bfl_dev_full_name():
     assert model.requires_sigma_shift is True
 
 
-def test_bfl_dev_krea():
-    model = ModelConfig.from_name("dev-krea")
-    assert model.alias == "dev-krea"
+def test_bfl_krea_dev():
+    model = ModelConfig.from_name("krea-dev")
+    assert model.alias == "krea-dev"
     assert model.model_name == "black-forest-labs/FLUX.1-Krea-dev"
     assert model.max_sequence_length == 512
     assert model.num_train_steps == 1000
@@ -34,9 +34,9 @@ def test_bfl_dev_krea():
     assert model.requires_sigma_shift is True
 
 
-def test_bfl_dev_krea_full_name():
+def test_bfl_krea_dev_full_name():
     model = ModelConfig.from_name("black-forest-labs/FLUX.1-Krea-dev")
-    assert model.alias == "dev-krea"
+    assert model.alias == "krea-dev"
     assert model.model_name == "black-forest-labs/FLUX.1-Krea-dev"
     assert model.max_sequence_length == 512
     assert model.num_train_steps == 1000

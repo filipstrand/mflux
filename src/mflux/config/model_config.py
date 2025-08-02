@@ -81,8 +81,8 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
-    def dev_krea() -> "ModelConfig":
-        return AVAILABLE_MODELS["dev-krea"]
+    def krea_dev() -> "ModelConfig":
+        return AVAILABLE_MODELS["krea-dev"]
 
     def x_embedder_input_dim(self) -> int:
         if self.alias and "dev-fill" in self.alias:
@@ -98,7 +98,7 @@ class ModelConfig:
     @staticmethod
     def from_name(
         model_name: str,
-        base_model: Literal["dev", "schnell", "dev-fill", "dev-krea"] | None = None,
+        base_model: Literal["dev", "schnell", "dev-fill", "krea-dev"] | None = None,
     ) -> "ModelConfig":
         # 0. Get all base models (where base_model is None) sorted by priority
         base_models = sorted(
@@ -268,8 +268,8 @@ AVAILABLE_MODELS = {
         requires_sigma_shift=False,  # Not sure why, but produced better results this way...
         priority=9,
     ),
-    "dev-krea": ModelConfig(
-        alias="dev-krea",
+    "krea-dev": ModelConfig(
+        alias="krea-dev",
         model_name="black-forest-labs/FLUX.1-Krea-dev",
         base_model=None,
         controlnet_model=None,

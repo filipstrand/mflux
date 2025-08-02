@@ -186,7 +186,7 @@ from mflux.config.config import Config
 
 # Load the model
 flux = Flux1.from_name(
-   model_name="schnell",  # "schnell", "dev", or "dev-krea"
+   model_name="schnell",  # "schnell", "dev", or "krea-dev"
        quantize=8,            # 3, 4, 5, 6, or 8
 )
 
@@ -195,7 +195,7 @@ image = flux.generate_image(
    seed=2,
    prompt="Luxury food photograph",
    config=Config(
-      num_inference_steps=2,  # "schnell" works well with 2-4 steps, "dev" and "dev-krea" work well with 20-25 steps
+      num_inference_steps=2,  # "schnell" works well with 2-4 steps, "dev" and "krea-dev" work well with 20-25 steps
       height=1024,
       width=1024,
    )
@@ -217,10 +217,19 @@ For more advanced Python usage and additional configuration options, you can exp
 #### 🎨 FLUX.1 Krea [dev]: Enhanced Photorealism
 
 MFLUX now supports **FLUX.1 Krea [dev]**, an 'opinionated' text-to-image model developed in collaboration with [Krea AI](https://krea.ai). This model overcomes the oversaturated 'AI look' commonly found in generated images, achieving exceptional photorealism with distinctive aesthetics.
-This model can be used where the `dev` model is used, and it is available as `dev-krea` in MFLUX, this includes dreambooth fine-tuning.
+This model can be used where the `dev` model is used, and it is available as `krea-dev` in MFLUX, this includes dreambooth fine-tuning.
+
+![image](src/mflux/assets/krea_dev_example.jpg)
 
 ```sh
-mflux-generate --model dev-krea --prompt "Luxury food photograph" --steps 25 --seed 2 -q 8
+mflux-generate \
+    --model krea-dev \
+    --prompt "A photo of a dog" \
+    --steps 25 \
+    --seed 2674888 \
+    -q 8 \
+    --height 1024 \
+    --width 1024
 ```
 
 *Learn more about FLUX.1 Krea [dev] in the [official announcement](https://bfl.ai/announcements/flux-1-krea-dev).*
@@ -237,9 +246,9 @@ mflux-generate --model dev-krea --prompt "Luxury food photograph" --steps 25 --s
 
 - **`--prompt`** (required, `str`): Text description of the image to generate. Use `-` to read the prompt from stdin (e.g., `echo "A beautiful sunset" | mflux-generate --prompt -`).
 
-- **`--model`** or **`-m`** (required, `str`): Model to use for generation. Can be one of the official models (`"schnell"`, `"dev"`, or `"dev-krea"`) or a HuggingFace repository ID for a compatible third-party model (e.g., `"Freepik/flux.1-lite-8B-alpha"`).
+- **`--model`** or **`-m`** (required, `str`): Model to use for generation. Can be one of the official models (`"schnell"`, `"dev"`, or `"krea-dev"`) or a HuggingFace repository ID for a compatible third-party model (e.g., `"Freepik/flux.1-lite-8B-alpha"`).
 
-- **`--base-model`** (optional, `str`, default: `None`): Specifies which base architecture a third-party model is derived from (`"schnell"`, `"dev"`, or `"dev-krea"`). Required when using third-party models from HuggingFace.
+- **`--base-model`** (optional, `str`, default: `None`): Specifies which base architecture a third-party model is derived from (`"schnell"`, `"dev"`, or `"krea-dev"`). Required when using third-party models from HuggingFace.
 
 - **`--output`** (optional, `str`, default: `"image.png"`): Output image filename. If `--seed` or `--auto-seeds` establishes multiple seed values, the output filename will automatically be modified to include the seed value (e.g., `image_seed_42.png`).
 
