@@ -22,6 +22,9 @@ class Config:
         redux_image_strengths: list[float] | None = None,
         masked_image_path: Path | None = None,
         controlnet_strength: float | None = None,
+        scheduler: str = "linear",
+        ip_adapter_image_paths: list[Path] | None = None,
+        ip_adapter_scale: float = 1.0,
     ):
         if width % 16 != 0 or height % 16 != 0:
             log.warning("Width and height should be multiples of 16. Rounding down.")
@@ -36,3 +39,6 @@ class Config:
         self.redux_image_strengths = redux_image_strengths
         self.masked_image_path = masked_image_path
         self.controlnet_strength = controlnet_strength
+        self.scheduler = scheduler
+        self.ip_adapter_image_paths = ip_adapter_image_paths
+        self.ip_adapter_scale = ip_adapter_scale
