@@ -98,7 +98,7 @@ class ModelConfig:
     @staticmethod
     def from_name(
         model_name: str,
-        base_model: Literal["dev", "schnell", "dev-fill", "krea-dev"] | None = None,
+        base_model: Literal["dev", "schnell", "krea-dev"] | None = None,
     ) -> "ModelConfig":
         # 0. Get all base models (where base_model is None) sorted by priority
         base_models = sorted(
