@@ -2,14 +2,20 @@ import os
 import shutil
 
 import mlx.core as mx
+import numpy as np
 
+from mflux.config.config import Config
+from mflux.config.model_config import ModelConfig
 from mflux.dreambooth.dreambooth import DreamBooth
 from mflux.dreambooth.dreambooth_initializer import DreamBoothInitializer
 from mflux.dreambooth.state.zip_util import ZipUtil
+from mflux.flux.flux import Flux1
 
 CHECKPOINT_3 = "tests/dreambooth/tmp/_checkpoints/0000003_checkpoint.zip"
 CHECKPOINT_4 = "tests/dreambooth/tmp/_checkpoints/0000004_checkpoint.zip"
 CHECKPOINT_5 = "tests/dreambooth/tmp/_checkpoints/0000005_checkpoint.zip"
+OUTPUT_DIR = "tests/dreambooth/tmp/_checkpoints/0000005_checkpoint"
+LORA_FILE = "tests/dreambooth/tmp/_checkpoints/0000005_checkpoint/0000005_adapter.safetensors"
 
 
 class TestResumeTraining:
@@ -66,6 +72,30 @@ class TestResumeTraining:
                     array1 = adapter_after_5_steps[key]
                     array2 = adapter_after_5_steps_resumed[key]
                     assert mx.array_equal(array1, array2)
+
+            # And: We want to confirm that the resumed weights can actually be loaded into Flux for generation...
+            ZipUtil.extract_all(zip_path=CHECKPOINT_5, output_dir=OUTPUT_DIR)
+            flux_with_resumed_lora = Flux1(
+                model_config=ModelConfig.dev(),
+                quantize=4,
+                lora_paths=[LORA_FILE],
+                lora_scales=[1.0],
+            )
+
+            # ...and we should be able to generate with the resumed LoRA weights (in this case, the actual image is nonsense and doesn't matter)
+            image = flux_with_resumed_lora.generate_image(
+                seed=42,
+                prompt="test",
+                config=Config(
+                    num_inference_steps=1,
+                    height=128,
+                    width=128,
+                ),
+            )
+
+            # Basic sanity check that we got a valid image
+            assert image.image is not None
+            assert np.array(image.image).shape == (128, 128, 3)
         finally:
             # cleanup
             TestResumeTraining.delete_folder("tests/dreambooth/tmp")
