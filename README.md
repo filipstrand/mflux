@@ -750,6 +750,7 @@ The model sizes for both `schnell` and `dev` at various quantization levels are 
 |--------|--------|---------|---------|---------|-------------------|
 | 7.52GB | 9.61GB | 11.71GB | 13.81GB | 18.01GB | 33.73GB           |
 
+*4bit quantized model files are [available for direct download on Hugging Face](#-loading-and-running-a-quantized-version-from-disk), eliminating the need to download full models and quantize them yourself.*
 
 #### 💾 Saving a quantized version to disk
 
@@ -808,20 +809,19 @@ In other words, you can reclaim the 34GB diskspace (per model) by deleting the f
   - [dhairyashil/FLUX.1-schnell-mflux-v0.6.2-4bit](https://huggingface.co/dhairyashil/FLUX.1-schnell-mflux-v0.6.2-4bit)
   - [dhairyashil/FLUX.1-dev-mflux-4bit](https://huggingface.co/dhairyashil/FLUX.1-dev-mflux-4bit)
   - [akx/FLUX.1-Kontext-dev-mflux-4bit](https://huggingface.co/akx/FLUX.1-Kontext-dev-mflux-4bit)
+  - [filipstrand/FLUX.1-Krea-dev-mflux-4bit](https://huggingface.co/filipstrand/FLUX.1-Krea-dev-mflux-4bit)
 
-<details>
-<summary>Using the community model support, the quantized weights can be also be automatically downloaded</summary>
+
+Using the [community model support](#-third-party-huggingface-model-support), the quantized weights can be also be automatically downloaded when running the generate command:
 
 ```sh
 mflux-generate \
-    --model "dhairyashil/FLUX.1-schnell-mflux-v0.6.2-4bit" \
-    --base-model schnell \
-    --steps 2 \
-    --seed 2 \
-    --prompt "Luxury food photograph"
+    --model filipstrand/FLUX.1-Krea-dev-mflux-4bit \
+    --base-model krea-dev \
+    --prompt "A photo of a dog" \
+    --steps 25 \
+    --seed 2674888
 ```
-
-</details>
 
 ---
 
