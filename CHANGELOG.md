@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🎨 Model Improvements
 
 - **FLUX.1 Krea [dev] Support!**
+- **FLUX.1-Krea-dev-mflux-4bit Model**: Added [filipstrand/FLUX.1-Krea-dev-mflux-4bit](https://huggingface.co/filipstrand/FLUX.1-Krea-dev-mflux-4bit) quantized model to HF
+- **FLUX.1-Kontext-dev-mflux-4bit Model**: Added [akx/FLUX.1-Kontext-dev-mflux-4bit](https://huggingface.co/akx/FLUX.1-Kontext-dev-mflux-4bit) quantized model to HF, contributed by @akx
 
 ### ✨ New Features
 
@@ -31,6 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 👩‍💻 Developer Experience
 
 - **Streamlined Release Process**: Removed TestPyPi publishing step from release workflow for simplified deployment
+
+### 🙏 Contributors
+
+- **[@filipstrand](https://github.com/filipstrand)** - FLUX.1 Krea [dev] model support, 5-bit quantization, enhanced defaults, and various improvements
+- **[@akx](https://github.com/akx)** - Added 4-bit quantized Kontext model to HF
+
 ---
 
 ## [0.9.6] - 2025-07-20
