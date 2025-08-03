@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.10.0] - 2025-08-03
+## [0.10.0] - 2025-08-04
 
 # MFLUX v.0.10.0 Release Notes
 
@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ New Features
 
+- **Turbo Mode**: Added `--turbo` flag for faster generation with fewer inference steps. Automatically downloads and applies the FLUX.1-Turbo-Alpha LoRA (~700MB) and sets optimized guidance parameters. Compatible with `dev`, `krea-dev`, and `dev-krea` models for ~3x faster generation.
 - **5-bit Quantization Support**: Added support for 5-bit quantization as a new option alongside existing 3, 4, 6, and 8-bit quantization levels
 
 ### 🔧 Improvements
@@ -40,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🙏 Contributors
 
-- **[@filipstrand](https://github.com/filipstrand)** - FLUX.1 Krea [dev] model support, 5-bit quantization, enhanced defaults, and various improvements
+- **[@filipstrand](https://github.com/filipstrand)** - FLUX.1 Krea [dev] model support, 5-bit quantization, turbo mode, enhanced defaults, and various improvements
 - **[@akx](https://github.com/akx)** - Added 4-bit quantized Kontext model to HF
 
 ---

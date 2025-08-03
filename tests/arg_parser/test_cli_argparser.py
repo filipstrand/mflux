@@ -16,6 +16,7 @@ def _create_mflux_generate_parser(with_controlnet=False, require_model_arg=False
     parser.add_model_arguments(require_model_arg=require_model_arg)
     parser.add_image_generator_arguments(supports_metadata_config=True)
     parser.add_lora_arguments()
+    parser.add_turbo_arguments()
     parser.add_image_to_image_arguments(required=False)
     parser.add_image_outpaint_arguments()
     if with_controlnet:
@@ -465,6 +466,23 @@ def test_lora_args(mflux_generate_parser, mflux_generate_minimal_argv, base_meta
             assert args.lora_paths == test_paths + new_loras[1:3]
             assert len(args.lora_scales) == 4
             assert args.lora_scales == [pytest.approx(v) for v in [0.3, 0.7, 0.1, 0.9]]
+
+
+def test_turbo_args(mflux_generate_parser, mflux_generate_minimal_argv):
+    # test default value (no turbo)
+    with patch("sys.argv", mflux_generate_minimal_argv + ["-m", "dev"]):
+        args = mflux_generate_parser.parse_args()
+        assert args.turbo is False
+
+    # test turbo flag enabled
+    with patch("sys.argv", mflux_generate_minimal_argv + ["-m", "dev", "--turbo"]):
+        args = mflux_generate_parser.parse_args()
+        assert args.turbo is True
+
+    # test turbo flag with compatible model
+    with patch("sys.argv", mflux_generate_minimal_argv + ["-m", "krea-dev", "--turbo"]):
+        args = mflux_generate_parser.parse_args()
+        assert args.turbo is True
 
 
 def test_image_to_image_args(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off

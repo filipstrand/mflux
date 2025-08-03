@@ -7,6 +7,7 @@ from PIL import Image
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.flux.flux import Flux1
+from mflux.ui.turbo_util import TurboUtil
 
 
 class ImageGeneratorTestHelper:
@@ -24,11 +25,19 @@ class ImageGeneratorTestHelper:
         image_strength: float | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
+        turbo: bool = False,
     ):
         # resolve paths
         reference_image_path = ImageGeneratorTestHelper.resolve_path(reference_image_path)
         output_image_path = ImageGeneratorTestHelper.resolve_path(output_image_path)
         lora_paths = [str(ImageGeneratorTestHelper.resolve_path(p)) for p in lora_paths] if lora_paths else None
+
+        # Handle turbo settings
+        lora_names = None
+        lora_repo_id = None
+        if turbo:
+            lora_repo_id = TurboUtil.TURBO_LORA_REPO_ID
+            lora_names = [TurboUtil.TURBO_LORA_FILENAME]
 
         try:
             # given
@@ -37,6 +46,8 @@ class ImageGeneratorTestHelper:
                 quantize=8,
                 lora_paths=lora_paths,
                 lora_scales=lora_scales,
+                lora_names=lora_names,
+                lora_repo_id=lora_repo_id,
             )
             # when
             image = flux.generate_image(

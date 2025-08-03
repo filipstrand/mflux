@@ -54,6 +54,7 @@ class CommandLineParser(argparse.ArgumentParser):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.supports_turbo = None
         self.supports_metadata_config = False
         self.supports_image_generation = False
         self.supports_controlnet = False
@@ -87,6 +88,15 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--lora-scales", type=float, nargs="*", default=None, help="Scaling factor to adjust the impact of LoRA weights on the model. A value of 1.0 applies the LoRA weights as they are.")
         lora_group.add_argument("--lora-name", type=str, help="Name of the LoRA to download from Hugging Face")
         lora_group.add_argument("--lora-repo-id", type=str, default=LORA_REPO_ID, help=f"Hugging Face repository ID for LoRAs (default: {LORA_REPO_ID})")
+
+    def add_turbo_arguments(self) -> None:
+        self.supports_turbo = True
+        turbo_group = self.add_argument_group("Turbo Mode")
+        turbo_group.add_argument(
+            "--turbo",
+            action="store_true",
+            help="Enable turbo mode for faster generation (compatible with: dev, krea-dev)"
+        )
 
     def _add_image_generator_common_arguments(self, supports_dimension_scale_factor=False) -> None:
         self.supports_image_generation = True

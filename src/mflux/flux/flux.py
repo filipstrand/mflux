@@ -33,6 +33,8 @@ class Flux1(nn.Module):
         local_path: str | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
+        lora_names: list[str] | None = None,
+        lora_repo_id: str | None = None,
     ):
         super().__init__()
         FluxInitializer.init(
@@ -42,6 +44,8 @@ class Flux1(nn.Module):
             local_path=local_path,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
+            lora_names=lora_names,
+            lora_repo_id=lora_repo_id,
         )
 
     def generate_image(

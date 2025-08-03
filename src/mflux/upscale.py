@@ -11,6 +11,7 @@ from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_prompt
 from mflux.ui.scale_factor import ScaleFactor
+from mflux.ui.turbo_util import TurboUtil
 
 
 def main():
@@ -19,10 +20,14 @@ def main():
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
+    parser.add_turbo_arguments()
     parser.add_image_generator_arguments(supports_metadata_config=False, supports_dimension_scale_factor=True)
     parser.add_controlnet_arguments(require_image=True)
     parser.add_output_arguments()
     args = parser.parse_args()
+
+    # 0.1. Apply turbo settings if --turbo flag is used
+    TurboUtil.apply_turbo_settings(args)
 
     # 1. Load the model
     flux = Flux1Controlnet(
@@ -31,6 +36,8 @@ def main():
         local_path=args.path,
         lora_paths=args.lora_paths,
         lora_scales=args.lora_scales,
+        lora_names=getattr(args, "lora_names", None),
+        lora_repo_id=getattr(args, "lora_repo_id", None),
     )
 
     # 2. Register the optional callbacks

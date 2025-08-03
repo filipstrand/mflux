@@ -8,6 +8,7 @@ from mflux.flux_tools.redux.flux_redux import Flux1Redux
 from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_prompt
+from mflux.ui.turbo_util import TurboUtil
 
 
 def main():
@@ -16,6 +17,7 @@ def main():
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
+    parser.add_turbo_arguments()
     parser.add_image_generator_arguments(supports_metadata_config=False)
     parser.add_redux_arguments()
     parser.add_output_arguments()
@@ -24,6 +26,9 @@ def main():
     # 0. Set default guidance value if not provided by user
     if args.guidance is None:
         args.guidance = ui_defaults.GUIDANCE_SCALE
+
+    # 0.1. Apply turbo settings if --turbo flag is used
+    TurboUtil.apply_turbo_settings(args)
 
     # Validate and normalize redux image strengths
     redux_image_strengths = _validate_redux_image_strengths(
@@ -38,6 +43,8 @@ def main():
         local_path=args.path,
         lora_paths=args.lora_paths,
         lora_scales=args.lora_scales,
+        lora_names=getattr(args, "lora_names", None),
+        lora_repo_id=getattr(args, "lora_repo_id", None),
     )
 
     # 2. Register callbacks

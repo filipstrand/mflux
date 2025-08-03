@@ -9,6 +9,7 @@ from mflux.error.exceptions import PromptFileReadError, StopImageGenerationExcep
 from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_prompt
+from mflux.ui.turbo_util import TurboUtil
 
 
 def main():
@@ -17,6 +18,7 @@ def main():
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
+    parser.add_turbo_arguments()
     parser.add_image_generator_arguments(supports_metadata_config=True)
     parser.add_image_to_image_arguments(required=True)
     parser.add_in_context_arguments()
@@ -26,6 +28,9 @@ def main():
     # 0. Set default guidance value if not provided by user
     if args.guidance is None:
         args.guidance = ui_defaults.GUIDANCE_SCALE
+
+    # 0.1. Apply turbo settings if --turbo flag is used
+    TurboUtil.apply_turbo_settings(args)
 
     # Set sensible VAE tiling split for in-context generation (side-by-side images)
     if args.vae_tiling:

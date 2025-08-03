@@ -268,6 +268,8 @@ mflux-generate \
 
 - **`--quantize`** or **`-q`** (optional, `int`, default: `None`): [Quantization](#%EF%B8%8F-quantization) (choose between `3`, `4`, `5`, `6`, or `8` bits).
 
+- **`--turbo`** (optional, flag): Enable [Turbo Mode](#-turbo-mode) for faster generation with fewer inference steps.
+
 - **`--lora-paths`** (optional, `[str]`, default: `None`): The paths to the [LoRA](#-LoRA) weights.
 
 - **`--lora-scales`** (optional, `[float]`, default: `None`): The scale for each respective [LoRA](#-LoRA) (will default to `1.0` if not specified and only one LoRA weight is loaded.)
@@ -1026,6 +1028,27 @@ The following table show the current supported formats:
 | ❌        | XLabs-AI  | [flux-RealismLora](https://huggingface.co/XLabs-AI/flux-RealismLora/tree/main)                           |                                     |
 
 To report additional formats, examples or other any suggestions related to LoRA format support, please see [issue #47](https://github.com/filipstrand/mflux/issues/47).
+
+#### ⚡ Turbo Mode
+
+The [FLUX.1-Turbo-Alpha](https://huggingface.co/alimama-creative/FLUX.1-Turbo-Alpha) LoRA (~700 MB) enables faster generation with significantly fewer inference steps. This distilled LoRA allows high-quality image generation in just 8 steps instead of the typical 25 steps for dev models.
+
+![turbo example](src/mflux/assets/turbo_example.jpg)
+*Original lion image credit: [Matthew Stephenson on Unsplash](https://unsplash.com/photos/a-majestic-lion-looks-onward-QT7bP7tMehU)*
+
+As can be seen in the example above, the image quality can sometimes be much improved over running the dev model with 8 steps. For other features, such as upscale, results can vary and sometimes produce an "oil painting" effect. 
+
+To enable turbo mode, simply add the `--turbo` flag:
+
+```sh
+# Standard generation (25 steps)
+mflux-generate --prompt "a beautiful landscape" --model dev --steps 24 --seed 42
+
+# Turbo mode (~3x faster, recommend 8 steps for optimal results)
+mflux-generate --prompt "a beautiful landscape" --model dev --turbo --steps 8 --seed 42
+```
+
+*Note: Turbo mode automatically downloads and applies the turbo LoRA the first time you use it. The LoRA is cached locally for subsequent runs.*
 
 ---
 

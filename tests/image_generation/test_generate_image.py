@@ -68,3 +68,31 @@ class TestImageGenerator:
             image_path="reference_dev_lora.png",
             prompt="Luxury food photograph of a burger",
         )
+
+    def test_image_generation_dev_turbo(self):
+        ImageGeneratorTestHelper.assert_matches_reference_image(
+            reference_image_path="reference_dev_turbo.png",
+            output_image_path="output_dev_turbo.png",
+            model_config=ModelConfig.dev(),
+            steps=8,
+            seed=42,
+            height=341,
+            width=768,
+            prompt="Luxury food photograph",
+            turbo=True,
+        )
+
+    def test_image_generation_dev_turbo_with_lora(self):
+        ImageGeneratorTestHelper.assert_matches_reference_image(
+            reference_image_path="reference_dev_turbo_lora.png",
+            output_image_path="output_dev_turbo_lora.png",
+            model_config=ModelConfig.dev(),
+            steps=8,
+            seed=42,
+            height=341,
+            width=768,
+            prompt="mkym this is made of wool, burger",
+            lora_paths=["FLUX-dev-lora-MiaoKa-Yarn-World.safetensors"],
+            lora_scales=[1.0],
+            turbo=True,
+        )
