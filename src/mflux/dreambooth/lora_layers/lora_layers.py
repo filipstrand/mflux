@@ -140,17 +140,29 @@ class LoRALayers:
         if module_name == "attn" and attr_name == "to_out" and len(parts) >= 6 and parts[5] == "0":
             return module.to_out[0], f"transformer.transformer_blocks.{block_idx}.attn.to_out"
 
-        # Default case
+        # Default case - get the attribute and check if it's actually a list
         original_layer = getattr(module, attr_name)
-        if len(parts) == 6:
-            original_layer = original_layer[0]
+
+        # Some layers (like attn.to_out) are legitimately lists in the transformer architecture
+        # In such cases, we need to extract the first element for LoRA creation
+        if isinstance(original_layer, list):
+            # For list layers, we use the first element for LoRA creation
+            # but we need to return the list itself for proper storage
+            return original_layer, ".".join(parts)
+
         return original_layer, ".".join(parts)
 
     @staticmethod
     def _create_lora_layer(weights: dict, base_path: str, original_layer, scale: float):
         lora_A = weights[f"{base_path}.lora_A"]
         rank = lora_A.shape[1]
-        lora_layer = LoRALinear.from_linear(linear=original_layer, r=rank, scale=scale)
+
+        # Handle the case where original_layer is a list (like attn.to_out)
+        # In such cases, use the first element for LoRA creation (same as construction code)
+        is_list = isinstance(original_layer, list)
+        layer_for_lora = original_layer[0] if is_list else original_layer
+
+        lora_layer = LoRALinear.from_linear(linear=layer_for_lora, r=rank, scale=scale)
         lora_layer.lora_A = lora_A
         lora_layer.lora_B = weights[f"{base_path}.lora_B"]
         return lora_layer
@@ -177,7 +189,10 @@ class LoRALayers:
 
         # Create and store LoRA layer
         lora_layer = LoRALayers._create_lora_layer(weights, base_path, original_layer, scale)
-        lora_layers[storage_path] = lora_layer
+
+        # Store as list if original layer was a list (matching construction logic)
+        is_list = isinstance(original_layer, list)
+        lora_layers[storage_path] = [lora_layer] if is_list else lora_layer
 
     @staticmethod
     def _handle_single_transformer_blocks(
@@ -197,7 +212,10 @@ class LoRALayers:
 
         # Create and store LoRA layer
         lora_layer = LoRALayers._create_lora_layer(weights, base_path, original_layer, scale)
-        lora_layers[base_path] = lora_layer
+
+        # Store as list if original layer was a list (matching construction logic)
+        is_list = isinstance(original_layer, list)
+        lora_layers[base_path] = [lora_layer] if is_list else lora_layer
 
     @staticmethod
     def _handle_top_level_component(
@@ -205,7 +223,10 @@ class LoRALayers:
     ):
         original_layer = getattr(transformer, component_name)
         lora_layer = LoRALayers._create_lora_layer(weights, base_path, original_layer, scale)
-        lora_layers[base_path] = lora_layer
+
+        # Store as list if original layer was a list (matching construction logic)
+        is_list = isinstance(original_layer, list)
+        lora_layers[base_path] = [lora_layer] if is_list else lora_layer
 
     @staticmethod
     def set_transformer_block(transformer_block, dictionary: dict):
