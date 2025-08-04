@@ -17,7 +17,7 @@ GUIDANCE_SCALE_KONTEXT = 2.5
 HEIGHT, WIDTH = 1024, 1024
 MAX_PIXELS_WARNING_THRESHOLD = 2048 * 2048
 IMAGE_STRENGTH = 0.4
-MODEL_CHOICES = ["dev", "schnell", "krea-dev"]
+MODEL_CHOICES = ["dev", "schnell", "krea-dev", "dev-krea"]
 MODEL_INFERENCE_STEPS = {
     "dev": 25,
     "krea-dev": 25,
