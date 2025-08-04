@@ -11,6 +11,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 <!-- TOC start (generated with https://github.com/derlin/bitdowntoc) -->
 
 - [Philosophy](#philosophy)
+- [🚀 MFLUX Advantages over Diffusers](#-mflux-advantages-over-diffusers)
 - [💿 Installation](#-installation)
 - [🖼️ Generating an image](#%EF%B8%8F-generating-an-image)
   * [📜 Full list of Command-Line Arguments](#-full-list-of-command-line-arguments)
@@ -34,6 +35,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 - [🔎 Upscale](#-upscale)
 - [🎛️ Dreambooth fine-tuning](#%EF%B8%8F-dreambooth-fine-tuning)
 - [🧠 Concept Attention](#-concept-attention)
+- [🆕 Enhanced Features](#-enhanced-features)
 - [🚧 Current limitations](#-current-limitations)
 - [💡Workflow tips](#workflow-tips)
 - [🔬 Cool research](#-cool-research)
@@ -1837,6 +1839,87 @@ This will generate the following image
 - **`--heatmap-layer-indices`**: Controls which transformer layers to analyze (default: 15-18). Different layers capture different levels of abstraction
 
 - **`--heatmap-timesteps`**: Specifies which denoising steps to include in the analysis (default: all steps). Lower timestep values focus on early generation stages where broad composition is determined.
+
+---
+
+### 🆕 Enhanced Features
+
+#### **📦 Multiple Scheduler Support**
+
+MFLUX now supports multiple sampling schedulers, providing more control over the generation process:
+
+```python
+from mflux.schedulers import FlowMatchEulerDiscreteScheduler, DDIMScheduler, EulerDiscreteScheduler
+from mflux.config.config import Config
+
+# Use DDIM for deterministic sampling
+config = Config(
+    scheduler="ddim",
+    num_inference_steps=50,
+    # ... other parameters
+)
+
+# Use Euler Discrete with Karras scheduling
+config = Config(
+    scheduler="euler_discrete", 
+    num_inference_steps=30,
+    # ... other parameters
+)
+```
+
+**Available Schedulers:**
+- **Flow Match Euler Discrete** (default): Optimized for FLUX models
+- **DDIM Scheduler**: Deterministic sampling with fewer steps
+- **Euler Discrete**: High-quality sampling with Karras scheduling support
+
+#### **🎨 IP-Adapter Integration**
+
+Native support for image-conditioned generation using IP-Adapter:
+
+```python
+from mflux.models.ip_adapter import FluxIPAdapter
+from mflux.config.config import Config
+
+# Configure IP-Adapter
+config = Config(
+    ip_adapter_image_paths=["reference_image.png"],
+    ip_adapter_scale=1.0,  # Adjust influence strength
+    # ... other parameters
+)
+
+# The model will automatically blend text and image conditioning
+```
+
+**Key Features:**
+- **🖼️ Image Conditioning**: Use reference images alongside text prompts
+- **⚖️ Adjustable Influence**: Fine-tune image conditioning strength
+- **🔄 Seamless Integration**: Works with all existing pipelines
+- **🎯 Multi-Modal**: Combines text and visual prompts naturally
+
+#### **🔧 Advanced Configuration Options**
+
+Extended configuration support for professional workflows:
+
+```python
+from mflux.config.config import Config
+
+config = Config(
+    # Scheduler selection
+    scheduler="ddim",
+    
+    # IP-Adapter configuration
+    ip_adapter_image_paths=["ref1.png", "ref2.png"],
+    ip_adapter_scale=0.8,
+    
+    # Enhanced ControlNet options
+    controlnet_strength=0.9,
+    
+    # Traditional options
+    num_inference_steps=50,
+    guidance=7.5,
+    # ...
+)
+```
 
 ---
 
