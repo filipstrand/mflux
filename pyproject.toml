@@ -3,7 +3,9 @@ requires = ["uv_build>=0.7.19,<0.8.0"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
-default-excludes = true  # __pycache__, *.pyc, and *.pyo
+default-excludes = true # __pycache__, *.pyc, and *.pyo
+module-name = "mflux"
+namespace = true
 source-exclude = [
     # documentation assets were 27MB on 2025-07-05
     "**/assets/**",
