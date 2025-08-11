@@ -4,6 +4,7 @@ import mlx.nn as nn
 
 if TYPE_CHECKING:
     from mflux.controlnet.weight_handler_controlnet import WeightHandlerControlnet
+    from mflux.weights.qwen_weight_handler import QwenImageWeightHandler
     from mflux.weights.weight_handler import WeightHandler
 
 
@@ -68,3 +69,17 @@ class QuantizationUtil:
 
         # Only quantize layers that have to_quantized method
         return hasattr(m, "to_quantized")
+
+    @staticmethod
+    def quantize_qwen_models(
+        vae: nn.Module,
+        transformer: nn.Module,
+        quantize: int,
+        weights: "QwenImageWeightHandler",
+    ) -> None:
+        q_level = weights.meta_data.quantization_level
+
+        if quantize is not None or q_level is not None:
+            bits = int(q_level) if q_level is not None else quantize
+            nn.quantize(vae, bits=bits)
+            nn.quantize(transformer, bits=bits)

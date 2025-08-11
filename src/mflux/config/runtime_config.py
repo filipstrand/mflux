@@ -20,6 +20,12 @@ class RuntimeConfig:
         self.model_config = model_config
         self.sigmas = self._create_sigmas(config, model_config)
 
+        # For Qwen models, timesteps are derived directly from sigmas (no complex scheduling needed)
+        if "qwen" in model_config.model_name.lower():
+            self.timesteps = True  # Just a flag to indicate Qwen model
+        else:
+            self.timesteps = None
+
     @property
     def height(self) -> int:
         return self.config.height
@@ -96,8 +102,27 @@ class RuntimeConfig:
 
         return None
 
+    def get_qwen_timestep(self, t: int) -> float:
+        """Get Qwen timestep value for given index.
+
+        CRITICAL: This must return the exact same sigma values as the working version
+        to maintain compatibility with the pretrained transformer weights.
+        """
+        if self.timesteps is not None:
+            # Return the direct sigma value like the working version
+            # Working version used: t_mx = mx.array(np.full((batch,), sigma, dtype=np.float32))
+            # where sigma = sigmas[i] from linear sigmas
+            return float(self.sigmas[t])
+        else:
+            raise ValueError("Timesteps not available for non-Qwen models")
+
     @staticmethod
     def _create_sigmas(config: Config, model_config: ModelConfig) -> mx.array:
+        # Qwen uses different sigma calculation (Flow Matching)
+        if "qwen" in model_config.model_name.lower():
+            return RuntimeConfig._create_qwen_sigmas(config)
+
+        # Standard Flux sigma calculation
         sigmas = RuntimeConfig._create_sigmas_values(config.num_inference_steps)
         if model_config.requires_sigma_shift:
             sigmas = RuntimeConfig._shift_sigmas(sigmas=sigmas, width=config.width, height=config.height)
@@ -120,3 +145,15 @@ class RuntimeConfig:
         shifted_sigmas = mx.exp(mu) / (mx.exp(mu) + (1 / sigmas - 1))
         shifted_sigmas[-1] = 0
         return shifted_sigmas
+
+    @staticmethod
+    def _create_qwen_sigmas(config: Config) -> mx.array:
+        """Create Flow Matching sigmas for Qwen models.
+
+        CRITICAL: This must match the exact logic from the working version:
+        sigmas = np.linspace(1.0, 1.0 / args.num_steps, args.num_steps, dtype=np.float32)
+        """
+        sigmas = np.linspace(1.0, 1.0 / config.num_inference_steps, config.num_inference_steps, dtype=np.float32)
+        # Add zero at the end like Flux for dt calculation
+        sigmas = np.append(sigmas, 0.0)
+        return mx.array(sigmas).astype(mx.float32)
