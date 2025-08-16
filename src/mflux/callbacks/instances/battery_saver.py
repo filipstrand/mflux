@@ -1,5 +1,6 @@
 import json
 import logging
+import platform
 import re
 import subprocess
 
@@ -14,6 +15,9 @@ logger = logging.getLogger(__name__)
 
 def _get_machine_model() -> str:
     """Get the Mac machine model using system_profiler."""
+    if platform.uname().system != "Darwin":
+        # Linux/CUDA mode for MLX - lets not worry about this for now
+        return "Unknown"
     try:
         result = subprocess.run(
             ["system_profiler", "-json", "SPHardwareDataType"], capture_output=True, text=True, check=True
