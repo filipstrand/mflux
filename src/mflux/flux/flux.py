@@ -1,3 +1,4 @@
+import os
 import mlx.core as mx
 from mlx import nn
 from tqdm import tqdm
@@ -111,7 +112,11 @@ class Flux1(nn.Module):
                 )
 
                 # (Optional) Evaluate to enable progress tracking
-                mx.eval(latents)
+                if "CPU_MODE" in os.environ:
+                    mx.eval(latents.astype(mx.float32))
+                else:
+                    mx.eval(latents)
+
 
             except KeyboardInterrupt:  # noqa: PERF203
                 Callbacks.interruption(
