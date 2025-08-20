@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import inspect
+import os
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import numpy as np
@@ -582,6 +583,17 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
             num_images_per_prompt=num_images_per_prompt,
             max_sequence_length=max_sequence_length,
         )
+        # DEBUG EXPORT: save text encodings prior to transformer usage
+        try:
+            os.makedirs("debug_tensors", exist_ok=True)
+            torch.save(prompt_embeds.detach().cpu(), os.path.join("debug_tensors", "prompt_embeds.pt"))
+            if prompt_embeds_mask is not None:
+                torch.save(
+                    prompt_embeds_mask.detach().cpu(),
+                    os.path.join("debug_tensors", "prompt_embeds_mask.pt"),
+                )
+        except Exception:
+            pass
         if do_true_cfg:
             negative_prompt_embeds, negative_prompt_embeds_mask = self.encode_prompt(
                 prompt=negative_prompt,
@@ -591,6 +603,20 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
                 num_images_per_prompt=num_images_per_prompt,
                 max_sequence_length=max_sequence_length,
             )
+            # DEBUG EXPORT: save negative text encodings
+            try:
+                os.makedirs("debug_tensors", exist_ok=True)
+                torch.save(
+                    negative_prompt_embeds.detach().cpu(),
+                    os.path.join("debug_tensors", "negative_prompt_embeds.pt"),
+                )
+                if negative_prompt_embeds_mask is not None:
+                    torch.save(
+                        negative_prompt_embeds_mask.detach().cpu(),
+                        os.path.join("debug_tensors", "negative_prompt_embeds_mask.pt"),
+                    )
+            except Exception:
+                pass
 
         # 4. Prepare latent variables
         num_channels_latents = self.transformer.config.in_channels // 4
@@ -604,6 +630,12 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
             generator,
             latents,
         )
+        # DEBUG EXPORT: save initial packed latents prior to transformer usage
+        try:
+            os.makedirs("debug_tensors", exist_ok=True)
+            torch.save(latents.detach().cpu(), os.path.join("debug_tensors", "initial_latents.pt"))
+        except Exception:
+            pass
         img_shapes = [(1, height // self.vae_scale_factor // 2, width // self.vae_scale_factor // 2)] * batch_size
 
         # 5. Prepare timesteps
@@ -616,6 +648,14 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
             self.scheduler.config.get("base_shift", 0.5),
             self.scheduler.config.get("max_shift", 1.15),
         )
+        # DEBUG PRINT: show sigmas and mu calculation
+        try:
+            print(f"🔍 TRACE: Initial setup - image_seq_len={image_seq_len}, mu={mu:.6f}")
+            print(f"🔍 TRACE: sigmas = {np.array2string(sigmas, precision=6, floatmode='fixed')}")
+            lv_init = latents[0, 0, :8].detach().float().cpu().numpy()
+            print(f"🔍 TRACE: initial_latents[0,0,:8] = {np.array2string(lv_init, precision=6, floatmode='fixed')}")
+        except Exception:
+            pass
         timesteps, num_inference_steps = retrieve_timesteps(
             self.scheduler,
             num_inference_steps,
@@ -623,6 +663,25 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
             sigmas=sigmas,
             mu=mu,
         )
+        # DEBUG EXPORT: save timesteps and scheduler sigmas
+        try:
+            os.makedirs("debug_tensors", exist_ok=True)
+            torch.save(timesteps.detach().cpu(), os.path.join("debug_tensors", "timesteps.pt"))
+
+            # CRITICAL: Save the actual scheduler sigmas used for dt calculation
+            if hasattr(self.scheduler, "sigmas"):
+                scheduler_sigmas = self.scheduler.sigmas.detach().cpu()
+                torch.save(scheduler_sigmas, os.path.join("debug_tensors", "scheduler_sigmas.pt"))
+                print(
+                    f"🔍 TRACE: scheduler.sigmas = {np.array2string(scheduler_sigmas.numpy(), precision=6, floatmode='fixed')}"
+                )
+
+            # DEBUG PRINT: show final timesteps
+            ts_vals = timesteps.detach().cpu().numpy()
+            print(f"🔍 TRACE: timesteps = {np.array2string(ts_vals, precision=1, floatmode='fixed')}")
+            print(f"🔍 TRACE: timesteps/1000 = {np.array2string(ts_vals / 1000, precision=6, floatmode='fixed')}")
+        except Exception:
+            pass
         num_warmup_steps = max(len(timesteps) - num_inference_steps * self.scheduler.order, 0)
         self._num_timesteps = len(timesteps)
 
@@ -643,6 +702,7 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
 
         # 6. Denoising loop
         self.scheduler.set_begin_index(0)
+        step_idx = 0  # Initialize step counter for debugging
         with self.progress_bar(total=num_inference_steps) as progress_bar:
             for i, t in enumerate(timesteps):
                 if self.interrupt:
@@ -651,6 +711,20 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
                 self._current_timestep = t
                 # broadcast to batch dimension in a way that's compatible with ONNX/Core ML
                 timestep = t.expand(latents.shape[0]).to(latents.dtype)
+                # DEBUG PRINTS: show transformer call inputs
+                try:
+                    print(
+                        f"🔍 TRACE: Transformer call - latents {tuple(latents.shape)}, prompt_embeds {tuple(prompt_embeds.shape)}, "
+                        f"mask {tuple(prompt_embeds_mask.shape) if prompt_embeds_mask is not None else None}, timestep {float((timestep / 1000)[0].item()):.6f}"
+                    )
+                    lv = latents[0, 0, :8].detach().float().cpu().numpy()
+                    tv = prompt_embeds[0, 0, :8].detach().float().cpu().numpy()
+                    print(
+                        f"🔍 TRACE: latents[0,0,:8] = {np.array2string(lv, precision=6, floatmode='fixed')}\n"
+                        f"🔍 TRACE: prompt_embeds[0,0,:8] = {np.array2string(tv, precision=6, floatmode='fixed')}"
+                    )
+                except Exception:
+                    pass
                 with self.transformer.cache_context("cond"):
                     noise_pred = self.transformer(
                         hidden_states=latents,
@@ -663,6 +737,13 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
                         attention_kwargs=self.attention_kwargs,
                         return_dict=False,
                     )[0]
+                try:
+                    nv = noise_pred[0, 0, :8].detach().float().cpu().numpy()
+                    print(
+                        f"🔍 TRACE: noise_pred {tuple(noise_pred.shape)}, noise_pred[0,0,:8] = {np.array2string(nv, precision=6, floatmode='fixed')}"
+                    )
+                except Exception:
+                    pass
 
                 if do_true_cfg:
                     with self.transformer.cache_context("uncond"):
@@ -677,15 +758,85 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
                             attention_kwargs=self.attention_kwargs,
                             return_dict=False,
                         )[0]
+                    try:
+                        nnv = neg_noise_pred[0, 0, :8].detach().float().cpu().numpy()
+                        print(
+                            f"🔍 TRACE: neg_noise_pred[0,0,:8] = {np.array2string(nnv, precision=6, floatmode='fixed')}"
+                        )
+                    except Exception:
+                        pass
+
                     comb_pred = neg_noise_pred + true_cfg_scale * (noise_pred - neg_noise_pred)
+                    try:
+                        cv = comb_pred[0, 0, :8].detach().float().cpu().numpy()
+                        print(f"🔍 TRACE: comb_pred[0,0,:8] = {np.array2string(cv, precision=6, floatmode='fixed')}")
+                        print(f"🔍 TRACE: true_cfg_scale = {true_cfg_scale}")
+                    except Exception:
+                        pass
 
                     cond_norm = torch.norm(noise_pred, dim=-1, keepdim=True)
                     noise_norm = torch.norm(comb_pred, dim=-1, keepdim=True)
                     noise_pred = comb_pred * (cond_norm / noise_norm)
+                    try:
+                        nv_final = noise_pred[0, 0, :8].detach().float().cpu().numpy()
+                        cn = float(cond_norm[0, 0].item())
+                        nn = float(noise_norm[0, 0].item())
+                        print(
+                            f"🔍 TRACE: CFG normalized noise[0,0,:8] = {np.array2string(nv_final, precision=6, floatmode='fixed')}"
+                        )
+                        print(f"🔍 TRACE: cond_norm={cn:.6f}, noise_norm={nn:.6f}, ratio={cn / nn:.6f}")
+                    except Exception:
+                        pass
 
                 # compute the previous noisy sample x_t -> x_t-1
                 latents_dtype = latents.dtype
+                try:
+                    old_latents = latents[0, 0, :8].detach().float().cpu().numpy()
+                    print(
+                        f"🔍 TRACE: Before scheduler step - latents[0,0,:8] = {np.array2string(old_latents, precision=6, floatmode='fixed')}"
+                    )
+                    print(
+                        f"🔍 TRACE: Scheduler step - t={float(t.item())}, timestep/1000={float((t / 1000).item()):.6f}"
+                    )
+                except Exception:
+                    pass
+                # Debug scheduler internals before step
+                try:
+                    step_idx = self.scheduler.step_index if self.scheduler.step_index is not None else 0
+                    if hasattr(self.scheduler, "sigmas") and step_idx < len(self.scheduler.sigmas):
+                        current_sigma = float(self.scheduler.sigmas[step_idx].item())
+                        next_sigma = (
+                            float(self.scheduler.sigmas[step_idx + 1].item())
+                            if step_idx + 1 < len(self.scheduler.sigmas)
+                            else 0.0
+                        )
+                        dt_ref = next_sigma - current_sigma
+                        print(
+                            f"🔍 TRACE: Reference scheduler - step_idx={step_idx}, current_sigma={current_sigma:.6f}, next_sigma={next_sigma:.6f}, dt={dt_ref:.6f}"
+                        )
+                except Exception as e:
+                    print(f"🔍 TRACE: Scheduler debug error: {e}")
+
                 latents = self.scheduler.step(noise_pred, t, latents, return_dict=False)[0]
+                try:
+                    new_latents = latents[0, 0, :8].detach().float().cpu().numpy()
+                    print(
+                        f"🔍 TRACE: After scheduler step - latents[0,0,:8] = {np.array2string(new_latents, precision=6, floatmode='fixed')}"
+                    )
+                    # Show the change
+                    delta = new_latents - old_latents
+                    print(f"🔍 TRACE: Latent delta[0,0,:8] = {np.array2string(delta, precision=6, floatmode='fixed')}")
+                except Exception:
+                    pass
+
+                # Save reference latents after each step for debugging
+                try:
+                    os.makedirs("debug_tensors", exist_ok=True)
+                    torch.save(latents.detach().cpu(), f"debug_tensors/ref_latents_step_{step_idx}.pt")
+                    print(f"🔍 Saved reference latents after step {step_idx}: {latents.shape}")
+                    step_idx += 1
+                except Exception as e:
+                    print(f"⚠️  Could not save reference step latents: {e}")
 
                 if latents.dtype != latents_dtype:
                     if torch.backends.mps.is_available():
@@ -723,6 +874,12 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
                 latents.device, latents.dtype
             )
             latents = latents / latents_std + latents_mean
+            # DEBUG EXPORT: save pre-VAE latents just before decode
+            try:
+                os.makedirs("debug_tensors", exist_ok=True)
+                torch.save(latents.detach().cpu(), os.path.join("debug_tensors", "pre_vae_latents.pt"))
+            except Exception:
+                pass
             image = self.vae.decode(latents, return_dict=False)[0][:, :, 0]
             image = self.image_processor.postprocess(image, output_type=output_type)
 

@@ -17,6 +17,7 @@ import functools
 import math
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -250,6 +251,7 @@ class QwenDoubleStreamAttnProcessor2_0:
     """
 
     _attention_backend = None
+    _debug_print_calls = 0
 
     def __init__(self):
         if not hasattr(F, "scaled_dot_product_attention"):
@@ -300,6 +302,22 @@ class QwenDoubleStreamAttnProcessor2_0:
         if attn.norm_added_k is not None:
             txt_key = attn.norm_added_k(txt_key)
 
+        # Debug prints pre-RoPE (limit total prints)
+        if QwenDoubleStreamAttnProcessor2_0._debug_print_calls < 6:
+            try:
+                iq = img_query[0, 0, 0, :8].detach().float().cpu().numpy()
+                ik = img_key[0, 0, 0, :8].detach().float().cpu().numpy()
+                tq = txt_query[0, 0, 0, :8].detach().float().cpu().numpy()
+                tk = txt_key[0, 0, 0, :8].detach().float().cpu().numpy()
+                print(
+                    f"🔎 PT attn pre-rope img_q[:8]={np.array2string(iq, precision=6, floatmode='fixed')}, img_k[:8]={np.array2string(ik, precision=6, floatmode='fixed')}"
+                )
+                print(
+                    f"🔎 PT attn pre-rope txt_q[:8]={np.array2string(tq, precision=6, floatmode='fixed')}, txt_k[:8]={np.array2string(tk, precision=6, floatmode='fixed')}"
+                )
+            except Exception:
+                pass
+
         # Apply RoPE
         if image_rotary_emb is not None:
             img_freqs, txt_freqs = image_rotary_emb
@@ -307,6 +325,21 @@ class QwenDoubleStreamAttnProcessor2_0:
             img_key = apply_rotary_emb_qwen(img_key, img_freqs, use_real=False)
             txt_query = apply_rotary_emb_qwen(txt_query, txt_freqs, use_real=False)
             txt_key = apply_rotary_emb_qwen(txt_key, txt_freqs, use_real=False)
+
+        if QwenDoubleStreamAttnProcessor2_0._debug_print_calls < 6:
+            try:
+                iq = img_query[0, 0, 0, :8].detach().float().cpu().numpy()
+                ik = img_key[0, 0, 0, :8].detach().float().cpu().numpy()
+                tq = txt_query[0, 0, 0, :8].detach().float().cpu().numpy()
+                tk = txt_key[0, 0, 0, :8].detach().float().cpu().numpy()
+                print(
+                    f"🔎 PT attn post-rope img_q[:8]={np.array2string(iq, precision=6, floatmode='fixed')}, img_k[:8]={np.array2string(ik, precision=6, floatmode='fixed')}"
+                )
+                print(
+                    f"🔎 PT attn post-rope txt_q[:8]={np.array2string(tq, precision=6, floatmode='fixed')}, txt_k[:8]={np.array2string(tk, precision=6, floatmode='fixed')}"
+                )
+            except Exception:
+                pass
 
         # Concatenate for joint attention
         # Order: [text, image]
@@ -324,6 +357,17 @@ class QwenDoubleStreamAttnProcessor2_0:
             is_causal=False,
             backend=self._attention_backend,
         )
+
+        if QwenDoubleStreamAttnProcessor2_0._debug_print_calls < 6:
+            try:
+                j0 = joint_hidden_states[0, 0, :8].detach().float().cpu().numpy()
+                j1 = joint_hidden_states[0, -1, :8].detach().float().cpu().numpy()
+                print(
+                    f"🔎 PT attn joint_hs[0][:8]={np.array2string(j0, precision=6, floatmode='fixed')} ... joint_hs[-1][:8]={np.array2string(j1, precision=6, floatmode='fixed')}"
+                )
+            except Exception:
+                pass
+            QwenDoubleStreamAttnProcessor2_0._debug_print_calls += 1
 
         # Reshape back
         joint_hidden_states = joint_hidden_states.flatten(2, 3)
@@ -583,6 +627,21 @@ class QwenImageTransformer2DModel(ModelMixin, ConfigMixin, PeftAdapterMixin, Fro
                     "Passing `scale` via `joint_attention_kwargs` when not using the PEFT backend is ineffective."
                 )
 
+        # TRACE: inputs before projections
+        try:
+            hv = hidden_states[0, 0, :8].detach().float().cpu().numpy()
+            ev = encoder_hidden_states[0, 0, :8].detach().float().cpu().numpy()
+            t0 = float(timestep[0].item()) if timestep is not None else -1.0
+            print(
+                f"🔧 QwenTransformer.in: hidden {tuple(hidden_states.shape)}, encoder {tuple(encoder_hidden_states.shape)}, t={t0:.6f}"
+            )
+            print(
+                f"🔧 QwenTransformer.in vals: hidden[0,0,:8]={np.array2string(hv, precision=6, floatmode='fixed')}, "
+                f"enc[0,0,:8]={np.array2string(ev, precision=6, floatmode='fixed')}"
+            )
+        except Exception:
+            pass
+
         hidden_states = self.img_in(hidden_states)
 
         timestep = timestep.to(hidden_states.dtype)
@@ -620,10 +679,27 @@ class QwenImageTransformer2DModel(ModelMixin, ConfigMixin, PeftAdapterMixin, Fro
                     image_rotary_emb=image_rotary_emb,
                     joint_attention_kwargs=attention_kwargs,
                 )
+            if index_block in (0, 1, len(self.transformer_blocks) - 1):
+                try:
+                    hv2 = hidden_states[0, 0, :8].detach().float().cpu().numpy()
+                    ev2 = encoder_hidden_states[0, 0, :8].detach().float().cpu().numpy()
+                    print(
+                        f"🔧 QwenTransformer.block[{index_block}] out: hidden[0,0,:8]={np.array2string(hv2, precision=6, floatmode='fixed')}, "
+                        f"enc[0,0,:8]={np.array2string(ev2, precision=6, floatmode='fixed')}"
+                    )
+                except Exception:
+                    pass
 
         # Use only the image part (hidden_states) from the dual-stream blocks
         hidden_states = self.norm_out(hidden_states, temb)
         output = self.proj_out(hidden_states)
+        try:
+            ov = output[0, 0, :8].detach().float().cpu().numpy()
+            print(
+                f"🔧 QwenTransformer.out: {tuple(output.shape)}, out[0,0,:8]={np.array2string(ov, precision=6, floatmode='fixed')}"
+            )
+        except Exception:
+            pass
 
         if USE_PEFT_BACKEND:
             # remove `lora_scale` from each PEFT layer

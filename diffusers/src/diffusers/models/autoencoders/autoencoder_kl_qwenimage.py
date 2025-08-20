@@ -75,7 +75,16 @@ class QwenImageCausalConv3d(nn.Conv3d):
         self._padding = (self.padding[2], self.padding[2], self.padding[1], self.padding[1], 2 * self.padding[0], 0)
         self.padding = (0, 0, 0)
 
+    print("🔍 TRACE: QwenImageCausalConv3d.forward called")
+    print("🔍 TRACE: QwenImageRMS_norm.forward called")
+    print("🔍 TRACE: QwenImageResBlock3d.forward called")
+    print("🔍 TRACE: QwenImageUpBlock.forward called")
+    print("🔍 TRACE: QwenImageMidBlock.forward called")
+    print("🔍 TRACE: QwenImageDecoder3d.forward called")
+    print("🔍 TRACE: AutoencoderKLQwenImage.forward called")
+
     def forward(self, x, cache_x=None):
+        print(f"🔍 TRACE: QwenImageCausalConv3d.forward - input shape: {x.shape}, cache_x: {cache_x is not None}")
         padding = list(self._padding)
         if cache_x is not None and self._padding[4] > 0:
             cache_x = cache_x.to(x.device)
@@ -168,6 +177,9 @@ class QwenImageResample(nn.Module):
             self.resample = nn.Identity()
 
     def forward(self, x, feat_cache=None, feat_idx=[0]):
+        print(
+            f"🔍 TRACE: QwenImageDecoder3d.forward - input shape: {x.shape}, feat_cache: {feat_cache is not None}, feat_idx: {feat_idx}"
+        )
         b, c, t, h, w = x.size()
         if self.mode == "upsample3d":
             if feat_cache is not None:
@@ -245,6 +257,9 @@ class QwenImageResidualBlock(nn.Module):
         self.conv_shortcut = QwenImageCausalConv3d(in_dim, out_dim, 1) if in_dim != out_dim else nn.Identity()
 
     def forward(self, x, feat_cache=None, feat_idx=[0]):
+        print(
+            f"🔍 TRACE: QwenImageDecoder3d.forward - input shape: {x.shape}, feat_cache: {feat_cache is not None}, feat_idx: {feat_idx}"
+        )
         # Apply shortcut connection
         h = self.conv_shortcut(x)
 
@@ -294,6 +309,14 @@ class QwenImageAttentionBlock(nn.Module):
     Args:
         dim (int): The number of channels in the input tensor.
     """
+
+    print("🔍 TRACE: QwenImageCausalConv3d.__init__ called")
+    print("🔍 TRACE: QwenImageRMS_norm.__init__ called")
+    print("🔍 TRACE: QwenImageResBlock3d.__init__ called")
+    print("🔍 TRACE: QwenImageUpBlock.__init__ called")
+    print("🔍 TRACE: QwenImageMidBlock.__init__ called")
+    print("🔍 TRACE: QwenImageDecoder3d.__init__ called")
+    print("🔍 TRACE: AutoencoderKLQwenImage.__init__ called")
 
     def __init__(self, dim):
         super().__init__()
@@ -358,6 +381,9 @@ class QwenImageMidBlock(nn.Module):
         self.gradient_checkpointing = False
 
     def forward(self, x, feat_cache=None, feat_idx=[0]):
+        print(
+            f"🔍 TRACE: QwenImageDecoder3d.forward - input shape: {x.shape}, feat_cache: {feat_cache is not None}, feat_idx: {feat_idx}"
+        )
         # First residual block
         x = self.resnets[0](x, feat_cache, feat_idx)
 
@@ -439,6 +465,9 @@ class QwenImageEncoder3d(nn.Module):
         self.gradient_checkpointing = False
 
     def forward(self, x, feat_cache=None, feat_idx=[0]):
+        print(
+            f"🔍 TRACE: QwenImageDecoder3d.forward - input shape: {x.shape}, feat_cache: {feat_cache is not None}, feat_idx: {feat_idx}"
+        )
         if feat_cache is not None:
             idx = feat_idx[0]
             cache_x = x[:, :, -CACHE_T:, :, :].clone()
@@ -522,6 +551,9 @@ class QwenImageUpBlock(nn.Module):
         self.gradient_checkpointing = False
 
     def forward(self, x, feat_cache=None, feat_idx=[0]):
+        print(
+            f"🔍 TRACE: QwenImageDecoder3d.forward - input shape: {x.shape}, feat_cache: {feat_cache is not None}, feat_idx: {feat_idx}"
+        )
         """
         Forward pass through the upsampling block.
 
@@ -627,6 +659,9 @@ class QwenImageDecoder3d(nn.Module):
         self.gradient_checkpointing = False
 
     def forward(self, x, feat_cache=None, feat_idx=[0]):
+        print(
+            f"🔍 TRACE: QwenImageDecoder3d.forward - input shape: {x.shape}, feat_cache: {feat_cache is not None}, feat_idx: {feat_idx}"
+        )
         ## conv1
         if feat_cache is not None:
             idx = feat_idx[0]
