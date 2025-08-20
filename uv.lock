@@ -729,7 +729,6 @@ dependencies = [
     { name = "sentencepiece", marker = "python_full_version < '3.13'" },
     { name = "tokenizers", marker = "python_full_version >= '3.13'" },
     { name = "toml" },
-    { name = "torch" },
     { name = "tqdm" },
     { name = "transformers" },
     { name = "twine" },
@@ -740,6 +739,9 @@ dev = [
     { name = "mlx" },
     { name = "pytest" },
     { name = "pytest-timer" },
+]
+torch = [
+    { name = "torch" },
 ]
 
 [package.metadata]
@@ -760,13 +762,13 @@ requires-dist = [
     { name = "sentencepiece", marker = "python_full_version < '3.13'", specifier = ">=0.2.0,<1.0" },
     { name = "tokenizers", marker = "python_full_version >= '3.13'", specifier = ">=0.20.3" },
     { name = "toml", specifier = ">=0.10.2,<1.0" },
-    { name = "torch", marker = "python_full_version < '3.13'", specifier = ">=2.3.1,<3.0" },
-    { name = "torch", marker = "python_full_version >= '3.13'", specifier = ">=2.6.0.dev20241106" },
+    { name = "torch", marker = "python_full_version >= '3.13' and extra == 'torch'", specifier = ">=2.6.0.dev20241106" },
+    { name = "torch", marker = "python_full_version < '3.13' and extra == 'torch'", specifier = ">=2.3.1,<3.0" },
     { name = "tqdm", specifier = ">=4.66.5,<5.0" },
     { name = "transformers", specifier = ">=4.44.0,<5.0" },
     { name = "twine", specifier = ">=6.1.0,<7.0" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["dev", "torch"]
 
 [[package]]
 name = "mlx"

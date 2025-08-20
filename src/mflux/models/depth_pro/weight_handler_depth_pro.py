@@ -7,7 +7,7 @@ import mlx.core as mx
 try:
     import torch
 except ImportError:
-    print("torch not found. Please install with `pip install mflux[torch]`")
+    print("Extra dependency:torch required this workflow. Please install with `pip install mflux[torch]`")
 from mlx.utils import tree_unflatten
 
 from mflux.ui.defaults import MFLUX_CACHE_DIR
