@@ -3,7 +3,11 @@ import urllib.error
 import urllib.request
 
 import mlx.core as mx
-import torch
+
+try:
+    import torch
+except ImportError:
+    print("torch not found. Please install with `pip install mflux[torch]`")
 from mlx.utils import tree_unflatten
 
 from mflux.ui.defaults import MFLUX_CACHE_DIR

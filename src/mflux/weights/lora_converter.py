@@ -1,7 +1,11 @@
 import logging
 
 import mlx.core as mx
-import torch
+
+try:
+    import torch
+except ImportError:
+    print("torch not found. Please install with `pip install mflux[torch]`")
 from mlx.utils import tree_unflatten
 from safetensors import safe_open
 

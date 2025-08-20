@@ -40,9 +40,6 @@ dependencies = [
     "sentencepiece>=0.2.0,<1.0; python_version<'3.13'",
     "tokenizers>=0.20.3; python_version>='3.13'", # transformers -> tokenizers
     "toml>=0.10.2,<1.0",
-    "torch>=2.3.1,<3.0; python_version<'3.13'",
-    # torch dev builds: pip install --pre --index-url https://download.pytorch.org/whl/nightly
-    "torch>=2.6.0.dev20241106; python_version>='3.13'",
     "tqdm>=4.66.5,<5.0",
     "transformers>=4.44.0,<5.0",
     "twine>=6.1.0,<7.0",
@@ -62,6 +59,11 @@ dev = [
     "pytest>=8.3.0,<9.0",
     "pytest-timer>=1.0,<2.0",
     "mlx==0.27.1",  # Used ONLY during test runs to ensure deterministic test results
+]
+torch = [
+    "torch>=2.3.1,<3.0; python_version<'3.13'",
+    # torch dev builds: pip install --pre --index-url https://download.pytorch.org/whl/nightly
+    "torch>=2.6.0.dev20241106; python_version>='3.13'",
 ]
 
 [project.urls]
