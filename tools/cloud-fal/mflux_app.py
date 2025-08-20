@@ -29,18 +29,19 @@ FROM python@sha256:0dab67c838514eef83e6c9d2c0e53e960fc94237635e8996d08caeec98937
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1
 
-RUN python -m pip install -U pip && \
-    python -m pip install 'mlx[cpu]==0.28.0' 'git+https://github.com/anthonywu/mflux.git@mlx-on-clouds' && \
-    python -m pip list && python -V && \
-    python -c 'import mlx.core as mx; print(mx.default_device()); print(mx.ones([2,1]) * 2)'
-
 ENV HF_HUB_ENABLE_HF_TRANSFER=1
 ENV HF_HUB_CACHE=/data/hf_cache
 ENV HF_HUB_ENABLE_HF_TRANSFER=1
 ENV HF_XET_HIGH_PERFORMANCE=1
 ENV HF_XET_CHUNK_CACHE_SIZE_BYTES=1000000000000
 ENV HF_XET_NUM_CONCURRENT_RANGE_GETS=32
+
 ENV CPU_MODE=1
+
+RUN python -m pip install -U pip && \
+    python -m pip install 'mlx[cpu]==0.28.0' hf_transfer 'git+https://github.com/anthonywu/mflux.git@mlx-on-clouds' && \
+    python -m pip list && python -V && \
+    python -c 'import mlx.core as mx; print(mx.default_device()); print(mx.ones([2,1]) * 2)'
 """
 
 
