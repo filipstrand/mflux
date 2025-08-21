@@ -1,4 +1,5 @@
 import math
+import time
 
 import mlx.core as mx
 import numpy as np
@@ -93,6 +94,8 @@ class QwenImage(nn.Module):
         initial_latents: mx.array | None = None,
         reference_timesteps: mx.array | None = None,
     ) -> GeneratedImage:
+        print(f"\n🚀 Starting image generation...")
+        total_start = time.time()
         runtime_config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(runtime_config.init_time_step, runtime_config.num_inference_steps))
 
@@ -132,6 +135,8 @@ class QwenImage(nn.Module):
             config=runtime_config,
         )
 
+        print(f"🔄 Running {runtime_config.num_inference_steps} denoising steps...")
+        denoising_start = time.time()
         for t in time_steps:
             try:
                 # 3. Predict the noise
@@ -203,7 +208,12 @@ class QwenImage(nn.Module):
             latents=latents,
             config=runtime_config,
         )
+        
+        denoising_time = time.time() - denoising_start
+        print(f"✅ Denoising completed in {denoising_time:.2f} seconds")
 
+        print(f"🎨 Decoding latents to image...")
+        decode_start = time.time()
         unpacked_latents = ArrayUtil.unpack_latents(
             latents=latents, height=runtime_config.height, width=runtime_config.width
         )
@@ -221,6 +231,14 @@ class QwenImage(nn.Module):
         if len(decoded.shape) == 5:
             decoded = decoded[:, :, 0, :, :]
 
+        decode_time = time.time() - decode_start
+        print(f"✅ Decoding completed in {decode_time:.2f} seconds")
+        
+        total_time = time.time() - total_start
+        print(f"\n🎯 Total generation time: {total_time:.2f} seconds")
+        print(f"  - Denoising: {denoising_time:.2f}s ({denoising_time/total_time*100:.1f}%)")
+        print(f"  - Decoding: {decode_time:.2f}s ({decode_time/total_time*100:.1f}%)")
+        
         return ImageUtil.to_image(
             decoded_latents=decoded,
             config=runtime_config,
