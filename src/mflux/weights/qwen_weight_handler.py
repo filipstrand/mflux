@@ -486,14 +486,14 @@ class QwenImageWeightHandler:
         """
         import mlx.core as mx
 
-        # Merge all shards
-        shard_files = sorted(transformer_path.glob("*.safetensors"))
+        # Merge all shards (excluding hidden/metadata files)
+        shard_files = sorted([f for f in transformer_path.glob("*.safetensors") if not f.name.startswith("._")])
         if not shard_files:
             raise FileNotFoundError(f"No transformer safetensors found in {transformer_path}")
 
         flat = {}
         for shard in shard_files:
-            data = mx.load(str(shard), return_metadata=True)[0]
+            data, metadata = mx.load(str(shard), return_metadata=True)
             flat.update(dict(data.items()))
 
         # Build structured dict
