@@ -1,5 +1,6 @@
 from mflux.config.model_config import ModelConfig
-from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
+from mflux.models.qwen.model.qwen_text_encoder_alternative.qwen_text_encoder_alternative import \
+    QwenTextEncoderAlternative
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer
 from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
 from mflux.models.qwen.tokenizer.qwen_tokenizer_handler import QwenTokenizerHandler
@@ -35,7 +36,7 @@ class QwenImageInitializer:
         # 3. Initialize all models
         qwen_model.vae = QwenVAE()
         qwen_model.transformer = QwenTransformer()
-        qwen_model.text_encoder = QwenTextEncoder()
+        qwen_model.text_encoder = QwenTextEncoderAlternative(model_path=local_path)
 
         # 4. Apply weights and quantize the models
         qwen_model.bits = QwenWeightUtil.set_weights_and_quantize(
