@@ -1,0 +1,12 @@
+build:
+  cog_runtime: true
+  gpu: false
+  system_packages:
+    - "git"
+  python_version: "3.12"
+  python_requirements: requirements.txt
+  run:
+    - curl -o /usr/local/bin/pget -L "https://github.com/replicate/pget/releases/latest/download/pget_$(uname -s)_$(uname -m)" && chmod +x /usr/local/bin/pget
+predict: "generate.py:TextToImage"
+environment:
+  - CPU_MODE=1
