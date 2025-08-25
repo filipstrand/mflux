@@ -1,3 +1,4 @@
+image: r8.im/anthonywu/mflux-linux-cpu:test
 build:
   cog_runtime: true
   gpu: false

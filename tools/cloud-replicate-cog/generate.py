@@ -8,7 +8,7 @@ from cog import BasePredictor, Input, Path
 from mflux.config.config import Config
 from mflux.flux.flux import Flux1
 
-MODEL_CACHE = "FLUX.1-schnell"
+MODEL_CACHE = "/data/FLUX.1-schnell"
 MODEL_URL = "https://weights.replicate.delivery/default/black-forest-labs/FLUX.1-schnell/files.tar"
 
 ASPECT_RATIOS = {
@@ -62,9 +62,9 @@ class TextToImage(BasePredictor):
     def setup(self) -> None:
         """Load the model into memory to make running multiple predictions efficient"""
         start = time.time()
-        print("Loading Flux model weights")
-        if not os.path.exists(MODEL_CACHE):
-            download_weights(MODEL_URL, ".")
+        print(f"Loading Flux model weights to {MODEL_CACHE}")
+        if not Path(MODEL_CACHE).exists():
+            download_weights(MODEL_URL, MODEL_CACHE)
         model_path = find_transformers_parent(MODEL_CACHE)
         print(f"model path found at: {model_path}")
         self.flux = Flux1(path=model_path, model="schnell")
