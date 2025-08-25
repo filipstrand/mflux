@@ -18,7 +18,8 @@ def main():
     local_path = None
 
     # Generation settings
-    prompt = "Luxury food photograph"
+    prompt = '''A coffee shop entrance features a chalkboard sign reading "Qwen Coffee 😊 $2 per cup," with a neon light beside it displaying "通义千问". Next to it hangs a poster showing a beautiful Chinese woman, and beneath the poster is written "π≈3.1415926-53589793-23846264-33832795-02384197". Ultra HD, 4K, cinematic composition'''
+    negative_prompt = ""
     height = 512
     width = 512
     steps = 20
@@ -58,6 +59,14 @@ def main():
         return_tensors="mlx"
     )
     
+    inputs = tokenizer(
+        formatted_prompt,
+        max_length=tokenizer_max_length + template_drop_idx,
+        padding=True,
+        truncation=True,
+        return_tensors="mlx"
+    )
+
     input_ids = inputs["input_ids"]
     attention_mask = inputs["attention_mask"]
     
@@ -69,8 +78,24 @@ def main():
 
     # prompt_embeds = torch_to_mx(load_pt_tensor("debug_tensors/prompt_embeds.pt"), dtype=mx.bfloat16)
     # prompt_mask = torch_to_mx(load_pt_tensor("debug_tensors/prompt_embeds_mask.pt"), dtype=mx.float32)
-    negative_prompt_embeds = torch_to_mx(load_pt_tensor("debug_tensors/negative_prompt_embeds.pt"), dtype=mx.bfloat16)
-    negative_prompt_mask = torch_to_mx(load_pt_tensor("debug_tensors/negative_prompt_embeds_mask.pt"), dtype=mx.float32)
+    # negative_prompt_embeds = torch_to_mx(load_pt_tensor("debug_tensors/negative_prompt_embeds.pt"), dtype=mx.bfloat16)
+    # negative_prompt_mask = torch_to_mx(load_pt_tensor("debug_tensors/negative_prompt_embeds_mask.pt"), dtype=mx.float32)
+    formatted_negative_prompt = template.format(negative_prompt)
+
+    negtaive_inputs = tokenizer(
+        formatted_negative_prompt,
+        max_length=tokenizer_max_length + template_drop_idx,
+        padding=True,
+        truncation=True,
+        return_tensors="mlx"
+    )
+    negative_input_ids = inputs["input_ids"]
+    negative_attention_mask = negtaive_inputs["attention_mask"]
+    
+    negtative_hidden_status = qwen_text_encoder(negative_input_ids)
+
+    negative_prompt_embeds, negative_prompt_mask = process_text_embeddings_mlx(hidden_states=negtative_hidden_status, attention_mask= negative_attention_mask, drop_idx= template_drop_idx, dtype= mx.bfloat16)
+
     initial_latents = None
 
     # 1. Load the model
@@ -89,9 +114,9 @@ def main():
                 seed=seed,
                 prompt=prompt,
                 prompt_embeds=prompt_embeds,
-                negative_prompt_embeds=None,
+                negative_prompt_embeds=negative_prompt_embeds,
                 prompt_mask=prompt_mask,
-                negative_prompt_mask=None,
+                negative_prompt_mask=negative_prompt_mask,
                 initial_latents=initial_latents,
                 config=Config(
                     num_inference_steps=steps,
