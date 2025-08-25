@@ -10,11 +10,10 @@ While MFLUX maintains full feature parity with the Hugging Face Diffusers FLUX i
 
 #### **Enhanced Features**
 
-- **📦 Multiple Scheduler Support**: 
+- **📦 Multiple Scheduler Support**:
   - Linear Scheduler (default)
-  - DDIM Scheduler for deterministic sampling  
+  - DDIM Scheduler for deterministic sampling
   - Euler Discrete with Karras scheduling
-- **🎨 IP-Adapter Integration**: Native support for image-conditioned generation
 - **🖼️ Extended Support**:
   - Advanced Fill Tools with masked region control (inpainting)
   - Redux image-to-image conditioning

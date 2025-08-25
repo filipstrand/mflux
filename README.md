@@ -82,7 +82,7 @@ source .venv/bin/activate
 # for your convenience, you can use the contributor wheel
 uv pip install https://github.com/anthonywu/sentencepiece/releases/download/0.2.1-py13dev/sentencepiece-0.2.1-cp313-cp313-macosx_11_0_arm64.whl
 
-# enable the pytorch nightly 
+# enable the pytorch nightly
 uv pip install --pre --extra-index-url https://download.pytorch.org/whl/nightly -e .
 ```
 </details>
@@ -126,7 +126,7 @@ pip install -U mflux
 
 </details>
 
-*If you have trouble installing MFLUX, please see the [installation related issues section](https://github.com/filipstrand/mflux/issues?q=is%3Aissue+install+).* 
+*If you have trouble installing MFLUX, please see the [installation related issues section](https://github.com/filipstrand/mflux/issues?q=is%3Aissue+install+).*
 
 <details>
 <summary>⌨️ <strong>Shell Completions (Optional)</strong></summary>
@@ -801,7 +801,7 @@ mflux-generate \
 *Also Note: Once we have a local model (quantized [or not](#-running-a-non-quantized-model-directly-from-disk)) specified via the `--path` argument, the huggingface cache models are not required to launch the model.
 In other words, you can reclaim the 34GB diskspace (per model) by deleting the full 16-bit model from the [Huggingface cache](#%EF%B8%8F-generating-an-image) if you choose.*
 
-⚠️ * Quantized models saved with mflux < v.0.6.0 will not work with v.0.6.0 and later due to updated implementation. The solution is to [save a new quantized local copy](https://github.com/filipstrand/mflux/issues/149) 
+⚠️ * Quantized models saved with mflux < v.0.6.0 will not work with v.0.6.0 and later due to updated implementation. The solution is to [save a new quantized local copy](https://github.com/filipstrand/mflux/issues/149)
 
 *If you don't want to download the full models and quantize them yourself, the 4-bit weights are available here for a direct download:*
 - For mflux < v.0.6.0:
@@ -910,9 +910,9 @@ The model will be automatically downloaded from HuggingFace the first time you u
 ### 🎨 Image-to-Image
 
 One way to condition the image generation is by starting from an existing image and let MFLUX produce new variations.
-Use the `--image-path` flag to specify the reference image, and the `--image-strength` to control how much the reference 
+Use the `--image-path` flag to specify the reference image, and the `--image-strength` to control how much the reference
 image should guide the generation. For example, given the reference image below, the following command produced the first
-image using the  [Sketching](https://civitai.com/models/803456/sketching?modelVersionId=898364) LoRA: 
+image using the  [Sketching](https://civitai.com/models/803456/sketching?modelVersionId=898364) LoRA:
 
 ```sh
 mflux-generate \
@@ -1073,7 +1073,7 @@ For comprehensive prompting strategies, see the [official Black Forest Labs Kont
 
 **Core Principles:**
 - **Be Specific and Clear**: Use precise descriptions, avoid vague terms
-- **Step-by-step Editing**: Break complex modifications into multiple simple steps  
+- **Step-by-step Editing**: Break complex modifications into multiple simple steps
 - **Explicit Preservation**: State what should remain unchanged
 - **Verb Selection**: Use "change", "replace" rather than "transform"
 
@@ -1098,13 +1098,13 @@ For comprehensive prompting strategies, see the [official Black Forest Labs Kont
 
 **Common Problems & Solutions:**
 
-❌ **Character changes too much**: `"Transform the person into a Viking"`  
+❌ **Character changes too much**: `"Transform the person into a Viking"`
 ✅ **Better**: `"Change the clothes to be a viking warrior while preserving facial features"`
 
-❌ **Position changes**: `"Put him on a beach"`  
+❌ **Position changes**: `"Put him on a beach"`
 ✅ **Better**: `"Change the background to a beach while keeping the person in the exact same position, scale, and pose"`
 
-❌ **Vague style**: `"Make it a sketch"`  
+❌ **Vague style**: `"Make it a sketch"`
 ✅ **Better**: `"Convert to pencil sketch with natural graphite lines, cross-hatching, and visible paper texture"`
 
 **Ready-to-Use Templates:**
@@ -1439,7 +1439,7 @@ mflux-generate-fill \
 
 Using the depth tool, you can generate high-quality images constrained on a depth map from a reference image. These maps represent the estimated distance of each pixel from the camera, with brighter areas representing objects closer to the camera and darker areas representing objects farther away.
 
-For state-of-the-art depth extraction, MFLUX now supports the [Depth Pro](https://github.com/apple/ml-depth-pro) model, natively implemented in MLX based on the reference implementation. 
+For state-of-the-art depth extraction, MFLUX now supports the [Depth Pro](https://github.com/apple/ml-depth-pro) model, natively implemented in MLX based on the reference implementation.
 
 ![depth example](src/mflux/assets/depth_example.jpg)
 *Original hallway image credit: [Yuliya Matuzava on Unsplash](https://unsplash.com/photos/a-long-hallway-in-a-building-with-arches-and-arches-39NJt9jfGSU)*
@@ -1478,7 +1478,7 @@ mflux-save-depth --image-path "your_image.jpg" -q 8
 ```
 
 This will create a depth map and save it with the same name as your image but with a "_depth" suffix (e.g., "your_image_depth.png").
-Quantization is supported for the Depth Pro model, however, output quality can very depend on the input image. 
+Quantization is supported for the Depth Pro model, however, output quality can very depend on the input image.
 
 ⚠️ *Note: The Depth Pro model requires an additional 1.9GB download from Apple. The download happens automatically on first use.*
 
@@ -1486,8 +1486,8 @@ Quantization is supported for the Depth Pro model, however, output quality can v
 
 #### 🔄 Redux
 
-The Redux tool is an adapter for FLUX.1 models that enables image variation generation similar to the [image-to-image](#-image-to-image) technique. 
-It can reproduce an input image with slight variations, allowing you to refine and enhance existing images. 
+The Redux tool is an adapter for FLUX.1 models that enables image variation generation similar to the [image-to-image](#-image-to-image) technique.
+It can reproduce an input image with slight variations, allowing you to refine and enhance existing images.
 Unlike the image-to-image technique which resumes the denoising process mid-way starting from the input image, the redux tool instead embeds the image and joins it with the T5 text encodings.
 
 ![redux example](src/mflux/assets/redux_example.jpg)
@@ -1586,7 +1586,7 @@ mflux-upscale \
   --width 908 \
   -q 8 \
   --controlnet-image-path "low_res_image.png" \
-  --controlnet-strength 0.6 
+  --controlnet-strength 0.6
 ```
 
 This will upscale your input image to the specified dimensions. The upscaler works best when increasing the resolution by a factor of 2-4x.
@@ -1612,7 +1612,7 @@ As of release [v.0.5.0](https://github.com/filipstrand/mflux/releases/tag/v.0.5.
 #### Training configuration
 
 To describe a training run, you need to provide a [training configuration](src/mflux/dreambooth/_example/train.json) file which specifies the details such as
-what training data to use and various parameters. To try it out, one of the easiest ways is to start from the 
+what training data to use and various parameters. To try it out, one of the easiest ways is to start from the
 provided [example configuration](src/mflux/dreambooth/_example/train.json) and simply use your own dataset and prompts by modifying the `examples` section of the json file.
 
 #### Training example
@@ -1627,15 +1627,15 @@ By default, this will train an adapter with images of size `512x512` with a batc
 If this task is too computationally demanding, see the section on [memory issues](#memory-issues) for tips on how to speed things up and what tradeoffs exist.
 
 During training, MFLUX will output training checkpoints with artifacts (weights, states) according to what is specified in the configuration file.
-As specified in the file `train.json`, these files will be placed in a folder on the Desktop called `~/Desktop/train`, but this can of course be changed to any other path by adjusting the configuration. 
+As specified in the file `train.json`, these files will be placed in a folder on the Desktop called `~/Desktop/train`, but this can of course be changed to any other path by adjusting the configuration.
 All training artifacts will be saved as self-contained zip file, which can later be pointed to [resume an existing training run](#resuming-a-training-run).
 To find the LoRA weights, simply unzip and look for the `adapter` safetensors file and [use it as you would with a regular downloaded LoRA adapter](#-lora).
 
 #### Resuming a training run
 
-The training process will continue to run until each training example has been used `num_epochs` times. 
+The training process will continue to run until each training example has been used `num_epochs` times.
 For various reasons however, the user might choose to interrupt the process.
-To resume training for a given checkpoint, say `0001000_checkpoint.zip`, simply run: 
+To resume training for a given checkpoint, say `0001000_checkpoint.zip`, simply run:
 
 ```sh
 mflux-train --train-checkpoint 0001000_checkpoint.zip
@@ -1643,7 +1643,7 @@ mflux-train --train-checkpoint 0001000_checkpoint.zip
 
 This uses the `--train-checkpoint` command-line argument to specify the checkpoint file to resume from.
 
-There are two nice properties of the training procedure: 
+There are two nice properties of the training procedure:
 
 - Fully deterministic (given a specified `seed` in the training configuration)
 - The complete training state (including optimizer state) is saved at each checkpoint.
@@ -1654,14 +1654,14 @@ be *exactly* identical to a training run which was never interrupted in the firs
 *⚠️ Note: Everything but the dataset itself is contained within this zip file, as the dataset can be quite large.
 The zip file will contain configuration files which point to the original dataset, so make sure that it is in the same place when resuming training*.
 
-*⚠️ Note: One current limitation is that a training run can only be resumed if it has not yet been completed. 
+*⚠️ Note: One current limitation is that a training run can only be resumed if it has not yet been completed.
 In other words, only checkpoints that represent an interrupted training-run can be resumed and run until completion.*
 
 <details>
 <summary>⚙️ <strong>Configuration details</strong></summary>
 
 Currently, MFLUX supports fine-tuning only for the transformer part of the model.
-In the training configuration, under `lora_layers`, you can specify which layers you want to train. The available ones are: 
+In the training configuration, under `lora_layers`, you can specify which layers you want to train. The available ones are:
 
 - `transformer_blocks`:
   - `attn.to_q`
@@ -1733,18 +1733,18 @@ To avoid this, consider some of the following strategies to reduce memory requir
 - Use a quantized based model by setting `"quantize": 4` or `"quantize": 8`
 - For the `layer_types`, consider skipping some of the trainable layers (e.g. by not including `proj_out` etc.)
 - Use a lower `rank` value for the LoRA matrices.
-- Don't train all the  `38` layers from `single_transformer_blocks` or all of the `19` layers from `transformer_blocks`  
+- Don't train all the  `38` layers from `single_transformer_blocks` or all of the `19` layers from `transformer_blocks`
 - Use a smaller batch size, for example `"batch_size": 1`
 - Make sure your Mac is not busy with other background tasks that holds memory.
 
 Applying some of these strategies, like how [train.json](src/mflux/dreambooth/_example/train.json) is set up by default,
-will allow a 32GB M1 Pro to perform a successful fine-tuning run. 
+will allow a 32GB M1 Pro to perform a successful fine-tuning run.
 Note, however, that reducing the trainable parameters might lead to worse performance.
- 
+
 
 *Additional techniques such as gradient checkpoint and other strategies might be implemented in the future.*
 
-</details> 
+</details>
 
 <details>
 <summary>📝 <strong>Misc</strong></summary>
@@ -1759,7 +1759,7 @@ The aim is to also gradually expand the scope of this feature with alternative t
 - When plotting the loss during training, we label it as "validation loss" but it is actually only the first 10 elements of the training examples for now. Future updates should support user inputs of separate validation images.
 - Training also works with the original model as quantized!
 - [For the curious, a motivation for the loss function can be found here](src/mflux/dreambooth/optimization/_loss_derivation/dreambooth_loss.pdf).
-- Two great resources that heavily inspired this feature are: 
+- Two great resources that heavily inspired this feature are:
   - The fine-tuning script in [mlx-examples](https://github.com/ml-explore/mlx-examples/tree/main/flux#finetuning)
   - The original fine-tuning script in [Diffusers](https://huggingface.co/docs/diffusers/v0.11.0/en/training/dreambooth)
 
@@ -1861,7 +1861,7 @@ config = Config(
 
 # Use Euler Discrete with Karras scheduling
 config = Config(
-    scheduler="euler_discrete", 
+    scheduler="euler_discrete",
     num_inference_steps=30,
     # ... other parameters
 )
@@ -1872,29 +1872,6 @@ config = Config(
 - **DDIM Scheduler**: Deterministic sampling with fewer steps
 - **Euler Discrete**: High-quality sampling with Karras scheduling support
 
-#### **🎨 IP-Adapter Integration**
-
-Native support for image-conditioned generation using IP-Adapter:
-
-```python
-from mflux.models.ip_adapter import FluxIPAdapter
-from mflux.config.config import Config
-
-# Configure IP-Adapter
-config = Config(
-    ip_adapter_image_paths=["reference_image.png"],
-    ip_adapter_scale=1.0,  # Adjust influence strength
-    # ... other parameters
-)
-
-# The model will automatically blend text and image conditioning
-```
-
-**Key Features:**
-- **🖼️ Image Conditioning**: Use reference images alongside text prompts
-- **⚖️ Adjustable Influence**: Fine-tune image conditioning strength
-- **🔄 Seamless Integration**: Works with all existing pipelines
-- **🎯 Multi-Modal**: Combines text and visual prompts naturally
 
 #### **🔧 Advanced Configuration Options**
 
@@ -1906,14 +1883,10 @@ from mflux.config.config import Config
 config = Config(
     # Scheduler selection
     scheduler="ddim",
-    
-    # IP-Adapter configuration
-    ip_adapter_image_paths=["ref1.png", "ref2.png"],
-    ip_adapter_scale=0.8,
-    
+
     # Enhanced ControlNet options
     controlnet_strength=0.9,
-    
+
     # Traditional options
     num_inference_steps=50,
     guidance=7.5,
@@ -1991,7 +1964,7 @@ MFLUX would not be possible without the great work of:
 
 - The MLX Team for [MLX](https://github.com/ml-explore/mlx) and [MLX examples](https://github.com/ml-explore/mlx-examples)
 - Black Forest Labs for the [FLUX project](https://github.com/black-forest-labs/flux)
-- Hugging Face for the [Diffusers library implementation of Flux](https://huggingface.co/black-forest-labs/FLUX.1-dev) 
+- Hugging Face for the [Diffusers library implementation of Flux](https://huggingface.co/black-forest-labs/FLUX.1-dev)
 - Depth Pro authors for the [Depth Pro model](https://github.com/apple/ml-depth-pro?tab=readme-ov-file#citation)
 - The MLX community and all [contributors and testers](https://github.com/filipstrand/mflux/graphs/contributors)
 
