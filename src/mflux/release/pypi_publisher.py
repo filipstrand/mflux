@@ -2,7 +2,6 @@ import shutil
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 import requests
 from twine.commands import upload
@@ -34,9 +33,9 @@ class PyPIPublisher:
         )
 
     @staticmethod
-    def version_exists_on_pypi(package_name: str, version: str, test_pypi: bool = False) -> bool:
+    def version_exists_on_pypi(package_name: str, version: str) -> bool:
         print("🔍 Checking if version already exists on PyPI...")
-        repo_url = "https://test.pypi.org/pypi" if test_pypi else "https://pypi.org/pypi"
+        repo_url = "https://pypi.org/pypi"
         url = f"{repo_url}/{package_name}/json"
 
         for attempt in range(3):
@@ -76,21 +75,6 @@ class PyPIPublisher:
                     raise requests.RequestException(f"Failed to check PyPI after 3 attempts: {e}") from e
 
         raise RuntimeError("Unexpected error in version_exists_on_pypi")
-
-    @staticmethod
-    def publish_to_test_pypi(test_pypi_token: Optional[str], package_name: str, version: str) -> None:
-        if not test_pypi_token:
-            print("⚠️  Test PyPI token not provided, skipping Test PyPI upload")
-            return
-
-        PyPIPublisher._upload_to_pypi(
-            token=test_pypi_token,
-            repository="testpypi",
-            display_name="Test PyPI",
-            package_name=package_name,
-            version=version,
-            optional=True,
-        )
 
     @staticmethod
     def publish_to_pypi(pypi_token: str, package_name: str, version: str) -> None:

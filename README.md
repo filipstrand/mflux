@@ -188,8 +188,8 @@ from mflux.config.config import Config
 
 # Load the model
 flux = Flux1.from_name(
-   model_name="schnell",  # "schnell" or "dev"
-   quantize=8,            # 4 or 8
+   model_name="schnell",  # "schnell", "dev", or "krea-dev"
+       quantize=8,            # 3, 4, 5, 6, or 8
 )
 
 # Generate an image
@@ -197,7 +197,7 @@ image = flux.generate_image(
    seed=2,
    prompt="Luxury food photograph",
    config=Config(
-      num_inference_steps=2,  # "schnell" works well with 2-4 steps, "dev" works well with 20-25 steps
+      num_inference_steps=2,  # "schnell" works well with 2-4 steps, "dev" and "krea-dev" work well with 20-25 steps
       height=1024,
       width=1024,
    )
@@ -216,6 +216,26 @@ For more advanced Python usage and additional configuration options, you can exp
 
 🔒 [FLUX.1-dev currently requires granted access to its Huggingface repo. For troubleshooting, see the issue tracker](https://github.com/filipstrand/mflux/issues/14) 🔒
 
+#### 🎨 FLUX.1 Krea [dev]: Enhanced Photorealism
+
+MFLUX now supports **FLUX.1 Krea [dev]**, an 'opinionated' text-to-image model developed in collaboration with [Krea AI](https://krea.ai). This model overcomes the oversaturated 'AI look' commonly found in generated images, achieving exceptional photorealism with distinctive aesthetics.
+This model can be used where the `dev` model is used, and it is available as `krea-dev` in MFLUX (also supports the alias `dev-krea`), this includes dreambooth fine-tuning.
+
+![image](src/mflux/assets/krea_dev_example.jpg)
+
+```sh
+mflux-generate \
+    --model krea-dev \
+    --prompt "A photo of a dog" \
+    --steps 25 \
+    --seed 2674888 \
+    -q 8 \
+    --height 1024 \
+    --width 1024
+```
+
+*Learn more about FLUX.1 Krea [dev] in the [official announcement](https://bfl.ai/announcements/flux-1-krea-dev).*
+
 #### 📜 Full list of Command-Line Arguments
 
 <details>
@@ -228,9 +248,9 @@ For more advanced Python usage and additional configuration options, you can exp
 
 - **`--prompt`** (required, `str`): Text description of the image to generate. Use `-` to read the prompt from stdin (e.g., `echo "A beautiful sunset" | mflux-generate --prompt -`).
 
-- **`--model`** or **`-m`** (required, `str`): Model to use for generation. Can be one of the official models (`"schnell"` or `"dev"`) or a HuggingFace repository ID for a compatible third-party model (e.g., `"Freepik/flux.1-lite-8B-alpha"`).
+- **`--model`** or **`-m`** (required, `str`): Model to use for generation. Can be one of the official models (`"schnell"`, `"dev"`, or `"krea-dev"`) or a HuggingFace repository ID for a compatible third-party model (e.g., `"Freepik/flux.1-lite-8B-alpha"`).
 
-- **`--base-model`** (optional, `str`, default: `None`): Specifies which base architecture a third-party model is derived from (`"schnell"` or `"dev"`). Required when using third-party models from HuggingFace.
+- **`--base-model`** (optional, `str`, default: `None`): Specifies which base architecture a third-party model is derived from (`"schnell"`, `"dev"`, or `"krea-dev"`). Required when using third-party models from HuggingFace.
 
 - **`--output`** (optional, `str`, default: `"image.png"`): Output image filename. If `--seed` or `--auto-seeds` establishes multiple seed values, the output filename will automatically be modified to include the seed value (e.g., `image_seed_42.png`).
 
@@ -248,7 +268,7 @@ For more advanced Python usage and additional configuration options, you can exp
 
 - **`--path`** (optional, `str`, default: `None`): Path to a local model on disk.
 
-- **`--quantize`** or **`-q`** (optional, `int`, default: `None`): [Quantization](#%EF%B8%8F-quantization) (choose between `3`, `4`, `6`, or `8` bits).
+- **`--quantize`** or **`-q`** (optional, `int`, default: `None`): [Quantization](#%EF%B8%8F-quantization) (choose between `3`, `4`, `5`, `6`, or `8` bits).
 
 - **`--lora-paths`** (optional, `[str]`, default: `None`): The paths to the [LoRA](#-LoRA) weights.
 
@@ -700,7 +720,7 @@ Luxury food photograph of an italian Linguine pasta alle vongole dish with lots 
 
 ### 🗜️ Quantization
 
-MFLUX supports running FLUX in 3, 4, 6, or 8-bit quantized mode. Running a quantized version can greatly speed up the
+MFLUX supports running FLUX in 3, 4, 5, 6, or 8-bit quantized mode. Running a quantized version can greatly speed up the
 generation process and reduce the memory consumption by several gigabytes. [Quantized models also take up less disk space](#-size-comparisons-for-quantized-models).
 
 ```sh
@@ -728,10 +748,11 @@ For systems with limited RAM, you can also use the `--low-ram` option which redu
 
 The model sizes for both `schnell` and `dev` at various quantization levels are as follows:
 
-| 3 bit  | 4 bit  | 6 bit   | 8 bit   | Original (16 bit) |
-|--------|--------|---------|---------|-------------------|
-| 7.52GB | 9.61GB | 13.81GB | 18.01GB | 33.73GB           |
+| 3 bit  | 4 bit  | 5 bit   | 6 bit   | 8 bit   | Original (16 bit) |
+|--------|--------|---------|---------|---------|-------------------|
+| 7.52GB | 9.61GB | 11.71GB | 13.81GB | 18.01GB | 33.73GB           |
 
+*4bit quantized model files are [available for direct download on Hugging Face](#-loading-and-running-a-quantized-version-from-disk), eliminating the need to download full models and quantize them yourself.*
 
 #### 💾 Saving a quantized version to disk
 
@@ -790,20 +811,19 @@ In other words, you can reclaim the 34GB diskspace (per model) by deleting the f
   - [dhairyashil/FLUX.1-schnell-mflux-v0.6.2-4bit](https://huggingface.co/dhairyashil/FLUX.1-schnell-mflux-v0.6.2-4bit)
   - [dhairyashil/FLUX.1-dev-mflux-4bit](https://huggingface.co/dhairyashil/FLUX.1-dev-mflux-4bit)
   - [akx/FLUX.1-Kontext-dev-mflux-4bit](https://huggingface.co/akx/FLUX.1-Kontext-dev-mflux-4bit)
+  - [filipstrand/FLUX.1-Krea-dev-mflux-4bit](https://huggingface.co/filipstrand/FLUX.1-Krea-dev-mflux-4bit)
 
-<details>
-<summary>Using the community model support, the quantized weights can be also be automatically downloaded</summary>
+
+Using the [community model support](#-third-party-huggingface-model-support), the quantized weights can be also be automatically downloaded when running the generate command:
 
 ```sh
 mflux-generate \
-    --model "dhairyashil/FLUX.1-schnell-mflux-v0.6.2-4bit" \
-    --base-model schnell \
-    --steps 2 \
-    --seed 2 \
-    --prompt "Luxury food photograph"
+    --model filipstrand/FLUX.1-Krea-dev-mflux-4bit \
+    --base-model krea-dev \
+    --prompt "A photo of a dog" \
+    --steps 25 \
+    --seed 2674888
 ```
-
-</details>
 
 ---
 
