@@ -1,11 +1,12 @@
-import matplotlib.pyplot as plt
-import numpy as np
-import os
 import subprocess
 import sys
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+import numpy as np
+
 from mflux.schedulers.euler_discrete_scheduler import EulerDiscreteScheduler
+
 
 def main():
     """Generates and saves a plot comparing the EulerDiscreteScheduler's sigma schedules."""
@@ -18,20 +19,20 @@ def main():
     scheduler_std.set_timesteps(num_inference_steps)
     sigmas_std = np.array(scheduler_std.sigmas)
     timesteps_std = np.arange(len(sigmas_std))
-    plt.plot(timesteps_std, sigmas_std, marker='o', linestyle='-', label='Standard Sigmas')
+    plt.plot(timesteps_std, sigmas_std, marker="o", linestyle="-", label="Standard Sigmas")
 
     # --- Plot 2: Karras Sigma Schedule ---
     scheduler_karras = EulerDiscreteScheduler(use_karras_sigmas=True)
     scheduler_karras.set_timesteps(num_inference_steps)
     sigmas_karras = np.array(scheduler_karras.sigmas)
     timesteps_karras = np.arange(len(sigmas_karras))
-    plt.plot(timesteps_karras, sigmas_karras, marker='x', linestyle='--', label='Karras Sigmas')
+    plt.plot(timesteps_karras, sigmas_karras, marker="x", linestyle="--", label="Karras Sigmas")
 
     # --- Configure and save the plot ---
     plt.title(f"Euler Discrete Scheduler Sigma Comparison (for {num_inference_steps} steps)")
     plt.xlabel("Inference Timestep")
     plt.ylabel("Sigma (Noise Level) - Log Scale")
-    plt.yscale('log')  # Use a log scale for better visibility of sigma range
+    plt.yscale("log")  # Use a log scale for better visibility of sigma range
     plt.legend()
     plt.grid(True, which="both", ls="--")
 

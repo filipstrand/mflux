@@ -39,12 +39,14 @@ def test_ddim_scaled_linear_beta_schedule():
     expected_betas = expected_sqrt**2
     assert mx.allclose(scheduler.betas, expected_betas, atol=1e-6)
 
+
 # New test for squaredcos_cap_v2 schedule
 def test_squaredcos_cap_v2_schedule():
     """Test squaredcos_cap_v2 beta schedule generation."""
     scheduler = DDIMScheduler(num_train_timesteps=10, beta_schedule="squaredcos_cap_v2")
     expected_betas = betas_for_alpha_bar(10)
     assert mx.allclose(scheduler.betas, expected_betas, atol=1e-6)
+
 
 # New test for rescale_betas_zero_snr
 def test_rescale_betas_zero_snr():
@@ -69,12 +71,14 @@ def test_ddim_timestep_spacing_leading():
     scheduler.set_timesteps(10)
     assert mx.array_equal(scheduler.timesteps, mx.array([90, 80, 70, 60, 50, 40, 30, 20, 10, 0]))
 
+
 def test_ddim_timestep_spacing_trailing():
     scheduler = DDIMScheduler(num_train_timesteps=100, timestep_spacing="trailing")
     scheduler.set_timesteps(10)
     # Note: diffusers trailing has a bug for num_train_timesteps that are a multiple of steps
     # This is the corrected expectation
     assert mx.array_equal(scheduler.timesteps, mx.array([99, 89, 79, 69, 59, 49, 39, 29, 19, 9]))
+
 
 def test_ddim_timestep_spacing_linspace():
     scheduler = DDIMScheduler(num_train_timesteps=100, timestep_spacing="linspace")
@@ -103,19 +107,21 @@ def test_ddim_step_deterministic():
     beta_prod_t = 1 - alpha_prod_t
 
     # This is the pred_original_sample the step function should have calculated
-    expected_pred_original_sample = (sample - beta_prod_t**(0.5) * noise_pred) / alpha_prod_t**(0.5)
+    expected_pred_original_sample = (sample - beta_prod_t ** (0.5) * noise_pred) / alpha_prod_t ** (0.5)
     # The test must also account for the clipping that happens inside the scheduler
-    expected_pred_original_sample = mx.clip(expected_pred_original_sample, -scheduler.clip_sample_range, scheduler.clip_sample_range)
+    expected_pred_original_sample = mx.clip(
+        expected_pred_original_sample, -scheduler.clip_sample_range, scheduler.clip_sample_range
+    )
     assert mx.allclose(pred_original_sample, expected_pred_original_sample, atol=1e-4)
 
     # This is the pred_epsilon the step function should have used
     pred_epsilon = noise_pred
 
     # This is the direction pointing to x_t
-    pred_sample_direction = (1 - alpha_prod_t_prev)**(0.5) * pred_epsilon
+    pred_sample_direction = (1 - alpha_prod_t_prev) ** (0.5) * pred_epsilon
 
     # This is the final expected previous sample
-    expected_prev_sample = alpha_prod_t_prev**(0.5) * expected_pred_original_sample + pred_sample_direction
+    expected_prev_sample = alpha_prod_t_prev ** (0.5) * expected_pred_original_sample + pred_sample_direction
 
     assert mx.allclose(prev_sample, expected_prev_sample, atol=1e-4)
 

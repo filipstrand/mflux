@@ -1,5 +1,4 @@
 import mlx.core as mx
-import numpy as np
 
 from mflux.schedulers.euler_discrete_scheduler import EulerDiscreteScheduler
 

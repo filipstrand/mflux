@@ -13,6 +13,7 @@ def betas_for_alpha_bar(
     Create a beta schedule that discretizes the given alpha_t_bar function, which defines the cumulative product of
     (1-beta) over time from t = [0,1].
     """
+
     def alpha_bar_fn(t):
         return math.cos((t + 0.008) / 1.008 * math.pi / 2) ** 2
 
@@ -22,6 +23,7 @@ def betas_for_alpha_bar(
         t2 = (i + 1) / num_diffusion_timesteps
         betas.append(min(1 - alpha_bar_fn(t2) / alpha_bar_fn(t1), max_beta))
     return mx.array(betas, dtype=mx.float32)
+
 
 def rescale_zero_terminal_snr(betas: mx.array) -> mx.array:
     """
@@ -50,6 +52,7 @@ def rescale_zero_terminal_snr(betas: mx.array) -> mx.array:
 
     return betas
 
+
 class DDIMScheduler:
     """
     `DDIMScheduler` extends the denoising procedure introduced in denoising diffusion probabilistic models (DDPMs) with
@@ -57,6 +60,7 @@ class DDIMScheduler:
 
     Ported from: https://github.com/huggingface/diffusers/blob/main/src/diffusers/schedulers/scheduling_ddim.py#L185
     """
+
     def __init__(
         self,
         num_train_timesteps: int = 1000,
@@ -134,7 +138,9 @@ class DDIMScheduler:
         self.num_inference_steps = num_inference_steps
 
         if self.timestep_spacing == "linspace":
-            timesteps = np.linspace(0, self.num_train_timesteps - 1, num_inference_steps).round()[::-1].copy().astype(np.int64)
+            timesteps = (
+                np.linspace(0, self.num_train_timesteps - 1, num_inference_steps).round()[::-1].copy().astype(np.int64)
+            )
         elif self.timestep_spacing == "leading":
             step_ratio = self.num_train_timesteps // self.num_inference_steps
             timesteps = (np.arange(0, num_inference_steps) * step_ratio).round()[::-1].copy().astype(np.int64)
@@ -186,8 +192,7 @@ class DDIMScheduler:
             pred_epsilon = (alpha_prod_t**0.5) * model_output + (beta_prod_t**0.5) * sample
         else:
             raise ValueError(
-                f"prediction_type given as {self.prediction_type} must be one of `epsilon`, `sample`, or"
-                " `v_prediction`"
+                f"prediction_type given as {self.prediction_type} must be one of `epsilon`, `sample`, or `v_prediction`"
             )
 
         # 4. Clip "predicted x_0"

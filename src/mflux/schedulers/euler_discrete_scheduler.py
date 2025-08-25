@@ -1,7 +1,6 @@
 from typing import Optional, Union
 
 import mlx.core as mx
-import numpy as np
 
 
 class EulerDiscreteScheduler:
@@ -108,7 +107,10 @@ class EulerDiscreteScheduler:
             denoised = sample - sigma * model_output
         elif self.prediction_type == "v_prediction":
             # The v_prediction formula was also slightly off, correcting it.
-            denoised = self.alphas_cumprod[timestep]**0.5 * sample - (1 - self.alphas_cumprod[timestep])**0.5 * model_output
+            denoised = (
+                self.alphas_cumprod[timestep] ** 0.5 * sample
+                - (1 - self.alphas_cumprod[timestep]) ** 0.5 * model_output
+            )
         else:
             raise ValueError(f"Unsupported prediction_type: {self.prediction_type}")
 
