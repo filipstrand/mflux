@@ -5,6 +5,7 @@ import mlx.core as mx
 import numpy as np
 
 
+# Copied from diffusers.schedulers.scheduling_ddpm.betas_for_alpha_bar (lines 42-73)
 def betas_for_alpha_bar(
     num_diffusion_timesteps,
     max_beta=0.999,
@@ -13,7 +14,6 @@ def betas_for_alpha_bar(
     Create a beta schedule that discretizes the given alpha_t_bar function, which defines the cumulative product of
     (1-beta) over time from t = [0,1].
     """
-
     def alpha_bar_fn(t):
         return math.cos((t + 0.008) / 1.008 * math.pi / 2) ** 2
 
@@ -24,7 +24,7 @@ def betas_for_alpha_bar(
         betas.append(min(1 - alpha_bar_fn(t2) / alpha_bar_fn(t1), max_beta))
     return mx.array(betas, dtype=mx.float32)
 
-
+# Ported from diffusers.schedulers.scheduling_ddim.rescale_zero_terminal_snr (lines 76-103)
 def rescale_zero_terminal_snr(betas: mx.array) -> mx.array:
     """
     Rescales betas to have zero terminal SNR Based on https://huggingface.co/papers/2305.08891 (Algorithm 1)
@@ -52,17 +52,14 @@ def rescale_zero_terminal_snr(betas: mx.array) -> mx.array:
 
     return betas
 
-
 class DDIMScheduler:
     """
     `DDIMScheduler` extends the denoising procedure introduced in denoising diffusion probabilistic models (DDPMs) with
     non-Markovian guidance.
-
-    Ported from: https://github.com/huggingface/diffusers/blob/main/src/diffusers/schedulers/scheduling_ddim.py#L185
     """
-
     def __init__(
         self,
+        # Ported from diffusers.__init__ (lines 164-185)
         num_train_timesteps: int = 1000,
         beta_start: float = 0.0001,
         beta_end: float = 0.02,
@@ -88,6 +85,7 @@ class DDIMScheduler:
         self.rescale_betas_zero_snr = rescale_betas_zero_snr
         self.clip_sample_range = clip_sample_range
 
+        # Ported from diffusers.__init__ (lines 187-196)
         if trained_betas is not None:
             self.betas = mx.array(trained_betas, dtype=mx.float32)
         elif beta_schedule == "linear":
@@ -99,11 +97,19 @@ class DDIMScheduler:
         else:
             raise NotImplementedError(f"{beta_schedule} is not implemented for {self.__class__}")
 
+        # Ported from diffusers.__init__ (lines 198-200)
         if rescale_betas_zero_snr:
             self.betas = rescale_zero_terminal_snr(self.betas)
 
+        # Ported from diffusers.__init__ (lines 201-203)
         self.alphas = 1.0 - self.betas
         self.alphas_cumprod = mx.cumprod(self.alphas, axis=0)
+
+        # Ported from diffusers.__init__ (lines 205-209)
+        # At every step in ddim, we are looking into the previous alphas_cumprod
+        # For the final step, there is no previous alphas_cumprod because we are already at 0
+        # `set_alpha_to_one` decides whether we set this parameter simply to one or
+        # whether we use the final alpha of the "non-previous" one.
         self.final_alpha_cumprod = mx.array(1.0) if set_alpha_to_one else self.alphas_cumprod[0]
 
         # Standard deviation of the initial noise distribution
@@ -114,9 +120,9 @@ class DDIMScheduler:
         self.timesteps = mx.array(np.arange(0, num_train_timesteps)[::-1].copy().astype(np.int64))
 
     def scale_model_input(self, sample: mx.array, timestep: Optional[int] = None) -> mx.array:
-        # same behavior as: https://github.com/huggingface/diffusers/blob/main/src/diffusers/schedulers/scheduling_ddim.py#L236
         return sample
 
+    # Ported from diffusers._get_variance (lines 268-275)
     def _get_variance(self, timestep, prev_timestep):
         alpha_prod_t = self.alphas_cumprod[timestep]
         alpha_prod_t_prev = self.alphas_cumprod[prev_timestep] if prev_timestep >= 0 else self.final_alpha_cumprod
@@ -127,6 +133,7 @@ class DDIMScheduler:
 
         return variance
 
+    # Ported from diffusers.set_timesteps (lines 310-348)
     def set_timesteps(self, num_inference_steps: int):
         if num_inference_steps > self.num_train_timesteps:
             raise ValueError(
@@ -138,9 +145,7 @@ class DDIMScheduler:
         self.num_inference_steps = num_inference_steps
 
         if self.timestep_spacing == "linspace":
-            timesteps = (
-                np.linspace(0, self.num_train_timesteps - 1, num_inference_steps).round()[::-1].copy().astype(np.int64)
-            )
+            timesteps = np.linspace(0, self.num_train_timesteps - 1, num_inference_steps).round()[::-1].copy().astype(np.int64)
         elif self.timestep_spacing == "leading":
             step_ratio = self.num_train_timesteps // self.num_inference_steps
             timesteps = (np.arange(0, num_inference_steps) * step_ratio).round()[::-1].copy().astype(np.int64)
@@ -156,6 +161,7 @@ class DDIMScheduler:
 
         self.timesteps = mx.array(timesteps)
 
+    # Ported from diffusers.step (lines 350-471), correcting the main algorithmic error
     def step(
         self,
         model_output: mx.array,
@@ -173,14 +179,17 @@ class DDIMScheduler:
 
         # 1. get previous step value (=t-1)
         # See formulas (12) and (16) of DDIM paper https://arxiv.org/abs/2010.02502
+        # (line 405)
         prev_timestep = timestep - self.num_train_timesteps // self.num_inference_steps
 
         # 2. compute alphas, betas
+        # (lines 408-411)
         alpha_prod_t = self.alphas_cumprod[timestep]
         alpha_prod_t_prev = self.alphas_cumprod[prev_timestep] if prev_timestep >= 0 else self.final_alpha_cumprod
         beta_prod_t = 1 - alpha_prod_t
 
         # 3. compute predicted original sample from predicted noise also called "predicted x_0"
+        # (lines 415-428)
         if self.prediction_type == "epsilon":
             pred_original_sample = (sample - beta_prod_t ** (0.5) * model_output) / alpha_prod_t ** (0.5)
             pred_epsilon = model_output
@@ -192,30 +201,37 @@ class DDIMScheduler:
             pred_epsilon = (alpha_prod_t**0.5) * model_output + (beta_prod_t**0.5) * sample
         else:
             raise ValueError(
-                f"prediction_type given as {self.prediction_type} must be one of `epsilon`, `sample`, or `v_prediction`"
+                f"prediction_type given as {self.prediction_type} must be one of `epsilon`, `sample`, or"
+                " `v_prediction`"
             )
 
         # 4. Clip "predicted x_0"
+        # (lines 432-435)
         if self.clip_sample:
             pred_original_sample = mx.clip(pred_original_sample, -self.clip_sample_range, self.clip_sample_range)
 
         # 5. compute variance: "sigma_t(η)" -> see formula (16)
+        # (lines 438-439)
         variance = self._get_variance(timestep, prev_timestep)
         std_dev_t = eta * variance ** (0.5)
 
         if use_clipped_model_output:
             # the pred_epsilon is always re-derived from the clipped x_0 in Glide
+            # (line 443)
             pred_epsilon = (sample - alpha_prod_t ** (0.5) * pred_original_sample) / beta_prod_t ** (0.5)
 
         # 6. compute "direction pointing to x_t" of formula (12)
+        # (line 446)
         pred_sample_direction = (1 - alpha_prod_t_prev - std_dev_t**2) ** (0.5) * pred_epsilon
 
         # 7. compute x_t without "random noise" of formula (12)
+        # (line 449)
         prev_sample = alpha_prod_t_prev ** (0.5) * pred_original_sample + pred_sample_direction
 
         if eta > 0:
+            # (lines 451-464)
             if variance_noise is None:
-                # port randn_tensor -> mx.random.normal
+                # MLX equivalent of randn_tensor
                 variance_noise = mx.random.normal(model_output.shape, dtype=model_output.dtype)
             variance = std_dev_t * variance_noise
 
@@ -223,6 +239,7 @@ class DDIMScheduler:
 
         return prev_sample, pred_original_sample
 
+    # Copied from diffusers.add_noise (lines 473-496)
     def add_noise(
         self,
         original_samples: mx.array,
@@ -244,3 +261,10 @@ class DDIMScheduler:
 
     def __len__(self):
         return self.num_train_timesteps
+
+    @property
+    def sigmas(self) -> mx.array:
+        # Calculate sigmas from alphas_cumprod (ascending order)
+        sigmas_unflipped = ((1 - self.alphas_cumprod) / self.alphas_cumprod) ** 0.5
+        # Reverse to get descending order, and append a zero for consistency
+        return mx.concatenate([sigmas_unflipped[::-1], mx.array([0.0])])

@@ -15,10 +15,11 @@ class RuntimeConfig:
         self,
         config: Config,
         model_config: ModelConfig,
+        sigmas: mx.array,
     ):
         self.config = config
         self.model_config = model_config
-        self.sigmas = self._create_sigmas(config, model_config)
+        self.sigmas = sigmas
 
     @property
     def height(self) -> int:
@@ -95,28 +96,3 @@ class RuntimeConfig:
             return self.config.controlnet_strength
 
         return None
-
-    @staticmethod
-    def _create_sigmas(config: Config, model_config: ModelConfig) -> mx.array:
-        sigmas = RuntimeConfig._create_sigmas_values(config.num_inference_steps)
-        if model_config.requires_sigma_shift:
-            sigmas = RuntimeConfig._shift_sigmas(sigmas=sigmas, width=config.width, height=config.height)
-        return sigmas
-
-    @staticmethod
-    def _create_sigmas_values(num_inference_steps: int) -> mx.array:
-        sigmas = np.linspace(1.0, 1 / num_inference_steps, num_inference_steps)
-        sigmas = mx.array(sigmas).astype(mx.float32)
-        return mx.concatenate([sigmas, mx.zeros(1)])
-
-    @staticmethod
-    def _shift_sigmas(sigmas: mx.array, width: int, height: int) -> mx.array:
-        y1 = 0.5
-        x1 = 256
-        m = (1.15 - y1) / (4096 - x1)
-        b = y1 - m * x1
-        mu = m * width * height / 256 + b
-        mu = mx.array(mu)
-        shifted_sigmas = mx.exp(mu) / (mx.exp(mu) + (1 / sigmas - 1))
-        shifted_sigmas[-1] = 0
-        return shifted_sigmas

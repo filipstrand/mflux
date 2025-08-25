@@ -1,3 +1,5 @@
+from typing import Union # New import
+
 import mlx.core as mx
 from mlx import nn
 from tqdm import tqdm
@@ -17,6 +19,10 @@ from mflux.models.vae.vae import VAE
 from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
+# Import schedulers for type hinting
+from mflux.schedulers.ddim_scheduler import DDIMScheduler
+from mflux.schedulers.euler_discrete_scheduler import EulerDiscreteScheduler
+from mflux.schedulers.linear_scheduler import LinearScheduler
 from mflux.weights.model_saver import ModelSaver
 
 
@@ -49,12 +55,18 @@ class Flux1(nn.Module):
         seed: int,
         prompt: str,
         config: Config,
+        *,
+        # Updated type hint for clarity
+        scheduler: DDIMScheduler | EulerDiscreteScheduler | LinearScheduler = LinearScheduler(),
     ) -> GeneratedImage:
-        # 0. Create a new runtime config based on the model type and input parameters
-        config = RuntimeConfig(config, self.model_config)
+        # 0. Set up the scheduler and create the sigma schedule
+        scheduler.set_timesteps(config.num_inference_steps)
+
+        # 1. Create a new runtime config based on the model type and input parameters
+        config = RuntimeConfig(config, self.model_config, sigmas=scheduler.sigmas)
         time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
 
-        # 1. Create the initial latents
+        # 2. Create the initial latents
         latents = LatentCreator.create_for_txt2img_or_img2img(
             seed=seed,
             height=config.height,
@@ -67,7 +79,7 @@ class Flux1(nn.Module):
             ),
         )
 
-        # 2. Encode the prompt
+        # 3. Encode the prompt
         prompt_embeds, pooled_prompt_embeds = PromptEncoder.encode_prompt(
             prompt=prompt,
             prompt_cache=self.prompt_cache,
@@ -87,7 +99,10 @@ class Flux1(nn.Module):
 
         for t in time_steps:
             try:
-                # 3.t Predict the noise
+                # 4.t Scale model input if needed by the scheduler
+                latents = scheduler.scale_model_input(latents, t)
+
+                # 5.t Predict the noise
                 noise = self.transformer(
                     t=t,
                     config=config,
@@ -96,9 +111,8 @@ class Flux1(nn.Module):
                     pooled_prompt_embeds=pooled_prompt_embeds,
                 )
 
-                # 4.t Take one denoise step
-                dt = config.sigmas[t + 1] - config.sigmas[t]
-                latents += noise * dt
+                # 6.t Take one denoise step with the scheduler
+                latents = scheduler.step(noise, t, latents)
 
                 # (Optional) Call subscribers in-loop
                 Callbacks.in_loop(

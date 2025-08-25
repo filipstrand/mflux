@@ -49,7 +49,7 @@ class LinearScheduler:
 
         return sigmas
 
-    def scale_noise(
+    def scale_model_input(
         self, sample: mx.array, timestep: Union[float, mx.array], noise: Optional[mx.array] = None
     ) -> mx.array:
         """Scale the denoising model input."""
