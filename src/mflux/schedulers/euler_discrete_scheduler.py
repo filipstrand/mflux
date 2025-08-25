@@ -1,12 +1,16 @@
 from typing import Optional, Union
 
 import mlx.core as mx
+import numpy as np
 
 
 class EulerDiscreteScheduler:
     """
     Euler scheduler for discrete diffusion models.
     Implements the Euler method for solving the reverse-time SDE.
+
+    NOTE: This is a port of the diffusers.EulerDiscreteScheduler.
+    Source: https://github.com/huggingface/diffusers/blob/main/src/diffusers/schedulers/scheduling_euler_discrete.py
     """
 
     def __init__(
@@ -33,7 +37,6 @@ class EulerDiscreteScheduler:
         self.sigma_max = sigma_max
         self.sigma_data = sigma_data
 
-        # Create beta schedule
         if beta_schedule == "linear":
             self.betas = mx.linspace(beta_start, beta_end, num_train_timesteps, dtype=mx.float32)
         elif beta_schedule == "scaled_linear":
@@ -44,9 +47,8 @@ class EulerDiscreteScheduler:
         self.alphas = 1.0 - self.betas
         self.alphas_cumprod = mx.cumprod(self.alphas, axis=0)
 
-        # Convert to sigma parameterization
-        sigmas = ((1 - self.alphas_cumprod) / self.alphas_cumprod) ** 0.5
-        self.sigmas = mx.concatenate([mx.array([0.0]), sigmas])
+        # Create sigmas from alphas_cumprod in ascending order (low noise to high noise)
+        self.sigmas = ((1 - self.alphas_cumprod) / self.alphas_cumprod) ** 0.5
 
         # Initialize timesteps
         self.timesteps = None
@@ -57,30 +59,24 @@ class EulerDiscreteScheduler:
         self.num_inference_steps = num_inference_steps
 
         if self.use_karras_sigmas:
-            # Use Karras et al. (2022) timestep spacing
+            # Karras sigmas are generated in descending order
             sigmas = self._get_karras_sigmas(num_inference_steps)
         else:
-            # Linear spacing in sigma space
-            timesteps = mx.linspace(0, self.num_train_timesteps - 1, num_inference_steps)
-            sigmas = self.sigmas[timesteps.astype(mx.int32)]
+            # Sample from the train sigmas in descending order.
+            timesteps_indices = mx.linspace(self.num_train_timesteps - 1, 0, num_inference_steps)
+            sigmas = self.sigmas[timesteps_indices.astype(mx.int32)]
 
-        # Add final sigma of 0
-        sigmas = mx.concatenate([sigmas, mx.array([0.0])])
-        self.sigmas = sigmas
-
-        # Create timesteps from sigmas
+        # This is the final sigma schedule for inference (descending order)
+        self.sigmas = mx.concatenate([sigmas, mx.array([0.0])])
         self.timesteps = mx.arange(num_inference_steps, dtype=mx.int32)
 
     def _get_karras_sigmas(self, num_inference_steps: int) -> mx.array:
         """Get Karras et al. (2022) timestep schedule."""
-        rho = 7.0  # Karras et al. recommend rho=7
-
-        # Generate evenly spaced values in [0, 1]
-        u = mx.linspace(0, 1, num_inference_steps)
-
-        # Apply Karras transformation
-        sigmas = (self.sigma_max ** (1 / rho) + u * (self.sigma_min ** (1 / rho) - self.sigma_max ** (1 / rho))) ** rho
-
+        rho = 7.0
+        ramp = mx.linspace(0, 1, num_inference_steps)
+        min_inv_rho = self.sigma_min ** (1 / rho)
+        max_inv_rho = self.sigma_max ** (1 / rho)
+        sigmas = (max_inv_rho + ramp * (min_inv_rho - max_inv_rho)) ** rho
         return sigmas
 
     def scale_model_input(self, sample: mx.array, timestep: Union[int, mx.array]) -> mx.array:
@@ -89,9 +85,7 @@ class EulerDiscreteScheduler:
             timestep = int(timestep.item())
 
         sigma = self.sigmas[timestep]
-
-        # Scale input by (sigma^2 + 1)^0.5 for Euler method
-        return sample / ((sigma**2 + 1) ** 0.5)
+        return sample / ((sigma**2 + self.sigma_data**2) ** 0.5)
 
     def step(
         self,
@@ -110,15 +104,14 @@ class EulerDiscreteScheduler:
         sigma = self.sigmas[timestep]
         sigma_next = self.sigmas[timestep + 1]
 
-        # Convert to denoised sample
         if self.prediction_type == "epsilon":
             denoised = sample - sigma * model_output
         elif self.prediction_type == "v_prediction":
-            denoised = sample / ((sigma**2 + 1) ** 0.5) - (sigma / ((sigma**2 + 1) ** 0.5)) * model_output
+            # The v_prediction formula was also slightly off, correcting it.
+            denoised = self.alphas_cumprod[timestep]**0.5 * sample - (1 - self.alphas_cumprod[timestep])**0.5 * model_output
         else:
             raise ValueError(f"Unsupported prediction_type: {self.prediction_type}")
 
-        # Euler step
         derivative = (sample - denoised) / sigma
         dt = sigma_next - sigma
         prev_sample = sample + derivative * dt
