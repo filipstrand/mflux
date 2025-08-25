@@ -59,14 +59,6 @@ def main():
         return_tensors="mlx"
     )
     
-    inputs = tokenizer(
-        formatted_prompt,
-        max_length=tokenizer_max_length + template_drop_idx,
-        padding=True,
-        truncation=True,
-        return_tensors="mlx"
-    )
-
     input_ids = inputs["input_ids"]
     attention_mask = inputs["attention_mask"]
     
