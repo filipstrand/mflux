@@ -1,0 +1,3 @@
+mflux @ git+https://github.com/anthonywu/mflux.git@mlx-on-clouds
+hf_transfer
+mlx[cpu]==0.28.0

@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 
 import mlx.core as mx
@@ -7,7 +8,10 @@ log = logging.getLogger(__name__)
 
 
 class Config:
-    precision: mx.Dtype = mx.bfloat16
+    if "CPU_MODE" in os.environ:
+        precision: mx.Dtype = mx.float32
+    else:
+        precision: mx.Dtype = mx.bfloat16
 
     def __init__(
         self,
