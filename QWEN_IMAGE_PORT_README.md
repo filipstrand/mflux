@@ -1,6 +1,20 @@
 ## Qwen Image Port: Hard‑Won Truths and Techniques
 
-This document consolidates the essential, reusable lessons from porting the Qwen Image VAE decoder to MLX. It omits block-by-block stories, numeric journeys, and transient scripts. Use this as the playbook for the transformer and text encoder ports.
+This document consolidates the essential, reusable lessons from porting Qwen Image components to MLX. It omits block-by-block stories, numeric journeys, and transient scripts. Use this as the playbook for debugging and completing the remaining components.
+
+### Component Status Overview
+
+#### ✅ **COMPLETED COMPONENTS**
+- **VAE**: ✅ Working - produces visually identical images
+- **Main Image Transformer**: ✅ Working - processes latents correctly, all layers functional
+- **Scheduler**: ✅ Working - timestep and noise scheduling matches reference
+
+#### 🔧 **IN PROGRESS**
+- **Text Encoder Internal Transformer**: ❌ **BROKEN** - root cause identified in QKV linear projections
+  
+  **CRITICAL CLARIFICATION**: The Qwen model has **TWO separate transformers**:
+  1. **Text Encoder Transformer** (❌ BROKEN): Internal transformer within the text encoder that processes text tokens into embeddings. This is a standard language model transformer (28 layers, 3584 hidden size).
+  2. **Main Image Transformer** (✅ WORKING): The main diffusion transformer that processes image latents. This handles the actual image generation and is already working correctly.
 
 ### Core principles
 - **Deterministic first**: fixed seeds, identical inputs, identical code paths
@@ -14,6 +28,33 @@ This document consolidates the essential, reusable lessons from porting the Qwen
 - Export named tensors for MLX ingestion; use clear, stable names (e.g., `vae/pre_decode_latents.pt`, `vae/up_block_1/res_0_out.pt`)
 - Keep all run conditions repeatable; store the exact prompt/settings alongside tensors
 - **Trace active code paths**: Add strategic prints to see which branches actually execute (dropout, conditional blocks, etc.)
+
+### Advanced Debugging: Reference Implementation Instrumentation
+
+**When standard approaches fail**, instrument the reference implementation for granular tensor comparison:
+
+#### Technique: Monkey-patch Reference for Detailed Tensor Capture
+1. **Identify target layer**: Focus on the specific layer/component showing divergence
+2. **Monkey-patch forward methods**: Replace original methods with instrumented versions that save intermediate tensors
+3. **Granular tensor saving**: Save every intermediate computation with descriptive names:
+   ```python
+   torch.save(query_states.cpu().to(torch.float32), f"{debug_dir}/layer0_02_query_states.pt")
+   torch.save(key_states.cpu().to(torch.float32), f"{debug_dir}/layer0_03_key_states.pt")
+   torch.save(attn_weights.cpu().to(torch.float32), f"{debug_dir}/layer0_16_attn_weights.pt")
+   ```
+4. **Run reference once**: Generate complete tensor trace from single reference run
+5. **Step-by-step MLX comparison**: Compare MLX implementation against each saved tensor
+
+#### Benefits of This Approach:
+- **Pinpoint precision**: Identify exact computation where divergence occurs
+- **No hypothesis needed**: Let the data show where the problem is
+- **Efficient debugging**: Run expensive reference once, compare MLX implementation multiple times
+- **Avoid guesswork**: Replace assumptions with actual numerical evidence
+
+#### When to Use:
+- Standard layer-by-layer comparison shows divergence but root cause unclear
+- Need to isolate specific operation causing differences
+- Multiple components interact making it hard to identify the source
 
 ### Minimal workflow (repeatable)
 0) **Prepare reference tensors and run conditions**
@@ -103,9 +144,24 @@ uv run python -u test_end_to_end_image.py
 - Complex blocks: ≤1e‑3 to 1e‑4 where practical; stable downstream behavior
 - End‑to‑end: visually equivalent images from identical latents/settings
 
-### Notes for upcoming phases
-- Apply this exact playbook to transformer and text encoder
-- Keep this doc small; add only patterns that will matter again
+### Current Phase: Text Encoder Internal Transformer Debugging
+
+**Status**: ✅ **ROOT CAUSE IDENTIFIED** - Systematic tensor-by-tensor comparison completed. Issue isolated to MLX linear layer computation differences.
+
+**Techniques - Reference Implementation Instrumentation**:
+1. **Monkey-patch the reference**: Add detailed tensor saving directly in the HuggingFace/diffusers pipeline
+2. **Granular tensor capture**: Save every intermediate computation (QKV projections, reshaping, RoPE, etc.) 
+3. **Step-by-step comparison**: Compare MLX implementation against reference tensors at each computation step
+4. **Pinpoint precision**: Identify exact operation where divergence occurs
+
+**Key Files**:
+- `diffusers/src/diffusers/pipelines/qwenimage/pipeline_qwenimage.py` - Instrumented with detailed tensor saving
+- `debug_tensors_reference/` - Directory containing reference tensors at each computation step
+- `from_diffusers.py` - Runs instrumented pipeline to generate reference tensors
+
+### Notes for future phases
+- Main image transformer is already working - focus only on text encoder internal transformer
+- Keep this doc updated with current status as debugging progresses
 
 ### Trace real code paths in the reference
 - **Critical for complex implementations**: Diffusers code has many conditional branches that may not be active

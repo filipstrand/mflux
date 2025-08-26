@@ -29,21 +29,28 @@ class QwenWeightUtil:
         weights: "QwenImageWeightHandler",
         vae: nn.Module,
         transformer: nn.Module,
+        text_encoder: nn.Module | None = None,
     ) -> int | None:
         if weights.meta_data.quantization_level is None and quantize_arg is None:
-            QwenWeightUtil._set_model_weights(weights, vae, transformer)
+            QwenWeightUtil._set_model_weights(weights, vae, transformer, text_encoder)
             return None
 
         if weights.meta_data.quantization_level is None and quantize_arg is not None:
             bits = quantize_arg
-            QwenWeightUtil._set_model_weights(weights, vae, transformer)
+            QwenWeightUtil._set_model_weights(weights, vae, transformer, text_encoder)
             QuantizationUtil.quantize_qwen_models(vae, transformer, bits, weights)
+            # Quantize text encoder separately if provided
+            if text_encoder is not None:
+                nn.quantize(text_encoder, bits=bits)
             return bits
 
         if weights.meta_data.quantization_level is not None:
             bits = weights.meta_data.quantization_level
             QuantizationUtil.quantize_qwen_models(vae, transformer, bits, weights)
-            QwenWeightUtil._set_model_weights(weights, vae, transformer)
+            # Quantize text encoder separately if provided
+            if text_encoder is not None:
+                nn.quantize(text_encoder, bits=bits)
+            QwenWeightUtil._set_model_weights(weights, vae, transformer, text_encoder)
             return bits
 
         raise Exception("Error setting weights")
@@ -53,6 +60,7 @@ class QwenWeightUtil:
         weights: "QwenImageWeightHandler",
         vae: nn.Module,
         transformer: nn.Module,
+        text_encoder: nn.Module | None = None,
     ):
         if weights.vae is not None:
             vae.update(weights.vae, strict=False)
@@ -63,3 +71,8 @@ class QwenWeightUtil:
             QwenImageTransformerApplier.apply_from_handler(module=transformer, weights=weights.transformer)
         else:
             raise ValueError("No Transformer weights loaded from pretrained model")
+
+        # Text encoder weights will be loaded from the model repository directly
+        # via the tokenizer handler, so we don't need to handle them here
+        if text_encoder is not None:
+            print("📝 Text encoder will load weights from model repository during initialization")

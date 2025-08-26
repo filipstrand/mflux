@@ -16,6 +16,7 @@ from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
 from mflux.qwen.qwen_initializer import QwenImageInitializer
+from mflux.qwen.qwen_prompt_encoder import QwenPromptEncoder
 
 
 class QwenImage(nn.Module):
@@ -86,28 +87,50 @@ class QwenImage(nn.Module):
         self,
         seed: int,
         prompt: str,
-        prompt_embeds: mx.array,
-        prompt_mask: mx.array | None,
         config: Config,
+        negative_prompt: str | None = None,
+        prompt_embeds: mx.array | None = None,
+        prompt_mask: mx.array | None = None,
         negative_prompt_embeds: mx.array | None = None,
         negative_prompt_mask: mx.array | None = None,
-        initial_latents: mx.array | None = None,
         reference_timesteps: mx.array | None = None,
     ) -> GeneratedImage:
-        print(f"\n🚀 Starting image generation...")
+        print("\n🚀 Starting image generation...")
         total_start = time.time()
         runtime_config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(runtime_config.init_time_step, runtime_config.num_inference_steps))
 
-        # 1. Create the initial latents
-        if initial_latents is not None:
-            latents = initial_latents
-        else:
-            latents = LatentCreator.create(
-                seed=seed,
-                height=runtime_config.height,
-                width=runtime_config.width,
+        # Encode prompts if not provided
+        if prompt_embeds is None or prompt_mask is None:
+            print("📝 Encoding text prompt...")
+            encode_start = time.time()
+            prompt_embeds, prompt_mask = QwenPromptEncoder.encode_prompt(
+                prompt=prompt,
+                prompt_cache=self.prompt_cache,
+                qwen_tokenizer=self.qwen_tokenizer,
+                qwen_text_encoder=self.text_encoder,
             )
+            encode_time = time.time() - encode_start
+            print(f"✅ Text encoding completed in {encode_time:.2f} seconds")
+
+        if negative_prompt is not None and (negative_prompt_embeds is None or negative_prompt_mask is None):
+            print("📝 Encoding negative prompt...")
+            negative_prompt_embeds, negative_prompt_mask = QwenPromptEncoder.encode_negative_prompt(
+                negative_prompt=negative_prompt,
+                prompt_cache=self.prompt_cache,
+                qwen_tokenizer=self.qwen_tokenizer,
+                qwen_text_encoder=self.text_encoder,
+            )
+
+        # Almost necessary to do now to free up memory
+        del self.text_encoder
+
+        # 1. Create the initial latents
+        latents = LatentCreator.create(
+            seed=seed,
+            height=runtime_config.height,
+            width=runtime_config.width,
+        )
 
         batch = latents.shape[0]
         num_patches = latents.shape[1]
@@ -208,11 +231,11 @@ class QwenImage(nn.Module):
             latents=latents,
             config=runtime_config,
         )
-        
+
         denoising_time = time.time() - denoising_start
         print(f"✅ Denoising completed in {denoising_time:.2f} seconds")
 
-        print(f"🎨 Decoding latents to image...")
+        print("🎨 Decoding latents to image...")
         decode_start = time.time()
         unpacked_latents = ArrayUtil.unpack_latents(
             latents=latents, height=runtime_config.height, width=runtime_config.width
@@ -233,12 +256,12 @@ class QwenImage(nn.Module):
 
         decode_time = time.time() - decode_start
         print(f"✅ Decoding completed in {decode_time:.2f} seconds")
-        
+
         total_time = time.time() - total_start
         print(f"\n🎯 Total generation time: {total_time:.2f} seconds")
-        print(f"  - Denoising: {denoising_time:.2f}s ({denoising_time/total_time*100:.1f}%)")
-        print(f"  - Decoding: {decode_time:.2f}s ({decode_time/total_time*100:.1f}%)")
-        
+        print(f"  - Denoising: {denoising_time:.2f}s ({denoising_time / total_time * 100:.1f}%)")
+        print(f"  - Decoding: {decode_time:.2f}s ({decode_time / total_time * 100:.1f}%)")
+
         return ImageUtil.to_image(
             decoded_latents=decoded,
             config=runtime_config,

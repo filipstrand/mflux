@@ -1,33 +1,25 @@
 import time
-import mlx.core as mx
 
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.error.exceptions import PromptFileReadError, StopImageGenerationException
 from mflux.qwen.qwen_image import QwenImage
-from mflux.qwen.utils import load_pt_tensor, torch_to_mx
 
 
 def main():
     # Hardcoded configuration values
     model_name = "qwen-image"
-    quantize = 8
+    quantize = 6
     local_path = None
 
     # Generation settings
-    prompt = "Wont be used since we import text embeddings"
+    prompt = "A coffee shop entrance features a chalkboard sign reading 'Qwen Coffee 😊 $2 per cup,' with a neon light beside it displaying '通义千问'. Next to it hangs a poster showing a beautiful Chinese woman, and beneath the poster is written 'π≈3.1415926-53589793-23846264-33832795-02384197'. Ultra HD, 4K, cinematic composition"
+    negative_prompt = ""  # Empty negative prompt
     height = 512
     width = 512
     steps = 20
     guidance = 4.0
     seeds = [42]
-
-    print("📖 Loading text embeddings...")
-    prompt_embeds = torch_to_mx(load_pt_tensor("debug_tensors/prompt_embeds.pt"), dtype=mx.bfloat16)
-    prompt_mask = torch_to_mx(load_pt_tensor("debug_tensors/prompt_embeds_mask.pt"), dtype=mx.float32)
-    negative_prompt_embeds = torch_to_mx(load_pt_tensor("debug_tensors/negative_prompt_embeds.pt"), dtype=mx.bfloat16)
-    negative_prompt_mask = torch_to_mx(load_pt_tensor("debug_tensors/negative_prompt_embeds_mask.pt"), dtype=mx.float32)
-    initial_latents = None
 
     # 1. Load the model
     qwen = QwenImage(
@@ -44,11 +36,7 @@ def main():
             image = qwen.generate_image(
                 seed=seed,
                 prompt=prompt,
-                prompt_embeds=prompt_embeds,
-                negative_prompt_embeds=negative_prompt_embeds,
-                prompt_mask=prompt_mask,
-                negative_prompt_mask=negative_prompt_mask,
-                initial_latents=initial_latents,
+                negative_prompt=negative_prompt,
                 config=Config(
                     num_inference_steps=steps,
                     height=height,
