@@ -203,11 +203,75 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
         txt_tokens = self.tokenizer(
             txt, max_length=self.tokenizer_max_length + drop_idx, padding=True, truncation=True, return_tensors="pt"
         ).to(device)
+        
+        # Simple tensor save: input tokens
+        torch.save(txt_tokens.input_ids.detach().cpu(), "debug_tensors/pt_input_ids.pt")
+        
+                # Comprehensive hooks to capture intermediate layers + first layer details
+        def setup_comprehensive_hooks():
+            all_layers = self.text_encoder.model.language_model.layers
+            hooks = []
+            
+            # Hook each transformer layer output to track error accumulation
+            for layer_idx, layer in enumerate(all_layers):
+                def make_layer_hook(idx):
+                    def layer_output_hook(module, input, output):
+                        # Extract hidden states from tuple (output is typically (hidden_states, attentions, ...))
+                        hidden_states = output[0] if isinstance(output, tuple) else output
+                        torch.save(hidden_states.detach().cpu().float(), f"debug_tensors/pt_layer_{idx:02d}_output.pt")
+                    return layer_output_hook
+                hooks.append(layer.register_forward_hook(make_layer_hook(layer_idx)))
+
+            # Detailed hooks for first layer only
+            first_layer = all_layers[0]
+
+            # Hook to capture attention input (RMS norm output)
+            def attention_input_hook(module, input, output):
+                torch.save(output.detach().cpu().float(), "debug_tensors/pt_attention_input.pt")
+            hooks.append(first_layer.input_layernorm.register_forward_hook(attention_input_hook))
+
+            # Hooks to capture QKV projections
+            def q_proj_hook(module, input, output):
+                torch.save(output.detach().cpu().float(), "debug_tensors/pt_query_proj.pt")
+            def k_proj_hook(module, input, output):
+                torch.save(output.detach().cpu().float(), "debug_tensors/pt_key_proj.pt")
+            def v_proj_hook(module, input, output):
+                torch.save(output.detach().cpu().float(), "debug_tensors/pt_value_proj.pt")
+
+            hooks.append(first_layer.self_attn.q_proj.register_forward_hook(q_proj_hook))
+            hooks.append(first_layer.self_attn.k_proj.register_forward_hook(k_proj_hook))
+            hooks.append(first_layer.self_attn.v_proj.register_forward_hook(v_proj_hook))
+
+            # Granular attention debugging hooks for first layer
+            def attention_final_hook(module, input, output):
+                torch.save(output.detach().cpu().float(), "debug_tensors/pt_attention_final.pt")
+            hooks.append(first_layer.self_attn.register_forward_hook(attention_final_hook))
+            
+            # MLP debugging hooks for first layer
+            def mlp_input_hook(module, input, output):
+                torch.save(output.detach().cpu().float(), "debug_tensors/pt_mlp_input.pt")
+            hooks.append(first_layer.post_attention_layernorm.register_forward_hook(mlp_input_hook))
+            
+            def mlp_output_hook(module, input, output):
+                torch.save(output.detach().cpu().float(), "debug_tensors/pt_mlp_output.pt")
+            hooks.append(first_layer.mlp.register_forward_hook(mlp_output_hook))
+
+            return hooks
+        
+        hooks = setup_comprehensive_hooks()
+        
         encoder_hidden_states = self.text_encoder(
             input_ids=txt_tokens.input_ids,
             attention_mask=txt_tokens.attention_mask,
             output_hidden_states=True,
         )
+        
+        # Clean up hooks
+        for hook in hooks:
+            hook.remove()
+        
+        # Simple tensor save: text encoder output
+        torch.save(encoder_hidden_states.hidden_states[-1].detach().cpu().float(), "debug_tensors/pt_text_encoder_output.pt")
         hidden_states = encoder_hidden_states.hidden_states[-1]
         split_hidden_states = self._extract_masked_hidden(hidden_states, txt_tokens.attention_mask)
         split_hidden_states = [e[drop_idx:] for e in split_hidden_states]

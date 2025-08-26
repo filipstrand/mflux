@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 
 import mlx.core as mx
 import numpy as np
@@ -9,8 +10,6 @@ from mlx import nn
 from mflux.models.transformer.ada_layer_norm_continuous import AdaLayerNormContinuous
 from mflux.qwen.qwen_rope import QwenEmbedRopeMLX
 from mflux.qwen.qwen_transformer_block import QwenTransformerBlockApplier, QwenTransformerBlockMLX
-
-# ----- Minimal time/text embedding components (inlined to remove dependency on qwen_transformer_minimal) -----
 
 
 @dataclass
@@ -72,7 +71,7 @@ class QwenTimeTextEmbedMLX(nn.Module):
         return time_emb
 
 
-class QwenImageTransformerMLX(nn.Module):
+class QwenTransformer(nn.Module):
     def __init__(
         self,
         in_channels: int = 64,
@@ -117,16 +116,19 @@ class QwenImageTransformerMLX(nn.Module):
         self.norm_out = AdaLayerNormContinuous(inner_dim, inner_dim)
         self.proj_out = nn.Linear(inner_dim, patch_size * patch_size * out_channels)
 
-    def forward(
+    def __call__(
         self,
         t: int,
         config,
         hidden_states: mx.array,
         encoder_hidden_states: mx.array,
-        img_shapes: tuple[int, int, int] | list[tuple[int, int, int]],
-        txt_seq_lens: list[int],
-        encoder_hidden_states_mask: mx.array | None = None,
+        encoder_hidden_states_mask: mx.array,
     ) -> mx.array:
+        # Compute internal transformer details (like Flux pattern)
+        side = int(round(math.sqrt(hidden_states.shape[1])))
+        img_shapes = [(1, side, side)]
+        txt_seq_lens = [int(mx.sum(encoder_hidden_states_mask[i]).item()) for i in range(encoder_hidden_states_mask.shape[0])]
+
         # Resolve timestep from t and config (like Flux)
         timestep_value = config.get_qwen_timestep(t)
         batch = hidden_states.shape[0]
@@ -137,7 +139,7 @@ class QwenImageTransformerMLX(nn.Module):
 
         temb = self.time_text_embed(timestep, hs)
 
-        # RoPE from provided shapes
+        # RoPE from computed shapes
         img_rot, txt_rot = self.pos_embed(video_fhw=img_shapes, txt_seq_lens=txt_seq_lens)
 
         # Blocks
@@ -157,31 +159,10 @@ class QwenImageTransformerMLX(nn.Module):
         out = self.proj_out(hs)
         return out
 
-    # MLX modules are called via __call__, not forward. Provide __call__ to mirror PyTorch-style API usage.
-    def __call__(
-        self,
-        t: int,
-        config,
-        hidden_states: mx.array,
-        encoder_hidden_states: mx.array,
-        img_shapes: tuple[int, int, int] | list[tuple[int, int, int]],
-        txt_seq_lens: list[int],
-        encoder_hidden_states_mask: mx.array | None = None,
-    ) -> mx.array:
-        return self.forward(
-            t=t,
-            config=config,
-            hidden_states=hidden_states,
-            encoder_hidden_states=encoder_hidden_states,
-            img_shapes=img_shapes,
-            txt_seq_lens=txt_seq_lens,
-            encoder_hidden_states_mask=encoder_hidden_states_mask,
-        )
-
 
 class QwenImageTransformerApplier:
     @staticmethod
-    def apply_from_handler(module: QwenImageTransformerMLX, weights: dict) -> None:
+    def apply_from_handler(module: QwenTransformer, weights: dict) -> None:
         def set_linear_pt_to_mlx(target: nn.Linear, w: mx.array | None, b: mx.array | None) -> None:
             # PT saves Linear weight as [out, in]; MLX stores weight as [out, in] as well
             if w is not None:
@@ -231,7 +212,7 @@ class QwenImageTransformerApplier:
             set_linear_pt_to_mlx(module.proj_out, po.get("weight"), po.get("bias"))
 
     @staticmethod
-    def verify_weights(module: QwenImageTransformerMLX, weights: dict, print_first_values: bool = False) -> dict:
+    def verify_weights(module: QwenTransformer, weights: dict, print_first_values: bool = False) -> dict:
         """
         Verify that all handler weights map to named parameters in the MLX module.
 

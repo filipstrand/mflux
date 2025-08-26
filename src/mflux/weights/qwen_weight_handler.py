@@ -97,14 +97,21 @@ class QwenImageWeightHandler:
             num_params = QwenImageWeightHandler._count_nested_tensors(transformer_weights)
             print(f"✅ Transformer weights loaded: {num_params} tensors")
 
-        # TODO Phase 3: Load text encoder weights
+        # Phase 3: Load text encoder weights
+        text_encoder_weights = None
+        text_encoder_path = root_path / "text_encoder"
+        if text_encoder_path.exists():
+            print("🔍 Loading Text Encoder weights...")
+            from mflux.weights.qwen_text_encoder_loader import QwenTextEncoderLoader
+            text_encoder_weights = QwenTextEncoderLoader.load_weights(text_encoder_path)
+            print(f"✅ Text encoder weights loaded: {len(text_encoder_weights) if text_encoder_weights else 0} parameters")
 
         return QwenImageWeightHandler(
             meta_data=QwenImageMetaData(
                 quantization_level=None,
                 mflux_version="dev",
             ),
-            qwen_text_encoder=None,  # TODO: Phase 3
+            qwen_text_encoder=text_encoder_weights,
             transformer=transformer_weights,  # Phase 2: Structured transformer weights
             vae=vae_weights,  # Phase 1: Actual VAE weights loaded
         )

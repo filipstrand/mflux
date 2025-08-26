@@ -5,23 +5,15 @@ from mflux.models.text_encoder.qwen_encoder.qwen_encoder import QwenEncoder
 
 
 class QwenTextEncoder(nn.Module):
-    """
-    Qwen Text Encoder for MFLUX.
-
-    This encoder follows the same pattern as T5Encoder and CLIPEncoder
-    in the MFLUX codebase, providing a clean interface for text encoding
-    in the Qwen image generation pipeline.
-    """
-
     def __init__(
         self,
-        vocab_size: int = 152064,  # Actual Qwen2.5-VL vocab size from config
-        hidden_size: int = 3584,  # Match joint_attention_dim in transformer
-        num_hidden_layers: int = 28,  # From config
-        num_attention_heads: int = 28,  # From config
-        num_key_value_heads: int = 4,  # GQA: only 4 KV heads from config
-        intermediate_size: int = 18944,  # From config
-        max_position_embeddings: int = 128000,  # From config
+        vocab_size: int = 152064,
+        hidden_size: int = 3584,
+        num_hidden_layers: int = 28,
+        num_attention_heads: int = 28,
+        num_key_value_heads: int = 4,
+        intermediate_size: int = 18944,
+        max_position_embeddings: int = 128000,
         rms_norm_eps: float = 1e-6,
     ):
         super().__init__()
@@ -35,62 +27,38 @@ class QwenTextEncoder(nn.Module):
             intermediate_size=intermediate_size,
             max_position_embeddings=max_position_embeddings,
             rms_norm_eps=rms_norm_eps,
-            rope_theta=1000000.0,  # From config
-            rope_scaling={"mrope_section": [16, 24, 24]},  # Default from config
+            rope_theta=1000000.0,
+            rope_scaling={"mrope_section": [16, 24, 24]},
         )
 
     def __call__(
-        self, input_ids: mx.array, attention_mask: mx.array | None = None, position_ids: mx.array | None = None
+        self,
+        input_ids: mx.array,
+        attention_mask: mx.array | None = None,
+        position_ids: mx.array | None = None,
     ) -> mx.array:
-        """
-        Encode text tokens to embeddings.
-
-        Args:
-            input_ids: Token IDs of shape [batch_size, seq_len]
-            attention_mask: Attention mask of shape [batch_size, seq_len]
-
-        Returns:
-            Text embeddings of shape [batch_size, seq_len, 3584]
-        """
         return self.encoder(input_ids, attention_mask, position_ids)
 
-    def encode_with_mask_extraction(
-        self, input_ids: mx.array, attention_mask: mx.array, template_start_idx: int
+    def encode(
+        self,
+        input_ids: mx.array,
+        attention_mask: mx.array,
+        template_start_idx: int,
     ) -> tuple[mx.array, mx.array]:
-        """
-        Encode text and extract valid portions based on attention mask.
-
-        This method replicates the logic from the diffusers Qwen pipeline
-        where template prefixes are dropped and valid sequences are extracted.
-
-        Args:
-            input_ids: Token IDs of shape [batch_size, seq_len]
-            attention_mask: Attention mask of shape [batch_size, seq_len]
-            template_start_idx: Number of tokens to drop from template prefix
-
-        Returns:
-            tuple: (prompt_embeds, encoder_attention_mask)
-                - prompt_embeds: Padded embeddings [batch_size, max_valid_len, 3584]
-                - encoder_attention_mask: Attention mask [batch_size, max_valid_len]
-        """
-        # Encode the full sequence
         hidden_states = self.encoder(input_ids, attention_mask)
-
-        # Extract valid sequences based on attention mask
         batch_size = hidden_states.shape[0]
         valid_sequences = []
         valid_masks = []
 
         for i in range(batch_size):
-            # Find valid tokens (where attention_mask is 1)
-            mask = attention_mask[i]
-            valid_length = int(mx.sum(mask).item())
+            input_seq_len = input_ids.shape[1]
+            valid_length = input_seq_len
 
             # Extract valid hidden states by slicing instead of boolean indexing
             if valid_length > 0:
-                valid_hidden = hidden_states[i, :valid_length, :]  # [valid_length, hidden_size]
-                if template_start_idx > 0 and valid_length > template_start_idx:
-                    valid_hidden = valid_hidden[template_start_idx:, :]  # Drop template prefix
+                valid_hidden = hidden_states[i, :valid_length, :]
+                if 0 < template_start_idx < valid_length:
+                    valid_hidden = valid_hidden[template_start_idx:, :]
                     valid_length = valid_length - template_start_idx
             else:
                 valid_hidden = mx.zeros((1, hidden_states.shape[-1]), dtype=hidden_states.dtype)

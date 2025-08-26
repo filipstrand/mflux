@@ -7,15 +7,6 @@ from .qwen_rope import QwenRotaryEmbedding, apply_multimodal_rotary_pos_emb
 
 
 class QwenAttention(nn.Module):
-    """
-    Multi-head self-attention for Qwen text encoder.
-
-    Implements standard transformer self-attention with:
-    - Query, Key, Value projections
-    - Multi-head attention
-    - Output projection
-    """
-
     def __init__(
         self,
         hidden_size: int,
@@ -26,55 +17,31 @@ class QwenAttention(nn.Module):
         rope_scaling: dict = None,
     ):
         super().__init__()
-
         self.hidden_size = hidden_size
         self.num_attention_heads = num_attention_heads
         self.num_key_value_heads = num_key_value_heads or num_attention_heads
         self.head_dim = hidden_size // num_attention_heads
-        self.kv_head_dim = hidden_size // num_attention_heads  # Same head dim for KV
+        self.kv_head_dim = hidden_size // num_attention_heads
         self.num_queries_per_kv = num_attention_heads // self.num_key_value_heads
-
-        if self.head_dim * num_attention_heads != hidden_size:
-            raise ValueError(
-                f"hidden_size ({hidden_size}) must be divisible by num_attention_heads ({num_attention_heads})"
-            )
-
-        # QKV projections (GQA: different sizes for K,V vs Q)
         self.q_proj = nn.Linear(hidden_size, hidden_size, bias=True)
         self.k_proj = nn.Linear(hidden_size, self.num_key_value_heads * self.kv_head_dim, bias=True)
         self.v_proj = nn.Linear(hidden_size, self.num_key_value_heads * self.kv_head_dim, bias=True)
-
-        # Output projection
         self.o_proj = nn.Linear(hidden_size, hidden_size, bias=False)
-
-        # Scale factor for attention scores
         self.scale = 1.0 / math.sqrt(self.head_dim)
-
-        # RoPE (Rotary Position Embedding)
         self.rotary_emb = QwenRotaryEmbedding(
             dim=self.head_dim,
             max_position_embeddings=max_position_embeddings,
             base=rope_theta,
             rope_type="default",
         )
-
-        # Rope scaling configuration (for multimodal sections)
-        self.rope_scaling = rope_scaling or {"mrope_section": [16, 24, 24]}  # Default from config
+        self.rope_scaling = rope_scaling or {"mrope_section": [16, 24, 24]}
 
     def __call__(
-        self, hidden_states: mx.array, attention_mask: mx.array | None = None, position_ids: mx.array | None = None
+        self,
+        hidden_states: mx.array,
+        attention_mask: mx.array | None = None,
+        position_ids: mx.array | None = None,
     ) -> mx.array:
-        """
-        Forward pass of Qwen attention with RoPE.
-
-        Args:
-            hidden_states: Input tensor [batch_size, seq_len, hidden_size]
-            attention_mask: Attention mask [batch_size, seq_len]
-            position_ids: Position indices [batch_size, seq_len] or [3, batch_size, seq_len]
-
-        Returns:
-            Output tensor [batch_size, seq_len, hidden_size]
-        """
         batch_size, seq_len, _ = hidden_states.shape
 
         # Compute Q, K, V
@@ -94,10 +61,9 @@ class QwenAttention(nn.Module):
 
         # Apply RoPE (Rotary Position Embedding)
         if position_ids is None:
-            # Generate default position_ids for text-only case
             position_ids = mx.arange(seq_len, dtype=mx.int32)
-            position_ids = mx.expand_dims(position_ids, axis=0)  # [1, seq_len]
-            position_ids = mx.broadcast_to(position_ids, (batch_size, seq_len))  # [batch_size, seq_len]
+            position_ids = mx.expand_dims(position_ids, axis=0)
+            position_ids = mx.broadcast_to(position_ids, (batch_size, seq_len))
 
         # Get RoPE embeddings
         cos, sin = self.rotary_emb(hidden_states, position_ids)
@@ -109,7 +75,7 @@ class QwenAttention(nn.Module):
             cos,
             sin,
             self.rope_scaling["mrope_section"],
-            unsqueeze_dim=1,  # For [batch_size, num_heads, seq_len, head_dim] format
+            unsqueeze_dim=1,
         )
 
         # Expand key and value states to match query heads (GQA)
@@ -122,25 +88,12 @@ class QwenAttention(nn.Module):
 
         # Apply attention mask if provided
         if attention_mask is not None:
-            # Convert mask to attention weights format
-            # attention_mask: [batch_size, seq_len] -> [batch_size, 1, 1, seq_len]
             mask = mx.expand_dims(mx.expand_dims(attention_mask, axis=1), axis=1)
-            # Apply mask (set masked positions to very negative value)
             attn_weights = attn_weights + (1.0 - mask) * (-1e9)
 
-        # Apply softmax
         attn_weights = mx.softmax(attn_weights, axis=-1)
-
-        # Apply attention to values
         attn_output = mx.matmul(attn_weights, value_states)
-
-        # Reshape back to [batch_size, seq_len, num_heads, head_dim]
         attn_output = mx.transpose(attn_output, (0, 2, 1, 3))
-
-        # Concatenate heads
         attn_output = attn_output.reshape(batch_size, seq_len, self.hidden_size)
-
-        # Apply output projection
         attn_output = self.o_proj(attn_output)
-
         return attn_output

@@ -4,11 +4,12 @@ import mlx.nn as nn
 
 from mflux.config.config import Config
 from mflux.weights.quantization_util import QuantizationUtil
+from mflux.weights.qwen_text_encoder_loader import QwenTextEncoderLoader
 
 if TYPE_CHECKING:
     from mflux.weights.qwen_weight_handler import QwenImageWeightHandler
 
-from mflux.qwen.qwen_transformer_full import QwenImageTransformerApplier
+from mflux.qwen.qwen_transformer import QwenImageTransformerApplier
 
 
 class QwenWeightUtil:
@@ -38,18 +39,12 @@ class QwenWeightUtil:
         if weights.meta_data.quantization_level is None and quantize_arg is not None:
             bits = quantize_arg
             QwenWeightUtil._set_model_weights(weights, vae, transformer, text_encoder)
-            QuantizationUtil.quantize_qwen_models(vae, transformer, bits, weights)
-            # Quantize text encoder separately if provided
-            if text_encoder is not None:
-                nn.quantize(text_encoder, bits=bits)
+            QuantizationUtil.quantize_qwen_models(text_encoder, vae, transformer, bits, weights)
             return bits
 
         if weights.meta_data.quantization_level is not None:
             bits = weights.meta_data.quantization_level
-            QuantizationUtil.quantize_qwen_models(vae, transformer, bits, weights)
-            # Quantize text encoder separately if provided
-            if text_encoder is not None:
-                nn.quantize(text_encoder, bits=bits)
+            QuantizationUtil.quantize_qwen_models(text_encoder, vae, transformer, bits, weights)
             QwenWeightUtil._set_model_weights(weights, vae, transformer, text_encoder)
             return bits
 
@@ -62,17 +57,7 @@ class QwenWeightUtil:
         transformer: nn.Module,
         text_encoder: nn.Module | None = None,
     ):
-        if weights.vae is not None:
-            vae.update(weights.vae, strict=False)
-        else:
-            raise ValueError("No VAE weights loaded from pretrained model")
-
-        if weights.transformer is not None:
-            QwenImageTransformerApplier.apply_from_handler(module=transformer, weights=weights.transformer)
-        else:
-            raise ValueError("No Transformer weights loaded from pretrained model")
-
-        # Text encoder weights will be loaded from the model repository directly
-        # via the tokenizer handler, so we don't need to handle them here
-        if text_encoder is not None:
-            print("📝 Text encoder will load weights from model repository during initialization")
+        vae.update(weights.vae, strict=False)
+        QwenImageTransformerApplier.apply_from_handler(module=transformer, weights=weights.transformer)
+        nested_weights = QwenTextEncoderLoader._convert_to_nested_dict(weights.qwen_text_encoder)
+        text_encoder.update(nested_weights, strict=False)

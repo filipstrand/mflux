@@ -1,4 +1,3 @@
-import time
 
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
@@ -13,8 +12,8 @@ def main():
     local_path = None
 
     # Generation settings
-    prompt = "A coffee shop entrance features a chalkboard sign reading 'Qwen Coffee 😊 $2 per cup,' with a neon light beside it displaying '通义千问'. Next to it hangs a poster showing a beautiful Chinese woman, and beneath the poster is written 'π≈3.1415926-53589793-23846264-33832795-02384197'. Ultra HD, 4K, cinematic composition"
-    negative_prompt = ""  # Empty negative prompt
+    prompt = "Luxury food photograph" + "Ultra HD, 4K, cinematic composition."
+    negative_prompt = " "
     height = 512
     width = 512
     steps = 20
@@ -31,8 +30,6 @@ def main():
     try:
         for seed in seeds:
             # 2. Generate an image for each seed value
-            print(f"🎨 Generating {height}x{width} image with seed {seed}")
-            start_time = time.time()
             image = qwen.generate_image(
                 seed=seed,
                 prompt=prompt,
@@ -45,11 +42,7 @@ def main():
                 ),
             )
             # 3. Save the image
-            generation_time = time.time() - start_time
-            output_path = "qwen_output_{seed}.png".format(seed=seed)
-            image.save(path=output_path, export_json_metadata=False)
-            print(f"✅ Image saved to {output_path}")
-            print(f"⏱️  Total generation time: {generation_time:.2f} seconds")
+            image.save(path="qwen_output_{seed}.png".format(seed=seed), export_json_metadata=False)
     except (StopImageGenerationException, PromptFileReadError) as exc:
         print(exc)
 
