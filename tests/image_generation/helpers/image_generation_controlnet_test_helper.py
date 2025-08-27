@@ -2,7 +2,7 @@ import os
 
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
-from mflux.controlnet.flux_controlnet import Flux1Controlnet
+from mflux.models.flux.variants.controlnet.flux_controlnet import Flux1Controlnet
 from tests.image_generation.helpers.image_generation_test_helper import ImageGeneratorTestHelper
 
 from .image_compare import check_images_close_enough

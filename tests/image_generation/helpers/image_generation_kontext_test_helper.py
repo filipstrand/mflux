@@ -3,7 +3,7 @@ from pathlib import Path
 
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
-from mflux.kontext.flux_kontext import Flux1Kontext
+from mflux.models.flux.variants.kontext.flux_kontext import Flux1Kontext
 
 from .image_compare import check_images_close_enough
 
