@@ -14,11 +14,11 @@ from mflux.flux_tools.redux.redux_util import ReduxUtil
 from mflux.latent_creator.latent_creator import LatentCreator
 from mflux.models.redux_encoder.redux_encoder import ReduxEncoder
 from mflux.models.siglip_vision_transformer.siglip_vision_transformer import SiglipVisionTransformer
-from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
-from mflux.models.text_encoder.prompt_encoder import PromptEncoder
-from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
-from mflux.models.transformer.transformer import Transformer
-from mflux.models.vae.vae import VAE
+from mflux.models.flux_text_encoder.clip_encoder.clip_encoder import CLIPEncoder
+from mflux.models.flux_text_encoder.prompt_encoder import PromptEncoder
+from mflux.models.flux_text_encoder.t5_encoder.t5_encoder import T5Encoder
+from mflux.models.flux_transformer.transformer import Transformer
+from mflux.models.flux_vae.vae import VAE
 from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil

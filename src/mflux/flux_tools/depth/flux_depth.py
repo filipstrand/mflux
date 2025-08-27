@@ -11,11 +11,11 @@ from mflux.flux.flux_initializer import FluxInitializer
 from mflux.flux_tools.depth.depth_util import DepthUtil
 from mflux.latent_creator.latent_creator import LatentCreator
 from mflux.models.depth_pro.depth_pro import DepthPro
-from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
-from mflux.models.text_encoder.prompt_encoder import PromptEncoder
-from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
-from mflux.models.transformer.transformer import Transformer
-from mflux.models.vae.vae import VAE
+from mflux.models.flux_text_encoder.clip_encoder.clip_encoder import CLIPEncoder
+from mflux.models.flux_text_encoder.prompt_encoder import PromptEncoder
+from mflux.models.flux_text_encoder.t5_encoder.t5_encoder import T5Encoder
+from mflux.models.flux_transformer.transformer import Transformer
+from mflux.models.flux_vae.vae import VAE
 from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil

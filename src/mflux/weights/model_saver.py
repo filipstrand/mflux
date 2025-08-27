@@ -16,9 +16,9 @@ class ModelSaver:
         ModelSaver._save_tokenizer(base_path, model.t5_tokenizer.tokenizer, "tokenizer_2")
 
         # Save the models
-        ModelSaver.save_weights(base_path, bits, model.vae, "vae")
-        ModelSaver.save_weights(base_path, bits, model.transformer, "transformer")
-        ModelSaver.save_weights(base_path, bits, model.clip_text_encoder, "text_encoder")
+        ModelSaver.save_weights(base_path, bits, model.vae, "flux_vae")
+        ModelSaver.save_weights(base_path, bits, model.transformer, "flux_transformer")
+        ModelSaver.save_weights(base_path, bits, model.clip_text_encoder, "flux_text_encoder")
         ModelSaver.save_weights(base_path, bits, model.t5_text_encoder, "text_encoder_2")
 
     @staticmethod

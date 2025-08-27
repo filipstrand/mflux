@@ -5,10 +5,10 @@ from mflux.flux_tools.redux.weight_handler_redux import WeightHandlerRedux
 from mflux.models.depth_pro.depth_pro import DepthPro
 from mflux.models.redux_encoder.redux_encoder import ReduxEncoder
 from mflux.models.siglip_vision_transformer.siglip_vision_transformer import SiglipVisionTransformer
-from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
-from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
-from mflux.models.transformer.transformer import Transformer
-from mflux.models.vae.vae import VAE
+from mflux.models.flux_text_encoder.clip_encoder.clip_encoder import CLIPEncoder
+from mflux.models.flux_text_encoder.t5_encoder.t5_encoder import T5Encoder
+from mflux.models.flux_transformer.transformer import Transformer
+from mflux.models.flux_vae.vae import VAE
 from mflux.tokenizer.clip_tokenizer import TokenizerCLIP
 from mflux.tokenizer.t5_tokenizer import TokenizerT5
 from mflux.tokenizer.tokenizer_handler import TokenizerHandler
@@ -208,7 +208,7 @@ class FluxInitializer:
         # Import here to avoid circular dependency
         from mflux.community.concept_attention.transformer_concept import TransformerConcept
 
-        # 1. Load weights first to get transformer dimensions
+        # 1. Load weights first to get flux_transformer dimensions
         weights = WeightHandler.load_regular_weights(
             repo_id=model_config.model_name,
             local_path=local_path,
@@ -221,7 +221,7 @@ class FluxInitializer:
             num_single_transformer_blocks=weights.num_single_transformer_blocks(),
         )
 
-        # 3. Use the improved FluxInitializer with custom transformer
+        # 3. Use the improved FluxInitializer with custom flux_transformer
         FluxInitializer.init(
             flux_model=flux_model,
             model_config=model_config,

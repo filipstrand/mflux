@@ -8,7 +8,7 @@ from pathlib import Path
 import mlx.core as mx
 from safetensors.mlx import load_file
 
-from mflux.models.text_encoder.qwen_text_encoder import QwenTextEncoder
+from mflux.models.flux_text_encoder.qwen_text_encoder import QwenTextEncoder
 
 
 class QwenTextEncoderLoader:
@@ -20,7 +20,7 @@ class QwenTextEncoderLoader:
         Load all text encoder weights from safetensor files.
 
         Args:
-            text_encoder_path: Path to text_encoder directory
+            text_encoder_path: Path to flux_text_encoder directory
 
         Returns:
             Dictionary mapping MLX parameter names to weight arrays
@@ -179,7 +179,7 @@ class QwenTextEncoderLoader:
 
         Args:
             text_encoder: The MLX text encoder to load weights into
-            text_encoder_path: Path to the text_encoder directory with safetensor files
+            text_encoder_path: Path to the flux_text_encoder directory with safetensor files
         """
         print("📝 Applying Qwen text encoder weights...")
 

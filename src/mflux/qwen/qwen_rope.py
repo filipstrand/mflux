@@ -7,7 +7,7 @@ from mlx import nn
 
 class QwenEmbedRopeMLX(nn.Module):
     """
-    Faithful MLX port of Qwen's RoPE embedding helper used in the transformer.
+    Faithful MLX port of Qwen's RoPE embedding helper used in the flux_transformer.
 
     Exposes a forward(video_fhw, txt_seq_lens) API that returns rotation matrices
     for image and text streams with shape [1, 1, S, D/2, 2, 2].

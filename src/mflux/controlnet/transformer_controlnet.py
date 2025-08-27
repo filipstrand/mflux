@@ -3,11 +3,11 @@ from mlx import nn
 
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.models.transformer.embed_nd import EmbedND
-from mflux.models.transformer.joint_transformer_block import JointTransformerBlock
-from mflux.models.transformer.single_transformer_block import SingleTransformerBlock
-from mflux.models.transformer.time_text_embed import TimeTextEmbed
-from mflux.models.transformer.transformer import Transformer
+from mflux.models.flux_transformer.embed_nd import EmbedND
+from mflux.models.flux_transformer.joint_transformer_block import JointTransformerBlock
+from mflux.models.flux_transformer.single_transformer_block import SingleTransformerBlock
+from mflux.models.flux_transformer.time_text_embed import TimeTextEmbed
+from mflux.models.flux_transformer.transformer import Transformer
 
 
 class TransformerControlnet(nn.Module):
@@ -44,7 +44,7 @@ class TransformerControlnet(nn.Module):
         text_embeddings = Transformer.compute_text_embeddings(t, pooled_prompt_embeds, self.time_text_embed, config)
         image_rotary_embeddings = Transformer.compute_rotary_embeddings(prompt_embeds, self.pos_embed, config, None)
 
-        # 2. Run the joint transformer blocks
+        # 2. Run the joint flux_transformer blocks
         controlnet_block_samples = []
         for idx, block in enumerate(self.transformer_blocks):
             encoder_hidden_states, hidden_states = self._apply_joint_transformer_block(
@@ -61,7 +61,7 @@ class TransformerControlnet(nn.Module):
         # 3. Concat the hidden states
         hidden_states = mx.concatenate([encoder_hidden_states, hidden_states], axis=1)
 
-        # 4. Run the single transformer blocks
+        # 4. Run the single flux_transformer blocks
         controlnet_single_block_samples = []
         for idx, block in enumerate(self.single_transformer_blocks):
             hidden_states = self._apply_single_transformer_block(
@@ -88,7 +88,7 @@ class TransformerControlnet(nn.Module):
         image_rotary_embeddings: mx.array,
         controlnet_single_block_samples: list[mx.array],
     ) -> mx.array:
-        # 1. Apply single transformer block
+        # 1. Apply single flux_transformer block
         hidden_states = block(
             hidden_states=hidden_states,
             text_embeddings=text_embeddings,
@@ -114,7 +114,7 @@ class TransformerControlnet(nn.Module):
         image_rotary_embeddings: mx.array,
         controlnet_block_samples: list[mx.array],
     ) -> tuple[mx.array, mx.array]:
-        # 1. Apply joint transformer block
+        # 1. Apply joint flux_transformer block
         encoder_hidden_states, hidden_states = block(
             hidden_states=hidden_states,
             encoder_hidden_states=encoder_hidden_states,

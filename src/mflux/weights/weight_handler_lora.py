@@ -25,10 +25,10 @@ class WeightHandlerLoRA:
                 weights, _, mflux_version = WeightHandler.load_transformer(lora_path=lora_file)
                 weights = dict(tree_flatten(weights))
                 weights = {key.removesuffix(".weight"): value for key, value in weights.items()}
-                weights = {f"transformer.{key}": value for key, value in weights.items()}
+                weights = {f"flux_transformer.{key}": value for key, value in weights.items()}
                 weights = {key: mx.transpose(value) for key, value in weights.items()}
                 lora_transformer_dict = LoRALayers.transformer_dict_from_template(weights, transformer, lora_scale)
-                transformer_weights = tree_unflatten(list(lora_transformer_dict.items()))["transformer"]
+                transformer_weights = tree_unflatten(list(lora_transformer_dict.items()))["flux_transformer"]
                 weights = WeightHandler(
                     clip_encoder=None,
                     t5_encoder=None,
@@ -138,7 +138,7 @@ class WeightHandlerLoRA:
     def set_lora_layers(transformer_module: nn.Module, lora_layers: LoRALayers) -> None:
         transformer = lora_layers.layers.transformer
 
-        # Handle top-level transformer components (x_embedder, context_embedder, proj_out, etc.)
+        # Handle top-level flux_transformer components (x_embedder, context_embedder, proj_out, etc.)
         for attr_name in ["x_embedder", "context_embedder", "proj_out"]:
             component = transformer.get(attr_name, None)
             if component is not None:

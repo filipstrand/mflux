@@ -7,7 +7,7 @@ import mlx.core as mx
 import numpy as np
 from mlx import nn
 
-from mflux.models.transformer.ada_layer_norm_continuous import AdaLayerNormContinuous
+from mflux.models.flux_transformer.ada_layer_norm_continuous import AdaLayerNormContinuous
 from mflux.qwen.qwen_rope import QwenEmbedRopeMLX
 from mflux.qwen.qwen_transformer_block import QwenTransformerBlockApplier, QwenTransformerBlockMLX
 
@@ -124,7 +124,7 @@ class QwenTransformer(nn.Module):
         encoder_hidden_states: mx.array,
         encoder_hidden_states_mask: mx.array,
     ) -> mx.array:
-        # Compute internal transformer details (like Flux pattern)
+        # Compute internal flux_transformer details (like Flux pattern)
         side = int(round(math.sqrt(hidden_states.shape[1])))
         img_shapes = [(1, side, side)]
         txt_seq_lens = [int(mx.sum(encoder_hidden_states_mask[i]).item()) for i in range(encoder_hidden_states_mask.shape[0])]

@@ -41,7 +41,7 @@ class WeightHandler:
         # Load the weights from disk, huggingface cache, or download from huggingface
         root_path = Path(local_path) if local_path else WeightHandler._download_or_get_cached_weights(repo_id)
 
-        # Some custom models might have a different specific transformer setup
+        # Some custom models might have a different specific flux_transformer setup
         if transformer_repo_id:
             transformer_path = WeightHandler._download_transformer_weights(transformer_repo_id)
         else:
@@ -74,7 +74,7 @@ class WeightHandler:
 
     @staticmethod
     def _load_clip_encoder(root_path: Path) -> tuple[dict, int, str | None]:
-        weights, quantization_level, mflux_version = WeightHandler.get_weights("text_encoder", root_path)
+        weights, quantization_level, mflux_version = WeightHandler.get_weights("flux_text_encoder", root_path)
         return weights, quantization_level, mflux_version
 
     @staticmethod
@@ -117,12 +117,12 @@ class WeightHandler:
 
     @staticmethod
     def load_transformer(root_path: Path | None = None, lora_path: str | None = None) -> tuple[dict, int, str | None]:
-        weights, quantization_level, mflux_version = WeightHandler.get_weights("transformer", root_path, lora_path)
+        weights, quantization_level, mflux_version = WeightHandler.get_weights("flux_transformer", root_path, lora_path)
 
         if lora_path:
-            if "transformer" not in weights:
+            if "flux_transformer" not in weights:
                 weights = LoRAConverter.load_weights(lora_path)
-            weights = weights["transformer"]
+            weights = weights["flux_transformer"]
 
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
         if quantization_level or mflux_version:
@@ -147,7 +147,7 @@ class WeightHandler:
 
     @staticmethod
     def _load_vae(root_path: Path) -> tuple[dict, int, str | None]:
-        weights, quantization_level, mflux_version = WeightHandler.get_weights("vae", root_path)
+        weights, quantization_level, mflux_version = WeightHandler.get_weights("flux_vae", root_path)
 
         # Quantized weights (i.e. ones exported from this project) don't need any post-processing.
         if quantization_level is not None:
@@ -164,10 +164,10 @@ class WeightHandler:
 
     @staticmethod
     def _get_model_file_pattern(model_name: str, root_path: Path):
-        if model_name == "transformer":
-            nested_files = list(root_path.glob("transformer/*.safetensors"))
+        if model_name == "flux_transformer":
+            nested_files = list(root_path.glob("flux_transformer/*.safetensors"))
             if nested_files:
-                return root_path.glob("transformer/*.safetensors")
+                return root_path.glob("flux_transformer/*.safetensors")
             else:
                 return root_path.glob("*.safetensors")
         else:
@@ -216,10 +216,10 @@ class WeightHandler:
             snapshot_download(
                 repo_id=repo_id,
                 allow_patterns=[
-                    "text_encoder/*.safetensors",
+                    "flux_text_encoder/*.safetensors",
                     "text_encoder_2/*.safetensors",
-                    "transformer/*.safetensors",
-                    "vae/*.safetensors",
+                    "flux_transformer/*.safetensors",
+                    "flux_vae/*.safetensors",
                 ],
             )
         )
@@ -230,7 +230,7 @@ class WeightHandler:
             snapshot_download(
                 repo_id=repo_id,
                 allow_patterns=[
-                    "transformer/*.safetensors",
+                    "flux_transformer/*.safetensors",
                     "*.safetensors",
                 ],
             )

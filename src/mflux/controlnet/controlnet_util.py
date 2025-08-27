@@ -5,7 +5,7 @@ import mlx.core as mx
 import numpy as np
 import PIL.Image
 
-from mflux.models.vae.vae import VAE
+from mflux.models.flux_vae.vae import VAE
 from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.image_util import StrOrBytesPath
 

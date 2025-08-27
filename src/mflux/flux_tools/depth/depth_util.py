@@ -7,7 +7,7 @@ import PIL.Image
 
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.depth_pro.depth_pro import DepthPro
-from mflux.models.vae.vae import VAE
+from mflux.models.flux_vae.vae import VAE
 from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.image_util import ImageUtil
 

@@ -29,7 +29,7 @@ class QwenImageWeightHandler:
     Unlike Flux which has separate text encoders (CLIP + T5), Qwen uses a single VL model.
     The architecture consists of:
     - Qwen2.5-VL text encoder (unified vision-language model)
-    - QwenImage transformer (dual-stream architecture)
+    - QwenImage flux_transformer (dual-stream architecture)
     - QwenImage VAE (3D temporal processing)
     """
 
@@ -70,9 +70,9 @@ class QwenImageWeightHandler:
                 snapshot_download(
                     repo_id=repo_id,
                     allow_patterns=[
-                        "vae/*.safetensors",
-                        "transformer/*.safetensors",
-                        "text_encoder/*.safetensors",
+                        "flux_vae/*.safetensors",
+                        "flux_transformer/*.safetensors",
+                        "flux_text_encoder/*.safetensors",
                     ],
                 )
             )
@@ -81,15 +81,15 @@ class QwenImageWeightHandler:
 
         # Load VAE weights (Phase 1 - only VAE implemented)
         vae_weights = None
-        vae_path = root_path / "vae"
+        vae_path = root_path / "flux_vae"
         if vae_path.exists():
             print("🔍 Loading VAE weights...")
             vae_weights = QwenImageWeightHandler._load_qwen_vae(vae_path)
             print(f"✅ VAE weights loaded: {len(vae_weights) if vae_weights else 0} parameters")
 
-        # Phase 2: Load transformer weights (organized, not yet applied)
+        # Phase 2: Load flux_transformer weights (organized, not yet applied)
         transformer_weights = None
-        transformer_path = root_path / "transformer"
+        transformer_path = root_path / "flux_transformer"
         if transformer_path.exists():
             print("🔍 Loading Transformer weights...")
             transformer_weights = QwenImageWeightHandler._load_qwen_transformer(transformer_path)
@@ -99,7 +99,7 @@ class QwenImageWeightHandler:
 
         # Phase 3: Load text encoder weights
         text_encoder_weights = None
-        text_encoder_path = root_path / "text_encoder"
+        text_encoder_path = root_path / "flux_text_encoder"
         if text_encoder_path.exists():
             print("🔍 Loading Text Encoder weights...")
             from mflux.weights.qwen_text_encoder_loader import QwenTextEncoderLoader
@@ -112,7 +112,7 @@ class QwenImageWeightHandler:
                 mflux_version="dev",
             ),
             qwen_text_encoder=text_encoder_weights,
-            transformer=transformer_weights,  # Phase 2: Structured transformer weights
+            transformer=transformer_weights,  # Phase 2: Structured flux_transformer weights
             vae=vae_weights,  # Phase 1: Actual VAE weights loaded
         )
 
@@ -486,7 +486,7 @@ class QwenImageWeightHandler:
     @staticmethod
     def _load_qwen_transformer(transformer_path: Path) -> dict:
         """
-        Load and organize Qwen transformer weights from all safetensor shards.
+        Load and organize Qwen flux_transformer weights from all safetensor shards.
 
         Creates a structured dictionary with proper Python lists for blocks and to_out.
         Does NOT transpose linear weights; use assignment consistent with MLX Linear expectations.
@@ -496,7 +496,7 @@ class QwenImageWeightHandler:
         # Merge all shards (excluding hidden/metadata files)
         shard_files = sorted([f for f in transformer_path.glob("*.safetensors") if not f.name.startswith("._")])
         if not shard_files:
-            raise FileNotFoundError(f"No transformer safetensors found in {transformer_path}")
+            raise FileNotFoundError(f"No flux_transformer safetensors found in {transformer_path}")
 
         flat = {}
         for shard in shard_files:
@@ -773,13 +773,13 @@ class QwenImageWeightHandler:
 
     def num_transformer_blocks(self) -> int:
         """
-        Return the number of transformer blocks.
+        Return the number of flux_transformer blocks.
         Based on the diffusers implementation, Qwen uses a different architecture than Flux.
 
         TODO: Determine the actual number from the pretrained model.
         """
         # Placeholder - will be determined from actual model architecture
-        return 24  # This is a guess based on typical transformer sizes
+        return 24  # This is a guess based on typical flux_transformer sizes
 
     def has_pretrained_weights(self) -> bool:
         """Check if this handler contains actual pretrained weights or just placeholders."""

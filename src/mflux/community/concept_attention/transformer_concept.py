@@ -9,15 +9,15 @@ from mflux.community.concept_attention.joint_transformer_block_concept import (
 )
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.models.transformer.ada_layer_norm_continuous import (
+from mflux.models.flux_transformer.ada_layer_norm_continuous import (
     AdaLayerNormContinuous,
 )
-from mflux.models.transformer.embed_nd import EmbedND
-from mflux.models.transformer.single_transformer_block import (
+from mflux.models.flux_transformer.embed_nd import EmbedND
+from mflux.models.flux_transformer.single_transformer_block import (
     SingleTransformerBlock,
 )
-from mflux.models.transformer.time_text_embed import TimeTextEmbed
-from mflux.models.transformer.transformer import Transformer
+from mflux.models.flux_transformer.time_text_embed import TimeTextEmbed
+from mflux.models.flux_transformer.transformer import Transformer
 
 
 class TransformerConcept(nn.Module):
@@ -56,7 +56,7 @@ class TransformerConcept(nn.Module):
         image_rotary_embeddings = Transformer.compute_rotary_embeddings(prompt_embeds, self.pos_embed, config, None)  # fmt: off
         image_rotary_embeddings_concept = Transformer.compute_rotary_embeddings(prompt_embeds_concept, self.pos_embed, config, None)  # fmt: off
 
-        # 2. Run the joint transformer blocks
+        # 2. Run the joint flux_transformer blocks
         attention_information = []
         for idx, block in enumerate(self.transformer_blocks):
             encoder_hidden_states, hidden_states, encoder_hidden_states_concept, attn = block(
@@ -74,7 +74,7 @@ class TransformerConcept(nn.Module):
         # 3. Concat the hidden states
         hidden_states = mx.concatenate([encoder_hidden_states, hidden_states], axis=1)
 
-        # 4. Run the single transformer blocks
+        # 4. Run the single flux_transformer blocks
         for idx, block in enumerate(self.single_transformer_blocks):
             hidden_states = block(
                 hidden_states=hidden_states,

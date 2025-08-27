@@ -1,7 +1,7 @@
 import mlx.core as mx
 
 from mflux.flux_tools.fill.mask_util import MaskUtil
-from mflux.models.vae.vae import VAE
+from mflux.models.flux_vae.vae import VAE
 from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.image_util import ImageUtil
 

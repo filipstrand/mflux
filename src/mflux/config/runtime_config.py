@@ -106,7 +106,7 @@ class RuntimeConfig:
         """Get Qwen timestep value for given index.
 
         CRITICAL: This must return the exact same sigma values as the working version
-        to maintain compatibility with the pretrained transformer weights.
+        to maintain compatibility with the pretrained flux_transformer weights.
         """
         if self.timesteps is not None:
             # Return the direct sigma value like the working version

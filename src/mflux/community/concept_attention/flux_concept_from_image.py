@@ -12,10 +12,10 @@ from mflux.config.runtime_config import RuntimeConfig
 from mflux.error.exceptions import StopImageGenerationException
 from mflux.flux.flux_initializer import FluxInitializer
 from mflux.latent_creator.latent_creator import LatentCreator
-from mflux.models.text_encoder.clip_encoder.clip_encoder import CLIPEncoder
-from mflux.models.text_encoder.prompt_encoder import PromptEncoder
-from mflux.models.text_encoder.t5_encoder.t5_encoder import T5Encoder
-from mflux.models.vae.vae import VAE
+from mflux.models.flux_text_encoder.clip_encoder.clip_encoder import CLIPEncoder
+from mflux.models.flux_text_encoder.prompt_encoder import PromptEncoder
+from mflux.models.flux_text_encoder.t5_encoder.t5_encoder import T5Encoder
+from mflux.models.flux_vae.vae import VAE
 from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil

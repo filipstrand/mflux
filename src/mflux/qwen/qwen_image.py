@@ -8,8 +8,8 @@ from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.error.exceptions import StopImageGenerationException
 from mflux.latent_creator.latent_creator import LatentCreator
-from mflux.models.text_encoder.qwen_text_encoder import QwenTextEncoder
-from mflux.models.vae.qwen_vae import QwenVAE
+from mflux.models.flux_text_encoder.qwen_text_encoder import QwenTextEncoder
+from mflux.models.flux_vae.qwen_vae import QwenVAE
 from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil

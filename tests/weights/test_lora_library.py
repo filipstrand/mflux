@@ -34,11 +34,11 @@ def temp_lora_dirs():
         (lib1 / "subdir").mkdir()
         (lib1 / "subdir" / "style_c.safetensors").touch()
 
-        # Create transformer directory with digit-named files (should be ignored)
-        (lib1 / "transformer").mkdir()
-        (lib1 / "transformer" / "0.safetensors").touch()
-        (lib1 / "transformer" / "1.safetensors").touch()
-        (lib1 / "transformer" / "style_valid.safetensors").touch()  # Should not be ignored
+        # Create flux_transformer directory with digit-named files (should be ignored)
+        (lib1 / "flux_transformer").mkdir()
+        (lib1 / "flux_transformer" / "0.safetensors").touch()
+        (lib1 / "flux_transformer" / "1.safetensors").touch()
+        (lib1 / "flux_transformer" / "style_valid.safetensors").touch()  # Should not be ignored
 
         (lib2 / "style_b.safetensors").touch()  # Duplicate name
         (lib2 / "style_d.safetensors").touch()
@@ -52,16 +52,16 @@ def test_discover_lora_files_single_path(temp_lora_dirs):
 
     result = lora_library._discover_lora_files([lib1])
 
-    assert len(result) == 4  # Should not include digit-named files in transformer/
+    assert len(result) == 4  # Should not include digit-named files in flux_transformer/
     assert "style_a" in result
     assert "style_b" in result
     assert "style_c" in result
     assert "style_valid" in result
-    assert "0" not in result  # Digit-named files in transformer/ should be excluded
+    assert "0" not in result  # Digit-named files in flux_transformer/ should be excluded
     assert "1" not in result
     assert result["style_a"] == (lib1 / "style_a.safetensors").resolve()
     assert result["style_c"] == (lib1 / "subdir" / "style_c.safetensors").resolve()
-    assert result["style_valid"] == (lib1 / "transformer" / "style_valid.safetensors").resolve()
+    assert result["style_valid"] == (lib1 / "flux_transformer" / "style_valid.safetensors").resolve()
 
 
 def test_discover_lora_files_multiple_paths_precedence(temp_lora_dirs):
@@ -134,7 +134,7 @@ def test_initialize_registry_from_env(temp_lora_dirs):
         lora_library._initialize_registry()
         registry = lora_library.get_registry()
 
-        assert len(registry) == 5  # Includes style_valid from transformer/
+        assert len(registry) == 5  # Includes style_valid from flux_transformer/
         assert "style_a" in registry
         assert "style_b" in registry
         assert "style_c" in registry
@@ -177,23 +177,23 @@ def test_get_registry_returns_copy():
 
 
 def test_transformer_digit_filtering(temp_lora_dirs):
-    """Test that digit-named files in transformer directories are filtered out."""
+    """Test that digit-named files in flux_transformer directories are filtered out."""
     lib1, _ = temp_lora_dirs
 
     # Create additional test cases
-    (lib1 / "9.safetensors").touch()  # Should be included (not in transformer/)
+    (lib1 / "9.safetensors").touch()  # Should be included (not in flux_transformer/)
     (lib1 / "other_dir").mkdir()
-    (lib1 / "other_dir" / "5.safetensors").touch()  # Should be included (not in transformer/)
+    (lib1 / "other_dir" / "5.safetensors").touch()  # Should be included (not in flux_transformer/)
 
     result = lora_library._discover_lora_files([lib1])
 
-    # Digit files NOT in transformer/ should be included
+    # Digit files NOT in flux_transformer/ should be included
     assert "9" in result
     assert "5" in result
 
-    # Digit files in transformer/ should be excluded
+    # Digit files in flux_transformer/ should be excluded
     assert "0" not in result
     assert "1" not in result
 
-    # Non-digit files in transformer/ should be included
+    # Non-digit files in flux_transformer/ should be included
     assert "style_valid" in result

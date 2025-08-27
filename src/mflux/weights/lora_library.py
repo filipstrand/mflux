@@ -25,8 +25,8 @@ def _discover_lora_files(library_paths: list[Path]) -> dict[str, Path]:
             # Use the basename without extension as the key
             basename = safetensor_path.stem
 
-            # Skip files with digit-only names (0-9) in transformer directories
-            if basename.isdigit() and safetensor_path.parent.name == "transformer":
+            # Skip files with digit-only names (0-9) in flux_transformer directories
+            if basename.isdigit() and safetensor_path.parent.name == "flux_transformer":
                 continue
 
             # Earlier paths in the list take precedence (overwrite)

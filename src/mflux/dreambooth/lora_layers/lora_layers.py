@@ -9,8 +9,8 @@ from mlx.utils import tree_flatten
 from mflux.dreambooth.lora_layers.linear_lora_layer import LoRALinear
 from mflux.dreambooth.state.training_spec import SingleTransformerBlocks, TrainingSpec, TransformerBlocks
 from mflux.dreambooth.state.zip_util import ZipUtil
-from mflux.models.transformer.joint_transformer_block import JointTransformerBlock
-from mflux.models.transformer.single_transformer_block import SingleTransformerBlock
+from mflux.models.flux_transformer.joint_transformer_block import JointTransformerBlock
+from mflux.models.flux_transformer.single_transformer_block import SingleTransformerBlock
 from mflux.utils.version_util import VersionUtil
 from mflux.weights.weight_handler import MetaData, WeightHandler
 
@@ -45,21 +45,21 @@ class LoRALayers:
                 transformer_lora_layers = LoRALayers._construct_layers(
                     blocks=flux.transformer.transformer_blocks,
                     block_spec=training_spec.lora_layers.transformer_blocks,
-                    block_prefix="transformer.transformer_blocks",
+                    block_prefix="flux_transformer.transformer_blocks",
                 )
 
             if training_spec.lora_layers.single_transformer_blocks:
                 single_transformer_lora_layers = LoRALayers._construct_layers(
                     blocks=flux.transformer.single_transformer_blocks,
                     block_spec=training_spec.lora_layers.single_transformer_blocks,
-                    block_prefix="transformer.single_transformer_blocks",
+                    block_prefix="flux_transformer.single_transformer_blocks",
                 )
 
             lora_layers = {**transformer_lora_layers, **single_transformer_lora_layers}
 
             weights = WeightHandler(
                 meta_data=MetaData(mflux_version=VersionUtil.get_mflux_version()),
-                transformer=mlx.utils.tree_unflatten(list(lora_layers.items()))["transformer"],
+                transformer=mlx.utils.tree_unflatten(list(lora_layers.items()))["flux_transformer"],
             )
 
             return LoRALayers(weights=weights)
@@ -117,8 +117,8 @@ class LoRALayers:
                         base_path=base_path,
                     )
 
-                # Handle top-level transformer components like x_embedder, context_embedder, proj_out
-                elif len(parts) == 2 and parts[0] == "transformer":
+                # Handle top-level flux_transformer components like x_embedder, context_embedder, proj_out
+                elif len(parts) == 2 and parts[0] == "flux_transformer":
                     LoRALayers._handle_top_level_component(
                         weights=weights,
                         scale=scale,
@@ -134,16 +134,16 @@ class LoRALayers:
     def _resolve_legacy_paths(module, module_name: str, attr_name: str, parts: list, block_idx: int) -> tuple:
         # Handle legacy naming: ff.net.2 -> ff.linear2
         if module_name == "ff" and attr_name == "net" and len(parts) >= 6 and parts[5] == "2":
-            return getattr(module, "linear2"), f"transformer.transformer_blocks.{block_idx}.ff.linear2"
+            return getattr(module, "linear2"), f"flux_transformer.transformer_blocks.{block_idx}.ff.linear2"
 
         # Handle attn.to_out.0 -> attn.to_out[0] (list access)
         if module_name == "attn" and attr_name == "to_out" and len(parts) >= 6 and parts[5] == "0":
-            return module.to_out[0], f"transformer.transformer_blocks.{block_idx}.attn.to_out"
+            return module.to_out[0], f"flux_transformer.transformer_blocks.{block_idx}.attn.to_out"
 
         # Default case - get the attribute and check if it's actually a list
         original_layer = getattr(module, attr_name)
 
-        # Some layers (like attn.to_out) are legitimately lists in the transformer architecture
+        # Some layers (like attn.to_out) are legitimately lists in the flux_transformer architecture
         # In such cases, we need to extract the first element for LoRA creation
         if isinstance(original_layer, list):
             # For list layers, we use the first element for LoRA creation
@@ -288,7 +288,7 @@ class LoRALayers:
                 weights[name] = weight
 
         weights = {key: mx.transpose(val) for key, val in weights.items()}
-        weights = {"transformer": weights}
+        weights = {"flux_transformer": weights}
         mx.save_safetensors(
             str(path),
             dict(tree_flatten(weights)),
