@@ -1,6 +1,6 @@
 import mlx.core as mx
 
-from mflux.models.flux_text_encoder.qwen_text_encoder import QwenTextEncoder
+from mflux.models.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
 from mflux.tokenizer.qwen_tokenizer import TokenizerQwen
 
 

@@ -8,8 +8,8 @@ import numpy as np
 from mlx import nn
 
 from mflux.models.flux_transformer.ada_layer_norm_continuous import AdaLayerNormContinuous
-from mflux.qwen.qwen_rope import QwenEmbedRopeMLX
-from mflux.qwen.qwen_transformer_block import QwenTransformerBlockApplier, QwenTransformerBlockMLX
+from mflux.models.qwen_transformer.qwen_rope import QwenEmbedRopeMLX
+from mflux.models.qwen_transformer.qwen_transformer_block import QwenTransformerBlockMLX, QwenTransformerBlockApplier
 
 
 @dataclass

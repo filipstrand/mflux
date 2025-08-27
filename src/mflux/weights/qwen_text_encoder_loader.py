@@ -8,7 +8,7 @@ from pathlib import Path
 import mlx.core as mx
 from safetensors.mlx import load_file
 
-from mflux.models.flux_text_encoder.qwen_text_encoder import QwenTextEncoder
+from mflux.models.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
 
 
 class QwenTextEncoderLoader:
@@ -117,7 +117,7 @@ class QwenTextEncoderLoader:
         return mlx_weights
 
     @staticmethod
-    def _convert_to_nested_dict(flat_weights: dict[str, mx.array]) -> dict:
+    def convert_to_nested_dict(flat_weights: dict[str, mx.array]) -> dict:
         """
         Convert flat parameter names to nested dictionary structure.
         Handle special case for layers which should be lists in MLX.
@@ -189,7 +189,7 @@ class QwenTextEncoderLoader:
         # Apply weights to the model using update() with nested structure (like Flux)
         try:
             print("🔧 Converting flat weights to nested structure...")
-            nested_weights = QwenTextEncoderLoader._convert_to_nested_dict(weights)
+            nested_weights = QwenTextEncoderLoader.convert_to_nested_dict(weights)
 
             print("🔧 Applying weights with update(strict=False)...")
             text_encoder.update(nested_weights, strict=False)

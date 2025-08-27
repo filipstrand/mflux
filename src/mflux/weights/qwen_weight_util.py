@@ -1,15 +1,11 @@
-from typing import TYPE_CHECKING
 
 import mlx.nn as nn
 
 from mflux.config.config import Config
+from mflux.models.qwen_transformer.qwen_transformer import QwenImageTransformerApplier
 from mflux.weights.quantization_util import QuantizationUtil
 from mflux.weights.qwen_text_encoder_loader import QwenTextEncoderLoader
-
-if TYPE_CHECKING:
-    from mflux.weights.qwen_weight_handler import QwenImageWeightHandler
-
-from mflux.qwen.qwen_transformer import QwenImageTransformerApplier
+from mflux.weights.qwen_weight_handler import QwenImageWeightHandler
 
 
 class QwenWeightUtil:
@@ -52,12 +48,12 @@ class QwenWeightUtil:
 
     @staticmethod
     def _set_model_weights(
-        weights: "QwenImageWeightHandler",
+        weights: QwenImageWeightHandler,
         vae: nn.Module,
         transformer: nn.Module,
         text_encoder: nn.Module | None = None,
     ):
         vae.update(weights.vae, strict=False)
         QwenImageTransformerApplier.apply_from_handler(module=transformer, weights=weights.transformer)
-        nested_weights = QwenTextEncoderLoader._convert_to_nested_dict(weights.qwen_text_encoder)
+        nested_weights = QwenTextEncoderLoader.convert_to_nested_dict(weights.qwen_text_encoder)
         text_encoder.update(nested_weights, strict=False)

@@ -1,7 +1,7 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.flux_text_encoder.qwen_encoder.qwen_encoder import QwenEncoder
+from mflux.models.qwen_text_encoder.qwen_encoder import QwenEncoder
 
 
 class QwenTextEncoder(nn.Module):
