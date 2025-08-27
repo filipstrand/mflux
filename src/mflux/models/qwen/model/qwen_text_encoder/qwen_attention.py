@@ -3,7 +3,7 @@ import math
 import mlx.core as mx
 from mlx import nn
 
-from .qwen_rope import QwenRotaryEmbedding, apply_multimodal_rotary_pos_emb
+from .qwen_rope import QwenRotaryEmbedding
 
 
 class QwenAttention(nn.Module):
@@ -69,12 +69,12 @@ class QwenAttention(nn.Module):
         cos, sin = self.rotary_emb(hidden_states, position_ids)
 
         # Apply multimodal rotary position embedding
-        query_states, key_states = apply_multimodal_rotary_pos_emb(
-            query_states,
-            key_states,
-            cos,
-            sin,
-            self.rope_scaling["mrope_section"],
+        query_states, key_states = QwenAttention._apply_multimodal_rotary_pos_emb(
+            q=query_states,
+            k=key_states,
+            cos=cos,
+            sin=sin,
+            mrope_section=self.rope_scaling["mrope_section"],
             unsqueeze_dim=1,
         )
 
@@ -97,3 +97,35 @@ class QwenAttention(nn.Module):
         attn_output = attn_output.reshape(batch_size, seq_len, self.hidden_size)
         attn_output = self.o_proj(attn_output)
         return attn_output
+
+    @staticmethod
+    def _apply_multimodal_rotary_pos_emb(
+        q: mx.array,
+        k: mx.array,
+        cos: mx.array,
+        sin: mx.array,
+        mrope_section: list[int],
+        unsqueeze_dim: int = 1
+    ) -> tuple[mx.array, mx.array]:
+        cos = cos[0]
+        sin = sin[0]
+
+        # Add head dimension if needed
+        if unsqueeze_dim == 1:
+            cos = mx.expand_dims(cos, axis=1)
+            sin = mx.expand_dims(sin, axis=1)
+        elif unsqueeze_dim == 2:
+            cos = mx.expand_dims(cos, axis=2)
+            sin = mx.expand_dims(sin, axis=2)
+
+        # Apply rotary embedding
+        q_embed = (q * cos) + (QwenAttention._rotate_half(q) * sin)
+        k_embed = (k * cos) + (QwenAttention._rotate_half(k) * sin)
+
+        return q_embed, k_embed
+
+    @staticmethod
+    def _rotate_half(x: mx.array) -> mx.array:
+        x1 = x[..., : x.shape[-1] // 2]
+        x2 = x[..., x.shape[-1] // 2 :]
+        return mx.concatenate([-x2, x1], axis=-1)
