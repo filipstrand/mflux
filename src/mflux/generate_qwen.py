@@ -2,7 +2,7 @@
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.error.exceptions import PromptFileReadError, StopImageGenerationException
-from mflux.qwen.qwen_image import QwenImage
+from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
 
 
 def main():
