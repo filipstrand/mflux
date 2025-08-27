@@ -3,9 +3,9 @@ import mlx.nn as nn
 
 from mflux.config.config import Config
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenImageTransformerApplier
+from mflux.models.qwen.weights.qwen_text_encoder_loader import QwenTextEncoderLoader
+from mflux.models.qwen.weights.qwen_weight_handler import QwenImageWeightHandler
 from mflux.weights.quantization_util import QuantizationUtil
-from mflux.weights.qwen_text_encoder_loader import QwenTextEncoderLoader
-from mflux.weights.qwen_weight_handler import QwenImageWeightHandler
 
 
 class QwenWeightUtil:

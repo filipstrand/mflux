@@ -11,6 +11,7 @@ from pathlib import Path
 
 import mlx.core as mx
 
+from mflux.models.qwen.weights.qwen_text_encoder_loader import QwenTextEncoderLoader
 from mflux.weights.download import snapshot_download
 
 
@@ -102,7 +103,6 @@ class QwenImageWeightHandler:
         text_encoder_path = root_path / "text_encoder"
         if text_encoder_path.exists():
             print("🔍 Loading Text Encoder weights...")
-            from mflux.weights.qwen_text_encoder_loader import QwenTextEncoderLoader
             text_encoder_weights = QwenTextEncoderLoader.load_weights(text_encoder_path)
             print(f"✅ Text encoder weights loaded: {len(text_encoder_weights) if text_encoder_weights else 0} parameters")
 

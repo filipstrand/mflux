@@ -9,7 +9,8 @@ from mlx import nn
 
 from mflux.models.flux.model.flux_transformer.ada_layer_norm_continuous import AdaLayerNormContinuous
 from mflux.models.qwen.model.qwen_transformer.qwen_rope import QwenEmbedRopeMLX
-from mflux.models.qwen.model.qwen_transformer.qwen_transformer_block import QwenTransformerBlockMLX
+from mflux.models.qwen.model.qwen_transformer.qwen_transformer_block import QwenTransformerBlockMLX, \
+    QwenTransformerBlockApplier
 
 
 @dataclass
