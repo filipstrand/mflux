@@ -15,22 +15,12 @@ class QwenRotaryEmbedding(nn.Module):
     ):
         super().__init__()
         self.rope_kwargs = {}
-        if config is not None and hasattr(config, "rope_scaling") and config.rope_scaling is not None:
-            self.rope_type = config.rope_scaling.get("rope_type", config.rope_scaling.get("type", "default"))
-            self.rope_kwargs = {key: value for key, value in config.rope_scaling.items() if key != "rope_type"}
-        else:
-            self.rope_type = rope_type
-
+        self.rope_type = rope_type
         self.max_seq_len_cached = max_position_embeddings
         self.original_max_seq_len = max_position_embeddings
-
-        # Initialize inverse frequencies
-        # This matches the reference implementation exactly
         inv_freq = 1.0 / (base ** (mx.arange(0, dim, 2, dtype=mx.float32) / dim))
         self.inv_freq = inv_freq
         self.original_inv_freq = inv_freq
-
-        # Attention scaling (usually 1.0 for default rope)
         self.attention_scaling = scaling_factor
 
     def __call__(self, x: mx.array, position_ids: mx.array) -> tuple[mx.array, mx.array]:
