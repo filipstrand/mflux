@@ -5,7 +5,7 @@ import PIL.Image
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
-from mflux.controlnet.flux_controlnet import Flux1Controlnet
+from mflux.models.flux.variants.controlnet.flux_controlnet import Flux1Controlnet
 from mflux.error.exceptions import PromptFileReadError, StopImageGenerationException
 from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
