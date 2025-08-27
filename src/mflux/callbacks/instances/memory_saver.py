@@ -14,8 +14,8 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
     components at strategic points in the execution cycle.
     """
 
-    def __init__(self, flux, keep_transformer: bool = True, cache_limit_bytes: int = 1000**3):
-        self.flux = flux
+    def __init__(self, model, keep_transformer: bool = True, cache_limit_bytes: int = 1000**3):
+        self.model = model
         self.keep_transformer = keep_transformer
         self.peak_memory: int = 0
         mx.set_cache_limit(cache_limit_bytes)
@@ -32,7 +32,7 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
         depth_image: PIL.Image.Image | None = None,
     ) -> None:
         self.peak_memory = mx.get_peak_memory()
-        self._delete_encoders()
+        self._delete_text_encoders()
 
     def call_in_loop(
         self,
@@ -56,17 +56,21 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
         if not self.keep_transformer:
             self._delete_transformer()
 
-    def _delete_encoders(self) -> None:
+    def _delete_text_encoders(self) -> None:
         # repeated image generation only works with the same prompt (cache)
-        self.flux.clip_text_encoder = None
-        self.flux.t5_text_encoder = None
+        if hasattr(self.model, "clip_image_encoder"):
+            self.model.clip_image_encoder = None
+        if hasattr(self.model, "t5_image_encoder"):
+            self.model.t5_image_encoder = None
+        if hasattr(self.model, "text_encoder"):
+            self.model.text_encoder = None
         gc.collect()
         mx.clear_cache()
 
     def _delete_transformer(self) -> None:
-        self.flux.transformer = None
-        if hasattr(self.flux, "transformer_controlnet"):
-            self.flux.transformer_controlnet = None
+        self.model.transformer = None
+        if hasattr(self.model, "transformer_controlnet"):
+            self.model.transformer_controlnet = None
         gc.collect()
         mx.clear_cache()
 
