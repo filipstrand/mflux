@@ -1,13 +1,13 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.flux_vae.common.unet_mid_block import UnetMidBlock
-from mflux.models.flux_vae.decoder.conv_in import ConvIn
-from mflux.models.flux_vae.decoder.conv_norm_out import ConvNormOut
-from mflux.models.flux_vae.decoder.conv_out import ConvOut
-from mflux.models.flux_vae.decoder.up_block_1_or_2 import UpBlock1Or2
-from mflux.models.flux_vae.decoder.up_block_3 import UpBlock3
-from mflux.models.flux_vae.decoder.up_block_4 import UpBlock4
+from mflux.models.flux.model.flux_vae.common.unet_mid_block import UnetMidBlock
+from mflux.models.flux.model.flux_vae.decoder.conv_in import ConvIn
+from mflux.models.flux.model.flux_vae.decoder.conv_norm_out import ConvNormOut
+from mflux.models.flux.model.flux_vae.decoder.conv_out import ConvOut
+from mflux.models.flux.model.flux_vae.decoder.up_block_1_or_2 import UpBlock1Or2
+from mflux.models.flux.model.flux_vae.decoder.up_block_3 import UpBlock3
+from mflux.models.flux.model.flux_vae.decoder.up_block_4 import UpBlock4
 
 
 class Decoder(nn.Module):

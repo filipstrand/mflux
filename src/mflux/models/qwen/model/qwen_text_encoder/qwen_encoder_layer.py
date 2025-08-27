@@ -1,9 +1,9 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.qwen_text_encoder.qwen_attention import QwenAttention
-from mflux.models.qwen_text_encoder.qwen_mlp import QwenMLP
-from mflux.models.qwen_text_encoder.qwen_rms_norm import QwenRMSNorm
+from mflux.models.qwen.model.qwen_text_encoder.qwen_attention import QwenAttention
+from mflux.models.qwen.model.qwen_text_encoder.qwen_mlp import QwenMLP
+from mflux.models.qwen.model.qwen_text_encoder.qwen_rms_norm import QwenRMSNorm
 
 
 class QwenEncoderLayer(nn.Module):

@@ -3,7 +3,7 @@ from __future__ import annotations
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.flux_transformer.common.attention_utils import AttentionUtils
+from mflux.models.flux.model.flux_transformer.common.attention_utils import AttentionUtils
 
 
 class QwenTransformerBlockMLX(nn.Module):

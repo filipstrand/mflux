@@ -1,9 +1,9 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.flux_transformer.ada_layer_norm_zero import AdaLayerNormZero
-from mflux.models.flux_transformer.feed_forward import FeedForward
-from mflux.models.flux_transformer.joint_attention import JointAttention
+from mflux.models.flux.model.flux_transformer.ada_layer_norm_zero import AdaLayerNormZero
+from mflux.models.flux.model.flux_transformer.feed_forward import FeedForward
+from mflux.models.flux.model.flux_transformer.joint_attention import JointAttention
 
 
 class JointTransformerBlock(nn.Module):

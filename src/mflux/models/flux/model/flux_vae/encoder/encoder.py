@@ -1,14 +1,14 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.flux_vae.common.unet_mid_block import UnetMidBlock
-from mflux.models.flux_vae.encoder.conv_in import ConvIn
-from mflux.models.flux_vae.encoder.conv_norm_out import ConvNormOut
-from mflux.models.flux_vae.encoder.conv_out import ConvOut
-from mflux.models.flux_vae.encoder.down_block_1 import DownBlock1
-from mflux.models.flux_vae.encoder.down_block_2 import DownBlock2
-from mflux.models.flux_vae.encoder.down_block_3 import DownBlock3
-from mflux.models.flux_vae.encoder.down_block_4 import DownBlock4
+from mflux.models.flux.model.flux_vae.common.unet_mid_block import UnetMidBlock
+from mflux.models.flux.model.flux_vae.encoder.conv_in import ConvIn
+from mflux.models.flux.model.flux_vae.encoder.conv_norm_out import ConvNormOut
+from mflux.models.flux.model.flux_vae.encoder.conv_out import ConvOut
+from mflux.models.flux.model.flux_vae.encoder.down_block_1 import DownBlock1
+from mflux.models.flux.model.flux_vae.encoder.down_block_2 import DownBlock2
+from mflux.models.flux.model.flux_vae.encoder.down_block_3 import DownBlock3
+from mflux.models.flux.model.flux_vae.encoder.down_block_4 import DownBlock4
 
 
 class Encoder(nn.Module):

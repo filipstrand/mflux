@@ -1,8 +1,8 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.qwen_text_encoder.qwen_encoder_layer import QwenEncoderLayer
-from mflux.models.qwen_text_encoder.qwen_rms_norm import QwenRMSNorm
+from mflux.models.qwen.model.qwen_text_encoder.qwen_encoder_layer import QwenEncoderLayer
+from mflux.models.qwen.model.qwen_text_encoder.qwen_rms_norm import QwenRMSNorm
 
 
 class QwenEncoder(nn.Module):

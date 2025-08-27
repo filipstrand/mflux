@@ -2,7 +2,7 @@ from pathlib import Path
 
 import transformers
 
-from mflux.tokenizer.qwen_tokenizer import TokenizerQwen
+from mflux.models.qwen.tokenizer.qwen_tokenizer import TokenizerQwen
 from mflux.weights.download import snapshot_download
 
 

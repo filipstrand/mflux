@@ -1,8 +1,8 @@
 from mflux.config.model_config import ModelConfig
-from mflux.models.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
-from mflux.models.qwen_transformer.qwen_transformer import QwenTransformer
-from mflux.models.qwen_vae.qwen_vae import QwenVAE
-from mflux.tokenizer.qwen_tokenizer_handler import QwenTokenizerHandler
+from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
+from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer
+from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
+from mflux.models.qwen.tokenizer.qwen_tokenizer_handler import QwenTokenizerHandler
 from mflux.weights.qwen_weight_handler import QwenImageWeightHandler
 from mflux.weights.qwen_weight_util import QwenWeightUtil
 

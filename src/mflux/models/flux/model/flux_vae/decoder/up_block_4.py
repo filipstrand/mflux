@@ -1,7 +1,7 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.flux_vae.common.resnet_block_2d import ResnetBlock2D
+from mflux.models.flux.model.flux_vae.common.resnet_block_2d import ResnetBlock2D
 
 
 class UpBlock4(nn.Module):

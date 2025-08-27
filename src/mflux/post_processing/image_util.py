@@ -9,8 +9,8 @@ import PIL.Image
 import PIL.ImageDraw
 from PIL._typing import StrOrBytesPath
 
-from mflux.community.concept_attention.attention_data import ConceptHeatmap
 from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.flux.variants.community.concept_attention.attention_data import ConceptHeatmap
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.ui.box_values import AbsoluteBoxValues, BoxValues
 

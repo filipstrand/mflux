@@ -8,7 +8,7 @@ from pathlib import Path
 import mlx.core as mx
 from safetensors.mlx import load_file
 
-from mflux.models.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
+from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
 
 
 class QwenTextEncoderLoader:

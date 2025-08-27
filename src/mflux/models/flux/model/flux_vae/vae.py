@@ -1,8 +1,8 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.flux_vae.decoder.decoder import Decoder
-from mflux.models.flux_vae.encoder.encoder import Encoder
+from mflux.models.flux.model.flux_vae.decoder.decoder import Decoder
+from mflux.models.flux.model.flux_vae.encoder.encoder import Encoder
 
 
 class VAE(nn.Module):
