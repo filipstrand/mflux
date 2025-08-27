@@ -3,9 +3,9 @@ from typing import TYPE_CHECKING
 import mlx.nn as nn
 
 if TYPE_CHECKING:
-    from mflux.controlnet.weight_handler_controlnet import WeightHandlerControlnet
-    from mflux.weights.qwen_weight_handler import QwenImageWeightHandler
-    from mflux.weights.weight_handler import WeightHandler
+    from mflux.models.flux.variants.controlnet.weight_handler_controlnet import WeightHandlerControlnet
+    from mflux.models.qwen.weights.qwen_weight_handler import QwenImageWeightHandler
+    from mflux.models.flux.weights.weight_handler import WeightHandler
 
 
 class QuantizationUtil:

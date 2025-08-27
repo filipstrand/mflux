@@ -5,7 +5,7 @@ from typing import List
 import mlx.core as mx
 import PIL.Image
 
-from mflux.models.flux.variants.community.concept_attention.joint_transformer_block_concept import LayerAttentionData
+from mflux.models.flux.variants.concept_attention.joint_transformer_block_concept import LayerAttentionData
 
 
 @dataclass

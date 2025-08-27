@@ -5,7 +5,7 @@ import PIL.Image
 
 
 from mflux.config.model_config import ModelConfig
-from mflux.models.flux.variants.community.concept_attention.attention_data import ConceptHeatmap
+from mflux.models.flux.variants.concept_attention.attention_data import ConceptHeatmap
 from mflux.utils.version_util import VersionUtil
 
 

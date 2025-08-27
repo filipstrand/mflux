@@ -12,7 +12,7 @@ from pathlib import Path
 import mlx.core as mx
 
 from mflux.models.qwen.weights.qwen_text_encoder_loader import QwenTextEncoderLoader
-from mflux.weights.download import snapshot_download
+from mflux.utils.download import snapshot_download
 
 
 @dataclass

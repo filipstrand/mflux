@@ -3,7 +3,7 @@ from pathlib import Path
 import transformers
 
 from mflux.models.qwen.tokenizer.qwen_tokenizer import TokenizerQwen
-from mflux.weights.download import snapshot_download
+from mflux.utils.download import snapshot_download
 
 
 class QwenTokenizerHandler:
