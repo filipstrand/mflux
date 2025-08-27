@@ -134,7 +134,7 @@ class QwenImage(nn.Module):
 
         # 7. Decode the latent array and return the image
         latents = ArrayUtil.unpack_latents(latents=latents, height=runtime_config.height, width=runtime_config.width)
-        decoded = self.vae.decode_latents(latents)
+        decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,
             config=runtime_config,
