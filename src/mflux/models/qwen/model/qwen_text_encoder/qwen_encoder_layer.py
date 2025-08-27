@@ -9,14 +9,13 @@ from mflux.models.qwen.model.qwen_text_encoder.qwen_rms_norm import QwenRMSNorm
 class QwenEncoderLayer(nn.Module):
     def __init__(
         self,
-        hidden_size: int,
-        num_attention_heads: int,
-        num_key_value_heads: int,
-        intermediate_size: int,
+        hidden_size: int = 3584,
+        num_attention_heads: int = 28,
+        num_key_value_heads: int = 4,
+        intermediate_size: int = 18944,
         rms_norm_eps: float = 1e-6,
         max_position_embeddings: int = 128000,
         rope_theta: float = 1000000.0,
-        rope_scaling: dict = None,
     ):
         super().__init__()
         self.input_layernorm = QwenRMSNorm(hidden_size, eps=rms_norm_eps)
@@ -26,7 +25,7 @@ class QwenEncoderLayer(nn.Module):
             num_key_value_heads=num_key_value_heads,
             max_position_embeddings=max_position_embeddings,
             rope_theta=rope_theta,
-            rope_scaling=rope_scaling,
+            rope_scaling={"mrope_section": [16, 24, 24]},
         )
         self.post_attention_layernorm = QwenRMSNorm(hidden_size, eps=rms_norm_eps)
         self.mlp = QwenMLP(
