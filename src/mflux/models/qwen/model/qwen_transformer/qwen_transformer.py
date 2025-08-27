@@ -62,9 +62,10 @@ class QwenTransformer(nn.Module):
         encoder_hidden_states: mx.array,
         encoder_hidden_states_mask: mx.array,
     ) -> mx.array:
-        # Compute internal flux_transformer details (like Flux pattern)
-        side = int(round(math.sqrt(hidden_states.shape[1])))
-        img_shapes = [(1, side, side)]
+        # Compute internal flux_transformer details
+        latent_height = config.height // 16
+        latent_width = config.width // 16
+        img_shapes = [(1, latent_height, latent_width)]
         txt_seq_lens = [int(mx.sum(encoder_hidden_states_mask[i]).item()) for i in range(encoder_hidden_states_mask.shape[0])]
 
         # Resolve timestep from t and config (like Flux)
