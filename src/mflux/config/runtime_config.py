@@ -2,7 +2,6 @@ import logging
 from pathlib import Path
 
 import mlx.core as mx
-import numpy as np
 
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig

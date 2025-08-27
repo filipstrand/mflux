@@ -1,4 +1,4 @@
-from typing import Union # New import
+from typing import Union
 
 import mlx.core as mx
 from mlx import nn
@@ -19,6 +19,7 @@ from mflux.models.vae.vae import VAE
 from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
+
 # Import schedulers for type hinting
 from mflux.schedulers.ddim_scheduler import DDIMScheduler
 from mflux.schedulers.euler_discrete_scheduler import EulerDiscreteScheduler
@@ -56,14 +57,18 @@ class Flux1(nn.Module):
         prompt: str,
         config: Config,
         *,
-        # Updated type hint for clarity
-        scheduler: DDIMScheduler | EulerDiscreteScheduler | LinearScheduler = LinearScheduler(),
+        scheduler: Union[DDIMScheduler, EulerDiscreteScheduler, LinearScheduler, None] = None,
     ) -> GeneratedImage:
+        # Default to original LinearScheduler if no scheduler is provided
+        if scheduler is None:
+            scheduler = LinearScheduler()
+
         # 0. Set up the scheduler and create the sigma schedule
         scheduler.set_timesteps(config.num_inference_steps)
+        sigmas = scheduler.sigmas
 
         # 1. Create a new runtime config based on the model type and input parameters
-        config = RuntimeConfig(config, self.model_config, sigmas=scheduler.sigmas)
+        config = RuntimeConfig(config, self.model_config, sigmas=sigmas)
         time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
 
         # 2. Create the initial latents
