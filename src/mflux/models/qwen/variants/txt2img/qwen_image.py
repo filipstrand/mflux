@@ -28,6 +28,8 @@ class QwenImage(nn.Module):
         model_config: ModelConfig,
         quantize: int | None = None,
         local_path: str | None = None,
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
     ):
         super().__init__()
         QwenImageInitializer.init(
@@ -35,6 +37,8 @@ class QwenImage(nn.Module):
             model_config=model_config,
             quantize=quantize,
             local_path=local_path,
+            lora_paths=lora_paths,
+            lora_scales=lora_scales,
         )
 
     def generate_image(
@@ -141,8 +145,8 @@ class QwenImage(nn.Module):
             seed=seed,
             prompt=prompt,
             quantization=self.bits,
-            lora_paths=[],
-            lora_scales=[],
+            lora_paths=self.lora_paths,
+            lora_scales=self.lora_scales,
             image_path=runtime_config.image_path,
             image_strength=runtime_config.image_strength,
             generation_time=time_steps.format_dict["elapsed"],

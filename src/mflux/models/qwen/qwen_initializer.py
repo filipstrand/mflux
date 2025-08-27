@@ -5,6 +5,7 @@ from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransf
 from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
 from mflux.models.qwen.tokenizer.qwen_tokenizer_handler import QwenTokenizerHandler
 from mflux.models.qwen.weights.qwen_weight_handler import QwenImageWeightHandler
+from mflux.models.qwen.weights.qwen_weight_handler_lora import QwenWeightHandlerLoRA
 from mflux.models.qwen.weights.qwen_weight_util import QwenWeightUtil
 
 
@@ -15,6 +16,8 @@ class QwenImageInitializer:
         model_config: ModelConfig,
         quantize: int | None,
         local_path: str | None,
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
     ) -> None:
         # 0. Set paths, configs, and prompt_cache for later
         qwen_model.prompt_cache = {}
@@ -46,3 +49,17 @@ class QwenImageInitializer:
             transformer=qwen_model.transformer,
             text_encoder=qwen_model.text_encoder,
         )
+
+        # 5. Set LoRA weights
+        qwen_model.lora_paths = lora_paths or []
+        qwen_model.lora_scales = lora_scales or []
+        if qwen_model.lora_paths:
+            lora_weights = QwenWeightHandlerLoRA.load_lora_weights(
+                transformer=qwen_model.transformer,
+                lora_files=qwen_model.lora_paths,
+                lora_scales=qwen_model.lora_scales,
+            )
+            QwenWeightHandlerLoRA.set_lora_weights(
+                transformer=qwen_model.transformer,
+                loras=lora_weights,
+            )

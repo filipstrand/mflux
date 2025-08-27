@@ -10,20 +10,26 @@ def main():
     quantize = 6
     local_path = None
 
+    # LoRA settings
+    lora_paths = ["/Users/filipstrand/Desktop/Qwen-Image-Edit-Lightning-4steps-V1.0.safetensors"]
+    lora_scales = [1.0]
+
     # Generation settings
     prompt = "Luxury food photograph" + "Ultra HD, 4K, cinematic composition."
     negative_prompt = " "
     height = 512
     width = 512
-    steps = 20
-    guidance = 4.0
-    seeds = [42]
+    steps = 4
+    guidance = 2.0
+    seeds = [44]
 
     # 1. Load the model
     qwen = QwenImage(
         model_config=ModelConfig.from_name(model_name=model_name),
         quantize=quantize,
         local_path=local_path,
+        lora_paths=lora_paths,
+        lora_scales=lora_scales,
     )
 
     try:
