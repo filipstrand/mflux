@@ -8,14 +8,14 @@ from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.error.exceptions import StopImageGenerationException
 from mflux.latent_creator.latent_creator import LatentCreator
-from mflux.models.qwen_text_encoder.qwen_prompt_encoder import QwenPromptEncoder
-from mflux.models.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
-from mflux.models.qwen_transformer.qwen_transformer import QwenTransformer
-from mflux.models.qwen_vae.qwen_vae import QwenVAE
+from mflux.models.qwen.model.qwen_text_encoder.qwen_prompt_encoder import QwenPromptEncoder
+from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
+from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer
+from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
 from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
-from mflux.qwen.qwen_initializer import QwenImageInitializer
+from mflux.models.qwen.qwen_initializer import QwenImageInitializer
 
 
 class QwenImage(nn.Module):
