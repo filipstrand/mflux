@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
 
 import mlx.core as mx
 import numpy as np
@@ -9,69 +8,11 @@ from mlx import nn
 
 from mflux.models.flux.model.flux_transformer.ada_layer_norm_continuous import AdaLayerNormContinuous
 from mflux.models.qwen.model.qwen_transformer.qwen_rope import QwenEmbedRopeMLX
+from mflux.models.qwen.model.qwen_transformer.qwen_time_text_embed import QwenTimeTextEmbed
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer_block import (
     QwenTransformerBlockApplier,
     QwenTransformerBlockMLX,
 )
-
-
-@dataclass
-class QwenTransformerDims:
-    in_channels: int = 64
-    inner_dim: int = 3072
-    joint_attention_dim: int = 3584
-    timestep_proj_dim: int = 256
-
-
-class QwenTimesteps(nn.Module):
-    """Sinusoidal time projection matching Diffusers Timesteps(256, flip, scale=1000)."""
-
-    def __init__(self, proj_dim: int = 256, scale: float = 1000.0):
-        super().__init__()
-        self.proj_dim = proj_dim
-        self.scale = scale
-
-    def __call__(self, timesteps: mx.array) -> mx.array:
-        # Create positional embeddings of size proj_dim using sine/cosine
-        half_dim = self.proj_dim // 2
-        max_period = 10000.0
-        exponent = -mx.log(mx.array(max_period)) * mx.arange(0, half_dim, dtype=mx.float32)
-        exponent = exponent / (half_dim - 0.0)
-        freqs = mx.exp(exponent)  # [half_dim]
-        emb = timesteps.astype(mx.float32)[:, None] * freqs[None, :]
-        emb = self.scale * emb
-        emb = mx.concatenate([mx.sin(emb), mx.cos(emb)], axis=-1)
-        # flip_sin_to_cos=True -> [cos, sin]
-        emb = mx.concatenate([emb[:, half_dim:], emb[:, :half_dim]], axis=-1)
-        return emb
-
-
-class QwenTimestepEmbedding(nn.Module):
-    """Two-layer MLP with SiLU to map 256 -> inner_dim -> inner_dim."""
-
-    def __init__(self, proj_dim: int, inner_dim: int):
-        super().__init__()
-        self.linear_1 = nn.Linear(proj_dim, inner_dim)
-        self.linear_2 = nn.Linear(inner_dim, inner_dim)
-
-    def __call__(self, x: mx.array) -> mx.array:
-        x = nn.silu(self.linear_1(x))
-        x = self.linear_2(x)
-        return x
-
-
-class QwenTimeTextEmbedMLX(nn.Module):
-    """Combines Timesteps and TimestepEmbedding like Diffusers QwenTimestepProjEmbeddings."""
-
-    def __init__(self, dims: QwenTransformerDims):
-        super().__init__()
-        self.time_proj = QwenTimesteps(proj_dim=dims.timestep_proj_dim)
-        self.timestep_embedder = QwenTimestepEmbedding(proj_dim=dims.timestep_proj_dim, inner_dim=dims.inner_dim)
-
-    def __call__(self, timestep: mx.array, hidden_states: mx.array) -> mx.array:
-        time_proj = self.time_proj(timestep)
-        time_emb = self.timestep_embedder(time_proj.astype(hidden_states.dtype))
-        return time_emb
 
 
 class QwenTransformer(nn.Module):
@@ -104,7 +45,7 @@ class QwenTransformer(nn.Module):
         self.txt_in = nn.Linear(joint_attention_dim, inner_dim)
 
         # Time/Text embedding
-        self.time_text_embed = QwenTimeTextEmbedMLX(QwenTransformerDims(in_channels, inner_dim, joint_attention_dim))
+        self.time_text_embed = QwenTimeTextEmbed(timestep_proj_dim=256, inner_dim=inner_dim)
 
         # RoPE helper
         self.pos_embed = QwenEmbedRopeMLX(theta=10000, axes_dim=[16, 56, 56], scale_rope=True)
@@ -130,9 +71,7 @@ class QwenTransformer(nn.Module):
         # Compute internal flux_transformer details (like Flux pattern)
         side = int(round(math.sqrt(hidden_states.shape[1])))
         img_shapes = [(1, side, side)]
-        txt_seq_lens = [
-            int(mx.sum(encoder_hidden_states_mask[i]).item()) for i in range(encoder_hidden_states_mask.shape[0])
-        ]
+        txt_seq_lens = [int(mx.sum(encoder_hidden_states_mask[i]).item()) for i in range(encoder_hidden_states_mask.shape[0])]
 
         # Resolve timestep from t and config (like Flux)
         timestep_value = config.get_qwen_timestep(t)
@@ -149,8 +88,6 @@ class QwenTransformer(nn.Module):
 
         # Blocks
         for idx, block in enumerate(self.transformer_blocks):
-            # enable detailed debug for first, second and last blocks
-            block.debug = idx in (0, 1, len(self.transformer_blocks) - 1)
             txt, hs = block(
                 hidden_states=hs,
                 encoder_hidden_states=txt,
