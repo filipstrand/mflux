@@ -805,7 +805,7 @@ def test_catvton_args(mflux_catvton_parser, mflux_catvton_minimal_argv):
         assert args.prompt == "custom prompt"
 
     # Test VAE tiling split argument
-    with patch("sys.argv", mflux_catvton_minimal_argv + ["--vae-tiling"]):
+    with patch("sys.argv", mflux_catvton_minimal_argv + ["--flux_vae-tiling"]):
         args = mflux_catvton_parser.parse_args()
         assert args.vae_tiling is True
         assert args.vae_tiling_split == "horizontal"  # Default value from parser
@@ -858,7 +858,7 @@ def test_in_context_edit_args(mflux_in_context_edit_parser, mflux_in_context_edi
         pytest.raises(SystemExit, mflux_in_context_edit_parser.parse_args)
 
     # Test VAE tiling split argument
-    with patch("sys.argv", mflux_in_context_edit_minimal_argv + ["--vae-tiling"]):
+    with patch("sys.argv", mflux_in_context_edit_minimal_argv + ["--flux_vae-tiling"]):
         args = mflux_in_context_edit_parser.parse_args()
         assert args.vae_tiling is True
         assert args.vae_tiling_split == "horizontal"  # Default value from parser
