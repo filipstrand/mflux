@@ -3,6 +3,7 @@ from mlx import nn
 
 from mflux.models.qwen.model.qwen_vae.qwen_image_causal_conv_3d import QwenImageCausalConv3D
 from mflux.models.qwen.model.qwen_vae.qwen_image_decoder_3d import QwenImageDecoder3D
+from mflux.models.qwen.model.qwen_vae.qwen_image_encoder_3d import QwenImageEncoder3D
 
 
 class QwenVAE(nn.Module):
@@ -12,7 +13,9 @@ class QwenVAE(nn.Module):
     def __init__(self):
         super().__init__()
         self.decoder = QwenImageDecoder3D()
+        self.encoder = QwenImageEncoder3D()
         self.post_quant_conv = QwenImageCausalConv3D(16, 16, 1, 1, 0)
+        self.quant_conv = QwenImageCausalConv3D(32, 32, 1, 1, 0)  # Keep 32 channels like diffusers
 
     def decode(self, latents: mx.array) -> mx.array:
         latents = latents.reshape(latents.shape[0], latents.shape[1], 1, latents.shape[2], latents.shape[3])
@@ -20,3 +23,16 @@ class QwenVAE(nn.Module):
         latents = self.post_quant_conv(latents)
         decoded = self.decoder(latents)
         return decoded[:, :, 0, :, :]
+    
+    def encode(self, images: mx.array) -> mx.array:
+        images = images.reshape(images.shape[0], images.shape[1], 1, images.shape[2], images.shape[3])
+        encoded = self.encoder(images)
+        h = self.quant_conv(encoded)
+        mean = h[:, :16, :, :, :]  # First 16 channels
+        logvar = h[:, 16:, :, :, :]  # Last 16 channels
+        logvar = mx.clip(logvar, -30.0, 20.0)  # Prevent extreme variance
+        std = mx.exp(0.5 * logvar)
+        noise = mx.random.normal(shape=mean.shape, key=mx.random.key(42))
+        sample = mean + std * noise
+        sample = sample[:, :, 0, :, :]
+        return sample

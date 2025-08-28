@@ -14,6 +14,11 @@ class QwenImageResample3D(nn.Module):
             self.resample_conv = nn.Conv2d(dim, dim // 2, kernel_size=3, stride=1, padding=1)
         elif mode == "upsample2d":
             self.resample_conv = nn.Conv2d(dim, dim // 2, kernel_size=3, stride=1, padding=1)
+        elif mode == "downsample3d":
+            self.time_conv = QwenImageCausalConv3D(dim, dim, kernel_size=(3, 1, 1), stride=1, padding=(1, 0, 0))
+            self.resample_conv = nn.Conv2d(dim, dim, kernel_size=3, stride=2, padding=1)
+        elif mode == "downsample2d":
+            self.resample_conv = nn.Conv2d(dim, dim, kernel_size=3, stride=2, padding=1)
         else:
             raise ValueError(f"Unsupported resample mode: {mode}")
 
@@ -23,7 +28,8 @@ class QwenImageResample3D(nn.Module):
         x = mx.transpose(x, (0, 2, 1, 3, 4))
         x = mx.reshape(x, (b * t, c, h, w))
         x = mx.transpose(x, (0, 2, 3, 1))
-        x = self._up_sample_nearest_2x(x)
+        if self.mode in ["upsample3d", "upsample2d"]:
+            x = self._up_sample_nearest_2x(x)
         x = self.resample_conv(x)
         x = mx.transpose(x, (0, 3, 1, 2))
         new_c = x.shape[1]

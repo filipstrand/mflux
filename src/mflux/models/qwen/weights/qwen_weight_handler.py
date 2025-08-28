@@ -21,6 +21,7 @@ class QwenImageMetaData:
 
     quantization_level: int | None = None
     mflux_version: str | None = None
+    vae_path: str | None = None  # Path to VAE directory for critical weight fixes
 
 
 class QwenImageWeightHandler:
@@ -112,6 +113,7 @@ class QwenImageWeightHandler:
             meta_data=QwenImageMetaData(
                 quantization_level=None,
                 mflux_version="dev",
+                vae_path=str(vae_path) if vae_path.exists() else None,
             ),
             qwen_text_encoder=text_encoder_weights,
             transformer=transformer_weights,  # Phase 2: Structured transformer weights
@@ -174,9 +176,11 @@ class QwenImageWeightHandler:
 
         print("   🔧 Mapping diffusers weights to MLX structure...")
 
-        # Process both decoder weights and post_quant_conv for Phase 1
+        # Process decoder, encoder, and post_quant_conv weights for Phase 1
         decoder_weights = {}
+        encoder_weights = {}
         vae_weights = {}
+        flat_weights = {}  # Initialize flat_weights early for encoder processing
 
         for key, value in diffusers_weights.items():
             # Handle post_quant_conv (not under decoder prefix)
@@ -197,6 +201,80 @@ class QwenImageWeightHandler:
                     if "post_quant_conv" not in vae_weights:
                         vae_weights["post_quant_conv"] = {"conv3d": {}}
                     vae_weights["post_quant_conv"]["conv3d"]["bias"] = value
+                    
+            elif key.startswith("quant_conv."):
+                mlx_key = key  # Keep full key
+
+                # Reshape convolution weights for MLX (quant_conv is always conv)
+                if "weight" in mlx_key:  # Only transpose weight tensors
+                    if len(value.shape) == 5:  # 3D conv: (out_ch, in_ch, d, h, w) -> (out_ch, d, h, w, in_ch)
+                        value = mx.transpose(value, (0, 2, 3, 4, 1))
+                    elif len(value.shape) == 4:  # 2D conv: (out_ch, in_ch, h, w) -> (out_ch, h, w, in_ch)
+                        value = mx.transpose(value, (0, 2, 3, 1))
+
+                # Map quant_conv
+                if mlx_key == "quant_conv.weight":
+                    vae_weights["quant_conv"] = {"conv3d": {"weight": value}}
+                elif mlx_key == "quant_conv.bias":
+                    if "quant_conv" not in vae_weights:
+                        vae_weights["quant_conv"] = {"conv3d": {}}
+                    vae_weights["quant_conv"]["conv3d"]["bias"] = value
+
+            elif key.startswith("encoder."):
+                # Remove 'encoder.' prefix and map to our structure
+                mlx_key = key[8:]  # Remove 'encoder.'
+
+                # Reshape convolution weights for MLX (but NOT norm weights)
+                # Check if this is a conv weight (not a norm weight like gamma/beta)
+                is_conv_weight = (
+                    "weight" in mlx_key
+                    and not ("norm" in mlx_key or "gamma" in mlx_key or "beta" in mlx_key)
+                    and ("conv" in mlx_key or "to_qkv" in mlx_key or "proj" in mlx_key)
+                )
+
+                if is_conv_weight:
+                    if len(value.shape) == 5:  # 3D conv: (out_ch, in_ch, d, h, w) -> (out_ch, d, h, w, in_ch)
+                        value = mx.transpose(value, (0, 2, 3, 4, 1))
+                    elif len(value.shape) == 4:  # 2D conv: (out_ch, in_ch, h, w) -> (out_ch, h, w, in_ch)
+                        value = mx.transpose(value, (0, 2, 3, 1))
+
+                # Map specific encoder layer names to our MLX structure (similar to decoder)
+                if mlx_key == "conv_in.weight":
+                    if "conv_in" not in encoder_weights:
+                        encoder_weights["conv_in"] = {"conv3d": {}}
+                    encoder_weights["conv_in"]["conv3d"]["weight"] = value
+                elif mlx_key == "conv_in.bias":
+                    if "conv_in" not in encoder_weights:
+                        encoder_weights["conv_in"] = {"conv3d": {}}
+                    encoder_weights["conv_in"]["conv3d"]["bias"] = value
+                elif mlx_key == "conv_out.weight":
+                    if "conv_out" not in encoder_weights:
+                        encoder_weights["conv_out"] = {"conv3d": {}}
+                    encoder_weights["conv_out"]["conv3d"]["weight"] = value
+                elif mlx_key == "conv_out.bias":
+                    if "conv_out" not in encoder_weights:
+                        encoder_weights["conv_out"] = {"conv3d": {}}
+                    encoder_weights["conv_out"]["conv3d"]["bias"] = value
+                elif mlx_key.startswith("norm_out."):
+                    # Map normalization weights
+                    param_name = mlx_key.split(".")[-1]  # 'gamma' or 'beta'
+                    if "norm_out" not in encoder_weights:
+                        encoder_weights["norm_out"] = {}
+                    if param_name == "gamma":
+                        encoder_weights["norm_out"]["weight"] = value
+                    elif param_name == "beta":
+                        encoder_weights["norm_out"]["bias"] = value
+                    else:
+                        encoder_weights["norm_out"][param_name] = value
+                elif mlx_key.startswith("mid_block."):
+                    # Map encoder mid_block weights directly - weights are already in correct MLX format
+                    flat_weights[f"encoder.{mlx_key}"] = value
+                elif mlx_key.startswith("down_blocks."):
+                    # Map encoder down_blocks weights to hierarchical structure
+                    QwenImageWeightHandler._map_encoder_down_blocks_weights(mlx_key, value, encoder_weights)
+                else:
+                    # For all other encoder weights, flatten them for later structure building
+                    flat_weights[key] = value
 
             elif key.startswith("decoder."):
                 # Remove 'decoder.' prefix and map to our structure
@@ -259,15 +337,18 @@ class QwenImageWeightHandler:
                     # For now, store unmapped weights for debugging
                     decoder_weights[mlx_key] = value
 
-        # Create flat weights dictionary for tree_unflatten
-        flat_weights = {}
+        # Create flat weights dictionary for tree_unflatten (already initialized above)
 
-        # Add post_quant_conv weights
+        # Add post_quant_conv and quant_conv weights
         for key, value in vae_weights.items():
             if key == "post_quant_conv":
                 flat_weights["post_quant_conv.conv3d.weight"] = value["conv3d"]["weight"]
                 if "bias" in value["conv3d"]:
                     flat_weights["post_quant_conv.conv3d.bias"] = value["conv3d"]["bias"]
+            elif key == "quant_conv":
+                flat_weights["quant_conv.conv3d.weight"] = value["conv3d"]["weight"]
+                if "bias" in value["conv3d"]:
+                    flat_weights["quant_conv.conv3d.bias"] = value["conv3d"]["bias"]
 
         # Add decoder weights with flat naming
         for key, value in decoder_weights.items():
@@ -335,6 +416,12 @@ class QwenImageWeightHandler:
             mlx_weights["post_quant_conv"] = {"conv3d": {"weight": flat_weights["post_quant_conv.conv3d.weight"]}}
             if "post_quant_conv.conv3d.bias" in flat_weights:
                 mlx_weights["post_quant_conv"]["conv3d"]["bias"] = flat_weights["post_quant_conv.conv3d.bias"]
+        
+        # Handle quant_conv
+        if "quant_conv.conv3d.weight" in flat_weights:
+            mlx_weights["quant_conv"] = {"conv3d": {"weight": flat_weights["quant_conv.conv3d.weight"]}}
+            if "quant_conv.conv3d.bias" in flat_weights:
+                mlx_weights["quant_conv"]["conv3d"]["bias"] = flat_weights["quant_conv.conv3d.bias"]
 
         # Handle decoder with proper list structures for mid_block
         decoder_weights_final = {}
@@ -459,11 +546,161 @@ class QwenImageWeightHandler:
 
                 decoder_weights_final[up_block_key] = up_block_structure
 
+        # Merge direct VAE weights (post_quant_conv and quant_conv)
+        if vae_weights:
+            # Merge vae_weights with decoder_weights_final
+            for key, value in vae_weights.items():
+                decoder_weights_final[key] = value
+        
         mlx_weights["decoder"] = decoder_weights_final
 
+        # Process encoder weights similarly to decoder weights
+        encoder_weights_final = {}
+        
+        # Handle non-mid_block encoder weights
+        for key, value in flat_weights.items():
+            if key.startswith("encoder.") and "mid_block" not in key and "down_blocks" not in key:
+                # Remove "encoder." prefix
+                encoder_key = key[8:]
+
+                # Parse the key to build nested structure
+                parts = encoder_key.split(".")
+                current = encoder_weights_final
+
+                # Navigate/create nested structure
+                for i, part in enumerate(parts[:-1]):
+                    if part not in current:
+                        current[part] = {}
+                    current = current[part]
+
+                # Set the final value
+                current[parts[-1]] = value
+
+        # Handle encoder mid_block with actual Python lists (similar to decoder)
+        encoder_mid_block_structure = {}
+
+        # Initialize lists
+        encoder_max_resnet_idx = -1
+        encoder_max_attention_idx = -1
+
+        for key in flat_weights.keys():
+            if key.startswith("encoder.mid_block.resnets."):
+                parts = key.split(".")
+                if len(parts) >= 4:
+                    try:
+                        resnet_idx = int(parts[3])
+                        encoder_max_resnet_idx = max(encoder_max_resnet_idx, resnet_idx)
+                    except (ValueError, IndexError):
+                        pass
+            elif key.startswith("encoder.mid_block.attentions."):
+                parts = key.split(".")
+                if len(parts) >= 4:
+                    try:
+                        attention_idx = int(parts[3])
+                        encoder_max_attention_idx = max(encoder_max_attention_idx, attention_idx)
+                    except (ValueError, IndexError):
+                        pass
+
+        # Create resnet and attention lists
+        if encoder_max_resnet_idx >= 0:
+            encoder_mid_block_structure["resnets"] = [{} for _ in range(encoder_max_resnet_idx + 1)]
+        if encoder_max_attention_idx >= 0:
+            encoder_mid_block_structure["attentions"] = [{} for _ in range(encoder_max_attention_idx + 1)]
+
+        # Populate mid_block structure for encoder
+        for key, value in flat_weights.items():
+            if key.startswith("encoder.mid_block."):
+                parts = key[18:].split(".")  # Remove "encoder.mid_block."
+
+                if parts[0] == "resnets" and len(parts) >= 2:
+                    try:
+                        resnet_idx = int(parts[1])
+                        remaining_key = ".".join(parts[2:])
+
+                        # Navigate structure and add conv3d wrapper for conv layers
+                        current = encoder_mid_block_structure["resnets"][resnet_idx]
+                        remaining_parts = remaining_key.split(".")
+                        
+                        # Check if this is a conv layer that needs conv3d wrapper
+                        if len(remaining_parts) == 2 and remaining_parts[0] in ["conv1", "conv2"] and remaining_parts[1] in ["weight", "bias"]:
+                            # Create conv3d wrapper: conv1.weight -> conv1.conv3d.weight
+                            component = remaining_parts[0]
+                            param = remaining_parts[1]
+                            if component not in current:
+                                current[component] = {}
+                            if "conv3d" not in current[component]:
+                                current[component]["conv3d"] = {}
+                            current[component]["conv3d"][param] = value
+                        else:
+                            # Handle norm weights with gamma/beta -> weight/bias mapping
+                            if len(remaining_parts) == 2 and remaining_parts[0] in ["norm1", "norm2"] and remaining_parts[1] in ["gamma", "beta"]:
+                                # Map norm parameters: gamma -> weight, beta -> bias
+                                component = remaining_parts[0]  # norm1, norm2
+                                param = remaining_parts[1]      # gamma, beta
+                                
+                                if component not in current:
+                                    current[component] = {}
+                                
+                                # Map diffusers parameter names to MLX names
+                                mlx_param = "weight" if param == "gamma" else "bias"
+                                current[component][mlx_param] = value
+                            else:
+                                # Handle other weights normally
+                                for part in remaining_parts[:-1]:
+                                    if part not in current:
+                                        current[part] = {}
+                                    current = current[part]
+                                current[remaining_parts[-1]] = value
+                    except (ValueError, IndexError):
+                        pass
+                elif parts[0] == "attentions" and len(parts) >= 2:
+                    try:
+                        attention_idx = int(parts[1])
+                        remaining_key = ".".join(parts[2:])
+
+                        # Navigate structure and handle norm parameter mapping
+                        current = encoder_mid_block_structure["attentions"][attention_idx]
+                        remaining_parts = remaining_key.split(".")
+                        
+                        # Handle attention norm weights with gamma/beta -> weight/bias mapping
+                        if len(remaining_parts) == 2 and remaining_parts[0] == "norm" and remaining_parts[1] in ["gamma", "beta"]:
+                            # Map norm parameters: gamma -> weight, beta -> bias
+                            component = remaining_parts[0]  # norm
+                            param = remaining_parts[1]      # gamma, beta
+                            
+                            if component not in current:
+                                current[component] = {}
+                            
+                            # Map diffusers parameter names to MLX names
+                            mlx_param = "weight" if param == "gamma" else "bias"
+                            current[component][mlx_param] = value
+                        else:
+                            # Handle other weights normally
+                            for part in remaining_parts[:-1]:
+                                if part not in current:
+                                    current[part] = {}
+                                current = current[part]
+                            current[remaining_parts[-1]] = value
+                    except (ValueError, IndexError):
+                        pass
+
+        # Add mid_block to encoder weights
+        if encoder_mid_block_structure:
+            encoder_weights_final["mid_block"] = encoder_mid_block_structure
+
+        # Merge direct encoder weights (conv_in, conv_out, norm_out)
+        if encoder_weights:
+            # Merge encoder_weights with encoder_weights_final
+            for key, value in encoder_weights.items():
+                encoder_weights_final[key] = value
+
+        mlx_weights["encoder"] = encoder_weights_final
+
         decoder_count = len([k for k in diffusers_weights.keys() if k.startswith("decoder.")])
+        encoder_count = len([k for k in diffusers_weights.keys() if k.startswith("encoder.")])
         post_quant_count = len([k for k in diffusers_weights.keys() if k.startswith("post_quant_conv.")])
-        print(f"   ✅ Mapped {decoder_count} decoder weights and {post_quant_count} post_quant_conv weights")
+        quant_conv_count = len([k for k in diffusers_weights.keys() if k.startswith("quant_conv.")])
+        print(f"   ✅ Mapped {decoder_count} decoder, {encoder_count} encoder, {post_quant_count} post_quant_conv, and {quant_conv_count} quant_conv weights")
         return mlx_weights
 
     @staticmethod
@@ -772,6 +1009,180 @@ class QwenImageWeightHandler:
             else:
                 # Store other weights with their original path
                 upsampler_dict[remaining_path] = value
+
+    @staticmethod
+    def _map_encoder_down_blocks_weights(mlx_key: str, value: mx.array, encoder_weights: dict):
+        """
+        Map encoder down_blocks weights from flat diffusers structure to hierarchical MLX structure.
+        
+        Diffusers has 11 individual blocks:
+        - Blocks 0,1,2: ResNet, ResNet, Downsample -> MLX Block 0 
+        - Blocks 3,4,5: ResNet, ResNet, Downsample -> MLX Block 1
+        - Blocks 6,7,8: ResNet, ResNet, Downsample -> MLX Block 2  
+        - Blocks 9,10: ResNet, ResNet -> MLX Block 3
+        
+        Args:
+            mlx_key: Key like "down_blocks.0.conv1.weight" or "down_blocks.2.resample.1.weight"
+            value: Weight tensor
+            encoder_weights: Target dictionary to populate
+        """
+        # Parse: down_blocks.{idx}.{component}.{param}
+        parts = mlx_key.split(".")
+        if len(parts) < 3:
+            return
+            
+        diffusers_block_idx = int(parts[1])
+        component = parts[2]  # 'conv1', 'conv2', 'norm1', 'norm2', 'resample'
+        
+        # Map diffusers flat blocks to MLX hierarchical blocks
+        # CORRECTED MAPPING based on actual MLX architecture:
+        # MLX Block 0: NO downsampler, 2 resnets (blocks 0,1)
+        # MLX Block 1: HAS downsampler, 2 resnets (blocks 3,4) + downsample (block 2) 
+        # MLX Block 2: HAS downsampler, 2 resnets (blocks 6,7) + downsample (block 5)
+        # MLX Block 3: HAS downsampler, 2 resnets (blocks 9,10) + downsample (block 8)
+        
+        if diffusers_block_idx <= 1:
+            # Blocks 0,1 -> MLX Block 0 (no downsampler)
+            mlx_block_idx = 0
+            resnet_idx = diffusers_block_idx  # 0->0, 1->1
+            is_downsample = False
+        elif diffusers_block_idx == 2:
+            # Block 2 -> MLX Block 1 downsampler
+            mlx_block_idx = 1
+            resnet_idx = None
+            is_downsample = True
+        elif diffusers_block_idx <= 4:
+            # Blocks 3,4 -> MLX Block 1 resnets
+            mlx_block_idx = 1
+            resnet_idx = diffusers_block_idx - 3  # 3->0, 4->1
+            is_downsample = False
+        elif diffusers_block_idx == 5:
+            # Block 5 -> MLX Block 2 downsampler  
+            mlx_block_idx = 2
+            resnet_idx = None
+            is_downsample = True
+        elif diffusers_block_idx <= 7:
+            # Blocks 6,7 -> MLX Block 2 resnets
+            mlx_block_idx = 2
+            resnet_idx = diffusers_block_idx - 6  # 6->0, 7->1
+            is_downsample = False
+        elif diffusers_block_idx == 8:
+            # Block 8 -> MLX Block 3 downsampler
+            mlx_block_idx = 3
+            resnet_idx = None
+            is_downsample = True
+        else:
+            # Blocks 9,10 -> MLX Block 3 resnets
+            mlx_block_idx = 3
+            resnet_idx = diffusers_block_idx - 9  # 9->0, 10->1
+            is_downsample = False
+            
+        # Initialize down_blocks list structure (not individual down_block0, down_block1 attributes)
+        if "down_blocks" not in encoder_weights:
+            encoder_weights["down_blocks"] = [{} for _ in range(4)]  # 4 down_blocks total
+        
+        # Get the specific block from the list
+        if mlx_block_idx >= len(encoder_weights["down_blocks"]):
+            # Extend list if needed
+            while len(encoder_weights["down_blocks"]) <= mlx_block_idx:
+                encoder_weights["down_blocks"].append({})
+        
+        block_dict = encoder_weights["down_blocks"][mlx_block_idx]
+        
+        # Initialize resnets list in this block if needed
+        if "resnets" not in block_dict:
+            block_dict["resnets"] = []
+            
+        # Handle ResNet blocks
+        if not is_downsample:
+            # Ensure we have enough resnet entries
+            while len(block_dict["resnets"]) <= resnet_idx:
+                block_dict["resnets"].append({})
+                
+            resnet_dict = block_dict["resnets"][resnet_idx]
+            
+            # Map parameters
+            param = parts[-1]  # 'weight', 'bias', 'gamma', 'beta'
+            
+            # Create component dict
+            if component not in resnet_dict:
+                resnet_dict[component] = {}
+                
+            # Handle parameter mapping  
+            if param == "gamma":
+                resnet_dict[component]["weight"] = value
+            elif param == "beta":
+                resnet_dict[component]["bias"] = value
+            elif component in ["conv1", "conv2"] and param in ["weight", "bias"]:
+                # Add conv3d wrapper for conv layers - weights are already in the correct format
+                if "conv3d" not in resnet_dict[component]:
+                    resnet_dict[component]["conv3d"] = {}
+                resnet_dict[component]["conv3d"][param] = value
+            elif component == "conv_shortcut" and param in ["weight", "bias"]:
+                # Map diffusers conv_shortcut to MLX skip_conv with conv3d wrapper
+                if "skip_conv" not in resnet_dict:
+                    resnet_dict["skip_conv"] = {"conv3d": {}}
+                # Transpose conv weights from PyTorch (out, in, d, h, w) to MLX (out, d, h, w, in)
+                if param == "weight":
+                    transposed_weight = mx.transpose(value, (0, 2, 3, 4, 1))
+                    resnet_dict["skip_conv"]["conv3d"][param] = transposed_weight
+                else:  # bias
+                    resnet_dict["skip_conv"]["conv3d"][param] = value
+            else:
+                resnet_dict[component][param] = value
+                
+        else:
+            # Handle downsample blocks
+            if "downsamplers" not in block_dict:
+                block_dict["downsamplers"] = [{}]
+                
+            downsampler_dict = block_dict["downsamplers"][0]
+            
+            # Map downsample weights: resample.1.weight -> time_conv or resample_conv
+            remaining_path = ".".join(parts[3:])  # Everything after "down_blocks.X.resample"
+            
+            if remaining_path == "1.weight":
+                # 2D resample conv weight  
+                # PyTorch Conv2d: (out_channels, in_channels, kernel_h, kernel_w)
+                # MLX Conv2d: (out_channels, kernel_h, kernel_w, in_channels)
+                # Transpose from (out, in, h, w) to (out, h, w, in)
+                transposed_weight = mx.transpose(value, (0, 2, 3, 1))
+                if "resample_conv" not in downsampler_dict:
+                    downsampler_dict["resample_conv"] = {}
+                downsampler_dict["resample_conv"]["weight"] = transposed_weight
+            elif remaining_path == "1.bias":
+                # 2D resample conv bias
+                if "resample_conv" not in downsampler_dict:
+                    downsampler_dict["resample_conv"] = {}
+                downsampler_dict["resample_conv"]["bias"] = value
+            elif remaining_path.startswith("time_conv."):
+                # Handle time_conv weights for downsamplers
+                # Important architectural difference:
+                # - Diffusers block 5 -> MLX block 2: HAS time_conv (should accept)  
+                # - Diffusers block 8 -> MLX block 3: NO time_conv (should skip)
+                
+                # Determine if this MLX block should have time_conv based on our mapping
+                # Block 8 maps to MLX block 3 which uses downsample2d (no time_conv)
+                if mlx_block_idx == 3:
+                    # Skip time_conv weights for MLX down_blocks[3] - architectural difference
+                    print(f"   ⚠️ Skipping time_conv for MLX block {mlx_block_idx}: uses downsample2d (no time_conv)")
+                    # Don't assign these weights - they're incompatible with MLX architecture
+                else:
+                    # For other blocks, assign time_conv weights
+                    param = remaining_path.split(".")[-1]  # weight or bias
+                    
+                    if "time_conv" not in downsampler_dict:
+                        downsampler_dict["time_conv"] = {"conv3d": {}}
+                    
+                    if param == "weight":
+                        # Transpose from diffusers (out, in, d, h, w) to MLX (out, d, h, w, in) format
+                        transposed_weight = mx.transpose(value, (0, 2, 3, 4, 1))
+                        downsampler_dict["time_conv"]["conv3d"]["weight"] = transposed_weight
+                    else:  # bias
+                        downsampler_dict["time_conv"]["conv3d"]["bias"] = value
+            else:
+                # Store other resample weights
+                downsampler_dict[remaining_path] = value
 
     def num_transformer_blocks(self) -> int:
         """

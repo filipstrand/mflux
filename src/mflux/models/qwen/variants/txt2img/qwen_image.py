@@ -7,7 +7,7 @@ from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.error.exceptions import StopImageGenerationException
-from mflux.latent_creator.latent_creator import LatentCreator
+from mflux.latent_creator.latent_creator import Img2Img, LatentCreator
 from mflux.models.qwen.model.qwen_text_encoder.qwen_prompt_encoder import QwenPromptEncoder
 from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer
@@ -57,10 +57,16 @@ class QwenImage(nn.Module):
         time_steps = tqdm(range(runtime_config.init_time_step, runtime_config.num_inference_steps))
 
         # 1. Create the initial latents
-        latents = LatentCreator.create(
+        latents = LatentCreator.create_for_txt2img_or_img2img(
             seed=seed,
             height=runtime_config.height,
             width=runtime_config.width,
+            img2img=Img2Img(
+                vae=self.vae,
+                sigmas=runtime_config.sigmas,
+                init_time_step=runtime_config.init_time_step,
+                image_path=runtime_config.image_path,
+            ),
         )
 
         # 2. Encode the prompt

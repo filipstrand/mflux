@@ -8,19 +8,63 @@ This document consolidates the essential, reusable lessons from porting Qwen Ima
 - **VAE**: ✅ Working - produces visually identical images
 - **Main Image Transformer**: ✅ Working - processes latents correctly, all layers functional
 - **Scheduler**: ✅ Working - timestep and noise scheduling matches reference
+- **Text Encoder Internal Transformer**: ✅ Working - QKV linear projections and transformer layers functioning correctly
 
 #### 🔧 **IN PROGRESS**
-- **Text Encoder Internal Transformer**: ❌ **BROKEN** - root cause identified in QKV linear projections
+- **VAE Encoder**: ❌ **NOT WORKING** - weight assignment and architecture debugging in progress
   
   **CRITICAL CLARIFICATION**: The Qwen model has **TWO separate transformers**:
-  1. **Text Encoder Transformer** (❌ BROKEN): Internal transformer within the text encoder that processes text tokens into embeddings. This is a standard language model transformer (28 layers, 3584 hidden size).
+  1. **Text Encoder Transformer** (✅ WORKING): Internal transformer within the text encoder that processes text tokens into embeddings. This is a standard language model transformer (28 layers, 3584 hidden size).
   2. **Main Image Transformer** (✅ WORKING): The main diffusion transformer that processes image latents. This handles the actual image generation and is already working correctly.
 
 ### Core principles
 - **Deterministic first**: fixed seeds, identical inputs, identical code paths
 - **Find the first divergence**: layer-by-layer comparison before any refactors
 - **Architecture over precision**: confirm structure and dataflow before blaming dtype
-- **Ground truth = raw weights**: inspect the pretrained file’s keys; do not trust assumptions
+- **Ground truth = raw weights**: inspect the pretrained file's keys; do not trust assumptions
+- **🎯 CRITICAL: Component boundaries vs computation sequence**: When porting from reference implementations (e.g., diffusers), focus on preserving the LINEAR SEQUENCE of operations, not where they're grouped. A computation might be inside the VAE in diffusers but outside in MLX (or vice versa) - this is just convention. What matters is that ALL steps are performed in the correct ORDER without duplication or omission. Naive line-by-line porting can lead to double computation if the same operation exists in multiple places.
+
+### Component boundaries and computation sequence
+**CRITICAL INSIGHT**: Component organization is convention, operation sequence is law.
+
+#### The Problem:
+- Diffusers might put normalization inside the VAE, while MLX puts it outside
+- Different implementations group operations differently (pre-processing, post-processing, etc.)
+- Naive porting can lead to duplicated or missing operations
+
+#### The Solution:
+1. **Map the complete computation flow**: Trace the full path from raw input to final output in the reference
+2. **Identify ALL operations**: List every computation step regardless of which component contains it
+3. **Preserve sequence, not grouping**: Ensure your MLX implementation performs the same operations in the same order
+4. **Check for duplication**: Verify no operation is performed twice (once in component, once outside)
+5. **Check for omission**: Verify no operation is skipped because "it should be handled elsewhere"
+
+#### Example Scenarios:
+- **Normalization**: Reference has `latents = latents / std + mean` inside VAE, but MLX has it in pipeline
+- **Scaling**: Reference applies `latents *= 0.18215` in encoder, but MLX applies it in pipeline  
+- **Preprocessing**: Reference does image normalization in processor, MLX does it in VAE
+
+#### Debugging Strategy:
+- Add strategic prints at component boundaries to see what values are being passed
+- Compare intermediate tensors at the SAME LOGICAL POINTS, not the same component boundaries
+- Focus on end-to-end correctness rather than component-by-component matching
+
+#### **🎯 CRITICAL: Expand scope beyond the target component**
+When asked to port a specific component (e.g., "port the VAE encoder"), **DO NOT** work in isolation:
+
+1. **Understand the broader integration**: How does this component fit into the complete pipeline?
+2. **Trace input sources**: What preprocessing happens before your component? Where does the input come from?
+3. **Trace output destinations**: Where does your component's output go? What postprocessing happens after?
+4. **Identify integration points**: What assumptions does your component make about input format, scaling, normalization?
+5. **Map cross-component operations**: Are there operations that span multiple components or could be duplicated?
+
+**Example**: When porting "VAE encoder," also examine:
+- Image preprocessing pipeline (normalization, resizing, format conversion)
+- How latents are passed to the main transformer
+- Whether scaling/normalization happens in VAE vs pipeline vs main transformer
+- Integration with scheduler and noise handling
+
+**Why this matters**: Tunnel vision on a single component often misses critical integration details that cause subtle bugs in the complete system.
 
 ### Reference-side workflow (PyTorch)
 - Run the diffusers reference in a separate repo with fixed seed and fixed resolution
@@ -94,6 +138,8 @@ This document consolidates the essential, reusable lessons from porting Qwen Ima
 - **No double nesting**: don't introduce containers (e.g., `conv3d`) twice in different layers
 - **Verify weight assignment**: After loading, spot-check actual parameter values (first few numbers) against reference implementation to confirm weights were set correctly
 - **Fast health checks**: shapes/dtypes; bias non‑zero; weight std within expected ranges; identical values across multiple runs (no randomness)
+- **🎯 CRITICAL: Examine actual structure, never assume**: When debugging weight issues, add debug output to see the exact nested dictionary structure being created vs. what the MLX model expects. Don't make assumptions about parameter names (e.g., diffusers uses `gamma`/`beta`, MLX expects `weight`/`bias`)
+- **🎯 Minimize transposes in weight assignment**: Assign weights as pure as possible during the loading stage. Handle necessary transposes in the computation code instead. This makes it much easier to verify correct weight assignment and debug transpose errors when they occur
 
 ### Required layout conversions
 - Conv2D: PyTorch `(out, in, h, w)` → MLX `(out, h, w, in)` via transpose `(0, 2, 3, 1)`
@@ -144,24 +190,25 @@ uv run python -u test_end_to_end_image.py
 - Complex blocks: ≤1e‑3 to 1e‑4 where practical; stable downstream behavior
 - End‑to‑end: visually equivalent images from identical latents/settings
 
-### Current Phase: Text Encoder Internal Transformer Debugging
+### Current Phase: VAE Encoder Debugging
 
-**Status**: ✅ **ROOT CAUSE IDENTIFIED** - Systematic tensor-by-tensor comparison completed. Issue isolated to MLX linear layer computation differences.
+**Status**: 🔧 **IN PROGRESS** - Weight assignment and architectural debugging underway. Systematic approach applied to identify exact failure points.
 
-**Techniques - Reference Implementation Instrumentation**:
-1. **Monkey-patch the reference**: Add detailed tensor saving directly in the HuggingFace/diffusers pipeline
-2. **Granular tensor capture**: Save every intermediate computation (QKV projections, reshaping, RoPE, etc.) 
-3. **Step-by-step comparison**: Compare MLX implementation against reference tensors at each computation step
-4. **Pinpoint precision**: Identify exact operation where divergence occurs
+**Techniques Applied**:
+1. **Weight structure examination**: Debug actual nested dictionary structures vs. MLX model expectations
+2. **Transpose debugging**: Systematic analysis of Conv3d weight format requirements  
+3. **Parameter name mapping**: Handle diffusers (`gamma`/`beta`) to MLX (`weight`/`bias`) conversions
+4. **Minimal transpose philosophy**: Assign pure weights, handle transposes in computation code
 
-**Key Files**:
-- `diffusers/src/diffusers/pipelines/qwenimage/pipeline_qwenimage.py` - Instrumented with detailed tensor saving
-- `debug_tensors_reference/` - Directory containing reference tensors at each computation step
-- `from_diffusers.py` - Runs instrumented pipeline to generate reference tensors
+**Key Learnings**:
+- Mid_block weights achieved 100% success rate through systematic structure examination
+- Parameter name mismatches (gamma vs weight) were major source of failures
+- Weight assignment verification critical - check actual loaded values vs. diffusers source
 
 ### Notes for future phases
-- Main image transformer is already working - focus only on text encoder internal transformer
-- Keep this doc updated with current status as debugging progresses
+- Text encoder internal transformer is now completed and working
+- Focus on remaining VAE encoder weight assignment and architecture issues
+- Apply lessons learned about examining actual structures rather than making assumptions
 
 ### Trace real code paths in the reference
 - **Critical for complex implementations**: Diffusers code has many conditional branches that may not be active
