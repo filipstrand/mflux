@@ -203,8 +203,18 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
             txt, max_length=self.tokenizer_max_length + drop_idx, padding=True, truncation=True, return_tensors="pt"
         ).to(device)
 
+        # 🚨 DEBUG: Save tokenizer outputs (IDs and masks)
+        try:
+            import os
+            debug_dir = "debug_tensors_diffusers"
+            os.makedirs(debug_dir, exist_ok=True)
+            torch.save(txt_tokens.input_ids.detach().cpu(), f"{debug_dir}/diffusers_input_ids.pt")
+            torch.save(txt_tokens.attention_mask.detach().cpu(), f"{debug_dir}/diffusers_attention_mask.pt")
+        except Exception:
+            pass
+
         # Simple tensor save: input tokens
-        torch.save(txt_tokens.input_ids.detach().cpu(), "debug_tensors/pt_input_ids.pt")
+        # torch.save(txt_tokens.input_ids.detach().cpu(), "debug_tensors/pt_input_ids.pt")
 
         # Comprehensive hooks to capture intermediate layers + first layer details
         def setup_comprehensive_hooks():
@@ -218,7 +228,7 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
                     def layer_output_hook(module, input, output):
                         # Extract hidden states from tuple (output is typically (hidden_states, attentions, ...))
                         hidden_states = output[0] if isinstance(output, tuple) else output
-                        torch.save(hidden_states.detach().cpu().float(), f"debug_tensors/pt_layer_{idx:02d}_output.pt")
+                        # torch.save(hidden_states.detach().cpu().float(), f"debug_tensors/pt_layer_{idx:02d}_output.pt")
 
                     return layer_output_hook
 
@@ -229,19 +239,23 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
 
             # Hook to capture attention input (RMS norm output)
             def attention_input_hook(module, input, output):
-                torch.save(output.detach().cpu().float(), "debug_tensors/pt_attention_input.pt")
+                pass
+                # torch.save(output.detach().cpu().float(), "debug_tensors/pt_attention_input.pt")
 
             hooks.append(first_layer.input_layernorm.register_forward_hook(attention_input_hook))
 
             # Hooks to capture QKV projections
             def q_proj_hook(module, input, output):
-                torch.save(output.detach().cpu().float(), "debug_tensors/pt_query_proj.pt")
+                pass
+                # torch.save(output.detach().cpu().float(), "debug_tensors/pt_query_proj.pt")
 
             def k_proj_hook(module, input, output):
-                torch.save(output.detach().cpu().float(), "debug_tensors/pt_key_proj.pt")
+                pass
+                # torch.save(output.detach().cpu().float(), "debug_tensors/pt_key_proj.pt")
 
             def v_proj_hook(module, input, output):
-                torch.save(output.detach().cpu().float(), "debug_tensors/pt_value_proj.pt")
+                pass
+                # torch.save(output.detach().cpu().float(), "debug_tensors/pt_value_proj.pt")
 
             hooks.append(first_layer.self_attn.q_proj.register_forward_hook(q_proj_hook))
             hooks.append(first_layer.self_attn.k_proj.register_forward_hook(k_proj_hook))
@@ -249,18 +263,25 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
 
             # Granular attention debugging hooks for first layer
             def attention_final_hook(module, input, output):
-                torch.save(output.detach().cpu().float(), "debug_tensors/pt_attention_final.pt")
+                # Handle tuple output from attention (hidden_states, attention_weights, present_key_value)
+                if isinstance(output, tuple):
+                    hidden_states = output[0]  # First element is hidden states
+                else:
+                    hidden_states = output
+                # torch.save(hidden_states.detach().cpu().float(), "debug_tensors/pt_attention_final.pt")
 
             hooks.append(first_layer.self_attn.register_forward_hook(attention_final_hook))
 
             # MLP debugging hooks for first layer
             def mlp_input_hook(module, input, output):
-                torch.save(output.detach().cpu().float(), "debug_tensors/pt_mlp_input.pt")
+                pass
+                # torch.save(output.detach().cpu().float(), "debug_tensors/pt_mlp_input.pt")
 
             hooks.append(first_layer.post_attention_layernorm.register_forward_hook(mlp_input_hook))
 
             def mlp_output_hook(module, input, output):
-                torch.save(output.detach().cpu().float(), "debug_tensors/pt_mlp_output.pt")
+                pass
+                # torch.save(output.detach().cpu().float(), "debug_tensors/pt_mlp_output.pt")
 
             hooks.append(first_layer.mlp.register_forward_hook(mlp_output_hook))
 
@@ -279,9 +300,9 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
             hook.remove()
 
         # Simple tensor save: text encoder output
-        torch.save(
-            encoder_hidden_states.hidden_states[-1].detach().cpu().float(), "debug_tensors/pt_text_encoder_output.pt"
-        )
+        # torch.save(
+        #     encoder_hidden_states.hidden_states[-1].detach().cpu().float(), "debug_tensors/pt_text_encoder_output.pt"
+        # )
         hidden_states = encoder_hidden_states.hidden_states[-1]
         split_hidden_states = self._extract_masked_hidden(hidden_states, txt_tokens.attention_mask)
         split_hidden_states = [e[drop_idx:] for e in split_hidden_states]
@@ -657,17 +678,19 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
             num_images_per_prompt=num_images_per_prompt,
             max_sequence_length=max_sequence_length,
         )
-        # DEBUG EXPORT: save text encodings prior to transformer usage
-        try:
-            os.makedirs("debug_tensors", exist_ok=True)
-            torch.save(prompt_embeds.detach().cpu(), os.path.join("debug_tensors", "prompt_embeds.pt"))
-            if prompt_embeds_mask is not None:
-                torch.save(
-                    prompt_embeds_mask.detach().cpu(),
-                    os.path.join("debug_tensors", "prompt_embeds_mask.pt"),
-                )
-        except Exception:
-            pass
+        # 🚨 DEBUG: Save positive prompt embeddings 
+        import os
+        import numpy as np
+        debug_dir = "debug_tensors_diffusers"
+        os.makedirs(debug_dir, exist_ok=True)
+        
+        # Save positive prompt embeddings
+        torch.save(prompt_embeds.detach().cpu().float(), f"{debug_dir}/diffusers_prompt_embeds.pt")
+        if prompt_embeds_mask is not None:
+            torch.save(prompt_embeds_mask.detach().cpu().float(), f"{debug_dir}/diffusers_prompt_mask.pt")
+        
+        # Convert to numpy for stats
+        prompt_embeds_np = prompt_embeds.detach().cpu().float().numpy()
         if do_true_cfg:
             negative_prompt_embeds, negative_prompt_embeds_mask = self.encode_prompt(
                 prompt=negative_prompt,
@@ -677,20 +700,75 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
                 num_images_per_prompt=num_images_per_prompt,
                 max_sequence_length=max_sequence_length,
             )
-            # DEBUG EXPORT: save negative text encodings
+            # 🚨 DEBUG: Save negative tokenizer IDs/masks as well
             try:
-                os.makedirs("debug_tensors", exist_ok=True)
-                torch.save(
-                    negative_prompt_embeds.detach().cpu(),
-                    os.path.join("debug_tensors", "negative_prompt_embeds.pt"),
+                template = self.prompt_template_encode
+                drop_idx = self.prompt_template_encode_start_idx
+                neg_txt = (
+                    [template.format(e) for e in negative_prompt]
+                    if isinstance(negative_prompt, list)
+                    else [template.format(negative_prompt)]
                 )
-                if negative_prompt_embeds_mask is not None:
-                    torch.save(
-                        negative_prompt_embeds_mask.detach().cpu(),
-                        os.path.join("debug_tensors", "negative_prompt_embeds_mask.pt"),
-                    )
+                neg_txt_tokens = self.tokenizer(
+                    neg_txt,
+                    max_length=self.tokenizer_max_length + drop_idx,
+                    padding=True,
+                    truncation=True,
+                    return_tensors="pt",
+                ).to(device)
+                torch.save(neg_txt_tokens.input_ids.detach().cpu(), f"{debug_dir}/diffusers_negative_input_ids.pt")
+                torch.save(neg_txt_tokens.attention_mask.detach().cpu(), f"{debug_dir}/diffusers_negative_attention_mask.pt")
             except Exception:
                 pass
+            # 🚨 DEBUG: Save negative prompt embeddings and exit
+            torch.save(negative_prompt_embeds.detach().cpu().float(), f"{debug_dir}/diffusers_negative_prompt_embeds.pt")
+            if negative_prompt_embeds_mask is not None:
+                torch.save(negative_prompt_embeds_mask.detach().cpu().float(), f"{debug_dir}/diffusers_negative_prompt_mask.pt")
+            
+            # Convert to numpy for stats
+            negative_prompt_embeds_np = negative_prompt_embeds.detach().cpu().float().numpy()
+            
+            # Save metadata
+            with open(f"{debug_dir}/diffusers_metadata.txt", "w") as f:
+                f.write(f"Prompt: {prompt}\n")
+                f.write(f"Negative prompt: {negative_prompt}\n")
+                f.write(f"Prompt embeds shape: {prompt_embeds.shape}\n")
+                f.write(f"Prompt mask shape: {prompt_embeds_mask.shape if prompt_embeds_mask is not None else 'None'}\n")
+                f.write(f"Negative prompt embeds shape: {negative_prompt_embeds.shape}\n")
+                f.write(f"Negative prompt mask shape: {negative_prompt_embeds_mask.shape if negative_prompt_embeds_mask is not None else 'None'}\n")
+                f.write(f"Prompt embeds dtype: {prompt_embeds.dtype}\n")
+                f.write(f"Prompt embeds stats: min={prompt_embeds_np.min():.6f}, max={prompt_embeds_np.max():.6f}, mean={prompt_embeds_np.mean():.6f}\n")
+                f.write(f"Negative prompt embeds stats: min={negative_prompt_embeds_np.min():.6f}, max={negative_prompt_embeds_np.max():.6f}, mean={negative_prompt_embeds_np.mean():.6f}\n")
+            
+            print(f"🚨 DEBUG: Saved diffusers text embeddings to {debug_dir}")
+            print(f"  prompt_embeds shape: {prompt_embeds.shape}, dtype: {prompt_embeds.dtype}")
+            print(f"  prompt_mask shape: {prompt_embeds_mask.shape if prompt_embeds_mask is not None else 'None'}")
+            print(f"  negative_prompt_embeds shape: {negative_prompt_embeds.shape}, dtype: {negative_prompt_embeds.dtype}")
+            print(f"  negative_prompt_mask shape: {negative_prompt_embeds_mask.shape if negative_prompt_embeds_mask is not None else 'None'}")
+            print(f"  prompt_embeds stats: min={prompt_embeds_np.min():.6f}, max={prompt_embeds_np.max():.6f}, mean={prompt_embeds_np.mean():.6f}")
+            print(f"  negative_prompt_embeds stats: min={negative_prompt_embeds_np.min():.6f}, max={negative_prompt_embeds_np.max():.6f}, mean={negative_prompt_embeds_np.mean():.6f}")
+            
+            # Exit immediately to compare embeddings
+            import sys
+            sys.exit(0)
+        else:
+            # 🚨 DEBUG: No negative prompt case - save what we have and exit
+            with open(f"{debug_dir}/diffusers_metadata.txt", "w") as f:
+                f.write(f"Prompt: {prompt}\n")
+                f.write(f"Negative prompt: None (do_true_cfg=False)\n")
+                f.write(f"Prompt embeds shape: {prompt_embeds.shape}\n")
+                f.write(f"Prompt mask shape: {prompt_embeds_mask.shape if prompt_embeds_mask is not None else 'None'}\n")
+                f.write(f"Prompt embeds dtype: {prompt_embeds.dtype}\n")
+                f.write(f"Prompt embeds stats: min={prompt_embeds_np.min():.6f}, max={prompt_embeds_np.max():.6f}, mean={prompt_embeds_np.mean():.6f}\n")
+            
+            print(f"🚨 DEBUG: Saved diffusers text embeddings to {debug_dir} (no negative prompt)")
+            print(f"  prompt_embeds shape: {prompt_embeds.shape}, dtype: {prompt_embeds.dtype}")
+            print(f"  prompt_mask shape: {prompt_embeds_mask.shape if prompt_embeds_mask is not None else 'None'}")
+            print(f"  prompt_embeds stats: min={prompt_embeds_np.min():.6f}, max={prompt_embeds_np.max():.6f}, mean={prompt_embeds_np.mean():.6f}")
+            
+            # Exit immediately to compare embeddings
+            import sys
+            sys.exit(0)
 
         # 4. Prepare latent variables
         num_channels_latents = self.transformer.config.in_channels // 4
@@ -706,8 +784,9 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
         )
         # DEBUG EXPORT: save initial packed latents prior to transformer usage
         try:
-            os.makedirs("debug_tensors", exist_ok=True)
-            torch.save(latents.detach().cpu(), os.path.join("debug_tensors", "initial_latents.pt"))
+            pass
+            # os.makedirs("debug_tensors", exist_ok=True)
+            # torch.save(latents.detach().cpu(), os.path.join("debug_tensors", "initial_latents.pt"))
         except Exception:
             pass
         img_shapes = [(1, height // self.vae_scale_factor // 2, width // self.vae_scale_factor // 2)] * batch_size
@@ -739,13 +818,13 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
         )
         # DEBUG EXPORT: save timesteps and scheduler sigmas
         try:
-            os.makedirs("debug_tensors", exist_ok=True)
-            torch.save(timesteps.detach().cpu(), os.path.join("debug_tensors", "timesteps.pt"))
+            # os.makedirs("debug_tensors", exist_ok=True)
+            # torch.save(timesteps.detach().cpu(), os.path.join("debug_tensors", "timesteps.pt"))
 
             # CRITICAL: Save the actual scheduler sigmas used for dt calculation
             if hasattr(self.scheduler, "sigmas"):
-                scheduler_sigmas = self.scheduler.sigmas.detach().cpu()
-                torch.save(scheduler_sigmas, os.path.join("debug_tensors", "scheduler_sigmas.pt"))
+                # scheduler_sigmas = self.scheduler.sigmas.detach().cpu()
+                # torch.save(scheduler_sigmas, os.path.join("debug_tensors", "scheduler_sigmas.pt"))
                 print(
                     f"🔍 TRACE: scheduler.sigmas = {np.array2string(scheduler_sigmas.numpy(), precision=6, floatmode='fixed')}"
                 )
@@ -905,8 +984,8 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
 
                 # Save reference latents after each step for debugging
                 try:
-                    os.makedirs("debug_tensors", exist_ok=True)
-                    torch.save(latents.detach().cpu(), f"debug_tensors/ref_latents_step_{step_idx}.pt")
+                    # os.makedirs("debug_tensors", exist_ok=True)
+                    # torch.save(latents.detach().cpu(), f"debug_tensors/ref_latents_step_{step_idx}.pt")
                     print(f"🔍 Saved reference latents after step {step_idx}: {latents.shape}")
                     step_idx += 1
                 except Exception as e:
@@ -950,8 +1029,9 @@ class QwenImagePipeline(DiffusionPipeline, QwenImageLoraLoaderMixin):
             latents = latents / latents_std + latents_mean
             # DEBUG EXPORT: save pre-VAE latents just before decode
             try:
-                os.makedirs("debug_tensors", exist_ok=True)
-                torch.save(latents.detach().cpu(), os.path.join("debug_tensors", "pre_vae_latents.pt"))
+                pass
+                # os.makedirs("debug_tensors", exist_ok=True)
+                # torch.save(latents.detach().cpu(), os.path.join("debug_tensors", "pre_vae_latents.pt"))
             except Exception:
                 pass
             image = self.vae.decode(latents, return_dict=False)[0][:, :, 0]

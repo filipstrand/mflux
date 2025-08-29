@@ -30,3 +30,5 @@ class QwenPromptEncoder:
         result = (prompt_embeds, prompt_mask, neg_prompt_embeds, neg_prompt_mask)
         prompt_cache[cache_key] = result
         return result
+
+    

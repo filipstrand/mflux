@@ -45,11 +45,12 @@ def test_qwen_text_encoder_regression():
     )
     
     # Regression test assertions - based on baseline run
-    EXPECTED_PROMPT_EMBEDS_SHAPE = (1, 43, 3584)  # Our test prompt produces 43 tokens
-    EXPECTED_PROMPT_MASK_SHAPE = (1, 43)
-    EXPECTED_PROMPT_EMBEDS_MIN = -131.0
-    EXPECTED_PROMPT_EMBEDS_MAX = 107.0
-    EXPECTED_PROMPT_EMBEDS_MEAN = -0.1123046875
+    # Updated baseline after aligning implementation to reference behavior
+    EXPECTED_PROMPT_EMBEDS_SHAPE = (1, 10, 3584)
+    EXPECTED_PROMPT_MASK_SHAPE = (1, 10)
+    EXPECTED_PROMPT_EMBEDS_MIN = -126.0
+    EXPECTED_PROMPT_EMBEDS_MAX = 104.5
+    EXPECTED_PROMPT_EMBEDS_MEAN = -0.10693359375
     TOLERANCE = 1e-4
     
     # Basic checks

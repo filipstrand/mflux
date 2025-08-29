@@ -21,25 +21,17 @@ try:
 except Exception:
     pass
 
-positive_magic = {
-    "en": "Ultra HD, 4K, cinematic composition.",  # for english prompt
-    "zh": "超清，4K，电影级构图",  # for chinese prompt
-}
-
 # Generate image
-# prompt = """A coffee shop entrance features a chalkboard sign reading "Qwen Coffee 😊 $2 per cup," with a neon light beside it displaying "通义千问". Next to it hangs a poster showing a beautiful Chinese woman, and beneath the poster is written "π≈3.1415926-53589793-23846264-33832795-02384197"."""
-prompt = "Luxury food photograph"
+prompt = '''A coffee shop entrance features a chalkboard sign reading "Qwen Coffee 😊 $2 per cup," with a neon light beside it displaying "通义千问". Next to it hangs a poster showing a beautiful Chinese woman, and beneath the poster is written "π≈3.1415926-53589793-23846264-33832795-02384197". Ultra HD, 4K, cinematic composition'''
+negative_prompt = " "
 
-negative_prompt = " "  # Recommended if you don't use a negative prompt.
-
-
-width = 256
-height = 256
+width = 512
+height = 512
 steps = 4
-seed = 42
+seed = 44
 
 image = pipe(
-    prompt=prompt + positive_magic["en"],
+    prompt=prompt,
     negative_prompt=negative_prompt,
     width=width,
     height=height,

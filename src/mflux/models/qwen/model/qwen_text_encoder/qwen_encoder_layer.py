@@ -37,11 +37,21 @@ class QwenEncoderLayer(nn.Module):
         self,
         hidden_states: mx.array,
         attention_mask: mx.array | None = None,
-        position_ids: mx.array | None = None,
+        position_embeddings: tuple[mx.array, mx.array] | None = None,
     ) -> mx.array:
+        # Match reference decoder layer structure exactly
         residual = hidden_states
+        
+        # Match reference: hidden_states = self.input_layernorm(hidden_states)
         hidden_states = self.input_layernorm(hidden_states)
-        hidden_states = self.self_attn(hidden_states, attention_mask, position_ids)
+        
+        # Match reference: Self Attention
+        hidden_states = self.self_attn(
+            hidden_states=hidden_states,
+            attention_mask=attention_mask,
+            position_embeddings=position_embeddings,
+        )
+        # Match reference: hidden_states = residual + hidden_states
         hidden_states = residual + hidden_states
         residual = hidden_states
         hidden_states = self.post_attention_layernorm(hidden_states)

@@ -13,5 +13,5 @@ class QwenRMSNorm(nn.Module):
         hidden_states = hidden_states.astype(mx.float32)
         variance = mx.mean(mx.square(hidden_states), axis=-1, keepdims=True)
         hidden_states = hidden_states * mx.rsqrt(variance + self.eps)
-        hidden_states = self.weight * hidden_states
-        return hidden_states.astype(input_dtype)
+        result = self.weight.astype(mx.float32) * hidden_states
+        return result.astype(input_dtype)
