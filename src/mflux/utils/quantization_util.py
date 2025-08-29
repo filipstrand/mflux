@@ -5,7 +5,7 @@ import mlx.nn as nn
 if TYPE_CHECKING:
     from mflux.models.flux.variants.controlnet.weight_handler_controlnet import WeightHandlerControlnet
     from mflux.models.flux.weights.weight_handler import WeightHandler
-    from mflux.models.qwen.weights.qwen_weight_handler import QwenImageWeightHandler
+    from mflux.models.qwen.weights.qwen_weight_handler import QwenWeightHandler
 
 
 class QuantizationUtil:
@@ -76,7 +76,7 @@ class QuantizationUtil:
         vae: nn.Module,
         transformer: nn.Module,
         quantize: int,
-        weights: "QwenImageWeightHandler",
+        weights: "QwenWeightHandler",
     ) -> None:
         q_level = weights.meta_data.quantization_level
 

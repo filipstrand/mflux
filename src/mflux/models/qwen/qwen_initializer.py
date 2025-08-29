@@ -4,7 +4,7 @@ from mflux.models.qwen.model.qwen_text_encoder_alternative.qwen_text_encoder_alt
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer
 from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
 from mflux.models.qwen.tokenizer.qwen_tokenizer_handler import QwenTokenizerHandler
-from mflux.models.qwen.weights.qwen_weight_handler import QwenImageWeightHandler
+from mflux.models.qwen.weights.qwen_weight_handler import QwenWeightHandler
 from mflux.models.qwen.weights.qwen_weight_handler_lora import QwenWeightHandlerLoRA
 from mflux.models.qwen.weights.qwen_weight_util import QwenWeightUtil
 
@@ -24,7 +24,7 @@ class QwenImageInitializer:
         qwen_model.model_config = model_config
 
         # 1. Load the regular weights
-        weights = QwenImageWeightHandler.load_pretrained_weights(
+        weights = QwenWeightHandler.load_regular_weights(
             repo_id=model_config.model_name,
             local_path=local_path,
         )

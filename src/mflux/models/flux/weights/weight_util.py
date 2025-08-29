@@ -3,12 +3,12 @@ from typing import TYPE_CHECKING
 import mlx.nn as nn
 
 from mflux.config.config import Config
-from mflux.weights.quantization_util import QuantizationUtil
+from mflux.utils.quantization_util import QuantizationUtil
 
 if TYPE_CHECKING:
-    from mflux.controlnet.weight_handler_controlnet import WeightHandlerControlnet
-    from mflux.flux_tools.redux.weight_handler_redux import WeightHandlerRedux
-    from mflux.weights.weight_handler import WeightHandler
+    from mflux.models.flux.variants.controlnet.weight_handler_controlnet import WeightHandlerControlnet
+    from mflux.models.flux.variants.redux.weight_handler_redux import WeightHandlerRedux
+    from mflux.models.flux.weights.weight_handler import WeightHandler
 
 
 class WeightUtil:

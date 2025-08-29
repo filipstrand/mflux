@@ -1,7 +1,7 @@
 import mlx.core as mx
 import mlx.nn as nn
 
-from mflux.models.qwen.weights.qwen_weight_handler import QwenImageWeightHandler, QwenImageMetaData
+from mflux.models.qwen.weights.qwen_weight_handler import QwenWeightHandler, MetaData
 
 
 class QwenLoRALinear(nn.Module):
@@ -36,7 +36,7 @@ class QwenLoRALinear(nn.Module):
 
 
 class QwenWeightHandlerLoRA:
-    def __init__(self, weight_handlers: list[QwenImageWeightHandler]):
+    def __init__(self, weight_handlers: list[QwenWeightHandler]):
         self.weight_handlers = weight_handlers
 
     @staticmethod
@@ -44,7 +44,7 @@ class QwenWeightHandlerLoRA:
         transformer: nn.Module,
         lora_files: list[str],
         lora_scales: list[float] | None = None,
-    ) -> list["QwenImageWeightHandler"]:
+    ) -> list["QwenWeightHandler"]:
         lora_weights = []
         if not lora_files:
             return lora_weights
@@ -74,8 +74,8 @@ class QwenWeightHandlerLoRA:
                     weights, transformer, lora_scale
                 )
                 
-                qwen_weights = QwenImageWeightHandler(
-                    meta_data=QwenImageMetaData(
+                qwen_weights = QwenWeightHandler(
+                    meta_data=MetaData(
                         quantization_level=None,
                         mflux_version="dev",
                     ),
@@ -92,7 +92,7 @@ class QwenWeightHandlerLoRA:
         return lora_weights
 
     @staticmethod
-    def set_lora_weights(transformer: nn.Module, loras: list["QwenImageWeightHandler"]) -> None:
+    def set_lora_weights(transformer: nn.Module, loras: list["QwenWeightHandler"]) -> None:
         if not loras:
             return
             
@@ -341,7 +341,7 @@ class QwenWeightHandlerLoRA:
         return None
 
     @staticmethod
-    def _apply_lora_to_transformer(transformer: nn.Module, lora_handler: QwenImageWeightHandler):
+    def _apply_lora_to_transformer(transformer: nn.Module, lora_handler: QwenWeightHandler):
         print(f"\n🔗 Applying LoRA weights to transformer")
         
         if not lora_handler.transformer:
