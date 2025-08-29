@@ -1,7 +1,6 @@
 import mlx.nn as nn
 
 from mflux.config.config import Config
-from mflux.models.qwen.model.qwen_transformer.qwen_image_transformer_applier import QwenImageTransformerApplier
 from mflux.models.qwen.weights.qwen_text_encoder_loader import QwenTextEncoderLoader
 from mflux.models.qwen.weights.qwen_weight_handler import QwenImageWeightHandler
 from mflux.utils.quantization_util import QuantizationUtil
@@ -53,6 +52,6 @@ class QwenWeightUtil:
         text_encoder: nn.Module | None = None,
     ):
         vae.update(weights.vae, strict=False)
-        QwenImageTransformerApplier.apply_from_handler(module=transformer, weights=weights.transformer)
+        transformer.update(weights.transformer, strict=False)
         nested_weights = QwenTextEncoderLoader.convert_to_nested_dict(weights.qwen_text_encoder)
         text_encoder.update(nested_weights, strict=False)

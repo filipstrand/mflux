@@ -224,7 +224,7 @@ class QwenImageWeightHandler:
     def _manual_transformer_mapping(diffusers_weights: dict) -> dict:
         weights = {}
         
-        # 1. Top-level direct mappings (like Flux does)
+        # 1. Top-level mappings (exact MLX parameter names)
         weights["img_in"] = {
             "weight": diffusers_weights["img_in.weight"],
             "bias": diffusers_weights["img_in.bias"]
@@ -235,7 +235,7 @@ class QwenImageWeightHandler:
             "bias": diffusers_weights["txt_in.bias"]
         }
         
-        # 2. Time text embedder
+        # 2. Time text embedder (exact MLX structure)
         weights["time_text_embed"] = {"timestep_embedder": {
             "linear_1": {
                 "weight": diffusers_weights["time_text_embed.timestep_embedder.linear_1.weight"],
@@ -247,94 +247,92 @@ class QwenImageWeightHandler:
             }
         }}
         
-        # 3. Output head
-        weights["output"] = {
-            "norm_out": {
-                "linear.weight": diffusers_weights["norm_out.linear.weight"],
-                "linear.bias": diffusers_weights["norm_out.linear.bias"]
-            },
-            "proj_out": {
-                "weight": diffusers_weights["proj_out.weight"],
-                "bias": diffusers_weights["proj_out.bias"]
+        # 3. Output head (exact MLX structure)
+        weights["norm_out"] = {
+            "linear": {
+                "weight": diffusers_weights["norm_out.linear.weight"],
+                "bias": diffusers_weights["norm_out.linear.bias"]
             }
         }
+        weights["proj_out"] = {
+            "weight": diffusers_weights["proj_out.weight"],
+            "bias": diffusers_weights["proj_out.bias"]
+        }
         
-        # 4. Transformer blocks (match the structure expected by QwenTransformerBlockApplier)
+        # 4. Transformer blocks (exact MLX parameter names - no applier needed!)
         transformer_blocks = []
         for block_idx in range(60):  # 60 blocks based on debug output
             block = {}
             
-            # Modulation layers (expected structure: img_mod.1.*, txt_mod.1.*)
-            block["img_mod"] = {"1": {
+            # Modulation layers (exact MLX parameter names)
+            block["img_mod_linear"] = {
                 "weight": diffusers_weights[f"transformer_blocks.{block_idx}.img_mod.1.weight"],
                 "bias": diffusers_weights[f"transformer_blocks.{block_idx}.img_mod.1.bias"]
-            }}
-            block["txt_mod"] = {"1": {
+            }
+            block["txt_mod_linear"] = {
                 "weight": diffusers_weights[f"transformer_blocks.{block_idx}.txt_mod.1.weight"],
                 "bias": diffusers_weights[f"transformer_blocks.{block_idx}.txt_mod.1.bias"]
-            }}
-            
-            # Attention layers (all under "attn" key as expected by applier)
-            block["attn"] = {
-                "to_q": {
-                    "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_q.weight"],
-                    "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_q.bias"]
-                },
-                "to_k": {
-                    "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_k.weight"],
-                    "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_k.bias"]
-                },
-                "to_v": {
-                    "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_v.weight"],
-                    "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_v.bias"]
-                },
-                "add_q_proj": {
-                    "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_q_proj.weight"],
-                    "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_q_proj.bias"]
-                },
-                "add_k_proj": {
-                    "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_k_proj.weight"],
-                    "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_k_proj.bias"]
-                },
-                "add_v_proj": {
-                    "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_v_proj.weight"],
-                    "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_v_proj.bias"]
-                },
-                "norm_q": {"weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.norm_q.weight"]},
-                "norm_k": {"weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.norm_k.weight"]},
-                "norm_added_q": {"weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.norm_added_q.weight"]},
-                "norm_added_k": {"weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.norm_added_k.weight"]},
-                "to_out": [{
-                    "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_out.0.weight"],
-                    "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_out.0.bias"]
-                }],
-                "to_add_out": {
-                    "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_add_out.weight"],
-                    "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_add_out.bias"]
-                }
             }
             
-            # MLP layers (expected structure: img_mlp.net.0.proj.*, img_mlp.net.2.*)
-            block["img_mlp"] = {"net": {
-                "0": {"proj": {
-                    "weight": diffusers_weights[f"transformer_blocks.{block_idx}.img_mlp.net.0.proj.weight"],
-                    "bias": diffusers_weights[f"transformer_blocks.{block_idx}.img_mlp.net.0.proj.bias"]
-                }},
-                "2": {
-                    "weight": diffusers_weights[f"transformer_blocks.{block_idx}.img_mlp.net.2.weight"],
-                    "bias": diffusers_weights[f"transformer_blocks.{block_idx}.img_mlp.net.2.bias"]
-                }
-            }}
-            block["txt_mlp"] = {"net": {
-                "0": {"proj": {
-                    "weight": diffusers_weights[f"transformer_blocks.{block_idx}.txt_mlp.net.0.proj.weight"],
-                    "bias": diffusers_weights[f"transformer_blocks.{block_idx}.txt_mlp.net.0.proj.bias"]
-                }},
-                "2": {
-                    "weight": diffusers_weights[f"transformer_blocks.{block_idx}.txt_mlp.net.2.weight"],
-                    "bias": diffusers_weights[f"transformer_blocks.{block_idx}.txt_mlp.net.2.bias"]
-                }
-            }}
+            # Attention layers (exact MLX parameter names - no nesting under "attn")
+            block["to_q"] = {
+                "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_q.weight"],
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_q.bias"]
+            }
+            block["to_k"] = {
+                "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_k.weight"],
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_k.bias"]
+            }
+            block["to_v"] = {
+                "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_v.weight"],
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_v.bias"]
+            }
+            block["add_q_proj"] = {
+                "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_q_proj.weight"],
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_q_proj.bias"]
+            }
+            block["add_k_proj"] = {
+                "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_k_proj.weight"],
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_k_proj.bias"]
+            }
+            block["add_v_proj"] = {
+                "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_v_proj.weight"],
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_v_proj.bias"]
+            }
+            
+            # Attention norms (exact MLX parameter names)
+            block["norm_q"] = {"weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.norm_q.weight"]}
+            block["norm_k"] = {"weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.norm_k.weight"]}
+            block["norm_added_q"] = {"weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.norm_added_q.weight"]}
+            block["norm_added_k"] = {"weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.norm_added_k.weight"]}
+            
+            # Attention outputs (exact MLX parameter names)
+            block["attn_to_out"] = [{
+                "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_out.0.weight"],
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_out.0.bias"]
+            }]
+            block["to_add_out"] = {
+                "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_add_out.weight"],
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_add_out.bias"]
+            }
+            
+            # MLP layers (exact MLX parameter names)
+            block["img_mlp_in"] = {
+                "weight": diffusers_weights[f"transformer_blocks.{block_idx}.img_mlp.net.0.proj.weight"],
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.img_mlp.net.0.proj.bias"]
+            }
+            block["img_mlp_out"] = {
+                "weight": diffusers_weights[f"transformer_blocks.{block_idx}.img_mlp.net.2.weight"],
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.img_mlp.net.2.bias"]
+            }
+            block["txt_mlp_in"] = {
+                "weight": diffusers_weights[f"transformer_blocks.{block_idx}.txt_mlp.net.0.proj.weight"],
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.txt_mlp.net.0.proj.bias"]
+            }
+            block["txt_mlp_out"] = {
+                "weight": diffusers_weights[f"transformer_blocks.{block_idx}.txt_mlp.net.2.weight"],
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.txt_mlp.net.2.bias"]
+            }
             
             transformer_blocks.append(block)
         
