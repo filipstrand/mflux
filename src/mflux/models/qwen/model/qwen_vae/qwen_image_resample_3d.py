@@ -30,7 +30,16 @@ class QwenImageResample3D(nn.Module):
         x = mx.transpose(x, (0, 2, 3, 1))
         if self.mode in ["upsample3d", "upsample2d"]:
             x = self._up_sample_nearest_2x(x)
-        x = self.resample_conv(x)
+        
+        # Transpose weights from PyTorch format (out_ch, in_ch, h, w) to MLX format (out_ch, h, w, in_ch)
+        original_weight = self.resample_conv.weight
+        if len(original_weight.shape) == 4:
+            mlx_weight = mx.transpose(original_weight, (0, 2, 3, 1))
+            self.resample_conv.weight = mlx_weight
+            x = self.resample_conv(x)
+            self.resample_conv.weight = original_weight
+        else:
+            x = self.resample_conv(x)
         x = mx.transpose(x, (0, 3, 1, 2))
         new_c = x.shape[1]
         new_h, new_w = x.shape[2], x.shape[3]

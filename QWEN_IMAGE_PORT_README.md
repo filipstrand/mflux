@@ -5,13 +5,13 @@ This document consolidates the essential, reusable lessons from porting Qwen Ima
 ### Component Status Overview
 
 #### ✅ **COMPLETED COMPONENTS**
-- **VAE**: ✅ Working - produces visually identical images
+- **VAE Decoder**: ✅ **COMPLETED** - Successfully implemented using **debugger-driven manual weight mapping**
 - **Main Image Transformer**: ✅ Working - processes latents correctly, all layers functional
 - **Scheduler**: ✅ Working - timestep and noise scheduling matches reference
 - **Text Encoder Internal Transformer**: ✅ Working - QKV linear projections and transformer layers functioning correctly
 
 #### 🔧 **IN PROGRESS**
-- **VAE Encoder**: ❌ **NOT WORKING** - weight assignment and architecture debugging in progress
+- **VAE Encoder**: 🔧 **NEXT UP** - Apply same debugger-driven manual mapping approach that worked for decoder
   
   **CRITICAL CLARIFICATION**: The Qwen model has **TWO separate transformers**:
   1. **Text Encoder Transformer** (✅ WORKING): Internal transformer within the text encoder that processes text tokens into embeddings. This is a standard language model transformer (28 layers, 3584 hidden size).
@@ -131,7 +131,54 @@ When asked to port a specific component (e.g., "port the VAE encoder"), **DO NOT
 - **Context matters**: Reference 1.33 vs MLX 1.34 can be acceptable depending on the operation and position in the pipeline
 - **Final arbiter**: Visual image comparison often reveals that seemingly "large" tensor differences produce nearly identical outputs
 
+### 🌟 **PRIMARY STRATEGY: Debugger-Driven Manual Weight Mapping**
+
+**This is the PREFERRED approach for all weight assignment. Avoid complex automated mapping systems.**
+
+#### **The Flux-Style Approach (Recommended)**
+1. **Print ALL weight keys from diffusers**: Add debug output to see every single weight key and shape from the pretrained model
+   ```python
+   print("🔍 ALL decoder weight keys from diffusers:")
+   decoder_keys = sorted([k for k in weights.keys() if k.startswith("decoder.")])
+   for i, key in enumerate(decoder_keys):
+       print(f"  {i+1:2d}. {key}: {weights[key].shape}")
+   ```
+
+2. **Inspect MLX model structure by eye**: Read your MLX model code to understand the exact nested structure (lists, dicts, parameter names)
+
+3. **Write explicit manual mappings**: Create simple, direct mappings like Flux does:
+   ```python
+   # Simple direct mappings (like Flux)
+   weights["decoder"]["conv_in"] = {"conv3d": {
+       "weight": diffusers_weights["decoder.conv_in.weight"],
+       "bias": diffusers_weights["decoder.conv_in.bias"]
+   }}
+   
+   # Manual structure building for nested components
+   weights["decoder"]["mid_block"]["resnets"] = [{}, {}]
+   for i in range(2):
+       resnet = weights["decoder"]["mid_block"]["resnets"][i]
+       resnet["conv1"] = {"conv3d": {
+           "weight": diffusers_weights[f"decoder.mid_block.resnets.{i}.conv1.weight"],
+           "bias": diffusers_weights[f"decoder.mid_block.resnets.{i}.conv1.bias"]
+       }}
+   ```
+
+#### **Why This Approach Works**
+- **Crystal clear mapping**: Every assignment is explicit and traceable
+- **No hidden complexity**: No loops, automation, or clever algorithms that can fail silently
+- **Easy debugging**: When something breaks, you can see exactly which line is responsible  
+- **Matches model structure exactly**: You build the dictionary structure to match your MLX model precisely
+- **Proven reliable**: Works identically to Flux's clean, simple approach
+
+#### **Avoid These Anti-Patterns**
+- ❌ **Complex automated mapping systems** with loops and clever logic
+- ❌ **Generic tree-building algorithms** that try to be smart about structure
+- ❌ **Helper functions with intricate logic** for mapping weight names
+- ❌ **Assumptions about structure** - always inspect the actual keys and shapes
+
 ### Weight mapping essentials
+- **🎯 USE THE DEBUGGER-DRIVEN APPROACH ABOVE**: This is the primary recommended strategy
 - **Plot full hierarchy**: Print/inspect the complete weight dictionary structure from pretrained files; this must exactly match your MLX module hierarchy
 - **Exact path matching**: A single level mismatch in the hierarchy will cause silent weight loading failures, leaving random weights
 - **Lists vs dicts**: list modules need actual Python lists, not dicts of "0", "1", ...
@@ -139,11 +186,31 @@ When asked to port a specific component (e.g., "port the VAE encoder"), **DO NOT
 - **Verify weight assignment**: After loading, spot-check actual parameter values (first few numbers) against reference implementation to confirm weights were set correctly
 - **Fast health checks**: shapes/dtypes; bias non‑zero; weight std within expected ranges; identical values across multiple runs (no randomness)
 - **🎯 CRITICAL: Examine actual structure, never assume**: When debugging weight issues, add debug output to see the exact nested dictionary structure being created vs. what the MLX model expects. Don't make assumptions about parameter names (e.g., diffusers uses `gamma`/`beta`, MLX expects `weight`/`bias`)
-- **🎯 Minimize transposes in weight assignment**: Assign weights as pure as possible during the loading stage. Handle necessary transposes in the computation code instead. This makes it much easier to verify correct weight assignment and debug transpose errors when they occur
+- **🎯 CRITICAL: Transposes in computation, NOT in weight loading**: 
+  - **Assign weights exactly as they exist in diffusers** - no transposes during loading
+  - **Handle all transposes in the computation stage** (inside `__call__` methods)
+  - **WHY this matters**: If you load weights without any transformations, you can easily write tests to verify that what you assigned is indeed what you expect by directly comparing against the original diffusers weights. If you transpose during loading, verification becomes much harder because you have to account for those transposes in your tests, adding complexity and potential for bugs.
+  - **Debugging benefit**: When something breaks, you can immediately verify "did the weights load correctly?" by spot-checking raw values against diffusers, without having to mentally undo transposes
 
-### Required layout conversions
+### Required layout conversions (PERFORM IN COMPUTATION, NOT WEIGHT LOADING)
 - Conv2D: PyTorch `(out, in, h, w)` → MLX `(out, h, w, in)` via transpose `(0, 2, 3, 1)`
 - Conv3D: PyTorch `(out, in, d, h, w)` → MLX `(out, d, h, w, in)` via transpose `(0, 2, 3, 4, 1)`
+
+**Implementation pattern**: Transpose weights temporarily inside `__call__` methods:
+```python
+def __call__(self, x: mx.array) -> mx.array:
+    # Transpose weight temporarily for MLX conv
+    original_weight = self.conv3d.weight
+    if len(original_weight.shape) == 5:  # 3D conv
+        mlx_weight = mx.transpose(original_weight, (0, 2, 3, 4, 1))
+        self.conv3d.weight = mlx_weight
+        x = self.conv3d(x)
+        # Restore original weight 
+        self.conv3d.weight = original_weight
+    return x
+```
+
+**Why this pattern**: Weights remain in original diffusers format for easy verification, transposes only occur during computation.
 
 ### MLX implementation patterns that prevent bugs
 - **Channels‑last kernels**: wrap convs with transpose in/out; keep external tensors consistent
@@ -177,10 +244,12 @@ uv run python -u test_end_to_end_image.py
 - Techniques that solved one‑offs we will not reuse
 
 ### Compact checklist (reuse every time)
-- Inspect raw weight keys; note shapes and true hierarchy
-- Define exact MLX parameter paths; use lists where needed
-- Implement explicit transpositions for all conv weights (2D/3D)
-- After loading, spot‑check: shapes, dtypes, means/stds, non‑zero biases
+- **🌟 Use debugger-driven manual weight mapping (PRIMARY STRATEGY)**
+- Print ALL diffusers weight keys and inspect MLX model structure by eye  
+- Write explicit manual mappings - no complex automation
+- **Assign weights exactly as they exist in diffusers** - no transposes during loading
+- **Implement transposes in computation only** (inside `__call__` methods) - this makes weight verification much easier
+- After loading, spot‑check: shapes, dtypes, means/stds, non‑zero biases (can directly compare to diffusers!)
 - Hook critical boundaries; compare tensors with strict tolerances
 - Fix the first divergence; re‑run; repeat
 - Keep inputs and random states identical across frameworks
@@ -190,20 +259,35 @@ uv run python -u test_end_to_end_image.py
 - Complex blocks: ≤1e‑3 to 1e‑4 where practical; stable downstream behavior
 - End‑to‑end: visually equivalent images from identical latents/settings
 
-### Current Phase: VAE Encoder Debugging
+### Current Phase: VAE Decoder COMPLETED ✅
 
-**Status**: 🔧 **IN PROGRESS** - Weight assignment and architectural debugging underway. Systematic approach applied to identify exact failure points.
+**Status**: ✅ **COMPLETED** - Successfully implemented using debugger-driven manual weight mapping approach.
 
-**Techniques Applied**:
-1. **Weight structure examination**: Debug actual nested dictionary structures vs. MLX model expectations
-2. **Transpose debugging**: Systematic analysis of Conv3d weight format requirements  
-3. **Parameter name mapping**: Handle diffusers (`gamma`/`beta`) to MLX (`weight`/`bias`) conversions
-4. **Minimal transpose philosophy**: Assign pure weights, handle transposes in computation code
+**🌟 BREAKTHROUGH: Debugger-Driven Manual Mapping**
+The VAE decoder was successfully completed using the new **debugger-driven, manual Flux-style approach**:
 
-**Key Learnings**:
-- Mid_block weights achieved 100% success rate through systematic structure examination
-- Parameter name mismatches (gamma vs weight) were major source of failures
-- Weight assignment verification critical - check actual loaded values vs. diffusers source
+1. **Printed all 106+ diffusers weight keys** to understand exact structure
+2. **Inspected MLX model by eye** to understand nested lists/dicts structure  
+3. **Wrote explicit manual mappings** - no automation, no complex logic
+4. **Result**: Clean, working implementation in ~120 lines vs. 350+ lines of complex automation
+
+**Key Success Factors**:
+- **Crystal clear mappings**: Every assignment explicit and traceable
+- **No hidden complexity**: Simple, direct mapping like Flux uses
+- **Debuggable**: When issues arise, exact line responsible is obvious
+- **Easily verifiable**: Weights loaded exactly as they exist in diffusers - can directly compare for verification
+- **Testable weight loading**: No mental gymnastics to verify correct weight assignment
+- **Reliable**: Matches MLX model structure perfectly
+
+**Lessons for Future Components**:
+- ❌ **Avoid complex automated mapping systems** - they're hard to debug and maintain
+- ✅ **Use debugger-driven manual approach** - much cleaner and more reliable
+- ✅ **Print all weight keys first** - understand the structure before coding
+- ✅ **Manual structure building** - explicit is better than clever
+
+### Next Phase: VAE Encoder  
+
+**Status**: 🔧 **NEXT UP** - Apply the same debugger-driven manual mapping approach that worked for the decoder
 
 ### Notes for future phases
 - Text encoder internal transformer is now completed and working

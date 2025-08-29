@@ -26,7 +26,15 @@ class QwenImageAttentionBlock3D(nn.Module):
         x_2d = mx.transpose(x_2d, (0, 2, 3, 1))
 
         # Compute QKV using 2D conv (1x1 kernel acts like linear transformation)
-        qkv_2d = self.to_qkv(x_2d)
+        # Transpose weights from PyTorch format (out_ch, in_ch, h, w) to MLX format (out_ch, h, w, in_ch)
+        original_weight = self.to_qkv.weight
+        if len(original_weight.shape) == 4:
+            mlx_weight = mx.transpose(original_weight, (0, 2, 3, 1))
+            self.to_qkv.weight = mlx_weight
+            qkv_2d = self.to_qkv(x_2d)
+            self.to_qkv.weight = original_weight
+        else:
+            qkv_2d = self.to_qkv(x_2d)
 
         # Convert back to channels-first
         qkv_2d = mx.transpose(qkv_2d, (0, 3, 1, 2))
@@ -54,7 +62,15 @@ class QwenImageAttentionBlock3D(nn.Module):
         attn_out = mx.transpose(attn_out, (0, 2, 3, 1))
 
         # Output projection using 2D conv
-        attn_out = self.proj(attn_out)
+        # Transpose weights from PyTorch format (out_ch, in_ch, h, w) to MLX format (out_ch, h, w, in_ch)
+        original_weight = self.proj.weight
+        if len(original_weight.shape) == 4:
+            mlx_weight = mx.transpose(original_weight, (0, 2, 3, 1))
+            self.proj.weight = mlx_weight
+            attn_out = self.proj(attn_out)
+            self.proj.weight = original_weight
+        else:
+            attn_out = self.proj(attn_out)
 
         # Convert back to channels-first
         attn_out = mx.transpose(attn_out, (0, 3, 1, 2))

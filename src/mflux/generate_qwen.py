@@ -15,17 +15,13 @@ def main():
     lora_scales = [1.0]
 
     # Generation settings
-    prompt = "Cat" + "Ultra HD, 4K, cinematic composition."
+    prompt = "Luxury food photograph" + "Ultra HD, 4K, cinematic composition."
     negative_prompt = " "
     height = 512
     width = 512
     steps = 4
     guidance = 2.0
     seeds = [44]
-
-    # Image-to-image test
-    image_path = None
-    image_strength = None
 
     # 1. Load the model
     qwen = QwenImage(
@@ -48,8 +44,6 @@ def main():
                     height=height,
                     width=width,
                     guidance=guidance,
-                    image_path=image_path,
-                    image_strength=image_strength,
                 ),
             )
             # 3. Save the image
