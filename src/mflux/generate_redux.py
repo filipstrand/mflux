@@ -56,6 +56,7 @@ def main():
                     guidance=args.guidance,
                     redux_image_paths=args.redux_image_paths,
                     redux_image_strengths=redux_image_strengths,
+                    scheduler=args.scheduler,
                 ),
             )
 

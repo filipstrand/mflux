@@ -47,6 +47,7 @@ def main():
                     width=args.width,
                     guidance=args.guidance,
                     image_path=args.image_path,
+                    scheduler=args.scheduler,
                 ),
             )
 
