@@ -54,6 +54,7 @@ class Flux1Depth(nn.Module):
         # 0. Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
+        sigmas = config.scheduler.sigmas
 
         # 1. Create the initial latents
         latents = LatentCreator.create(
@@ -105,7 +106,7 @@ class Flux1Depth(nn.Module):
                 )
 
                 # 6.t Take one denoise step
-                dt = config.sigmas[t + 1] - config.sigmas[t]
+                dt = sigmas[t + 1] - sigmas[t]
                 latents += noise * dt
 
                 # (Optional) Call subscribers in-loop
