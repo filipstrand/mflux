@@ -21,7 +21,7 @@ def test_sigmas_must_be_implemented():
         def scale_model_input(self, latents: mx.array) -> mx.array:
             return latents
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(TypeError):
         IncompleteScheduler().sigmas
 
 

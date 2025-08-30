@@ -58,6 +58,7 @@ class Flux1ConceptFromImage(nn.Module):
         # 0. Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
+        sigmas = config.scheduler.sigmas
 
         # 1. Create the initial latents from the reference image
         encoded_image = LatentCreator.encode_image(
@@ -78,7 +79,7 @@ class Flux1ConceptFromImage(nn.Module):
         latents = LatentCreator.add_noise_by_interpolation(
             clean=ArrayUtil.pack_latents(latents=encoded_image, height=config.height, width=config.width),
             noise=static_noise,
-            sigma=config.sigmas[config.init_time_step],
+            sigma=sigmas[config.init_time_step],
         )
 
         # 2. Encode the main prompt
