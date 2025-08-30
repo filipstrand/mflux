@@ -5,6 +5,7 @@ import mlx.core as mx
 from safetensors.mlx import load_file as mlx_load_file
 
 from mflux.models.flux.weights.weight_handler import MetaData, WeightHandler
+from mflux.models.qwen.weights.qwen_weight_util import QwenWeightUtil
 
 
 class QwenWeightHandler:
@@ -63,6 +64,9 @@ class QwenWeightHandler:
     @staticmethod
     def _load_vae(root_path: Path) -> tuple[dict, int | None, str | None]:
         weights = QwenWeightHandler._load_safetensors_shards(root_path / "vae", loading_mode="single")
+        reshaped_weights = [QwenWeightUtil.reshape_weights(k, v) for k, v in weights.items()]
+        reshaped_weights = QwenWeightUtil.flatten(reshaped_weights)
+        weights = dict(reshaped_weights)
         mapped_weights = QwenWeightHandler._manual_flux_style_mapping(weights)
         return mapped_weights, None, None
 
@@ -85,10 +89,11 @@ class QwenWeightHandler:
             "bias": diffusers_weights["decoder.conv_out.bias"]
         }}
 
-        # norm_out: decoder.norm_out.gamma -> decoder.norm_out.weight
-        weights["decoder"]["norm_out"] = {
-            "weight": diffusers_weights["decoder.norm_out.gamma"]
-        }
+        # norm_out: decoder.norm_out.gamma -> decoder.norm_out.weight (flatten to 1D like MLX expects)
+        dec_gamma = diffusers_weights["decoder.norm_out.gamma"]
+        if len(dec_gamma.shape) > 1:
+            dec_gamma = mx.reshape(dec_gamma, (dec_gamma.shape[0],))
+        weights["decoder"]["norm_out"] = {"weight": dec_gamma}
 
         # post_quant_conv: post_quant_conv.weight -> post_quant_conv.conv3d.weight
         weights["post_quant_conv"] = {"conv3d": {
@@ -113,14 +118,23 @@ class QwenWeightHandler:
                 "weight": diffusers_weights[f"decoder.mid_block.resnets.{i}.conv2.weight"],
                 "bias": diffusers_weights[f"decoder.mid_block.resnets.{i}.conv2.bias"]
             }}
-            # norm1.gamma -> norm1.weight
-            resnet["norm1"] = {"weight": diffusers_weights[f"decoder.mid_block.resnets.{i}.norm1.gamma"]}
-            resnet["norm2"] = {"weight": diffusers_weights[f"decoder.mid_block.resnets.{i}.norm2.gamma"]}
+            # norm gammas -> 1D weights
+            g1 = diffusers_weights[f"decoder.mid_block.resnets.{i}.norm1.gamma"]
+            if len(g1.shape) > 1:
+                g1 = mx.reshape(g1, (g1.shape[0],))
+            g2 = diffusers_weights[f"decoder.mid_block.resnets.{i}.norm2.gamma"]
+            if len(g2.shape) > 1:
+                g2 = mx.reshape(g2, (g2.shape[0],))
+            resnet["norm1"] = {"weight": g1}
+            resnet["norm2"] = {"weight": g2}
 
         # mid_block.attentions (list of 1 attention)
         weights["decoder"]["mid_block"]["attentions"] = [{}]
         attn = weights["decoder"]["mid_block"]["attentions"][0]
-        attn["norm"] = {"weight": diffusers_weights["decoder.mid_block.attentions.0.norm.gamma"]}
+        g = diffusers_weights["decoder.mid_block.attentions.0.norm.gamma"]
+        if len(g.shape) > 1:
+            g = mx.reshape(g, (g.shape[0],))
+        attn["norm"] = {"weight": g}
         # Note: to_qkv and proj are Conv2d, not Conv3d - no conv3d wrapper
         attn["to_qkv"] = {
             "weight": diffusers_weights["decoder.mid_block.attentions.0.to_qkv.weight"],
@@ -151,9 +165,15 @@ class QwenWeightHandler:
                     "weight": diffusers_weights[f"decoder.up_blocks.{block_idx}.resnets.{res_idx}.conv2.weight"],
                     "bias": diffusers_weights[f"decoder.up_blocks.{block_idx}.resnets.{res_idx}.conv2.bias"]
                 }}
-                # norm1.gamma -> norm1.weight
-                resnet["norm1"] = {"weight": diffusers_weights[f"decoder.up_blocks.{block_idx}.resnets.{res_idx}.norm1.gamma"]}
-                resnet["norm2"] = {"weight": diffusers_weights[f"decoder.up_blocks.{block_idx}.resnets.{res_idx}.norm2.gamma"]}
+                # norm gammas -> 1D weights
+                g1 = diffusers_weights[f"decoder.up_blocks.{block_idx}.resnets.{res_idx}.norm1.gamma"]
+                if len(g1.shape) > 1:
+                    g1 = mx.reshape(g1, (g1.shape[0],))
+                g2 = diffusers_weights[f"decoder.up_blocks.{block_idx}.resnets.{res_idx}.norm2.gamma"]
+                if len(g2.shape) > 1:
+                    g2 = mx.reshape(g2, (g2.shape[0],))
+                resnet["norm1"] = {"weight": g1}
+                resnet["norm2"] = {"weight": g2}
 
                 # Handle optional conv_shortcut -> skip_conv (only exists for some resnets)
                 shortcut_key = f"decoder.up_blocks.{block_idx}.resnets.{res_idx}.conv_shortcut.weight"
@@ -180,6 +200,210 @@ class QwenWeightHandler:
                         "weight": diffusers_weights[f"decoder.up_blocks.{block_idx}.upsamplers.0.time_conv.weight"],
                         "bias": diffusers_weights[f"decoder.up_blocks.{block_idx}.upsamplers.0.time_conv.bias"]
                     }}
+
+        # 4. Encoder mappings (mirror structure of model parameter names)
+        weights["encoder"] = {}
+
+        # conv_in: encoder.conv_in.weight -> encoder.conv_in.conv3d.weight
+        weights["encoder"]["conv_in"] = {"conv3d": {
+            "weight": diffusers_weights["encoder.conv_in.weight"],
+            "bias": diffusers_weights["encoder.conv_in.bias"],
+        }}
+
+        # conv_out: encoder.conv_out.weight -> encoder.conv_out.conv3d.weight
+        weights["encoder"]["conv_out"] = {"conv3d": {
+            "weight": diffusers_weights["encoder.conv_out.weight"],
+            "bias": diffusers_weights["encoder.conv_out.bias"],
+        }}
+
+        # norm_out: encoder.norm_out.gamma -> encoder.norm_out.weight (flatten to 1D)
+        enc_gamma = diffusers_weights["encoder.norm_out.gamma"]
+        if len(enc_gamma.shape) > 1:
+            enc_gamma = mx.reshape(enc_gamma, (enc_gamma.shape[0],))
+        weights["encoder"]["norm_out"] = {"weight": enc_gamma}
+
+        # mid_block
+        weights["encoder"]["mid_block"] = {}
+        # mid_block.attentions (list of 1)
+        weights["encoder"]["mid_block"]["attentions"] = [{}]
+        enc_attn = weights["encoder"]["mid_block"]["attentions"][0]
+        g = diffusers_weights["encoder.mid_block.attentions.0.norm.gamma"]
+        if len(g.shape) > 1:
+            g = mx.reshape(g, (g.shape[0],))
+        enc_attn["norm"] = {"weight": g}
+        enc_attn["to_qkv"] = {
+            "weight": diffusers_weights["encoder.mid_block.attentions.0.to_qkv.weight"],
+            "bias": diffusers_weights["encoder.mid_block.attentions.0.to_qkv.bias"],
+        }
+        enc_attn["proj"] = {
+            "weight": diffusers_weights["encoder.mid_block.attentions.0.proj.weight"],
+            "bias": diffusers_weights["encoder.mid_block.attentions.0.proj.bias"],
+        }
+        # mid_block.resnets (list of 2)
+        weights["encoder"]["mid_block"]["resnets"] = [{}, {}]
+        for i in range(2):
+            res = weights["encoder"]["mid_block"]["resnets"][i]
+            g1 = diffusers_weights[f"encoder.mid_block.resnets.{i}.norm1.gamma"]
+            if len(g1.shape) > 1:
+                g1 = mx.reshape(g1, (g1.shape[0],))
+            g2 = diffusers_weights[f"encoder.mid_block.resnets.{i}.norm2.gamma"]
+            if len(g2.shape) > 1:
+                g2 = mx.reshape(g2, (g2.shape[0],))
+            res["norm1"] = {"weight": g1}
+            res["norm2"] = {"weight": g2}
+            res["conv1"] = {"conv3d": {
+                "weight": diffusers_weights[f"encoder.mid_block.resnets.{i}.conv1.weight"],
+                "bias": diffusers_weights[f"encoder.mid_block.resnets.{i}.conv1.bias"],
+            }}
+            res["conv2"] = {"conv3d": {
+                "weight": diffusers_weights[f"encoder.mid_block.resnets.{i}.conv2.weight"],
+                "bias": diffusers_weights[f"encoder.mid_block.resnets.{i}.conv2.bias"],
+            }}
+
+        # down_blocks - simplified mapping like decoder
+        # From safetensor keys, encoder has flattened indices 0-9 that need to be grouped into 4 stages
+        # Stage 0: indices 0,1 (2 resnets, no downsampler)  
+        # Stage 1: indices 2,3,4 (downsampler at 2, resnets at 3,4)
+        # Stage 2: indices 5,6,7 (downsampler at 5, resnets at 6,7) 
+        # Stage 3: indices 8,9 (downsampler at 8, resnet at 9)
+        
+        weights["encoder"]["down_blocks"] = [{}, {}, {}, {}]
+        
+        # Stage 0: 2 resnets + downsampler (2D)
+        weights["encoder"]["down_blocks"][0]["resnets"] = [{}, {}]
+        for res_idx in range(2):
+            flat_idx = res_idx  # 0, 1
+            resnet = weights["encoder"]["down_blocks"][0]["resnets"][res_idx]
+            g1 = diffusers_weights[f"encoder.down_blocks.{flat_idx}.norm1.gamma"]
+            if len(g1.shape) > 1:
+                g1 = mx.reshape(g1, (g1.shape[0],))
+            g2 = diffusers_weights[f"encoder.down_blocks.{flat_idx}.norm2.gamma"]
+            if len(g2.shape) > 1:
+                g2 = mx.reshape(g2, (g2.shape[0],))
+            resnet["norm1"] = {"weight": g1}
+            resnet["norm2"] = {"weight": g2}
+            resnet["conv1"] = {"conv3d": {
+                "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.weight"],
+                "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.bias"],
+            }}
+            resnet["conv2"] = {"conv3d": {
+                "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.weight"],
+                "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.bias"],
+            }}
+        # Downsampler appears after indices 0,1 at flattened index 2
+        weights["encoder"]["down_blocks"][0]["downsamplers"] = [{}]
+        d0 = weights["encoder"]["down_blocks"][0]["downsamplers"][0]
+        d0["resample_conv"] = {
+            "weight": diffusers_weights["encoder.down_blocks.2.resample.1.weight"],
+            "bias": diffusers_weights["encoder.down_blocks.2.resample.1.bias"],
+        }
+        
+        # Stage 1: downsampler + 2 resnets  
+        weights["encoder"]["down_blocks"][1]["resnets"] = [{}, {}]
+        weights["encoder"]["down_blocks"][1]["downsamplers"] = [{}]
+        # Downsampler at flattened index 5 (after stage0's 0,1,2 and stage1's 3,4)
+        d = weights["encoder"]["down_blocks"][1]["downsamplers"][0]
+        d["resample_conv"] = {
+            "weight": diffusers_weights["encoder.down_blocks.5.resample.1.weight"],
+            "bias": diffusers_weights["encoder.down_blocks.5.resample.1.bias"],
+        }
+        # Resnets at indices 3, 4
+        for res_idx in range(2):
+            flat_idx = 3 + res_idx  # 3, 4
+            resnet = weights["encoder"]["down_blocks"][1]["resnets"][res_idx]
+            g1 = diffusers_weights[f"encoder.down_blocks.{flat_idx}.norm1.gamma"]
+            if len(g1.shape) > 1:
+                g1 = mx.reshape(g1, (g1.shape[0],))
+            g2 = diffusers_weights[f"encoder.down_blocks.{flat_idx}.norm2.gamma"]
+            if len(g2.shape) > 1:
+                g2 = mx.reshape(g2, (g2.shape[0],))
+            resnet["norm1"] = {"weight": g1}
+            resnet["norm2"] = {"weight": g2}
+            resnet["conv1"] = {"conv3d": {
+                "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.weight"],
+                "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.bias"],
+            }}
+            resnet["conv2"] = {"conv3d": {
+                "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.weight"],
+                "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.bias"],
+            }}
+            # Skip conv only for first resnet (index 3)
+            if flat_idx == 3:
+                resnet["skip_conv"] = {"conv3d": {
+                    "weight": diffusers_weights["encoder.down_blocks.3.conv_shortcut.weight"],
+                    "bias": diffusers_weights["encoder.down_blocks.3.conv_shortcut.bias"],
+                }}
+        
+        # Stage 2: downsampler + 2 resnets
+        weights["encoder"]["down_blocks"][2]["resnets"] = [{}, {}] 
+        weights["encoder"]["down_blocks"][2]["downsamplers"] = [{}]
+        # Downsampler at flattened index 8
+        d = weights["encoder"]["down_blocks"][2]["downsamplers"][0]
+        d["resample_conv"] = {
+            "weight": diffusers_weights["encoder.down_blocks.8.resample.1.weight"],
+            "bias": diffusers_weights["encoder.down_blocks.8.resample.1.bias"],
+        }
+        d["time_conv"] = {"conv3d": {
+            "weight": diffusers_weights["encoder.down_blocks.8.time_conv.weight"],
+            "bias": diffusers_weights["encoder.down_blocks.8.time_conv.bias"],
+        }}
+        # Resnets at indices 6, 7
+        for res_idx in range(2):
+            flat_idx = 6 + res_idx  # 6, 7
+            resnet = weights["encoder"]["down_blocks"][2]["resnets"][res_idx]
+            g1 = diffusers_weights[f"encoder.down_blocks.{flat_idx}.norm1.gamma"]
+            if len(g1.shape) > 1:
+                g1 = mx.reshape(g1, (g1.shape[0],))
+            g2 = diffusers_weights[f"encoder.down_blocks.{flat_idx}.norm2.gamma"]
+            if len(g2.shape) > 1:
+                g2 = mx.reshape(g2, (g2.shape[0],))
+            resnet["norm1"] = {"weight": g1}
+            resnet["norm2"] = {"weight": g2}
+            resnet["conv1"] = {"conv3d": {
+                "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.weight"],
+                "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.bias"],
+            }}
+            resnet["conv2"] = {"conv3d": {
+                "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.weight"],
+                "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.bias"],
+            }}
+            # Skip conv only for first resnet (index 6)
+            if flat_idx == 6:
+                resnet["skip_conv"] = {"conv3d": {
+                    "weight": diffusers_weights["encoder.down_blocks.6.conv_shortcut.weight"],
+                    "bias": diffusers_weights["encoder.down_blocks.6.conv_shortcut.bias"],
+                }}
+        
+        # Stage 3: no downsampler + 2 resnets (like Diffusers)
+        weights["encoder"]["down_blocks"][3]["resnets"] = [{}, {}]
+        # No downsampler in final stage (mirrors diffusers)
+        # Resnets at indices 9, 10
+        for res_idx in range(2):
+            flat_idx = 9 + res_idx  # 9, 10
+            resnet = weights["encoder"]["down_blocks"][3]["resnets"][res_idx]
+            g1 = diffusers_weights[f"encoder.down_blocks.{flat_idx}.norm1.gamma"]
+            if len(g1.shape) > 1:
+                g1 = mx.reshape(g1, (g1.shape[0],))
+            g2 = diffusers_weights[f"encoder.down_blocks.{flat_idx}.norm2.gamma"]
+            if len(g2.shape) > 1:
+                g2 = mx.reshape(g2, (g2.shape[0],))
+            resnet["norm1"] = {"weight": g1}
+            resnet["norm2"] = {"weight": g2}
+            resnet["conv1"] = {"conv3d": {
+                "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.weight"],
+                "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.bias"],
+            }}
+            resnet["conv2"] = {"conv3d": {
+                "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.weight"],
+                "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.bias"],
+            }}
+            # No skip_conv for stage 3 (channels don't change: 384->384)
+
+        # 5. Quant conv
+        weights["quant_conv"] = {"conv3d": {
+            "weight": diffusers_weights["quant_conv.weight"],
+            "bias": diffusers_weights["quant_conv.bias"],
+        }}
 
         return weights
 

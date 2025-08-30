@@ -19,20 +19,39 @@ class QwenVAE(nn.Module):
 
     def decode(self, latents: mx.array) -> mx.array:
         latents = latents.reshape(latents.shape[0], latents.shape[1], 1, latents.shape[2], latents.shape[3])
-        latents = latents / (1.0 / QwenVAE.LATENTS_STD) + QwenVAE.LATENTS_MEAN
-        latents = self.post_quant_conv(latents)
-        decoded = self.decoder(latents)
-        return decoded[:, :, 0, :, :]
+        x = self.post_quant_conv(latents)
+        decoded = self.decoder(x)
+        clamped = mx.minimum(mx.maximum(decoded, -1.0), 1.0)
+        return clamped[:, :, 0, :, :]
     
     def encode(self, images: mx.array) -> mx.array:
         images = images.reshape(images.shape[0], images.shape[1], 1, images.shape[2], images.shape[3])
-        encoded = self.encoder(images)
+        x = self.encoder.conv_in(images)
+        for stage_idx, down_block in enumerate(self.encoder.down_blocks):
+            for res_idx, resnet in enumerate(down_block.resnets):
+                if stage_idx == 3:
+                    residual = x
+                    n1 = resnet.norm1(x)
+                    a1 = nn.silu(n1)
+                    c1 = resnet.conv1(a1)
+                    n2 = resnet.norm2(c1)
+                    a2 = nn.silu(n2)
+                    c2 = resnet.conv2(a2)
+                    if resnet.skip_conv is not None:
+                        residual = resnet.skip_conv(residual)
+                    y = c2 + residual
+                    x = y
+                else:
+                    x = resnet(x)
+            if down_block.downsamplers is not None:
+                x = down_block.downsamplers[0](x)
+
+        x = self.encoder.mid_block(x)
+        norm_in = x
+        x = self.encoder.norm_out(norm_in)
+        x = nn.silu(x)
+        encoded = self.encoder.conv_out(x)
         h = self.quant_conv(encoded)
-        mean = h[:, :16, :, :, :]  # First 16 channels
-        logvar = h[:, 16:, :, :, :]  # Last 16 channels
-        logvar = mx.clip(logvar, -30.0, 20.0)  # Prevent extreme variance
-        std = mx.exp(0.5 * logvar)
-        noise = mx.random.normal(shape=mean.shape, key=mx.random.key(42))
-        sample = mean + std * noise
-        sample = sample[:, :, 0, :, :]
-        return sample
+        mean = h[:, :16, :, :, :]
+        mean = mean[:, :, 0, :, :]
+        return mean

@@ -3,14 +3,31 @@ from mlx import nn
 
 
 class QwenImageRMSNorm(nn.Module):
-    def __init__(self, num_channels: int, eps: float = 1e-6):
+    def __init__(self, num_channels: int, eps: float = 1e-12, images: bool = True):
         super().__init__()
         self.eps = eps
         self.scale = float(num_channels) ** 0.5
-        self.weight = mx.ones((num_channels,))
+        self.images = images
+        if images:
+            self.weight = mx.ones((num_channels, 1, 1))
+        else:
+            self.weight = mx.ones((num_channels, 1, 1, 1))
 
     def __call__(self, x: mx.array) -> mx.array:
-        l2 = mx.sqrt(mx.sum(mx.square(x), axis=1, keepdims=True) + self.eps)
-        x_normalized = (x / l2) * self.scale
-        weight = self.weight.reshape(1, -1, 1, 1, 1)
-        return x_normalized * weight
+        sum_sq = mx.sum(x * x, axis=1, keepdims=True)
+        l2_norm = mx.sqrt(sum_sq)
+        denom = mx.maximum(l2_norm, mx.array(self.eps, dtype=l2_norm.dtype))
+        x_normalized = x / denom
+        if x.ndim == 5 and not self.images:
+            weight = self.weight.reshape(1, -1, 1, 1, 1)
+        elif x.ndim == 4 and self.images:
+            weight = self.weight.reshape(1, -1, 1, 1)
+        else:
+            if x.ndim == 5:
+                weight = self.weight.reshape(1, -1, 1, 1, 1)
+            elif x.ndim == 4:
+                weight = self.weight.reshape(1, -1, 1, 1)
+            else:
+                weight = self.weight
+        
+        return x_normalized * self.scale * weight

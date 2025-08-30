@@ -19,6 +19,7 @@
 # - arXiv: https://arxiv.org/abs/2503.20314
 
 from typing import List, Optional, Tuple, Union
+import os
 
 import torch
 import torch.nn as nn
@@ -35,6 +36,27 @@ from ..modeling_utils import ModelMixin
 from .vae import DecoderOutput, DiagonalGaussianDistribution
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
+
+# Dump directory for VAE debug tensors (Diffusers reference)
+_VAE_DUMP_DIR = os.path.expanduser("~/Desktop/vae_diffusers")
+os.makedirs(_VAE_DUMP_DIR, exist_ok=True)
+
+# Global dump scope and counter for ordered filenames
+_DUMP_SCOPE = "unknown"
+_DUMP_SEQ = 0
+
+def _next_dump_name(name: str) -> str:
+    global _DUMP_SEQ, _DUMP_SCOPE
+    _DUMP_SEQ += 1
+    return f"{_DUMP_SEQ:04d}_{_DUMP_SCOPE}_{name}"
+
+def _dump_tensor(t: torch.Tensor, name: str):
+    try:
+        fname = _next_dump_name(name)
+        path = os.path.join(_VAE_DUMP_DIR, f"{fname}.pt")
+        torch.save(t.detach().cpu(), path)
+    except Exception as e:
+        logger.info(f"[VAE dump] Failed to save {name}: {e}")
 
 CACHE_T = 2
 
@@ -843,19 +865,28 @@ class AutoencoderKLQwenImage(ModelMixin, ConfigMixin, FromOriginalModelMixin):
 
         self.clear_cache()
         iter_ = 1 + (num_frame - 1) // 4
+        global _DUMP_SCOPE
+        _DUMP_SCOPE = "encode"
+        _dump_tensor(x, "input_bcthw")
         for i in range(iter_):
             self._enc_conv_idx = [0]
             if i == 0:
-                out = self.encoder(x[:, :, :1, :, :], feat_cache=self._enc_feat_map, feat_idx=self._enc_conv_idx)
+                enc_in = x[:, :, :1, :, :]
+                _dump_tensor(enc_in, "enc_chunk0_in")
+                out = self.encoder(enc_in, feat_cache=self._enc_feat_map, feat_idx=self._enc_conv_idx)
+                _dump_tensor(out, "enc_chunk0_out")
             else:
                 out_ = self.encoder(
                     x[:, :, 1 + 4 * (i - 1) : 1 + 4 * i, :, :],
                     feat_cache=self._enc_feat_map,
                     feat_idx=self._enc_conv_idx,
                 )
+                _dump_tensor(out_, "enc_chunk_out")
                 out = torch.cat([out, out_], 2)
 
+        _dump_tensor(out, "enc_out_before_quant_conv")
         enc = self.quant_conv(out)
+        _dump_tensor(enc, "enc_after_quant_conv")
         self.clear_cache()
         return enc
 
@@ -895,16 +926,28 @@ class AutoencoderKLQwenImage(ModelMixin, ConfigMixin, FromOriginalModelMixin):
             return self.tiled_decode(z, return_dict=return_dict)
 
         self.clear_cache()
+        global _DUMP_SCOPE
+        _DUMP_SCOPE = "decode"
+        _dump_tensor(z, "input_latents_bcthw")
         x = self.post_quant_conv(z)
+        _dump_tensor(x, "after_post_quant_conv")
         for i in range(num_frame):
             self._conv_idx = [0]
             if i == 0:
-                out = self.decoder(x[:, :, i : i + 1, :, :], feat_cache=self._feat_map, feat_idx=self._conv_idx)
+                dec_in = x[:, :, i : i + 1, :, :]
+                _dump_tensor(dec_in, "dec_frame0_in")
+                out = self.decoder(dec_in, feat_cache=self._feat_map, feat_idx=self._conv_idx)
+                _dump_tensor(out, "dec_frame0_out")
             else:
-                out_ = self.decoder(x[:, :, i : i + 1, :, :], feat_cache=self._feat_map, feat_idx=self._conv_idx)
+                dec_in = x[:, :, i : i + 1, :, :]
+                _dump_tensor(dec_in, "dec_frame_in")
+                out_ = self.decoder(dec_in, feat_cache=self._feat_map, feat_idx=self._conv_idx)
+                _dump_tensor(out_, "dec_frame_out")
                 out = torch.cat([out, out_], 2)
 
+        _dump_tensor(out, "out_before_clamp")
         out = torch.clamp(out, min=-1.0, max=1.0)
+        _dump_tensor(out, "out_after_clamp")
         self.clear_cache()
         if not return_dict:
             return (out,)

@@ -1,8 +1,13 @@
+from typing import TYPE_CHECKING
+
 import mlx.nn as nn
+from mlx.utils import tree_flatten  # noqa: F401
 
 from mflux.config.config import Config
-from mflux.models.qwen.weights.qwen_weight_handler import QwenWeightHandler
 from mflux.utils.quantization_util import QuantizationUtil
+
+if TYPE_CHECKING:
+    from mflux.models.qwen.weights.qwen_weight_handler import QwenWeightHandler
 
 
 class QwenWeightUtil:
@@ -14,6 +19,8 @@ class QwenWeightUtil:
     def reshape_weights(key, value):
         if len(value.shape) == 4:
             value = value.transpose(0, 2, 3, 1)
+        elif len(value.shape) == 5:
+            value = value.transpose(0, 2, 3, 4, 1)
         value = value.reshape(-1).reshape(value.shape).astype(Config.precision)
         return [(key, value)]
 
@@ -45,7 +52,7 @@ class QwenWeightUtil:
 
     @staticmethod
     def _set_model_weights(
-        weights: QwenWeightHandler,
+        weights: "QwenWeightHandler",
         vae: nn.Module,
         transformer: nn.Module,
         text_encoder: nn.Module | None = None,
