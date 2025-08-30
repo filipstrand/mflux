@@ -23,7 +23,7 @@ def test_runtime_config():
             num_inference_steps=14,
             width=1024,
             height=1024,
-            scheduler_type="linear",
+            scheduler="linear",
         ),
         ModelConfig.dev(),  # requires_sigma_shift=True
     )
