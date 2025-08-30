@@ -60,6 +60,7 @@ class Flux1Redux(nn.Module):
         # 0. Create a new runtime config based on the model type and input parameters
         runtime_config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(runtime_config.init_time_step, runtime_config.num_inference_steps))
+        sigmas = config.scheduler.sigmas
 
         # 1. Create the initial latents
         latents = LatentCreator.create(
@@ -102,7 +103,7 @@ class Flux1Redux(nn.Module):
                 )
 
                 # 4.t Take one denoise step
-                dt = runtime_config.sigmas[t + 1] - runtime_config.sigmas[t]
+                dt = sigmas[t + 1] - sigmas[t]
                 latents += noise * dt
 
                 # (Optional) Call subscribers in-loop
