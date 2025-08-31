@@ -1,4 +1,6 @@
 from mflux.config.model_config import ModelConfig
+from mflux.models.flux.variants.txt2img.flux import Flux1
+from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
 from tests.image_generation.helpers.image_generation_test_helper import ImageGeneratorTestHelper
 
 
@@ -7,6 +9,7 @@ class TestImageGenerator:
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_schnell.png",
             output_image_path="output_schnell.png",
+            model_class=Flux1,
             model_config=ModelConfig.schnell(),
             steps=2,
             seed=42,
@@ -19,6 +22,7 @@ class TestImageGenerator:
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_dev.png",
             output_image_path="output_dev.png",
+            model_class=Flux1,
             model_config=ModelConfig.dev(),
             steps=15,
             seed=42,
@@ -31,6 +35,7 @@ class TestImageGenerator:
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_dev_lora.png",
             output_image_path="output_dev_lora.png",
+            model_class=Flux1,
             model_config=ModelConfig.dev(),
             steps=15,
             seed=42,
@@ -45,6 +50,7 @@ class TestImageGenerator:
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_dev_lora_multiple.png",
             output_image_path="output_dev_lora_multiple.png",
+            model_class=Flux1,
             model_config=ModelConfig.dev(),
             steps=15,
             seed=42,
@@ -59,6 +65,7 @@ class TestImageGenerator:
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_dev_image_to_image.png",
             output_image_path="output_dev_image_to_image.png",
+            model_class=Flux1,
             image_strength=0.4,
             model_config=ModelConfig.dev(),
             steps=8,
@@ -67,4 +74,34 @@ class TestImageGenerator:
             width=768,
             image_path="reference_dev_lora.png",
             prompt="Luxury food photograph of a burger",
+        )
+
+    def test_qwen_image_generation_text_to_image(self):
+        ImageGeneratorTestHelper.assert_matches_reference_image(
+            reference_image_path="reference_qwen_txt2img.png",
+            output_image_path="output_qwen_txt2img.png",
+            model_class=QwenImage,
+            model_config=ModelConfig.qwen_image(),
+            steps=20,
+            seed=42,
+            height=341,
+            width=768,
+            prompt="Luxury food photograph",
+            negative_prompt="",
+        )
+
+    def test_qwen_image_generation_image_to_image(self):
+        ImageGeneratorTestHelper.assert_matches_reference_image(
+            reference_image_path="reference_qwen_img2img.png",
+            output_image_path="output_qwen_img2img.png",
+            model_class=QwenImage,
+            model_config=ModelConfig.qwen_image(),
+            steps=20,
+            seed=44,
+            height=341,
+            width=768,
+            image_path="reference_dev_image_to_image.png",
+            image_strength=0.4,
+            prompt="Luxury food photograph of a burger",
+            negative_prompt="",
         )
