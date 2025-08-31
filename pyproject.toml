@@ -10,7 +10,7 @@ source-exclude = [
     # documentation assets were 27MB on 2025-07-05
     "**/assets/**",
     # dreambooth examples ~=5MB on 2025-07-05
-    "**/dreambooth/_example/images/**",
+    "**/models/flux/variants/dreambooth/_example/images/**",
     # loss pdf/tex does not need to be distributed
     "**/optimization/_loss_derivation/**",
 ]
