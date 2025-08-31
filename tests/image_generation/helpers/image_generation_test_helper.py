@@ -6,7 +6,7 @@ from PIL import Image
 
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
-from mflux.flux.flux import Flux1
+from mflux.models.flux.variants.txt2img.flux import Flux1
 
 
 class ImageGeneratorTestHelper:
