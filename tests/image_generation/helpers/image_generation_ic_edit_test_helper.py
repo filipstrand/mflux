@@ -4,7 +4,6 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.models.flux.variants.in_context.flux_in_context_fill import Flux1InContextFill

@@ -125,7 +125,6 @@ class QwenTransformerBlock(nn.Module):
         if encoder_hidden_states_mask is not None:
             bsz = hidden_states.shape[0]
             s_img = hidden_states.shape[1]
-            s_txt = encoder_hidden_states.shape[1]
             ones_img = mx.ones((bsz, s_img), dtype=mx.float32)
             key_padding_mask = mx.concatenate([encoder_hidden_states_mask.astype(mx.float32), ones_img], axis=1)
 

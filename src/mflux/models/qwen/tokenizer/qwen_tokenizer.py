@@ -16,8 +16,8 @@ class TokenizerQwen:
             max_length=self.max_length + self.template_start_idx,
             padding=True,
             truncation=True,
-            return_tensors="np"
+            return_tensors="np",
         )
-        input_ids = mx.array(tokens['input_ids'])
-        attention_mask = mx.array(tokens['attention_mask'])
+        input_ids = mx.array(tokens["input_ids"])
+        attention_mask = mx.array(tokens["attention_mask"])
         return input_ids, attention_mask

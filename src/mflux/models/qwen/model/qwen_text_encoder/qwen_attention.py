@@ -23,13 +23,13 @@ class QwenAttention(nn.Module):
         self.head_dim = hidden_size // num_attention_heads
         self.num_key_value_groups = num_attention_heads // self.num_key_value_heads
         self.scaling = 1.0 / math.sqrt(self.head_dim)
-        
+
         # Linear projections (match reference)
         self.q_proj = nn.Linear(hidden_size, num_attention_heads * self.head_dim, bias=True)
         self.k_proj = nn.Linear(hidden_size, self.num_key_value_heads * self.head_dim, bias=True)
         self.v_proj = nn.Linear(hidden_size, self.num_key_value_heads * self.head_dim, bias=True)
         self.o_proj = nn.Linear(num_attention_heads * self.head_dim, hidden_size, bias=False)
-        
+
         # RoPE (kept for fallback, but normally use pre-computed position_embeddings)
         self.rotary_emb = QwenRotaryEmbedding(
             dim=self.head_dim,
@@ -61,8 +61,8 @@ class QwenAttention(nn.Module):
         if position_embeddings is not None:
             cos, sin = position_embeddings
         query_states, key_states = QwenAttention._apply_multimodal_rotary_pos_emb(
-                query_states, key_states, cos, sin, self.rope_scaling["mrope_section"]
-            )
+            query_states, key_states, cos, sin, self.rope_scaling["mrope_section"]
+        )
 
         # GQA expansion using repeat_interleave semantics (match reference repeat_kv)
         if self.num_key_value_heads != self.num_attention_heads:
@@ -71,29 +71,29 @@ class QwenAttention(nn.Module):
 
         # Attention computation (match reference eager_attention_forward)
         attn_weights = mx.matmul(query_states, key_states.transpose(0, 1, 3, 2)) * self.scaling
-        
+
         # Apply attention mask (match reference format)
         if attention_mask is not None:
             # Slice mask to key length and add directly (like reference)
-            causal_mask = attention_mask[:, :, :, :key_states.shape[-2]]
+            causal_mask = attention_mask[:, :, :, : key_states.shape[-2]]
             attn_weights = attn_weights + causal_mask
 
         # Softmax and output (match reference)
         attn_weights = mx.softmax(attn_weights.astype(mx.float32), axis=-1).astype(query_states.dtype)
         attn_output = mx.matmul(attn_weights, value_states)
-        
+
         # Reshape output (match reference)
         attn_output = attn_output.transpose(0, 2, 1, 3).reshape(bsz, q_len, self.hidden_size)
 
         attn_output = self.o_proj(attn_output)
-        
+
         return attn_output
 
     @staticmethod
     def _repeat_kv(hidden_states: mx.array, n_rep: int) -> mx.array:
         """
-        Equivalent to torch.repeat_interleave(x, dim=1, repeats=n_rep). 
-        The hidden states go from (batch, num_key_value_heads, seqlen, head_dim) 
+        Equivalent to torch.repeat_interleave(x, dim=1, repeats=n_rep).
+        The hidden states go from (batch, num_key_value_heads, seqlen, head_dim)
         to (batch, num_attention_heads, seqlen, head_dim)
         """
         batch, num_key_value_heads, slen, head_dim = hidden_states.shape
@@ -107,12 +107,7 @@ class QwenAttention(nn.Module):
 
     @staticmethod
     def _apply_multimodal_rotary_pos_emb(
-        q: mx.array,
-        k: mx.array,
-        cos: mx.array,
-        sin: mx.array,
-        mrope_section: list[int],
-        unsqueeze_dim: int = 1
+        q: mx.array, k: mx.array, cos: mx.array, sin: mx.array, mrope_section: list[int], unsqueeze_dim: int = 1
     ) -> tuple[mx.array, mx.array]:
         """
         Applies Rotary Position Embedding with Multimodal Sections to the query and key tensors.
@@ -120,12 +115,12 @@ class QwenAttention(nn.Module):
         """
         # Double the section sizes: [16, 24, 24] → [32, 48, 48]
         mrope_section_doubled = [s * 2 for s in mrope_section]
-        
+
         # Manual slicing instead of mx.split to handle exact sections
         cos_chunks = []
         sin_chunks = []
         start_idx = 0
-        
+
         for section_size in mrope_section_doubled:
             end_idx = start_idx + section_size
             cos_chunk = cos[..., start_idx:end_idx]

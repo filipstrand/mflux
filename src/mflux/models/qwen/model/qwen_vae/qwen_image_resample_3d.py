@@ -32,7 +32,7 @@ class QwenImageResample3D(nn.Module):
             x = self._up_sample_nearest_2x(x)
 
         if self.mode in ["downsample2d", "downsample3d"]:
-            x = mx.pad(x, [(0,0), (0,1), (0,1), (0,0)])
+            x = mx.pad(x, [(0, 0), (0, 1), (0, 1), (0, 0)])
 
         x = self.resample_conv(x)
         x = mx.transpose(x, (0, 3, 1, 2))

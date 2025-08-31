@@ -33,22 +33,22 @@ class QwenRotaryEmbedding(nn.Module):
         inv_freq_expanded = mx.expand_dims(mx.expand_dims(self.inv_freq, axis=0), axis=0)  # [1, 1, dim]
         inv_freq_expanded = mx.expand_dims(inv_freq_expanded, axis=-1)  # [1, 1, dim, 1]
         inv_freq_expanded = mx.broadcast_to(inv_freq_expanded, (3, position_ids.shape[1], self.inv_freq.shape[0], 1))
-        
+
         # Match PyTorch exactly: position_ids[:, :, None, :].float()
         position_ids_expanded = mx.expand_dims(position_ids, axis=2)  # [3, bs, 1, positions]
-        
+
         # Force float32 computation (match PyTorch's torch.autocast(..., enabled=False))
         inv_freq_expanded = inv_freq_expanded.astype(mx.float32)
         position_ids_expanded = position_ids_expanded.astype(mx.float32)
-        
+
         # Matrix multiply and transpose (match PyTorch exactly)
         freqs = mx.matmul(inv_freq_expanded, position_ids_expanded)  # [3, bs, dim, positions]
         freqs = mx.transpose(freqs, (0, 1, 3, 2))  # [3, bs, positions, dim]
-        
+
         # Concatenate and apply cos/sin with scaling
         emb = mx.concatenate([freqs, freqs], axis=-1)
         cos = mx.cos(emb) * self.attention_scaling
         sin = mx.sin(emb) * self.attention_scaling
-        
+
         # Convert back to input dtype (match PyTorch)
         return cos.astype(x.dtype), sin.astype(x.dtype)

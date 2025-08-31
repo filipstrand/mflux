@@ -4,9 +4,9 @@ from pathlib import Path
 import mlx.core as mx
 from mlx.utils import tree_unflatten
 
-from mflux.utils.download import snapshot_download
 from mflux.models.flux.weights.lora_converter import LoRAConverter
 from mflux.models.flux.weights.weight_util import WeightUtil
+from mflux.utils.download import snapshot_download
 
 
 @dataclass

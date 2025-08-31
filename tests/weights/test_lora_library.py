@@ -106,12 +106,12 @@ def test_get_lora_path_from_registry(temp_lora_dirs):
 
     # Mock the registry
     with mock.patch.object(
-            lora_library,
-            "_LORA_REGISTRY",
-            {
-                "style_a": lib1 / "style_a.safetensors",
-                "style_b": lib1 / "style_b.safetensors",
-            },
+        lora_library,
+        "_LORA_REGISTRY",
+        {
+            "style_a": lib1 / "style_a.safetensors",
+            "style_b": lib1 / "style_b.safetensors",
+        },
     ):
         # Should resolve from registry
         assert lora_library.get_lora_path("style_a") == str(lib1 / "style_a.safetensors")

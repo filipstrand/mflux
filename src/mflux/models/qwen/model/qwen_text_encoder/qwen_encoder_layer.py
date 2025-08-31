@@ -41,10 +41,10 @@ class QwenEncoderLayer(nn.Module):
     ) -> mx.array:
         # Match reference decoder layer structure exactly
         residual = hidden_states
-        
+
         # Match reference: hidden_states = self.input_layernorm(hidden_states)
         hidden_states = self.input_layernorm(hidden_states)
-        
+
         # Match reference: Self Attention
         hidden_states = self.self_attn(
             hidden_states=hidden_states,

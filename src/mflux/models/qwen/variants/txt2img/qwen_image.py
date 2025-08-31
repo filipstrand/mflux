@@ -1,7 +1,3 @@
-import os
-import sys
-import numpy as np
-import torch
 import mlx.core as mx
 from mlx import nn
 from tqdm import tqdm

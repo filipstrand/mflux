@@ -24,11 +24,11 @@ class QwenPromptEncoder:
         input_ids, attention_mask = qwen_tokenizer.tokenize(prompt)
         neg_input_ids, neg_attention_mask = qwen_tokenizer.tokenize(negative_prompt)
         prompt_embeds, prompt_mask = qwen_text_encoder(input_ids=input_ids, attention_mask=attention_mask)
-        neg_prompt_embeds, neg_prompt_mask = qwen_text_encoder(input_ids=neg_input_ids, attention_mask=neg_attention_mask)
+        neg_prompt_embeds, neg_prompt_mask = qwen_text_encoder(
+            input_ids=neg_input_ids, attention_mask=neg_attention_mask
+        )
 
         # 3. Cache the result (all 4 values)
         result = (prompt_embeds, prompt_mask, neg_prompt_embeds, neg_prompt_mask)
         prompt_cache[cache_key] = result
         return result
-
-    

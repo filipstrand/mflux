@@ -8,7 +8,6 @@ from mflux.models.qwen.model.qwen_vae.qwen_image_up_block_3d import QwenImageUpB
 
 
 class QwenImageDecoder3D(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.conv_in = QwenImageCausalConv3D(16, 384, 3, 1, 1)

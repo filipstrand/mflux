@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import math
-
 import mlx.core as mx
 import numpy as np
 from mlx import nn
@@ -48,7 +46,10 @@ class QwenTransformer(nn.Module):
         self.pos_embed = QwenEmbedRopeMLX(theta=10000, axes_dim=[16, 56, 56], scale_rope=True)
 
         # Blocks
-        self.transformer_blocks = [QwenTransformerBlock(dim=inner_dim, num_heads=num_attention_heads, head_dim=attention_head_dim) for i in range(num_layers)]
+        self.transformer_blocks = [
+            QwenTransformerBlock(dim=inner_dim, num_heads=num_attention_heads, head_dim=attention_head_dim)
+            for i in range(num_layers)
+        ]
 
         # Output head
         self.norm_out = AdaLayerNormContinuous(inner_dim, inner_dim)
@@ -66,7 +67,9 @@ class QwenTransformer(nn.Module):
         latent_height = config.height // 16
         latent_width = config.width // 16
         img_shapes = [(1, latent_height, latent_width)]
-        txt_seq_lens = [int(mx.sum(encoder_hidden_states_mask[i]).item()) for i in range(encoder_hidden_states_mask.shape[0])]
+        txt_seq_lens = [
+            int(mx.sum(encoder_hidden_states_mask[i]).item()) for i in range(encoder_hidden_states_mask.shape[0])
+        ]
 
         # Resolve timestep from t and config (like Flux)
         timestep_value = config.get_qwen_timestep(t)
@@ -92,5 +95,3 @@ class QwenTransformer(nn.Module):
         hs = self.norm_out(hs, temb)
         out = self.proj_out(hs)
         return out
-
-

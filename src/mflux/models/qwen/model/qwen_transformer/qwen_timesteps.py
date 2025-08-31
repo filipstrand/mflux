@@ -3,7 +3,6 @@ from mlx import nn
 
 
 class QwenTimesteps(nn.Module):
-
     def __init__(self, proj_dim: int = 256, scale: float = 1000.0):
         super().__init__()
         self.proj_dim = proj_dim

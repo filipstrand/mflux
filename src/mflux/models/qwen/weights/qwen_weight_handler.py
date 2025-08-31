@@ -22,7 +22,11 @@ class QwenWeightHandler:
         self.meta_data = meta_data
 
     def num_transformer_blocks(self) -> int:
-        return len(self.transformer["transformer_blocks"]) if self.transformer and "transformer_blocks" in self.transformer else 0
+        return (
+            len(self.transformer["transformer_blocks"])
+            if self.transformer and "transformer_blocks" in self.transformer
+            else 0
+        )
 
     @staticmethod
     def load_regular_weights(
@@ -78,16 +82,20 @@ class QwenWeightHandler:
         weights["decoder"] = {}
 
         # conv_in: decoder.conv_in.weight -> decoder.conv_in.conv3d.weight
-        weights["decoder"]["conv_in"] = {"conv3d": {
-            "weight": diffusers_weights["decoder.conv_in.weight"],
-            "bias": diffusers_weights["decoder.conv_in.bias"]
-        }}
+        weights["decoder"]["conv_in"] = {
+            "conv3d": {
+                "weight": diffusers_weights["decoder.conv_in.weight"],
+                "bias": diffusers_weights["decoder.conv_in.bias"],
+            }
+        }
 
         # conv_out: decoder.conv_out.weight -> decoder.conv_out.conv3d.weight
-        weights["decoder"]["conv_out"] = {"conv3d": {
-            "weight": diffusers_weights["decoder.conv_out.weight"],
-            "bias": diffusers_weights["decoder.conv_out.bias"]
-        }}
+        weights["decoder"]["conv_out"] = {
+            "conv3d": {
+                "weight": diffusers_weights["decoder.conv_out.weight"],
+                "bias": diffusers_weights["decoder.conv_out.bias"],
+            }
+        }
 
         # norm_out: decoder.norm_out.gamma -> decoder.norm_out.weight (flatten to 1D like MLX expects)
         dec_gamma = diffusers_weights["decoder.norm_out.gamma"]
@@ -96,10 +104,12 @@ class QwenWeightHandler:
         weights["decoder"]["norm_out"] = {"weight": dec_gamma}
 
         # post_quant_conv: post_quant_conv.weight -> post_quant_conv.conv3d.weight
-        weights["post_quant_conv"] = {"conv3d": {
-            "weight": diffusers_weights["post_quant_conv.weight"],
-            "bias": diffusers_weights["post_quant_conv.bias"]
-        }}
+        weights["post_quant_conv"] = {
+            "conv3d": {
+                "weight": diffusers_weights["post_quant_conv.weight"],
+                "bias": diffusers_weights["post_quant_conv.bias"],
+            }
+        }
 
         # 2. Mid block (manual structure building)
         weights["decoder"]["mid_block"] = {}
@@ -109,15 +119,19 @@ class QwenWeightHandler:
         for i in range(2):
             resnet = weights["decoder"]["mid_block"]["resnets"][i]
             # conv1.weight -> conv1.conv3d.weight
-            resnet["conv1"] = {"conv3d": {
-                "weight": diffusers_weights[f"decoder.mid_block.resnets.{i}.conv1.weight"],
-                "bias": diffusers_weights[f"decoder.mid_block.resnets.{i}.conv1.bias"]
-            }}
+            resnet["conv1"] = {
+                "conv3d": {
+                    "weight": diffusers_weights[f"decoder.mid_block.resnets.{i}.conv1.weight"],
+                    "bias": diffusers_weights[f"decoder.mid_block.resnets.{i}.conv1.bias"],
+                }
+            }
             # conv2.weight -> conv2.conv3d.weight
-            resnet["conv2"] = {"conv3d": {
-                "weight": diffusers_weights[f"decoder.mid_block.resnets.{i}.conv2.weight"],
-                "bias": diffusers_weights[f"decoder.mid_block.resnets.{i}.conv2.bias"]
-            }}
+            resnet["conv2"] = {
+                "conv3d": {
+                    "weight": diffusers_weights[f"decoder.mid_block.resnets.{i}.conv2.weight"],
+                    "bias": diffusers_weights[f"decoder.mid_block.resnets.{i}.conv2.bias"],
+                }
+            }
             # norm gammas -> 1D weights
             g1 = diffusers_weights[f"decoder.mid_block.resnets.{i}.norm1.gamma"]
             if len(g1.shape) > 1:
@@ -138,11 +152,11 @@ class QwenWeightHandler:
         # Note: to_qkv and proj are Conv2d, not Conv3d - no conv3d wrapper
         attn["to_qkv"] = {
             "weight": diffusers_weights["decoder.mid_block.attentions.0.to_qkv.weight"],
-            "bias": diffusers_weights["decoder.mid_block.attentions.0.to_qkv.bias"]
+            "bias": diffusers_weights["decoder.mid_block.attentions.0.to_qkv.bias"],
         }
         attn["proj"] = {
             "weight": diffusers_weights["decoder.mid_block.attentions.0.proj.weight"],
-            "bias": diffusers_weights["decoder.mid_block.attentions.0.proj.bias"]
+            "bias": diffusers_weights["decoder.mid_block.attentions.0.proj.bias"],
         }
 
         # 3. Up blocks (manual structure building)
@@ -156,15 +170,19 @@ class QwenWeightHandler:
                 resnet = weights["decoder"][up_block_key]["resnets"][res_idx]
 
                 # conv1.weight -> conv1.conv3d.weight
-                resnet["conv1"] = {"conv3d": {
-                    "weight": diffusers_weights[f"decoder.up_blocks.{block_idx}.resnets.{res_idx}.conv1.weight"],
-                    "bias": diffusers_weights[f"decoder.up_blocks.{block_idx}.resnets.{res_idx}.conv1.bias"]
-                }}
+                resnet["conv1"] = {
+                    "conv3d": {
+                        "weight": diffusers_weights[f"decoder.up_blocks.{block_idx}.resnets.{res_idx}.conv1.weight"],
+                        "bias": diffusers_weights[f"decoder.up_blocks.{block_idx}.resnets.{res_idx}.conv1.bias"],
+                    }
+                }
                 # conv2.weight -> conv2.conv3d.weight
-                resnet["conv2"] = {"conv3d": {
-                    "weight": diffusers_weights[f"decoder.up_blocks.{block_idx}.resnets.{res_idx}.conv2.weight"],
-                    "bias": diffusers_weights[f"decoder.up_blocks.{block_idx}.resnets.{res_idx}.conv2.bias"]
-                }}
+                resnet["conv2"] = {
+                    "conv3d": {
+                        "weight": diffusers_weights[f"decoder.up_blocks.{block_idx}.resnets.{res_idx}.conv2.weight"],
+                        "bias": diffusers_weights[f"decoder.up_blocks.{block_idx}.resnets.{res_idx}.conv2.bias"],
+                    }
+                }
                 # norm gammas -> 1D weights
                 g1 = diffusers_weights[f"decoder.up_blocks.{block_idx}.resnets.{res_idx}.norm1.gamma"]
                 if len(g1.shape) > 1:
@@ -178,10 +196,14 @@ class QwenWeightHandler:
                 # Handle optional conv_shortcut -> skip_conv (only exists for some resnets)
                 shortcut_key = f"decoder.up_blocks.{block_idx}.resnets.{res_idx}.conv_shortcut.weight"
                 if shortcut_key in diffusers_weights:
-                    resnet["skip_conv"] = {"conv3d": {
-                        "weight": diffusers_weights[shortcut_key],
-                        "bias": diffusers_weights[f"decoder.up_blocks.{block_idx}.resnets.{res_idx}.conv_shortcut.bias"]
-                    }}
+                    resnet["skip_conv"] = {
+                        "conv3d": {
+                            "weight": diffusers_weights[shortcut_key],
+                            "bias": diffusers_weights[
+                                f"decoder.up_blocks.{block_idx}.resnets.{res_idx}.conv_shortcut.bias"
+                            ],
+                        }
+                    }
 
             # upsamplers (only for blocks 0, 1, 2)
             if block_idx <= 2:
@@ -191,30 +213,36 @@ class QwenWeightHandler:
                 # resample.1.weight -> resample_conv.weight (Conv2d, no conv3d wrapper)
                 upsampler["resample_conv"] = {
                     "weight": diffusers_weights[f"decoder.up_blocks.{block_idx}.upsamplers.0.resample.1.weight"],
-                    "bias": diffusers_weights[f"decoder.up_blocks.{block_idx}.upsamplers.0.resample.1.bias"]
+                    "bias": diffusers_weights[f"decoder.up_blocks.{block_idx}.upsamplers.0.resample.1.bias"],
                 }
 
                 # time_conv (only for blocks 0, 1)
                 if block_idx <= 1:
-                    upsampler["time_conv"] = {"conv3d": {
-                        "weight": diffusers_weights[f"decoder.up_blocks.{block_idx}.upsamplers.0.time_conv.weight"],
-                        "bias": diffusers_weights[f"decoder.up_blocks.{block_idx}.upsamplers.0.time_conv.bias"]
-                    }}
+                    upsampler["time_conv"] = {
+                        "conv3d": {
+                            "weight": diffusers_weights[f"decoder.up_blocks.{block_idx}.upsamplers.0.time_conv.weight"],
+                            "bias": diffusers_weights[f"decoder.up_blocks.{block_idx}.upsamplers.0.time_conv.bias"],
+                        }
+                    }
 
         # 4. Encoder mappings (mirror structure of model parameter names)
         weights["encoder"] = {}
 
         # conv_in: encoder.conv_in.weight -> encoder.conv_in.conv3d.weight
-        weights["encoder"]["conv_in"] = {"conv3d": {
-            "weight": diffusers_weights["encoder.conv_in.weight"],
-            "bias": diffusers_weights["encoder.conv_in.bias"],
-        }}
+        weights["encoder"]["conv_in"] = {
+            "conv3d": {
+                "weight": diffusers_weights["encoder.conv_in.weight"],
+                "bias": diffusers_weights["encoder.conv_in.bias"],
+            }
+        }
 
         # conv_out: encoder.conv_out.weight -> encoder.conv_out.conv3d.weight
-        weights["encoder"]["conv_out"] = {"conv3d": {
-            "weight": diffusers_weights["encoder.conv_out.weight"],
-            "bias": diffusers_weights["encoder.conv_out.bias"],
-        }}
+        weights["encoder"]["conv_out"] = {
+            "conv3d": {
+                "weight": diffusers_weights["encoder.conv_out.weight"],
+                "bias": diffusers_weights["encoder.conv_out.bias"],
+            }
+        }
 
         # norm_out: encoder.norm_out.gamma -> encoder.norm_out.weight (flatten to 1D)
         enc_gamma = diffusers_weights["encoder.norm_out.gamma"]
@@ -251,24 +279,28 @@ class QwenWeightHandler:
                 g2 = mx.reshape(g2, (g2.shape[0],))
             res["norm1"] = {"weight": g1}
             res["norm2"] = {"weight": g2}
-            res["conv1"] = {"conv3d": {
-                "weight": diffusers_weights[f"encoder.mid_block.resnets.{i}.conv1.weight"],
-                "bias": diffusers_weights[f"encoder.mid_block.resnets.{i}.conv1.bias"],
-            }}
-            res["conv2"] = {"conv3d": {
-                "weight": diffusers_weights[f"encoder.mid_block.resnets.{i}.conv2.weight"],
-                "bias": diffusers_weights[f"encoder.mid_block.resnets.{i}.conv2.bias"],
-            }}
+            res["conv1"] = {
+                "conv3d": {
+                    "weight": diffusers_weights[f"encoder.mid_block.resnets.{i}.conv1.weight"],
+                    "bias": diffusers_weights[f"encoder.mid_block.resnets.{i}.conv1.bias"],
+                }
+            }
+            res["conv2"] = {
+                "conv3d": {
+                    "weight": diffusers_weights[f"encoder.mid_block.resnets.{i}.conv2.weight"],
+                    "bias": diffusers_weights[f"encoder.mid_block.resnets.{i}.conv2.bias"],
+                }
+            }
 
         # down_blocks - simplified mapping like decoder
         # From safetensor keys, encoder has flattened indices 0-9 that need to be grouped into 4 stages
-        # Stage 0: indices 0,1 (2 resnets, no downsampler)  
+        # Stage 0: indices 0,1 (2 resnets, no downsampler)
         # Stage 1: indices 2,3,4 (downsampler at 2, resnets at 3,4)
-        # Stage 2: indices 5,6,7 (downsampler at 5, resnets at 6,7) 
+        # Stage 2: indices 5,6,7 (downsampler at 5, resnets at 6,7)
         # Stage 3: indices 8,9 (downsampler at 8, resnet at 9)
-        
+
         weights["encoder"]["down_blocks"] = [{}, {}, {}, {}]
-        
+
         # Stage 0: 2 resnets + downsampler (2D)
         weights["encoder"]["down_blocks"][0]["resnets"] = [{}, {}]
         for res_idx in range(2):
@@ -282,14 +314,18 @@ class QwenWeightHandler:
                 g2 = mx.reshape(g2, (g2.shape[0],))
             resnet["norm1"] = {"weight": g1}
             resnet["norm2"] = {"weight": g2}
-            resnet["conv1"] = {"conv3d": {
-                "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.weight"],
-                "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.bias"],
-            }}
-            resnet["conv2"] = {"conv3d": {
-                "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.weight"],
-                "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.bias"],
-            }}
+            resnet["conv1"] = {
+                "conv3d": {
+                    "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.weight"],
+                    "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.bias"],
+                }
+            }
+            resnet["conv2"] = {
+                "conv3d": {
+                    "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.weight"],
+                    "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.bias"],
+                }
+            }
         # Downsampler appears after indices 0,1 at flattened index 2
         weights["encoder"]["down_blocks"][0]["downsamplers"] = [{}]
         d0 = weights["encoder"]["down_blocks"][0]["downsamplers"][0]
@@ -297,8 +333,8 @@ class QwenWeightHandler:
             "weight": diffusers_weights["encoder.down_blocks.2.resample.1.weight"],
             "bias": diffusers_weights["encoder.down_blocks.2.resample.1.bias"],
         }
-        
-        # Stage 1: downsampler + 2 resnets  
+
+        # Stage 1: downsampler + 2 resnets
         weights["encoder"]["down_blocks"][1]["resnets"] = [{}, {}]
         weights["encoder"]["down_blocks"][1]["downsamplers"] = [{}]
         # Downsampler at flattened index 5 (after stage0's 0,1,2 and stage1's 3,4)
@@ -319,23 +355,29 @@ class QwenWeightHandler:
                 g2 = mx.reshape(g2, (g2.shape[0],))
             resnet["norm1"] = {"weight": g1}
             resnet["norm2"] = {"weight": g2}
-            resnet["conv1"] = {"conv3d": {
-                "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.weight"],
-                "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.bias"],
-            }}
-            resnet["conv2"] = {"conv3d": {
-                "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.weight"],
-                "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.bias"],
-            }}
+            resnet["conv1"] = {
+                "conv3d": {
+                    "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.weight"],
+                    "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.bias"],
+                }
+            }
+            resnet["conv2"] = {
+                "conv3d": {
+                    "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.weight"],
+                    "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.bias"],
+                }
+            }
             # Skip conv only for first resnet (index 3)
             if flat_idx == 3:
-                resnet["skip_conv"] = {"conv3d": {
-                    "weight": diffusers_weights["encoder.down_blocks.3.conv_shortcut.weight"],
-                    "bias": diffusers_weights["encoder.down_blocks.3.conv_shortcut.bias"],
-                }}
-        
+                resnet["skip_conv"] = {
+                    "conv3d": {
+                        "weight": diffusers_weights["encoder.down_blocks.3.conv_shortcut.weight"],
+                        "bias": diffusers_weights["encoder.down_blocks.3.conv_shortcut.bias"],
+                    }
+                }
+
         # Stage 2: downsampler + 2 resnets
-        weights["encoder"]["down_blocks"][2]["resnets"] = [{}, {}] 
+        weights["encoder"]["down_blocks"][2]["resnets"] = [{}, {}]
         weights["encoder"]["down_blocks"][2]["downsamplers"] = [{}]
         # Downsampler at flattened index 8
         d = weights["encoder"]["down_blocks"][2]["downsamplers"][0]
@@ -343,10 +385,12 @@ class QwenWeightHandler:
             "weight": diffusers_weights["encoder.down_blocks.8.resample.1.weight"],
             "bias": diffusers_weights["encoder.down_blocks.8.resample.1.bias"],
         }
-        d["time_conv"] = {"conv3d": {
-            "weight": diffusers_weights["encoder.down_blocks.8.time_conv.weight"],
-            "bias": diffusers_weights["encoder.down_blocks.8.time_conv.bias"],
-        }}
+        d["time_conv"] = {
+            "conv3d": {
+                "weight": diffusers_weights["encoder.down_blocks.8.time_conv.weight"],
+                "bias": diffusers_weights["encoder.down_blocks.8.time_conv.bias"],
+            }
+        }
         # Resnets at indices 6, 7
         for res_idx in range(2):
             flat_idx = 6 + res_idx  # 6, 7
@@ -359,21 +403,27 @@ class QwenWeightHandler:
                 g2 = mx.reshape(g2, (g2.shape[0],))
             resnet["norm1"] = {"weight": g1}
             resnet["norm2"] = {"weight": g2}
-            resnet["conv1"] = {"conv3d": {
-                "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.weight"],
-                "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.bias"],
-            }}
-            resnet["conv2"] = {"conv3d": {
-                "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.weight"],
-                "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.bias"],
-            }}
+            resnet["conv1"] = {
+                "conv3d": {
+                    "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.weight"],
+                    "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.bias"],
+                }
+            }
+            resnet["conv2"] = {
+                "conv3d": {
+                    "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.weight"],
+                    "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.bias"],
+                }
+            }
             # Skip conv only for first resnet (index 6)
             if flat_idx == 6:
-                resnet["skip_conv"] = {"conv3d": {
-                    "weight": diffusers_weights["encoder.down_blocks.6.conv_shortcut.weight"],
-                    "bias": diffusers_weights["encoder.down_blocks.6.conv_shortcut.bias"],
-                }}
-        
+                resnet["skip_conv"] = {
+                    "conv3d": {
+                        "weight": diffusers_weights["encoder.down_blocks.6.conv_shortcut.weight"],
+                        "bias": diffusers_weights["encoder.down_blocks.6.conv_shortcut.bias"],
+                    }
+                }
+
         # Stage 3: no downsampler + 2 resnets (like Diffusers)
         weights["encoder"]["down_blocks"][3]["resnets"] = [{}, {}]
         # No downsampler in final stage (mirrors diffusers)
@@ -389,21 +439,27 @@ class QwenWeightHandler:
                 g2 = mx.reshape(g2, (g2.shape[0],))
             resnet["norm1"] = {"weight": g1}
             resnet["norm2"] = {"weight": g2}
-            resnet["conv1"] = {"conv3d": {
-                "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.weight"],
-                "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.bias"],
-            }}
-            resnet["conv2"] = {"conv3d": {
-                "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.weight"],
-                "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.bias"],
-            }}
+            resnet["conv1"] = {
+                "conv3d": {
+                    "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.weight"],
+                    "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv1.bias"],
+                }
+            }
+            resnet["conv2"] = {
+                "conv3d": {
+                    "weight": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.weight"],
+                    "bias": diffusers_weights[f"encoder.down_blocks.{flat_idx}.conv2.bias"],
+                }
+            }
             # No skip_conv for stage 3 (channels don't change: 384->384)
 
         # 5. Quant conv
-        weights["quant_conv"] = {"conv3d": {
-            "weight": diffusers_weights["quant_conv.weight"],
-            "bias": diffusers_weights["quant_conv.bias"],
-        }}
+        weights["quant_conv"] = {
+            "conv3d": {
+                "weight": diffusers_weights["quant_conv.weight"],
+                "bias": diffusers_weights["quant_conv.bias"],
+            }
+        }
 
         return weights
 
@@ -412,38 +468,34 @@ class QwenWeightHandler:
         weights = {}
 
         # 1. Top-level mappings (exact MLX parameter names)
-        weights["img_in"] = {
-            "weight": diffusers_weights["img_in.weight"],
-            "bias": diffusers_weights["img_in.bias"]
-        }
+        weights["img_in"] = {"weight": diffusers_weights["img_in.weight"], "bias": diffusers_weights["img_in.bias"]}
         weights["txt_norm"] = {"weight": diffusers_weights["txt_norm.weight"]}
-        weights["txt_in"] = {
-            "weight": diffusers_weights["txt_in.weight"],
-            "bias": diffusers_weights["txt_in.bias"]
-        }
+        weights["txt_in"] = {"weight": diffusers_weights["txt_in.weight"], "bias": diffusers_weights["txt_in.bias"]}
 
         # 2. Time text embedder (exact MLX structure)
-        weights["time_text_embed"] = {"timestep_embedder": {
-            "linear_1": {
-                "weight": diffusers_weights["time_text_embed.timestep_embedder.linear_1.weight"],
-                "bias": diffusers_weights["time_text_embed.timestep_embedder.linear_1.bias"]
-            },
-            "linear_2": {
-                "weight": diffusers_weights["time_text_embed.timestep_embedder.linear_2.weight"],
-                "bias": diffusers_weights["time_text_embed.timestep_embedder.linear_2.bias"]
+        weights["time_text_embed"] = {
+            "timestep_embedder": {
+                "linear_1": {
+                    "weight": diffusers_weights["time_text_embed.timestep_embedder.linear_1.weight"],
+                    "bias": diffusers_weights["time_text_embed.timestep_embedder.linear_1.bias"],
+                },
+                "linear_2": {
+                    "weight": diffusers_weights["time_text_embed.timestep_embedder.linear_2.weight"],
+                    "bias": diffusers_weights["time_text_embed.timestep_embedder.linear_2.bias"],
+                },
             }
-        }}
+        }
 
         # 3. Output head (exact MLX structure)
         weights["norm_out"] = {
             "linear": {
                 "weight": diffusers_weights["norm_out.linear.weight"],
-                "bias": diffusers_weights["norm_out.linear.bias"]
+                "bias": diffusers_weights["norm_out.linear.bias"],
             }
         }
         weights["proj_out"] = {
             "weight": diffusers_weights["proj_out.weight"],
-            "bias": diffusers_weights["proj_out.bias"]
+            "bias": diffusers_weights["proj_out.bias"],
         }
 
         # 4. Transformer blocks (exact MLX parameter names - no applier needed!)
@@ -454,71 +506,77 @@ class QwenWeightHandler:
             # Modulation layers (exact MLX parameter names)
             block["img_mod_linear"] = {
                 "weight": diffusers_weights[f"transformer_blocks.{block_idx}.img_mod.1.weight"],
-                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.img_mod.1.bias"]
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.img_mod.1.bias"],
             }
             block["txt_mod_linear"] = {
                 "weight": diffusers_weights[f"transformer_blocks.{block_idx}.txt_mod.1.weight"],
-                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.txt_mod.1.bias"]
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.txt_mod.1.bias"],
             }
 
             # Attention layers (exact MLX parameter names - no nesting under "attn")
             block["to_q"] = {
                 "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_q.weight"],
-                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_q.bias"]
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_q.bias"],
             }
             block["to_k"] = {
                 "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_k.weight"],
-                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_k.bias"]
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_k.bias"],
             }
             block["to_v"] = {
                 "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_v.weight"],
-                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_v.bias"]
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_v.bias"],
             }
             block["add_q_proj"] = {
                 "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_q_proj.weight"],
-                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_q_proj.bias"]
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_q_proj.bias"],
             }
             block["add_k_proj"] = {
                 "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_k_proj.weight"],
-                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_k_proj.bias"]
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_k_proj.bias"],
             }
             block["add_v_proj"] = {
                 "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_v_proj.weight"],
-                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_v_proj.bias"]
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.add_v_proj.bias"],
             }
 
             # Attention norms (exact MLX parameter names)
             block["norm_q"] = {"weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.norm_q.weight"]}
             block["norm_k"] = {"weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.norm_k.weight"]}
-            block["norm_added_q"] = {"weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.norm_added_q.weight"]}
-            block["norm_added_k"] = {"weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.norm_added_k.weight"]}
+            block["norm_added_q"] = {
+                "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.norm_added_q.weight"]
+            }
+            block["norm_added_k"] = {
+                "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.norm_added_k.weight"]
+            }
 
             # Attention outputs (exact MLX parameter names)
-            block["attn_to_out"] = [{
-                "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_out.0.weight"],
-                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_out.0.bias"]
-            }]
+            block["attn_to_out"] = [
+                {
+                    "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_out.0.weight"],
+                    "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_out.0.bias"],
+                }
+            ]
             block["to_add_out"] = {
                 "weight": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_add_out.weight"],
-                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_add_out.bias"]
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.attn.to_add_out.bias"],
             }
 
             # MLP layers (exact MLX parameter names)
             block["img_mlp_in"] = {
                 "weight": diffusers_weights[f"transformer_blocks.{block_idx}.img_mlp.net.0.proj.weight"],
-                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.img_mlp.net.0.proj.bias"]
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.img_mlp.net.0.proj.bias"],
             }
             block["img_mlp_out"] = {
                 "weight": diffusers_weights[f"transformer_blocks.{block_idx}.img_mlp.net.2.weight"],
-                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.img_mlp.net.2.bias"]
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.img_mlp.net.2.bias"],
             }
             block["txt_mlp_in"] = {
                 "weight": diffusers_weights[f"transformer_blocks.{block_idx}.txt_mlp.net.0.proj.weight"],
-                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.txt_mlp.net.0.proj.bias"]
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.txt_mlp.net.0.proj.bias"],
             }
             block["txt_mlp_out"] = {
                 "weight": diffusers_weights[f"transformer_blocks.{block_idx}.txt_mlp.net.2.weight"],
-                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.txt_mlp.net.2.bias"]
+                "bias": diffusers_weights[f"transformer_blocks.{block_idx}.txt_mlp.net.2.bias"],
             }
 
             transformer_blocks.append(block)
@@ -560,7 +618,7 @@ class QwenWeightHandler:
                 # Load the safetensor file with fallback to torch conversion
                 try:
                     file_weights = mlx_load_file(str(file_path))
-                except Exception:
+                except Exception:  # noqa: BLE001
                     # If MLX can't load directly, try with torch and convert
                     import torch
                     from safetensors.torch import load_file as torch_load_file
@@ -605,15 +663,11 @@ class QwenWeightHandler:
 
         # 1. Top-level embeddings (exact MLX parameter names)
         weights["encoder"] = {}
-        weights["encoder"]["embed_tokens"] = {
-            "weight": filtered_weights["model.embed_tokens.weight"]
-        }
+        weights["encoder"]["embed_tokens"] = {"weight": filtered_weights["model.embed_tokens.weight"]}
         converted_count += 1
 
         # 2. Final norm (exact MLX parameter names)
-        weights["encoder"]["norm"] = {
-            "weight": filtered_weights["model.norm.weight"]
-        }
+        weights["encoder"]["norm"] = {"weight": filtered_weights["model.norm.weight"]}
         converted_count += 1
 
         # 3. Encoder layers (exact MLX parameter names - 28 layers)
@@ -622,9 +676,7 @@ class QwenWeightHandler:
             layer = {}
 
             # Layer norms
-            layer["input_layernorm"] = {
-                "weight": filtered_weights[f"model.layers.{layer_idx}.input_layernorm.weight"]
-            }
+            layer["input_layernorm"] = {"weight": filtered_weights[f"model.layers.{layer_idx}.input_layernorm.weight"]}
             layer["post_attention_layernorm"] = {
                 "weight": filtered_weights[f"model.layers.{layer_idx}.post_attention_layernorm.weight"]
             }
@@ -634,20 +686,20 @@ class QwenWeightHandler:
             layer["self_attn"] = {
                 "q_proj": {
                     "weight": filtered_weights[f"model.layers.{layer_idx}.self_attn.q_proj.weight"],
-                    "bias": filtered_weights[f"model.layers.{layer_idx}.self_attn.q_proj.bias"]
+                    "bias": filtered_weights[f"model.layers.{layer_idx}.self_attn.q_proj.bias"],
                 },
                 "k_proj": {
                     "weight": filtered_weights[f"model.layers.{layer_idx}.self_attn.k_proj.weight"],
-                    "bias": filtered_weights[f"model.layers.{layer_idx}.self_attn.k_proj.bias"]
+                    "bias": filtered_weights[f"model.layers.{layer_idx}.self_attn.k_proj.bias"],
                 },
                 "v_proj": {
                     "weight": filtered_weights[f"model.layers.{layer_idx}.self_attn.v_proj.weight"],
-                    "bias": filtered_weights[f"model.layers.{layer_idx}.self_attn.v_proj.bias"]
+                    "bias": filtered_weights[f"model.layers.{layer_idx}.self_attn.v_proj.bias"],
                 },
                 "o_proj": {
                     "weight": filtered_weights[f"model.layers.{layer_idx}.self_attn.o_proj.weight"]
                     # Note: o_proj has no bias in MLX structure
-                }
+                },
             }
             converted_count += 7
 
@@ -664,7 +716,7 @@ class QwenWeightHandler:
                 "down_proj": {
                     "weight": filtered_weights[f"model.layers.{layer_idx}.mlp.down_proj.weight"]
                     # Note: down_proj has no bias in MLX structure
-                }
+                },
             }
             converted_count += 3
 

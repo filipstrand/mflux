@@ -9,10 +9,13 @@ from mlx.utils import tree_flatten
 from mflux.models.flux.model.flux_transformer.joint_transformer_block import JointTransformerBlock
 from mflux.models.flux.model.flux_transformer.single_transformer_block import SingleTransformerBlock
 from mflux.models.flux.variants.dreambooth.lora_layers.linear_lora_layer import LoRALinear
-from mflux.models.flux.variants.dreambooth.state.training_spec import TrainingSpec, TransformerBlocks, \
-    SingleTransformerBlocks
+from mflux.models.flux.variants.dreambooth.state.training_spec import (
+    SingleTransformerBlocks,
+    TrainingSpec,
+    TransformerBlocks,
+)
 from mflux.models.flux.variants.dreambooth.state.zip_util import ZipUtil
-from mflux.models.flux.weights.weight_handler import WeightHandler, MetaData
+from mflux.models.flux.weights.weight_handler import MetaData, WeightHandler
 from mflux.utils.version_util import VersionUtil
 
 if TYPE_CHECKING:

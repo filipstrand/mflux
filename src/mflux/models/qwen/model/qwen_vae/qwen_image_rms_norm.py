@@ -29,5 +29,5 @@ class QwenImageRMSNorm(nn.Module):
                 weight = self.weight.reshape(1, -1, 1, 1)
             else:
                 weight = self.weight
-        
+
         return x_normalized * self.scale * weight

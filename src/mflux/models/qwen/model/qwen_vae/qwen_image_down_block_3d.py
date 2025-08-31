@@ -6,13 +6,7 @@ from mflux.models.qwen.model.qwen_vae.qwen_image_resample_3d import QwenImageRes
 
 
 class QwenImageDownBlock3D(nn.Module):
-    def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        num_res_blocks: int = 2,
-        downsample_mode: str = None
-    ):
+    def __init__(self, in_channels: int, out_channels: int, num_res_blocks: int = 2, downsample_mode: str = None):
         super().__init__()
         self.resnets = []
         current_dim = in_channels

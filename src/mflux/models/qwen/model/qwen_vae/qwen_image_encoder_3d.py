@@ -8,7 +8,6 @@ from mflux.models.qwen.model.qwen_vae.qwen_image_rms_norm import QwenImageRMSNor
 
 
 class QwenImageEncoder3D(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.dim = 96
@@ -34,16 +33,14 @@ class QwenImageEncoder3D(nn.Module):
             # Use per-stage num_res_blocks
             stage_res_blocks = self.num_res_blocks[i] if isinstance(self.num_res_blocks, list) else self.num_res_blocks
             down_block = QwenImageDownBlock3D(
-                in_dim, out_dim,
-                num_res_blocks=stage_res_blocks,
-                downsample_mode=downsample_mode
+                in_dim, out_dim, num_res_blocks=stage_res_blocks, downsample_mode=downsample_mode
             )
             down_blocks.append(down_block)
         self.down_blocks = down_blocks
 
         self.mid_block = QwenImageMidBlock3D(dims[-1], num_layers=1)
         self.norm_out = QwenImageRMSNorm(dims[-1], images=False)  # Encoder norm_out uses images=False
-        self.conv_out = QwenImageCausalConv3D(dims[-1], 32, 3, 1, 1) # Changed z_dim to 32
+        self.conv_out = QwenImageCausalConv3D(dims[-1], 32, 3, 1, 1)  # Changed z_dim to 32
 
     def __call__(self, x: mx.array) -> mx.array:
         x = self.conv_in(x)

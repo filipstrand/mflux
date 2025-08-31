@@ -19,10 +19,7 @@ class QwenTextEncoder(nn.Module):
 
         # Apply the same post-processing as diffusers
         prompt_embeds, encoder_attention_mask = QwenTextEncoder._process_text_embeddings_mlx(
-            hidden_states=hidden_states,
-            attention_mask=attention_mask,
-            drop_idx=34,
-            dtype=mx.bfloat16
+            hidden_states=hidden_states, attention_mask=attention_mask, drop_idx=34, dtype=mx.bfloat16
         )
 
         return prompt_embeds, encoder_attention_mask

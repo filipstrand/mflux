@@ -34,11 +34,11 @@ class QwenImageCausalConv3D(nn.Module):
         # Apply causal padding in channels-first format (B, C, T, H, W)
         if pad_t > 0 or pad_h > 0 or pad_w > 0:
             pad_spec = [
-                (0, 0),           # Batch dimension (B)
-                (0, 0),           # Channel dimension (C) 
-                (2 * pad_t, 0),   # Time dimension (T) - causal: pad past, not future
-                (pad_h, pad_h),   # Height dimension (H)
-                (pad_w, pad_w),   # Width dimension (W)
+                (0, 0),  # Batch dimension (B)
+                (0, 0),  # Channel dimension (C)
+                (2 * pad_t, 0),  # Time dimension (T) - causal: pad past, not future
+                (pad_h, pad_h),  # Height dimension (H)
+                (pad_w, pad_w),  # Width dimension (W)
             ]
             x = mx.pad(x, pad_spec)
 

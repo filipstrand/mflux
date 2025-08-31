@@ -3,7 +3,7 @@ import mlx.core as mx
 import numpy as np
 import PIL.Image
 
-from mflux.models.flux.variants.concept_attention.attention_data import GenerationAttentionData, ConceptHeatmap
+from mflux.models.flux.variants.concept_attention.attention_data import ConceptHeatmap, GenerationAttentionData
 
 
 class ConceptUtil:
