@@ -4,10 +4,10 @@ import random
 from pathlib import Path
 from typing import Any
 
-from mflux.dreambooth.dataset.batch import Batch
-from mflux.dreambooth.dataset.dataset import Dataset
-from mflux.dreambooth.state.training_spec import TrainingSpec
-from mflux.dreambooth.state.zip_util import ZipUtil
+from mflux.models.flux.variants.dreambooth.dataset.batch import Batch
+from mflux.models.flux.variants.dreambooth.dataset.dataset import Dataset
+from mflux.models.flux.variants.dreambooth.state.training_spec import TrainingSpec
+from mflux.models.flux.variants.dreambooth.state.zip_util import ZipUtil
 
 
 class Iterator:
