@@ -19,10 +19,10 @@ class QwenVAE(nn.Module):
 
     def decode(self, latents: mx.array) -> mx.array:
         latents = latents.reshape(latents.shape[0], latents.shape[1], 1, latents.shape[2], latents.shape[3])
-        x = self.post_quant_conv(latents)
-        decoded = self.decoder(x)
-        clamped = mx.minimum(mx.maximum(decoded, -1.0), 1.0)
-        return clamped[:, :, 0, :, :]
+        latents = latents / (1.0 / QwenVAE.LATENTS_STD) + QwenVAE.LATENTS_MEAN
+        latents = self.post_quant_conv(latents)
+        decoded = self.decoder(latents)
+        return decoded[:, :, 0, :, :]
     
     def encode(self, images: mx.array) -> mx.array:
         images = images.reshape(images.shape[0], images.shape[1], 1, images.shape[2], images.shape[3])
