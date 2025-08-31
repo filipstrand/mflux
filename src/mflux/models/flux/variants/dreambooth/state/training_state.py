@@ -4,12 +4,12 @@ import tempfile
 import zipfile
 from pathlib import Path
 
-from mflux.dreambooth.dataset.iterator import Iterator
-from mflux.dreambooth.lora_layers.lora_layers import LoRALayers
-from mflux.dreambooth.optimization.optimizer import Optimizer
-from mflux.dreambooth.state.training_spec import TrainingSpec
-from mflux.dreambooth.state.zip_util import ZipUtil
-from mflux.dreambooth.statistics.statistics import Statistics
+from mflux.models.flux.variants.dreambooth.dataset.iterator import Iterator
+from mflux.models.flux.variants.dreambooth.lora_layers.lora_layers import LoRALayers
+from mflux.models.flux.variants.dreambooth.optimization.optimizer import Optimizer
+from mflux.models.flux.variants.dreambooth.state.training_spec import TrainingSpec
+from mflux.models.flux.variants.dreambooth.state.zip_util import ZipUtil
+from mflux.models.flux.variants.dreambooth.statistics.statistics import Statistics
 
 DREAMBOOTH_PATH_CHECKPOINTS = "_checkpoints"
 DREAMBOOTH_FILE_NAME_CHECKPOINT = "checkpoint"

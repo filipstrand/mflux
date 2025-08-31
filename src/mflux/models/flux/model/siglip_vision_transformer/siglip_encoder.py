@@ -1,7 +1,7 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.siglip_vision_transformer.siglip_encoder_layer import SiglipEncoderLayer
+from mflux.models.flux.model.siglip_vision_transformer.siglip_encoder_layer import SiglipEncoderLayer
 
 
 class SiglipEncoder(nn.Module):

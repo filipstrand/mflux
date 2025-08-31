@@ -2,10 +2,10 @@ import mlx.core as mx
 import mlx.nn as nn
 from mlx.utils import tree_flatten, tree_unflatten
 
-from mflux.dreambooth.lora_layers.fused_linear_lora_layer import FusedLoRALinear
-from mflux.dreambooth.lora_layers.linear_lora_layer import LoRALinear
-from mflux.dreambooth.lora_layers.lora_layers import LoRALayers
-from mflux.weights.weight_handler import MetaData, WeightHandler
+from mflux.models.flux.variants.dreambooth.lora_layers.fused_linear_lora_layer import FusedLoRALinear
+from mflux.models.flux.variants.dreambooth.lora_layers.linear_lora_layer import LoRALinear
+from mflux.models.flux.variants.dreambooth.lora_layers.lora_layers import LoRALayers
+from mflux.models.flux.weights.weight_handler import WeightHandler, MetaData
 
 
 class WeightHandlerLoRA:

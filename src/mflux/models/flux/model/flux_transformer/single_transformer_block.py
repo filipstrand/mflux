@@ -1,10 +1,8 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.flux_transformer.ada_layer_norm_zero_single import (
-    AdaLayerNormZeroSingle,
-)
-from mflux.models.flux_transformer.single_block_attention import SingleBlockAttention
+from mflux.models.flux.model.flux_transformer.ada_layer_norm_zero_single import AdaLayerNormZeroSingle
+from mflux.models.flux.model.flux_transformer.single_block_attention import SingleBlockAttention
 
 
 class SingleTransformerBlock(nn.Module):

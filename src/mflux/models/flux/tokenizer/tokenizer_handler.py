@@ -2,8 +2,8 @@ from pathlib import Path
 
 import transformers
 
-from mflux.tokenizer.clip_tokenizer import TokenizerCLIP
-from mflux.weights.download import snapshot_download
+from mflux.models.flux.tokenizer.clip_tokenizer import TokenizerCLIP
+from mflux.utils.download import snapshot_download
 
 
 class TokenizerHandler:

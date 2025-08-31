@@ -1,9 +1,9 @@
 import mlx.core as mx
 
-from mflux.models.flux_text_encoder.clip_encoder.clip_encoder import CLIPEncoder
-from mflux.models.flux_text_encoder.t5_encoder.t5_encoder import T5Encoder
-from mflux.tokenizer.clip_tokenizer import TokenizerCLIP
-from mflux.tokenizer.t5_tokenizer import TokenizerT5
+from mflux.models.flux.model.flux_text_encoder.clip_encoder.clip_encoder import CLIPEncoder
+from mflux.models.flux.model.flux_text_encoder.t5_encoder.t5_encoder import T5Encoder
+from mflux.models.flux.tokenizer.clip_tokenizer import TokenizerCLIP
+from mflux.models.flux.tokenizer.t5_tokenizer import TokenizerT5
 
 
 class PromptEncoder:

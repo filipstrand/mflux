@@ -6,16 +6,17 @@ import mlx.core as mx
 from mlx import nn
 from mlx.utils import tree_flatten
 
-from mflux.dreambooth.lora_layers.linear_lora_layer import LoRALinear
-from mflux.dreambooth.state.training_spec import SingleTransformerBlocks, TrainingSpec, TransformerBlocks
-from mflux.dreambooth.state.zip_util import ZipUtil
-from mflux.models.flux_transformer.joint_transformer_block import JointTransformerBlock
-from mflux.models.flux_transformer.single_transformer_block import SingleTransformerBlock
+from mflux.models.flux.model.flux_transformer.joint_transformer_block import JointTransformerBlock
+from mflux.models.flux.model.flux_transformer.single_transformer_block import SingleTransformerBlock
+from mflux.models.flux.variants.dreambooth.lora_layers.linear_lora_layer import LoRALinear
+from mflux.models.flux.variants.dreambooth.state.training_spec import TrainingSpec, TransformerBlocks, \
+    SingleTransformerBlocks
+from mflux.models.flux.variants.dreambooth.state.zip_util import ZipUtil
+from mflux.models.flux.weights.weight_handler import WeightHandler, MetaData
 from mflux.utils.version_util import VersionUtil
-from mflux.weights.weight_handler import MetaData, WeightHandler
 
 if TYPE_CHECKING:
-    from mflux.flux.flux import Flux1
+    from mflux.models.flux.variants.txt2img.flux import Flux1
 
 
 class LoRALayers:
@@ -26,7 +27,7 @@ class LoRALayers:
     def from_spec(flux: "Flux1", training_spec: TrainingSpec) -> "LoRALayers":
         if training_spec.lora_layers.state_path is not None:
             # Load from state if present in the spec
-            from mflux.weights.weight_handler_lora import WeightHandlerLoRA
+            from mflux.models.flux.weights.weight_handler_lora import WeightHandlerLoRA
 
             weights = ZipUtil.unzip(
                 zip_path=training_spec.checkpoint_path,

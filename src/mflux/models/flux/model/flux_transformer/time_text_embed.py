@@ -5,9 +5,9 @@ from mlx import nn
 
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
-from mflux.models.flux_transformer.guidance_embedder import GuidanceEmbedder
-from mflux.models.flux_transformer.text_embedder import TextEmbedder
-from mflux.models.flux_transformer.timestep_embedder import TimestepEmbedder
+from mflux.models.flux.model.flux_transformer.guidance_embedder import GuidanceEmbedder
+from mflux.models.flux.model.flux_transformer.text_embedder import TextEmbedder
+from mflux.models.flux.model.flux_transformer.timestep_embedder import TimestepEmbedder
 
 
 class TimeTextEmbed(nn.Module):

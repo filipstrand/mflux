@@ -1,8 +1,8 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.flux_text_encoder.clip_encoder.clip_embeddings import CLIPEmbeddings
-from mflux.models.flux_text_encoder.clip_encoder.encoder_clip import EncoderCLIP
+from mflux.models.flux.model.flux_text_encoder.clip_encoder.clip_embeddings import CLIPEmbeddings
+from mflux.models.flux.model.flux_text_encoder.clip_encoder.encoder_clip import EncoderCLIP
 
 
 class CLIPTextModel(nn.Module):

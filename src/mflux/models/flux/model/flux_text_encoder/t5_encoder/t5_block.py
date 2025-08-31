@@ -1,8 +1,8 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.flux_text_encoder.t5_encoder.t5_attention import T5Attention
-from mflux.models.flux_text_encoder.t5_encoder.t5_feed_forward import T5FeedForward
+from mflux.models.flux.model.flux_text_encoder.t5_encoder.t5_attention import T5Attention
+from mflux.models.flux.model.flux_text_encoder.t5_encoder.t5_feed_forward import T5FeedForward
 
 
 class T5Block(nn.Module):

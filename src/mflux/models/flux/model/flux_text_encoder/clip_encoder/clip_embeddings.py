@@ -1,7 +1,7 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.tokenizer.clip_tokenizer import TokenizerCLIP
+from mflux.models.flux.tokenizer.clip_tokenizer import TokenizerCLIP
 
 
 class CLIPEmbeddings(nn.Module):

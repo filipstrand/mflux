@@ -1,8 +1,8 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.flux_text_encoder.t5_encoder.t5_block import T5Block
-from mflux.models.flux_text_encoder.t5_encoder.t5_layer_norm import T5LayerNorm
+from mflux.models.flux.model.flux_text_encoder.t5_encoder.t5_block import T5Block
+from mflux.models.flux.model.flux_text_encoder.t5_encoder.t5_layer_norm import T5LayerNorm
 
 
 class T5Encoder(nn.Module):

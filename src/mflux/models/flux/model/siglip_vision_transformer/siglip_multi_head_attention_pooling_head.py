@@ -1,7 +1,7 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.siglip_vision_transformer.siglip_mlp import SiglipMLP
+from mflux.models.flux.model.siglip_vision_transformer.siglip_mlp import SiglipMLP
 
 
 class SiglipMultiHeadAttentionPoolingHead(nn.Module):

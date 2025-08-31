@@ -1,10 +1,8 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.flux_text_encoder.t5_encoder.t5_layer_norm import T5LayerNorm
-from mflux.models.flux_text_encoder.t5_encoder.t5_self_attention import (
-    T5SelfAttention,
-)
+from mflux.models.flux.model.flux_text_encoder.t5_encoder.t5_layer_norm import T5LayerNorm
+from mflux.models.flux.model.flux_text_encoder.t5_encoder.t5_self_attention import T5SelfAttention
 
 
 class T5Attention(nn.Module):

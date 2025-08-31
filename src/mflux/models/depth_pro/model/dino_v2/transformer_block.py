@@ -1,9 +1,9 @@
 import mlx.core as mx
 import mlx.nn as nn
 
-from mflux.models.depth_pro.dino_v2.attention import Attention
-from mflux.models.depth_pro.dino_v2.layer_scale import LayerScale
-from mflux.models.depth_pro.dino_v2.mlp import MLP
+from mflux.models.depth_pro.model.dino_v2.attention import Attention
+from mflux.models.depth_pro.model.dino_v2.layer_scale import LayerScale
+from mflux.models.depth_pro.model.dino_v2.mlp import MLP
 
 
 class TransformerBlock(nn.Module):

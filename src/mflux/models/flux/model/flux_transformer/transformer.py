@@ -5,17 +5,11 @@ from mlx import nn
 
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.models.flux_transformer.ada_layer_norm_continuous import (
-    AdaLayerNormContinuous,
-)
-from mflux.models.flux_transformer.embed_nd import EmbedND
-from mflux.models.flux_transformer.joint_transformer_block import (
-    JointTransformerBlock,
-)
-from mflux.models.flux_transformer.single_transformer_block import (
-    SingleTransformerBlock,
-)
-from mflux.models.flux_transformer.time_text_embed import TimeTextEmbed
+from mflux.models.flux.model.flux_transformer.ada_layer_norm_continuous import AdaLayerNormContinuous
+from mflux.models.flux.model.flux_transformer.embed_nd import EmbedND
+from mflux.models.flux.model.flux_transformer.joint_transformer_block import JointTransformerBlock
+from mflux.models.flux.model.flux_transformer.single_transformer_block import SingleTransformerBlock
+from mflux.models.flux.model.flux_transformer.time_text_embed import TimeTextEmbed
 
 
 class Transformer(nn.Module):

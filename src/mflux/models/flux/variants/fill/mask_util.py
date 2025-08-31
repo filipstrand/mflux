@@ -2,7 +2,7 @@ from pathlib import Path
 
 import mlx.core as mx
 
-from mflux.models.flux_vae.vae import VAE
+from mflux.models.flux.model.flux_vae.vae import VAE
 from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.image_util import ImageUtil
 

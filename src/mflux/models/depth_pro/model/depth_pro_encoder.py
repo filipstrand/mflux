@@ -3,9 +3,9 @@ import math
 import mlx.core as mx
 import mlx.nn as nn
 
-from mflux.models.depth_pro.conv_utils import ConvUtils
-from mflux.models.depth_pro.dino_v2.dino_vision_transformer import DinoVisionTransformer
-from mflux.models.depth_pro.upsample_block import UpSampleBlock
+from mflux.models.depth_pro.model.conv_utils import ConvUtils
+from mflux.models.depth_pro.model.dino_v2.dino_vision_transformer import DinoVisionTransformer
+from mflux.models.depth_pro.model.upsample_block import UpSampleBlock
 
 
 class DepthProEncoder(nn.Module):

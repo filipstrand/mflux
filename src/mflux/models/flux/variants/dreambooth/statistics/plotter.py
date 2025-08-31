@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 
-from mflux.dreambooth.state.training_spec import TrainingSpec
-from mflux.dreambooth.state.training_state import TrainingState
+from mflux.models.flux.variants.dreambooth.state.training_spec import TrainingSpec
+from mflux.models.flux.variants.dreambooth.state.training_state import TrainingState
 
 
 class Plotter:

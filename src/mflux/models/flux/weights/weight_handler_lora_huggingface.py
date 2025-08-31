@@ -2,7 +2,7 @@ import shutil
 from pathlib import Path
 
 from mflux.ui.defaults import MFLUX_LORA_CACHE_DIR
-from mflux.weights.download import snapshot_download
+from mflux.utils.download import snapshot_download
 
 
 class WeightHandlerLoRAHuggingFace:

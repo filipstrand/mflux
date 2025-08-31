@@ -1,11 +1,10 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.siglip_vision_transformer.siglip_encoder import SiglipEncoder
-from mflux.models.siglip_vision_transformer.siglip_multi_head_attention_pooling_head import (
-    SiglipMultiHeadAttentionPoolingHead,
-)
-from mflux.models.siglip_vision_transformer.siglip_vision_embeddings import SiglipVisionEmbeddings
+from mflux.models.flux.model.siglip_vision_transformer.siglip_encoder import SiglipEncoder
+from mflux.models.flux.model.siglip_vision_transformer.siglip_multi_head_attention_pooling_head import \
+    SiglipMultiHeadAttentionPoolingHead
+from mflux.models.flux.model.siglip_vision_transformer.siglip_vision_embeddings import SiglipVisionEmbeddings
 
 
 class SiglipVisionTransformer(nn.Module):

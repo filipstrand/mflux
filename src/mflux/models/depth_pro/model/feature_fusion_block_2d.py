@@ -1,8 +1,8 @@
 import mlx.core as mx
 import mlx.nn as nn
 
-from mflux.models.depth_pro.conv_utils import ConvUtils
-from mflux.models.depth_pro.residual_block import ResidualBlock
+from mflux.models.depth_pro.model.conv_utils import ConvUtils
+from mflux.models.depth_pro.model.residual_block import ResidualBlock
 
 
 class FeatureFusionBlock2d(nn.Module):

@@ -1,8 +1,8 @@
 import mlx.core as mx
 import mlx.nn as nn
 
-from mflux.models.depth_pro.conv_utils import ConvUtils
-from mflux.models.depth_pro.feature_fusion_block_2d import FeatureFusionBlock2d
+from mflux.models.depth_pro.model.conv_utils import ConvUtils
+from mflux.models.depth_pro.model.feature_fusion_block_2d import FeatureFusionBlock2d
 
 
 class MultiresConvDecoder(nn.Module):

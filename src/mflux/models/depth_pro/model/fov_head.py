@@ -1,7 +1,7 @@
 import mlx.core as mx
 import mlx.nn as nn
 
-from mflux.models.depth_pro.conv_utils import ConvUtils
+from mflux.models.depth_pro.model.conv_utils import ConvUtils
 
 
 class FOVHead(nn.Module):

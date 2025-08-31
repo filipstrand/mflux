@@ -1,9 +1,9 @@
 import mlx.core as mx
 import mlx.nn as nn
 
-from mflux.models.depth_pro.depth_pro_encoder import DepthProEncoder
-from mflux.models.depth_pro.fov_head import FOVHead
-from mflux.models.depth_pro.multires_conv_decoder import MultiresConvDecoder
+from mflux.models.depth_pro.model.depth_pro_encoder import DepthProEncoder
+from mflux.models.depth_pro.model.fov_head import FOVHead
+from mflux.models.depth_pro.model.multires_conv_decoder import MultiresConvDecoder
 
 
 class DepthProModel(nn.Module):

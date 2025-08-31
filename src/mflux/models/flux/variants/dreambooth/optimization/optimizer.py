@@ -6,8 +6,8 @@ import mlx.optimizers
 import mlx.optimizers as optim
 from mlx.utils import tree_flatten, tree_unflatten
 
-from mflux.dreambooth.state.training_spec import TrainingSpec
-from mflux.dreambooth.state.zip_util import ZipUtil
+from mflux.models.flux.variants.dreambooth.state.training_spec import TrainingSpec
+from mflux.models.flux.variants.dreambooth.state.zip_util import ZipUtil
 
 
 class Optimizers(Enum):

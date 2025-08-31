@@ -1,23 +1,15 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.community.concept_attention.attention_data import (
-    TimestepAttentionData,
-)
-from mflux.community.concept_attention.joint_transformer_block_concept import (
-    JointTransformerBlockConcept,
-)
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.models.flux_transformer.ada_layer_norm_continuous import (
-    AdaLayerNormContinuous,
-)
-from mflux.models.flux_transformer.embed_nd import EmbedND
-from mflux.models.flux_transformer.single_transformer_block import (
-    SingleTransformerBlock,
-)
-from mflux.models.flux_transformer.time_text_embed import TimeTextEmbed
-from mflux.models.flux_transformer.transformer import Transformer
+from mflux.models.flux.model.flux_transformer.ada_layer_norm_continuous import AdaLayerNormContinuous
+from mflux.models.flux.model.flux_transformer.embed_nd import EmbedND
+from mflux.models.flux.model.flux_transformer.single_transformer_block import SingleTransformerBlock
+from mflux.models.flux.model.flux_transformer.time_text_embed import TimeTextEmbed
+from mflux.models.flux.model.flux_transformer.transformer import Transformer
+from mflux.models.flux.variants.concept_attention.attention_data import TimestepAttentionData
+from mflux.models.flux.variants.concept_attention.joint_transformer_block_concept import JointTransformerBlockConcept
 
 
 class TransformerConcept(nn.Module):

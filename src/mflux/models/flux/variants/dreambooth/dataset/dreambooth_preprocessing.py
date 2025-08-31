@@ -1,4 +1,4 @@
-from mflux.dreambooth.dataset.batch import Example
+from mflux.models.flux.variants.dreambooth.dataset.batch import Example
 
 
 class DreamBoothPreProcessing:

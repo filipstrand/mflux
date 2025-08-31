@@ -2,8 +2,8 @@ from pathlib import Path
 
 import mlx.core as mx
 
-from mflux.models.redux_encoder.redux_encoder import ReduxEncoder
-from mflux.models.siglip_vision_transformer.siglip_vision_transformer import SiglipVisionTransformer
+from mflux.models.flux.model.redux_encoder.redux_encoder import ReduxEncoder
+from mflux.models.flux.model.siglip_vision_transformer.siglip_vision_transformer import SiglipVisionTransformer
 from mflux.post_processing.image_util import ImageUtil
 
 

@@ -1,8 +1,8 @@
 import mlx.core as mx
 import mlx.nn as nn
 
-from mflux.models.depth_pro.dino_v2.patch_embed import PatchEmbed
-from mflux.models.depth_pro.dino_v2.transformer_block import TransformerBlock
+from mflux.models.depth_pro.model.dino_v2.patch_embed import PatchEmbed
+from mflux.models.depth_pro.model.dino_v2.transformer_block import TransformerBlock
 
 
 class DinoVisionTransformer(nn.Module):

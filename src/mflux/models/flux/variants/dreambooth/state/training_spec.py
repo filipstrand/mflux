@@ -5,7 +5,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import List
 
-from mflux.dreambooth.state.zip_util import ZipUtil
+from mflux.models.flux.variants.dreambooth.state.zip_util import ZipUtil
 
 
 @dataclass

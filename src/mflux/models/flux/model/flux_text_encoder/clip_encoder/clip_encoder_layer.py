@@ -1,8 +1,8 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.flux_text_encoder.clip_encoder.clip_mlp import CLIPMLP
-from mflux.models.flux_text_encoder.clip_encoder.clip_sdpa_attention import CLIPSdpaAttention
+from mflux.models.flux.model.flux_text_encoder.clip_encoder.clip_mlp import CLIPMLP
+from mflux.models.flux.model.flux_text_encoder.clip_encoder.clip_sdpa_attention import CLIPSdpaAttention
 
 
 class CLIPEncoderLayer(nn.Module):

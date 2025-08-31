@@ -1,6 +1,5 @@
 """Configuration for In-Context LoRAs from Hugging Face."""
-
-from mflux.weights.weight_handler_lora_huggingface import WeightHandlerLoRAHuggingFace
+from mflux.models.flux.weights.weight_handler_lora_huggingface import WeightHandlerLoRAHuggingFace
 
 # Default Hugging Face repository for In-Context LoRAs
 LORA_REPO_ID = "ali-vilab/In-Context-LoRA"

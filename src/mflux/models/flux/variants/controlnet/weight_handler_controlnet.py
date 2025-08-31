@@ -4,9 +4,9 @@ from pathlib import Path
 import mlx.core as mx
 from mlx.utils import tree_unflatten
 
-from mflux.weights.download import snapshot_download
-from mflux.weights.weight_handler import MetaData
-from mflux.weights.weight_util import WeightUtil
+from mflux.models.flux.weights.weight_handler import MetaData
+from mflux.models.flux.weights.weight_util import WeightUtil
+from mflux.utils.download import snapshot_download
 
 
 class WeightHandlerControlnet:

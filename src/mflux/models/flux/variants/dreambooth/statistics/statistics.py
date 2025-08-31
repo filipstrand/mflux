@@ -3,10 +3,10 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from mflux.dreambooth.state.zip_util import ZipUtil
+from mflux.models.flux.variants.dreambooth.state.zip_util import ZipUtil
 
 if TYPE_CHECKING:
-    from mflux.dreambooth.state.training_spec import TrainingSpec
+    from mflux.models.flux.variants.dreambooth.state.training_spec import TrainingSpec
 
 
 class Statistics:

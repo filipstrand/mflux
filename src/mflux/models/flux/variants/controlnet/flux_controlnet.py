@@ -6,20 +6,20 @@ from mflux.callbacks.callbacks import Callbacks
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.controlnet.controlnet_util import ControlnetUtil
-from mflux.controlnet.transformer_controlnet import TransformerControlnet
 from mflux.error.exceptions import StopImageGenerationException
-from mflux.flux.flux_initializer import FluxInitializer
 from mflux.latent_creator.latent_creator import LatentCreator
-from mflux.models.flux_text_encoder.clip_encoder.clip_encoder import CLIPEncoder
-from mflux.models.flux_text_encoder.prompt_encoder import PromptEncoder
-from mflux.models.flux_text_encoder.t5_encoder.t5_encoder import T5Encoder
-from mflux.models.flux_transformer.transformer import Transformer
-from mflux.models.flux_vae.vae import VAE
+from mflux.models.flux.flux_initializer import FluxInitializer
+from mflux.models.flux.model.flux_text_encoder.clip_encoder.clip_encoder import CLIPEncoder
+from mflux.models.flux.model.flux_text_encoder.prompt_encoder import PromptEncoder
+from mflux.models.flux.model.flux_text_encoder.t5_encoder.t5_encoder import T5Encoder
+from mflux.models.flux.model.flux_transformer.transformer import Transformer
+from mflux.models.flux.model.flux_vae.vae import VAE
+from mflux.models.flux.variants.controlnet.controlnet_util import ControlnetUtil
+from mflux.models.flux.variants.controlnet.transformer_controlnet import TransformerControlnet
+from mflux.models.flux.weights.model_saver import ModelSaver
 from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil, StrOrBytesPath
-from mflux.weights.model_saver import ModelSaver
 
 
 class Flux1Controlnet(nn.Module):
