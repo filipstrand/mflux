@@ -49,6 +49,7 @@ class Flux1(nn.Module):
         seed: int,
         prompt: str,
         config: Config,
+        negative_prompt: str | None = None,
     ) -> GeneratedImage:
         # 0. Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)

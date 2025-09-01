@@ -17,11 +17,12 @@ GUIDANCE_SCALE_KONTEXT = 2.5
 HEIGHT, WIDTH = 1024, 1024
 MAX_PIXELS_WARNING_THRESHOLD = 2048 * 2048
 IMAGE_STRENGTH = 0.4
-MODEL_CHOICES = ["dev", "schnell", "krea-dev", "dev-krea"]
+MODEL_CHOICES = ["dev", "schnell", "krea-dev", "dev-krea", "qwen"]
 MODEL_INFERENCE_STEPS = {
     "dev": 25,
     "krea-dev": 25,
     "schnell": 4,
+    "qwen": 25,
 }
 QUANTIZE_CHOICES = [3, 5, 4, 6, 8]
 
