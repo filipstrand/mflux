@@ -34,7 +34,7 @@ def main():
     )
 
     # 2. Register the optional callbacks
-    memory_saver = CallbackManager.register_callbacks(args=args, flux=flux)
+    memory_saver = CallbackManager.register_callbacks(args=args, model=flux)
 
     try:
         # Calculate output dimensions and handle safety warnings

@@ -44,7 +44,7 @@ def main():
     )
 
     # 2. Register callbacks
-    memory_saver = CallbackManager.register_callbacks(args=args, flux=flux)
+    memory_saver = CallbackManager.register_callbacks(args=args, model=flux)
 
     try:
         for seed in args.seed:
