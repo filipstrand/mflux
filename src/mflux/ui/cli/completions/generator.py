@@ -3,7 +3,7 @@
 import argparse
 from pathlib import Path
 
-from mflux.community.in_context.utils.in_context_loras import LORA_NAME_MAP
+from mflux.models.flux.variants.in_context.utils.in_context_loras import LORA_NAME_MAP
 from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 

@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from mflux.completions.generator import CompletionGenerator
+from mflux.ui.cli.completions.generator import CompletionGenerator
 
 
 def get_zsh_fpath():
