@@ -1,7 +1,7 @@
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.config.config import Config
 from mflux.error.exceptions import PromptFileReadError, StopImageGenerationException
-from mflux.flux_tools.depth.flux_depth import Flux1Depth
+from mflux.models.flux.variants.depth.flux_depth import Flux1Depth
 from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_prompt

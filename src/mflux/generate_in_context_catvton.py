@@ -1,10 +1,10 @@
 from pathlib import Path
 
 from mflux.callbacks.callback_manager import CallbackManager
-from mflux.community.in_context.flux_in_context_fill import Flux1InContextFill
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.error.exceptions import PromptFileReadError, StopImageGenerationException
+from mflux.models.flux.variants.in_context.flux_in_context_fill import Flux1InContextFill
 from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_prompt

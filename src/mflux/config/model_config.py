@@ -84,6 +84,11 @@ class ModelConfig:
     def krea_dev() -> "ModelConfig":
         return AVAILABLE_MODELS["krea-dev"]
 
+    @staticmethod
+    @lru_cache
+    def qwen_image() -> "ModelConfig":
+        return AVAILABLE_MODELS["qwen-image"]
+
     def x_embedder_input_dim(self) -> int:
         if "Fill" in self.model_name:
             return 384
@@ -280,5 +285,17 @@ AVAILABLE_MODELS = {
         supports_guidance=True,
         requires_sigma_shift=True,
         priority=10,
+    ),
+    "qwen-image": ModelConfig(
+        aliases=["qwen-image", "qwen"],
+        model_name="Qwen/Qwen-Image",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,  # Not fully clear here, might be to look up in the reference
+        max_sequence_length=512,  # Not fully clear here, might be to look up in the reference
+        supports_guidance=False,  # Not fully clear here, might be to look up in the reference
+        requires_sigma_shift=False,  # Not fully clear here, might be to look up in the reference
+        priority=11,
     ),
 }

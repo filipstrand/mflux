@@ -1,6 +1,6 @@
-from mflux.dreambooth.dreambooth import DreamBooth
-from mflux.dreambooth.dreambooth_initializer import DreamBoothInitializer
 from mflux.error.exceptions import StopTrainingException
+from mflux.models.flux.variants.dreambooth.dreambooth import DreamBooth
+from mflux.models.flux.variants.dreambooth.dreambooth_initializer import DreamBoothInitializer
 from mflux.ui.cli.parsers import CommandLineParser
 
 

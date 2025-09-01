@@ -6,7 +6,7 @@ from PIL import Image
 
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
-from mflux.flux_tools.redux.flux_redux import Flux1Redux
+from mflux.models.flux.variants.redux.flux_redux import Flux1Redux
 
 
 class ImageGeneratorReduxTestHelper:

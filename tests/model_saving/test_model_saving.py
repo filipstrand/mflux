@@ -6,9 +6,9 @@ import numpy as np
 
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
-from mflux.flux.flux import Flux1
+from mflux.models.flux.variants.txt2img.flux import Flux1
+from mflux.models.flux.weights.weight_handler import WeightHandler
 from mflux.utils.version_util import VersionUtil
-from mflux.weights.weight_handler import WeightHandler
 
 PATH = "tests/4bit/"
 

@@ -5,13 +5,13 @@ import time
 import typing as t
 from pathlib import Path
 
-from mflux.community.in_context.utils.in_context_loras import LORA_NAME_MAP, LORA_REPO_ID
+from mflux.models.flux.variants.in_context.utils.in_context_loras import LORA_NAME_MAP, LORA_REPO_ID
 from mflux.ui import (
     box_values,
     defaults as ui_defaults,
     scale_factor,
 )
-from mflux.weights.lora_library import get_lora_path
+from mflux.utils.lora_library import get_lora_path
 
 
 class ModelSpecAction(argparse.Action):

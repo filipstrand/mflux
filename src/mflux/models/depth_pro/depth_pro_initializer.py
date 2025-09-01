@@ -1,7 +1,7 @@
 import mlx.nn as nn
 
-from mflux.models.depth_pro.depth_pro_model import DepthProModel
-from mflux.models.depth_pro.weight_handler_depth_pro import WeightHandlerDepthPro
+from mflux.models.depth_pro.model.depth_pro_model import DepthProModel
+from mflux.models.depth_pro.weights.weight_handler_depth_pro import WeightHandlerDepthPro
 
 
 class DepthProInitializer:

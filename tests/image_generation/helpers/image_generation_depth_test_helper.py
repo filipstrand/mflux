@@ -6,7 +6,7 @@ from PIL import Image
 
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
-from mflux.flux_tools.depth.flux_depth import Flux1Depth
+from mflux.models.flux.variants.depth.flux_depth import Flux1Depth
 
 
 class ImageGeneratorDepthTestHelper:
