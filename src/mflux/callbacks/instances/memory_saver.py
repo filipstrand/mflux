@@ -32,7 +32,7 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
         depth_image: PIL.Image.Image | None = None,
     ) -> None:
         self.peak_memory = mx.get_peak_memory()
-        self._delete_encoders()
+        self._delete_text_encoders()
 
     def call_in_loop(
         self,
@@ -56,10 +56,14 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
         if not self.keep_transformer:
             self._delete_transformer()
 
-    def _delete_encoders(self) -> None:
+    def _delete_text_encoders(self) -> None:
         # repeated image generation only works with the same prompt (cache)
-        self.model.clip_text_encoder = None
-        self.model.t5_text_encoder = None
+        if hasattr(self.model, "clip_image_encoder"):
+            self.model.clip_image_encoder = None
+        if hasattr(self.model, "t5_image_encoder"):
+            self.model.t5_image_encoder = None
+        if hasattr(self.model, "text_encoder"):
+            self.model.text_encoder = None
         gc.collect()
         mx.clear_cache()
 

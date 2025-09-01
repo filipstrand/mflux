@@ -77,7 +77,6 @@ class QwenImage(nn.Module):
             qwen_tokenizer=self.qwen_tokenizer,
             qwen_text_encoder=self.text_encoder,
         )
-        del self.text_encoder
 
         # (Optional) Call subscribers for beginning of loop
         Callbacks.before_loop(
