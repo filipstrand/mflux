@@ -18,6 +18,14 @@ class QuantizationUtil:
         weights: "WeightHandler",
     ) -> None:
         q_level = weights.meta_data.quantization_level
+        breakpoint()
+
+        # mx.save_tensors saves metadata dict kv 'quantization_level': 'None' as a str: str mapping
+        # we coerce both configs to NoneType to help users use non-quantized saved model files
+        if q_level == "None":
+            q_level = None
+        if quantize == "None":
+            quantize = None
 
         if quantize is not None or q_level is not None:
             bits = int(q_level) if q_level is not None else quantize
