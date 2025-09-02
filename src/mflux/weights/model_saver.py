@@ -34,8 +34,12 @@ class ModelSaver:
         weights = ModelSaver._split_weights(base_path, dict(tree_flatten(model.parameters())))
         for i, weight in enumerate(weights):
             mx.save_safetensors(
+                # usage: save_safetensors(file: str, arrays: dict[str, array], metadata: Optional[dict[str, str]] = None)
                 str(path / f"{i}.safetensors"),
+                # arrays (dict(str, array)): The dictionary of names to arrays to be saved.
                 weight,
+                # [save_safetensors] Metadata must be a dictionary with string keys and values
+                # i.e. 'None' and other special values are string-ified and need to be parsed by readers
                 {
                     "quantization_level": str(bits),
                     "mflux_version": VersionUtil.get_mflux_version(),
