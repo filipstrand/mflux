@@ -48,6 +48,7 @@ def main():
                     width=args.width,
                     guidance=args.guidance,
                     controlnet_strength=args.controlnet_strength,
+                    scheduler=args.scheduler,
                 ),
             )
 

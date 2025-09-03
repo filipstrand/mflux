@@ -53,6 +53,7 @@ class Flux1(nn.Module):
         # 0. Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
+        sigmas = config.scheduler.sigmas
 
         # 1. Create the initial latents
         latents = LatentCreator.create_for_txt2img_or_img2img(
@@ -62,7 +63,7 @@ class Flux1(nn.Module):
             img2img=Img2Img(
                 vae=self.vae,
                 image_path=config.image_path,
-                sigmas=config.sigmas,
+                sigmas=sigmas,
                 init_time_step=config.init_time_step,
             ),
         )
@@ -87,6 +88,9 @@ class Flux1(nn.Module):
 
         for t in time_steps:
             try:
+                # Scale model input if needed by the scheduler
+                latents = config.scheduler.scale_model_input(latents, t)
+
                 # 3.t Predict the noise
                 noise = self.transformer(
                     t=t,
@@ -97,7 +101,7 @@ class Flux1(nn.Module):
                 )
 
                 # 4.t Take one denoise step
-                dt = config.sigmas[t + 1] - config.sigmas[t]
+                dt = sigmas[t + 1] - sigmas[t]
                 latents += noise * dt
 
                 # (Optional) Call subscribers in-loop
