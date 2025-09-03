@@ -11,6 +11,15 @@ class SchedulerModuleNotFound(ValueError): ...
 class SchedulerClassNotFound(ValueError): ...
 
 
+SCHEDULER_REGISTRY = {"LinearScheduler": LinearScheduler}
+
+
+def register_contrib(scheduler_object, scheduler_name=None):
+    if scheduler_name is None:
+        scheduler_name = scheduler_object.__name__
+    SCHEDULER_REGISTRY[scheduler_name] = scheduler_object
+
+
 def try_import_external_scheduler(scheduler_object_path: str):
     import importlib
 

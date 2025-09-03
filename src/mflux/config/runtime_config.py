@@ -5,7 +5,7 @@ import mlx.core as mx
 
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
-from mflux.schedulers import try_import_external_scheduler
+from mflux.schedulers import SCHEDULER_REGISTRY, try_import_external_scheduler
 from mflux.schedulers.linear_scheduler import LinearScheduler
 
 logger = logging.getLogger(__name__)
@@ -104,6 +104,8 @@ class RuntimeConfig:
 
         if self.config.scheduler_str == "linear":
             self._scheduler = LinearScheduler(self)
+        elif (registered_scheduler := SCHEDULER_REGISTRY.get(self.config.scheduler_str, None)) is not None:
+            self._scheduler = registered_scheduler
         elif "." in self.config.scheduler_str:
             # this raises ValueError if scheduler is not importable
             scheduler_cls = try_import_external_scheduler(self.config.scheduler_str)
