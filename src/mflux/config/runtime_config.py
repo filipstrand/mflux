@@ -19,6 +19,7 @@ class RuntimeConfig:
     ):
         self.config = config
         self.model_config = model_config
+        self._scheduler = None
 
     @property
     def height(self) -> int:
@@ -98,12 +99,16 @@ class RuntimeConfig:
 
     @property
     def scheduler(self):
+        if self._scheduler is not None:
+            return self._scheduler
+
         if self.config.scheduler_str == "linear":
-            scheduler = LinearScheduler(self)
+            self._scheduler = LinearScheduler(self)
         elif "." in self.config.scheduler_str:
             # this raises ValueError if scheduler is not importable
             scheduler_cls = try_import_external_scheduler(self.config.scheduler_str)
-            scheduler = scheduler_cls(self)
+            self._scheduler = scheduler_cls(self)
         else:
             raise NotImplementedError(f"The scheduler {self.config.scheduler_str!r} is not implemented by mflux.")
-        return scheduler
+
+        return self._scheduler
