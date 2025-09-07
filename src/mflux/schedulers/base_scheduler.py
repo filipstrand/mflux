@@ -14,7 +14,10 @@ class BaseScheduler(ABC):
         """
         The sigma schedule for the diffusion process.
         """
-        raise NotImplementedError("Schedulers must implement sigmas")
+        ...
+
+    @abstractmethod
+    def step(self, model_output: mx.array, timestep: int, sample: mx.array, **kwargs) -> mx.array: ...
 
     def scale_model_input(self, latents: mx.array, t: int) -> mx.array:
         """

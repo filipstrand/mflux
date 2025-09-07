@@ -16,9 +16,13 @@ class LinearScheduler(BaseScheduler):
 
     def __init__(self, runtime_config: "RuntimeConfig"):
         self.runtime_config = runtime_config
+        self._sigmas = self._get_sigmas()
 
     @property
     def sigmas(self) -> mx.array:
+        return self._sigmas
+
+    def _get_sigmas(self) -> mx.array:
         model_config = self.runtime_config.model_config
         sigmas = mx.linspace(
             1.0,
@@ -39,3 +43,7 @@ class LinearScheduler(BaseScheduler):
             return shifted_sigmas
         else:
             return sigmas
+
+    def step(self, model_output: mx.array, timestep: int, sample: mx.array, **kwargs) -> mx.array:
+        dt = self._sigmas[timestep + 1] - self._sigmas[timestep]
+        return sample + model_output * dt
