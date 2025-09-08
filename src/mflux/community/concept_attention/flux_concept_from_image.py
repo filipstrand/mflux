@@ -129,7 +129,7 @@ class Flux1ConceptFromImage(nn.Module):
                 latents = LatentCreator.add_noise_by_interpolation(
                     clean=ArrayUtil.pack_latents(latents=encoded_image, height=config.height, width=config.width),
                     noise=static_noise,
-                    sigma=config.sigmas[t + 1],
+                    sigma=sigmas[t + 1],
                 )
 
                 # (Optional) Call subscribers in-loop

@@ -60,7 +60,7 @@ class Flux1Redux(nn.Module):
         # 0. Create a new runtime config based on the model type and input parameters
         runtime_config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(runtime_config.init_time_step, runtime_config.num_inference_steps))
-        sigmas = config.scheduler.sigmas
+        sigmas = runtime_config.scheduler.sigmas
 
         # 1. Create the initial latents
         latents = LatentCreator.create(

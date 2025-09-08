@@ -110,6 +110,7 @@ class Flux1InContextDev(nn.Module):
                     latents=latents,
                     encoded_image=encoded_image,
                     static_noise=static_noise,
+                    sigmas=sigmas,
                 )
 
                 # (Optional) Call subscribers in-loop
@@ -181,6 +182,7 @@ class Flux1InContextDev(nn.Module):
         latents: mx.array,
         encoded_image: mx.array,
         static_noise: mx.array,
+        sigmas: mx.array,
     ) -> mx.array:
         # 1. Unpack the latents
         unpacked = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
@@ -193,7 +195,7 @@ class Flux1InContextDev(nn.Module):
         unpacked[:, :, :, 0:latent_width] = LatentCreator.add_noise_by_interpolation(
             clean=encoded_image[:, :, :, 0:latent_width],
             noise=unpacked_static_noise[:, :, :, 0:latent_width],
-            sigma=config.sigmas[t + 1],
+            sigma=sigmas[t + 1],
         )
 
         # 4. Repack the latents
