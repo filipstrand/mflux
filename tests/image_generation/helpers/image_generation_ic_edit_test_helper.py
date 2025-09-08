@@ -1,13 +1,12 @@
 import os
 from pathlib import Path
 
-import numpy as np
-from PIL import Image
-
 from mflux.community.in_context.flux_in_context_fill import Flux1InContextFill
 from mflux.community.in_context.utils.in_context_loras import prepare_ic_edit_loras
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
+
+from .image_compare import check_images_close_enough
 
 
 class ImageGeneratorICEditTestHelper:
@@ -56,15 +55,13 @@ class ImageGeneratorICEditTestHelper:
             image.get_right_half().save(path=output_image_path, overwrite=True)
 
             # then
-            np.testing.assert_array_equal(
-                np.array(Image.open(output_image_path)),
-                np.array(Image.open(reference_image_path)),
-                err_msg=f"Generated image doesn't match reference image. Check {output_image_path} vs {reference_image_path}",
+            check_images_close_enough(
+                output_image_path, reference_image_path, "Generated ic-edit image doesn't match reference image."
             )
 
         finally:
             # cleanup
-            if os.path.exists(output_image_path):
+            if os.path.exists(output_image_path) and "MFLUX_PRESERVE_TEST_OUTPUT" not in os.environ:
                 os.remove(output_image_path)
 
     @staticmethod

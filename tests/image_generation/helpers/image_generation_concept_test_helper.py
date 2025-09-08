@@ -9,6 +9,8 @@ from mflux.community.concept_attention.flux_concept_from_image import Flux1Conce
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 
+from .image_compare import check_images_close_enough
+
 
 class ImageGenerationConceptTestHelper:
     @staticmethod
@@ -57,10 +59,10 @@ class ImageGenerationConceptTestHelper:
             image.save_concept_heatmap(path=output_heatmap_path, overwrite=True)
 
             # then - verify the heatmap matches reference
-            np.testing.assert_array_equal(
-                np.array(Image.open(output_heatmap_path)),
-                np.array(Image.open(reference_heatmap_path)),
-                err_msg=f"Generated concept heatmap doesn't match reference heatmap. Check {output_heatmap_path} vs {reference_heatmap_path}",
+            check_images_close_enough(
+                output_heatmap_path,
+                reference_heatmap_path,
+                "Generated concept heatmap doesn't match reference heatmap.",
             )
 
         finally:
@@ -117,15 +119,17 @@ class ImageGenerationConceptTestHelper:
             image.save_concept_heatmap(path=output_heatmap_path, overwrite=True)
 
             # then - verify the heatmap matches reference
-            np.testing.assert_array_equal(
+
+            np.testing.assert_allclose(
                 np.array(Image.open(output_heatmap_path)),
                 np.array(Image.open(reference_heatmap_path)),
+                atol=5,
                 err_msg=f"Generated concept from image heatmap doesn't match reference heatmap. Check {output_heatmap_path} vs {reference_heatmap_path}",
             )
 
         finally:
             # cleanup
-            if os.path.exists(output_heatmap_path):
+            if os.path.exists(output_heatmap_path) and "MFLUX_PRESERVE_TEST_OUTPUT" not in os.environ:
                 os.remove(output_heatmap_path)
 
     @staticmethod

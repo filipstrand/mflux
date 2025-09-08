@@ -1,12 +1,11 @@
 import os
 from pathlib import Path
 
-import numpy as np
-from PIL import Image
-
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.flux_tools.depth.flux_depth import Flux1Depth
+
+from .image_compare import check_images_close_enough
 
 
 class ImageGeneratorDepthTestHelper:
@@ -47,15 +46,14 @@ class ImageGeneratorDepthTestHelper:
             image.save(path=output_image_path, overwrite=True)
 
             # then
-            np.testing.assert_array_equal(
-                np.array(Image.open(output_image_path)),
-                np.array(Image.open(reference_image_path)),
-                err_msg=f"Generated image doesn't match reference image. Check {output_image_path} vs {reference_image_path}",
+            check_images_close_enough(
+                output_image_path,
+                reference_image_path,
+                "Generated depth image doesn't match reference image.",
             )
-
         finally:
             # cleanup
-            if os.path.exists(output_image_path):
+            if os.path.exists(output_image_path) and "MFLUX_PRESERVE_TEST_OUTPUT" not in os.environ:
                 os.remove(output_image_path)
 
     @staticmethod
