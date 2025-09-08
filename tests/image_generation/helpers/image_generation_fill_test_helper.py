@@ -1,13 +1,12 @@
 import os
 
-import numpy as np
-from PIL import Image
-
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.flux_tools.fill.flux_fill import Flux1Fill
 from mflux.ui import defaults as ui_defaults
 from tests.image_generation.helpers.image_generation_test_helper import ImageGeneratorTestHelper
+
+from .image_compare import check_images_close_enough
 
 
 class ImageGeneratorFillTestHelper:
@@ -57,13 +56,13 @@ class ImageGeneratorFillTestHelper:
             image.save(path=output_image_path, overwrite=True)
 
             # then
-            np.testing.assert_array_equal(
-                np.array(Image.open(output_image_path)),
-                np.array(Image.open(reference_image_path)),
-                err_msg=f"Generated image doesn't match reference image. Check {output_image_path} vs {reference_image_path}",
+            check_images_close_enough(
+                output_image_path,
+                reference_image_path,
+                "Generated fill image doesn't match reference image.",
             )
 
         finally:
             # cleanup
-            if os.path.exists(output_image_path):
+            if os.path.exists(output_image_path) and "MFLUX_PRESERVE_TEST_OUTPUT" not in os.environ:
                 os.remove(output_image_path)
