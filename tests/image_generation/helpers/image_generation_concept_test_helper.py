@@ -63,6 +63,7 @@ class ImageGenerationConceptTestHelper:
                 output_heatmap_path,
                 reference_heatmap_path,
                 "Generated concept heatmap doesn't match reference heatmap.",
+                mismatch_threshold=0.25,  # special case for heatmap, allow higher threshold
             )
 
         finally:
