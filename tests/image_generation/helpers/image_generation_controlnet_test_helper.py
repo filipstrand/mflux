@@ -1,8 +1,5 @@
 import os
 
-import numpy as np
-from PIL import Image
-
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.controlnet.flux_controlnet import Flux1Controlnet
@@ -58,10 +55,9 @@ class ImageGeneratorControlnetTestHelper:
 
             # then
             check_images_close_enough(
-                np.array(Image.open(output_image_path)),
-                np.array(Image.open(reference_image_path)),
-                atol=5,
-                err_msg="Generated controlnet image doesn't match reference image",
+                output_image_path,
+                reference_image_path,
+                "Generated controlnet image doesn't match reference image",
             )
 
         finally:
