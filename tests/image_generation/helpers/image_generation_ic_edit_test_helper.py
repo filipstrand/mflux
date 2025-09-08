@@ -56,7 +56,9 @@ class ImageGeneratorICEditTestHelper:
 
             # then
             check_images_close_enough(
-                output_image_path, reference_image_path, "Generated ic-edit image doesn't match reference image."
+                output_image_path,
+                reference_image_path,
+                "Generated ic-edit image doesn't match reference image.",
             )
 
         finally:
