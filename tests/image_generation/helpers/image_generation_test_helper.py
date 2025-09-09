@@ -20,6 +20,7 @@ class ImageGeneratorTestHelper:
         prompt: str,
         steps: int,
         seed: int,
+        quantize=8,
         height: int | None = None,
         width: int | None = None,
         image_path: str | None = None,
@@ -37,7 +38,7 @@ class ImageGeneratorTestHelper:
             # given
             model = model_class(
                 model_config=model_config,
-                quantize=8,
+                quantize=quantize,
                 lora_paths=lora_paths,
                 lora_scales=lora_scales,
             )
