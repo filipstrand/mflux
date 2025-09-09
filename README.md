@@ -1834,6 +1834,14 @@ This will generate the following image
 
 ---
 
+### Optional Tool: [DSPy](https://dspy.ai/) Enhanced JSON Prompting
+
+Various online communities for image generation models suggest that "JSON prompting" can lead the user to give more specific instructions to help align user intent with the generated image.
+
+In `tools/dspy_photorealistic_prompt.py` is an example of using `dspy.Signature`/`dspy.ChainOfThought` and `InputField` / `OutputField` schemas to guide and constraint LM output for the use case of generating a photorealistic image, leading the users into defining camera/lens/pose/lighting/etc parameters that a naive prompt may not include. A tool like this does not entirely remove the user from needing to be specific with their intent, but does ease the effort during prompt prototyping.
+
+The script uses `dspy` to call a local LM hosted by Ollama, but you can clone the example and use any remote/local hosted model you'd like. It's up to you to run evals on how effective each model is. As of September 2025, we suggest trying `gpt-oss-20b`, `gemma3` or other leading local models by default.
+
 ### Optional Tool: Batch Image Renamer
 
 With a large number of generated images, some users want to automatically rename their image outputs to reflect the prompts and configs.
