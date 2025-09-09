@@ -50,7 +50,7 @@ class DreamBoothLoss:
         latents_t = LatentCreator.add_noise_by_interpolation(
             clean=clean_image,
             noise=pure_noise,
-            sigma=config.sigmas[t],
+            sigma=config.scheduler.sigmas[t],
         )
 
         # Predict the noise from timestep t
