@@ -27,7 +27,7 @@ class QwenImageEncoder3D(nn.Module):
                 downsample_mode = "downsample3d" if self.temporal_downsample[i] else "downsample2d"
             else:
                 downsample_mode = "downsample2d"
-            # Do not downsample on the final stage only (match diffusers)
+            # Do not downsample on the final stage only
             if i == len(dims) - 2:
                 downsample_mode = None
             # Use per-stage num_res_blocks

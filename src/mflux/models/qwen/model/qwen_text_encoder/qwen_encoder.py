@@ -37,8 +37,8 @@ class QwenEncoder(nn.Module):
         batch_size, seq_len = input_ids.shape
         inputs_embeds = self.embed_tokens(input_ids)
         cache_position = mx.arange(seq_len, dtype=mx.int32)
-        position_ids = mx.expand_dims(mx.expand_dims(cache_position, axis=0), axis=0)  # [1, 1, seq_len]
-        position_ids = mx.broadcast_to(position_ids, (3, batch_size, seq_len))  # [3, batch_size, seq_len]
+        position_ids = mx.expand_dims(mx.expand_dims(cache_position, axis=0), axis=0)
+        position_ids = mx.broadcast_to(position_ids, (3, batch_size, seq_len))
         if attention_mask is not None:
             padding_mask = mx.where(
                 attention_mask == 1,
@@ -49,10 +49,10 @@ class QwenEncoder(nn.Module):
         else:
             padding_mask = None
 
-        # Create causal triangular mask [batch, 1, seq_len, seq_len]
+        # Create causal triangular mask
         idx = mx.arange(seq_len, dtype=mx.int32)
-        j = mx.expand_dims(idx, axis=0)  # (1, S)
-        i = mx.expand_dims(idx, axis=1)  # (S, 1)
+        j = mx.expand_dims(idx, axis=0)
+        i = mx.expand_dims(idx, axis=1)
         tri_bool = j > i
         zeros_2d = mx.zeros((seq_len, seq_len)).astype(mx.float32)
         neginf_2d = mx.ones((seq_len, seq_len)).astype(mx.float32) * (-float("inf"))
