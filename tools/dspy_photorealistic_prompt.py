@@ -174,8 +174,8 @@ def run_examples():
     print("Generating speed varies by the capabilities of your hardware.")
     print("You may need to be patient as the results stream in.")
     grid = Table(title="Prompt Enhancement Examples", box=box.MINIMAL_DOUBLE_HEAD)
-    grid.add_column("Original Prompt", justify="right", style="magenta")
-    grid.add_column("Enhanced Prompt", justify="left", style="green")
+    grid.add_column("Original Prompt", width=40, justify="right", style="magenta")
+    grid.add_column("Enhanced Prompt", width=60, justify="left", style="green")
     with Live(grid, refresh_per_second=1):
         for idx, naive_prompt in enumerate(EXAMPLE_NAIVE_USER_PROMPTS, 1):
             enhanced_prompt_dict = enhance_user_prompt(naive_prompt, trigger_words="dspy demo")
