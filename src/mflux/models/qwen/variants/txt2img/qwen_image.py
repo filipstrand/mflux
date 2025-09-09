@@ -155,6 +155,7 @@ class QwenImage(nn.Module):
             image_path=runtime_config.image_path,
             image_strength=runtime_config.image_strength,
             generation_time=time_steps.format_dict["elapsed"],
+            negative_prompt=negative_prompt,
         )
 
     @staticmethod

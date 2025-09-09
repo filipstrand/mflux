@@ -88,7 +88,7 @@ class TestImageGenerator:
             height=341,
             width=768,
             prompt="Luxury food photograph",
-            negative_prompt="",
+            negative_prompt="ugly, blurry, low quality",
         )
 
     def test_qwen_image_generation_image_to_image(self):
@@ -105,5 +105,5 @@ class TestImageGenerator:
             image_path="reference_dev_image_to_image.png",
             image_strength=0.4,
             prompt="Luxury food photograph of a burger",
-            negative_prompt="",
+            negative_prompt="ugly, blurry, low quality",
         )

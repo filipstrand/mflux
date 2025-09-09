@@ -36,6 +36,7 @@ class ImageUtil:
         masked_image_path: str | Path | None = None,
         depth_image_path: str | Path | None = None,
         concept_heatmap: ConceptHeatmap | None = None,
+        negative_prompt: str | None = None,
     ) -> GeneratedImage:
         normalized = ImageUtil._denormalize(decoded_latents)
         normalized_numpy = ImageUtil._to_numpy(normalized)
@@ -61,6 +62,7 @@ class ImageUtil:
             redux_image_paths=redux_image_paths,
             redux_image_strengths=redux_image_strengths,
             concept_heatmap=concept_heatmap,
+            negative_prompt=negative_prompt,
         )
 
     @staticmethod
