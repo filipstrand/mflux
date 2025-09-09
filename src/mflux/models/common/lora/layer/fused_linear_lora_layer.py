@@ -1,7 +1,7 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.flux.variants.dreambooth.lora_layers.linear_lora_layer import LoRALinear
+from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
 
 
 class FusedLoRALinear(nn.Module):

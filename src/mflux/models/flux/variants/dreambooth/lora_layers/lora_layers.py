@@ -6,9 +6,9 @@ import mlx.core as mx
 from mlx import nn
 from mlx.utils import tree_flatten
 
+from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
 from mflux.models.flux.model.flux_transformer.joint_transformer_block import JointTransformerBlock
 from mflux.models.flux.model.flux_transformer.single_transformer_block import SingleTransformerBlock
-from mflux.models.flux.variants.dreambooth.lora_layers.linear_lora_layer import LoRALinear
 from mflux.models.flux.variants.dreambooth.state.training_spec import (
     SingleTransformerBlocks,
     TrainingSpec,

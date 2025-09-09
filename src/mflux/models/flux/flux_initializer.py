@@ -12,9 +12,9 @@ from mflux.models.flux.tokenizer.tokenizer_handler import TokenizerHandler
 from mflux.models.flux.variants.controlnet.transformer_controlnet import TransformerControlnet
 from mflux.models.flux.variants.controlnet.weight_handler_controlnet import WeightHandlerControlnet
 from mflux.models.flux.variants.redux.weight_handler_redux import WeightHandlerRedux
+from mflux.models.common.lora.download.lora_huggingface_downloader import LoRAHuggingFaceDownloader
 from mflux.models.flux.weights.weight_handler import WeightHandler
 from mflux.models.flux.weights.weight_handler_lora import WeightHandlerLoRA
-from mflux.models.flux.weights.weight_handler_lora_huggingface import WeightHandlerLoRAHuggingFace
 from mflux.models.flux.weights.weight_util import WeightUtil
 
 
@@ -81,9 +81,10 @@ class FluxInitializer:
         )
 
         # 5. Set LoRA weights
-        hf_lora_paths = WeightHandlerLoRAHuggingFace.download_loras(
+        hf_lora_paths = LoRAHuggingFaceDownloader.download_loras(
             lora_names=lora_names,
             repo_id=lora_repo_id,
+            model_name="Flux",
         )
         flux_model.lora_paths = lora_paths + hf_lora_paths
         flux_model.lora_scales = (lora_scales or []) + [1.0] * len(hf_lora_paths)

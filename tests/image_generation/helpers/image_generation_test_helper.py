@@ -27,6 +27,8 @@ class ImageGeneratorTestHelper:
         image_strength: float | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
+        lora_names: list[str] | None = None,
+        lora_repo_id: str | None = None,
         negative_prompt: str | None = None,
     ):
         # resolve paths
@@ -36,12 +38,20 @@ class ImageGeneratorTestHelper:
 
         try:
             # given
-            model = model_class(
-                model_config=model_config,
-                quantize=quantize,
-                lora_paths=lora_paths,
-                lora_scales=lora_scales,
-            )
+            model_kwargs = {
+                "model_config": model_config,
+                "quantize": quantize,
+                "lora_paths": lora_paths,
+                "lora_scales": lora_scales,
+            }
+
+            # Add HuggingFace LoRA parameters if provided
+            if lora_names is not None:
+                model_kwargs["lora_names"] = lora_names
+            if lora_repo_id is not None:
+                model_kwargs["lora_repo_id"] = lora_repo_id
+
+            model = model_class(**model_kwargs)
             generate_kwargs = {
                 "seed": seed,
                 "prompt": prompt,

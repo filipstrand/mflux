@@ -1,6 +1,5 @@
 """Configuration for In-Context LoRAs from Hugging Face."""
-
-from mflux.models.flux.weights.weight_handler_lora_huggingface import WeightHandlerLoRAHuggingFace
+from mflux.models.common.lora.download.lora_huggingface_downloader import LoRAHuggingFaceDownloader
 
 # Default Hugging Face repository for In-Context LoRAs
 LORA_REPO_ID = "ali-vilab/In-Context-LoRA"
@@ -36,7 +35,7 @@ def prepare_ic_edit_loras(additional_lora_paths: list[str] | None = None) -> lis
     print(f"🔍 Downloading IC-Edit LoRA from {IC_EDIT_LORA_REPO_ID}")
 
     # Download the required IC-Edit LoRA
-    ic_edit_lora_path = WeightHandlerLoRAHuggingFace.download_lora(
+    ic_edit_lora_path = LoRAHuggingFaceDownloader.download_lora(
         repo_id=IC_EDIT_LORA_REPO_ID,
         lora_name=IC_EDIT_LORA_FILENAME,
     )

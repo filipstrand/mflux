@@ -107,3 +107,20 @@ class TestImageGenerator:
             prompt="Luxury food photograph of a burger",
             negative_prompt="ugly, blurry, low quality",
         )
+
+    def test_qwen_image_generation_lora(self):
+        ImageGeneratorTestHelper.assert_matches_reference_image(
+            reference_image_path="reference_qwen_lora_hf.png",
+            output_image_path="output_qwen_lora_hf.png",
+            model_class=QwenImage,
+            model_config=ModelConfig.qwen_image(),
+            quantize=6,
+            steps=8,
+            seed=42,
+            height=512,
+            width=512,
+            prompt="Luxury food photograph",
+            negative_prompt="ugly, blurry, low quality",
+            lora_repo_id="lightx2v/Qwen-Image-Lightning",
+            lora_names=["Qwen-Image-Lightning-8steps-V1.1.safetensors"],
+        )
