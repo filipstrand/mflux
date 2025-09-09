@@ -43,41 +43,33 @@ class AttentionUtils:
         batch_size: int,
         num_heads: int,
         head_dim: int,
+        mask: mx.array | None = None,
     ) -> mx.array:
         scale = 1 / mx.sqrt(query.shape[-1])
-        hidden_states = scaled_dot_product_attention(query, key, value, scale=scale)
-
+        hidden_states = scaled_dot_product_attention(query, key, value, scale=scale, mask=mask)
         hidden_states = mx.transpose(hidden_states, (0, 2, 1, 3))
-        hidden_states = mx.reshape(
-            hidden_states,
-            (batch_size, -1, num_heads * head_dim),
-        )
-
+        hidden_states = mx.reshape(hidden_states, (batch_size, -1, num_heads * head_dim))
         return hidden_states
 
     @staticmethod
-    def compute_attention_explicit(
-        query: mx.array,  # [B,H,S,D]
-        key: mx.array,  # [B,H,S,D]
-        value: mx.array,  # [B,H,S,D]
-        key_padding_mask: mx.array | None = None,  # [B, S] with 1=keep, 0=mask
-    ) -> mx.array:  # returns [B,S,H*D]
-        # Upcast to float32 for logits/softmax stability
-        q = query.astype(mx.float32)
-        k = key.astype(mx.float32)
-        v = value.astype(mx.float32)
-        scale = 1.0 / mx.sqrt(q.shape[-1])
-        logits = mx.matmul(q, mx.transpose(k, (0, 1, 3, 2))) * scale  # [B,H,S,S]
-        if key_padding_mask is not None:
-            mask = key_padding_mask.astype(mx.float32)  # [B,S]
-            additive = (1.0 - mask) * (-1e9)
-            additive = additive.reshape((additive.shape[0], 1, 1, additive.shape[1]))
-            logits = logits + additive
-        attn = mx.softmax(logits, axis=-1)
-        out = mx.matmul(attn, v)  # [B,H,S,D]
-        out = mx.transpose(out, (0, 2, 1, 3))  # [B,S,H,D]
-        out = mx.reshape(out, (out.shape[0], out.shape[1], -1))
-        return out.astype(query.dtype)
+    def convert_key_padding_mask_to_additive_mask(
+        mask: mx.array | None,
+        joint_seq_len: int,
+        txt_seq_len: int,
+    ) -> mx.array | None:
+        if mask is None:
+            return None
+
+        bsz = mask.shape[0]
+        img_seq_len = joint_seq_len - txt_seq_len
+
+        # Create joint mask: [text_mask, image_ones]
+        ones_img = mx.ones((bsz, img_seq_len), dtype=mx.float32)
+        joint_mask = mx.concatenate([mask.astype(mx.float32), ones_img], axis=1)
+
+        # Convert to additive mask for scaled_dot_product_attention
+        additive = (1.0 - joint_mask) * (-1e9)
+        return additive.reshape((additive.shape[0], 1, 1, additive.shape[1]))
 
     @staticmethod
     def apply_rope(xq: mx.array, xk: mx.array, freqs_cis: mx.array):
@@ -89,17 +81,13 @@ class AttentionUtils:
 
     @staticmethod
     def apply_rope_bshd(xq: mx.array, xk: mx.array, cos: mx.array, sin: mx.array):
-        """
-        Apply RoPE when Q/K are [B,S,H,D] and cos/sin are [S,D/2].
-        """
         xq_f = xq.astype(mx.float32)
         xk_f = xk.astype(mx.float32)
-        # Broadcast cos/sin to [1,S,1,D/2]
         cos_b = cos.reshape(1, cos.shape[0], 1, cos.shape[1])
         sin_b = sin.reshape(1, sin.shape[0], 1, sin.shape[1])
 
         def mix(x: mx.array) -> mx.array:
-            x2 = x.reshape(*x.shape[:-1], -1, 2)  # [B,S,H,D/2,2]
+            x2 = x.reshape(*x.shape[:-1], -1, 2)
             real = x2[..., 0]
             imag = x2[..., 1]
             out0 = real * cos_b + (-imag) * sin_b

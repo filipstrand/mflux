@@ -292,10 +292,10 @@ AVAILABLE_MODELS = {
         base_model=None,
         controlnet_model=None,
         custom_transformer_model=None,
-        num_train_steps=1000,  # Not fully clear here, might be to look up in the reference
-        max_sequence_length=512,  # Not fully clear here, might be to look up in the reference
-        supports_guidance=False,  # Not fully clear here, might be to look up in the reference
-        requires_sigma_shift=False,  # Not fully clear here, might be to look up in the reference
+        num_train_steps=None,
+        max_sequence_length=None,
+        supports_guidance=None,
+        requires_sigma_shift=None,
         priority=11,
     ),
 }

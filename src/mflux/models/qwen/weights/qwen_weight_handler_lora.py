@@ -425,20 +425,20 @@ class QwenWeightHandlerLoRA:
         # Remove any _lora_up/_lora_down suffixes to get base name
         base_name = lora_layer_name.replace("_lora_up", "").replace("_lora_down", "")
 
-        # Remove "attn." prefix if present
+        # Remove "attn." prefix if present (we'll add it back for nested structure)
         if base_name.startswith("attn."):
             base_name = base_name[5:]  # Remove "attn."
 
-        # Map LoRA names to actual Qwen transformer layer names
+        # Map LoRA names to nested Qwen transformer layer names (now under attn.)
         mapping = {
-            "to_q": "to_q",
-            "to_k": "to_k",
-            "to_v": "to_v",
-            "add_q_proj": "add_q_proj",
-            "add_k_proj": "add_k_proj",
-            "add_v_proj": "add_v_proj",
-            "to_out.0": "attn_to_out",  # Special case: this is a list in Qwen
-            "to_add_out": "to_add_out",
+            "to_q": "attn.to_q",
+            "to_k": "attn.to_k",
+            "to_v": "attn.to_v",
+            "add_q_proj": "attn.add_q_proj",
+            "add_k_proj": "attn.add_k_proj",
+            "add_v_proj": "attn.add_v_proj",
+            "to_out.0": "attn.attn_to_out",  # Special case: this is a list in Qwen
+            "to_add_out": "attn.to_add_out",
         }
 
         return mapping.get(base_name)
@@ -449,12 +449,12 @@ class QwenWeightHandlerLoRA:
         # Remove any _lora_up/_lora_down suffixes to get base name
         base_name = lora_layer_name.replace("_lora_up", "").replace("_lora_down", "")
 
-        # Map LoRA names to actual Qwen transformer layer names
+        # Map LoRA names to nested Qwen transformer layer names (now under img_ff/txt_ff)
         mapping = {
-            "img_mlp.net.0.proj": "img_mlp_in",
-            "img_mlp.net.2": "img_mlp_out",
-            "txt_mlp.net.0.proj": "txt_mlp_in",
-            "txt_mlp.net.2": "txt_mlp_out",
+            "img_mlp.net.0.proj": "img_ff.mlp_in",
+            "img_mlp.net.2": "img_ff.mlp_out",
+            "txt_mlp.net.0.proj": "txt_ff.mlp_in",
+            "txt_mlp.net.2": "txt_ff.mlp_out",
         }
 
         return mapping.get(base_name)

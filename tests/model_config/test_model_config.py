@@ -229,25 +229,25 @@ def test_invalid_base_model_error():
 def test_qwen_image():
     model = ModelConfig.from_name("qwen")
     assert model.model_name == "Qwen/Qwen-Image"
-    assert model.max_sequence_length == 512
-    assert model.num_train_steps == 1000
-    assert model.supports_guidance is False
-    assert model.requires_sigma_shift is False
+    assert model.max_sequence_length is None
+    assert model.num_train_steps is None
+    assert model.supports_guidance is None
+    assert model.requires_sigma_shift is None
 
 
 def test_qwen_image_alias():
     model = ModelConfig.from_name("qwen-image")
     assert model.model_name == "Qwen/Qwen-Image"
-    assert model.max_sequence_length == 512
-    assert model.num_train_steps == 1000
-    assert model.supports_guidance is False
-    assert model.requires_sigma_shift is False
+    assert model.max_sequence_length is None
+    assert model.num_train_steps is None
+    assert model.supports_guidance is None
+    assert model.requires_sigma_shift is None
 
 
 def test_qwen_image_full_name():
     model = ModelConfig.from_name("Qwen/Qwen-Image")
     assert model.model_name == "Qwen/Qwen-Image"
-    assert model.max_sequence_length == 512
-    assert model.num_train_steps == 1000
-    assert model.supports_guidance is False
-    assert model.requires_sigma_shift is False
+    assert model.max_sequence_length is None
+    assert model.num_train_steps is None
+    assert model.supports_guidance is None
+    assert model.requires_sigma_shift is None
