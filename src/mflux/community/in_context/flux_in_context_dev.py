@@ -56,6 +56,7 @@ class Flux1InContextDev(nn.Module):
         # 0. Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
+        sigmas = config.scheduler.sigmas
 
         # 1. Encode the reference image
         encoded_image = LatentCreator.encode_image(
@@ -99,7 +100,7 @@ class Flux1InContextDev(nn.Module):
                 )
 
                 # 5.t Take one denoise step and update latents
-                dt = config.sigmas[t + 1] - config.sigmas[t]
+                dt = sigmas[t + 1] - sigmas[t]
                 latents += noise * dt
 
                 # 6.t Override the left-hand side of latents by linearly interpolating between latents and static noise
@@ -109,6 +110,7 @@ class Flux1InContextDev(nn.Module):
                     latents=latents,
                     encoded_image=encoded_image,
                     static_noise=static_noise,
+                    sigmas=sigmas,
                 )
 
                 # (Optional) Call subscribers in-loop
@@ -180,6 +182,7 @@ class Flux1InContextDev(nn.Module):
         latents: mx.array,
         encoded_image: mx.array,
         static_noise: mx.array,
+        sigmas: mx.array,
     ) -> mx.array:
         # 1. Unpack the latents
         unpacked = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
@@ -192,7 +195,7 @@ class Flux1InContextDev(nn.Module):
         unpacked[:, :, :, 0:latent_width] = LatentCreator.add_noise_by_interpolation(
             clean=encoded_image[:, :, :, 0:latent_width],
             noise=unpacked_static_noise[:, :, :, 0:latent_width],
-            sigma=config.sigmas[t + 1],
+            sigma=sigmas[t + 1],
         )
 
         # 4. Repack the latents

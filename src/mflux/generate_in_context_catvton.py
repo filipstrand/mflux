@@ -61,6 +61,7 @@ def main():
                     guidance=args.guidance,
                     image_path=args.person_image,
                     masked_image_path=args.person_mask,
+                    scheduler=args.scheduler,
                 ),
             )
 

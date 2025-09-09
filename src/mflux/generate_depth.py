@@ -46,6 +46,7 @@ def main():
                     guidance=args.guidance,
                     image_path=args.image_path,
                     depth_image_path=args.depth_image_path,
+                    scheduler=args.scheduler,
                 ),
             )
 

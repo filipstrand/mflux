@@ -59,6 +59,7 @@ classifiers = [
 
 [project.optional-dependencies]
 dev = [
+    "matplotlib>3.10,<4.0",
     "pytest>=8.3.0,<9.0",
     "pytest-timer>=1.0,<2.0",
     "mlx==0.27.1",  # Used ONLY during test runs to ensure deterministic test results
@@ -167,7 +168,7 @@ disable_error_code = [
     "union-attr",
     "return",
     "return-value",
-    "var-annotated"
+    "var-annotated",
 ]
 error_summary = true
 ignore_missing_imports = true
