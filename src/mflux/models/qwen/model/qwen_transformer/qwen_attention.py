@@ -64,18 +64,27 @@ class QwenAttention(nn.Module):
             head_dim=self.head_dim,
         )
 
-        # 1c. Concatenate results [text, image] like Flux
+        # 1c. Apply RoPE to separate streams first (like Diffusers)
+        img_rotary_emb, txt_rotary_emb = image_rotary_emb
+
+        # Apply RoPE to image stream
+        img_q, img_k = QwenAttention._apply_rotary_embeddings_separate(
+            q=img_q,
+            k=img_k,
+            rotary_emb=img_rotary_emb,
+        )
+
+        # Apply RoPE to text stream
+        txt_q, txt_k = QwenAttention._apply_rotary_embeddings_separate(
+            q=txt_q,
+            k=txt_k,
+            rotary_emb=txt_rotary_emb,
+        )
+
+        # 1d. Concatenate results [text, image] after RoPE application
         joint_q = mx.concatenate([txt_q, img_q], axis=2)
         joint_k = mx.concatenate([txt_k, img_k], axis=2)
         joint_v = mx.concatenate([txt_v, img_v], axis=2)
-
-        # 1d. Apply RoPE to concatenated Q,K
-        joint_q, joint_k = QwenAttention._apply_rotary_embeddings_joint(
-            joint_q=joint_q,
-            joint_k=joint_k,
-            txt_seq_len=txt_q.shape[2],
-            image_rotary_emb=image_rotary_emb,
-        )
 
         # 2. Compute attention with optional masking
         mask = AttentionUtils.convert_key_padding_mask_to_additive_mask(
@@ -107,44 +116,40 @@ class QwenAttention(nn.Module):
         return img_attn_output, txt_attn_output
 
     @staticmethod
-    def _apply_rotary_embeddings_joint(
-        joint_q: mx.array,
-        joint_k: mx.array,
-        txt_seq_len: int,
-        image_rotary_emb: tuple[mx.array, mx.array],
+    def _apply_rotary_embeddings_separate(
+        q: mx.array,
+        k: mx.array,
+        rotary_emb: mx.array,
     ) -> tuple[mx.array, mx.array]:
-        img_rot, txt_rot = image_rotary_emb
+        # Extract cos/sin from rotation matrix format [1, 1, S, D/2, 2, 2]
+        cos = rotary_emb[0, 0, :, :, 0, 0]  # [S, D/2]
+        sin = rotary_emb[0, 0, :, :, 1, 0]  # [S, D/2]
 
-        # Extract separate parts
-        txt_q = joint_q[:, :, :txt_seq_len, :]
-        img_q = joint_q[:, :, txt_seq_len:, :]
-        txt_k = joint_k[:, :, :txt_seq_len, :]
-        img_k = joint_k[:, :, txt_seq_len:, :]
+        # Convert to [B, S, H, D] format for RoPE application
+        q_bshd = mx.transpose(q, (0, 2, 1, 3))
+        k_bshd = mx.transpose(k, (0, 2, 1, 3))
 
-        # Prepare cos/sin for text and image
-        img_cos = img_rot[..., 0, 0].reshape(img_rot.shape[2], img_rot.shape[3])
-        img_sin = img_rot[..., 1, 0].reshape(img_rot.shape[2], img_rot.shape[3])
-        txt_cos = txt_rot[..., 0, 0].reshape(txt_rot.shape[2], txt_rot.shape[3])
-        txt_sin = txt_rot[..., 1, 0].reshape(txt_rot.shape[2], txt_rot.shape[3])
+        seq_len = q_bshd.shape[1]
 
-        # Transpose [B,H,S,D] -> [B,S,H,D] for RoPE application
-        img_q_bshd = mx.transpose(img_q, (0, 2, 1, 3))
-        img_k_bshd = mx.transpose(img_k, (0, 2, 1, 3))
-        txt_q_bshd = mx.transpose(txt_q, (0, 2, 1, 3))
-        txt_k_bshd = mx.transpose(txt_k, (0, 2, 1, 3))
+        # Ensure RoPE dimensions match sequence length
+        if cos.shape[0] != seq_len:
+            if cos.shape[0] < seq_len:
+                # Pad with the last embedding
+                pad_len = seq_len - cos.shape[0]
+                last_cos = mx.tile(cos[-1:], (pad_len, 1))
+                last_sin = mx.tile(sin[-1:], (pad_len, 1))
+                cos = mx.concatenate([cos, last_cos], axis=0)
+                sin = mx.concatenate([sin, last_sin], axis=0)
+            else:
+                # Truncate to sequence length
+                cos = cos[:seq_len]
+                sin = sin[:seq_len]
 
         # Apply RoPE
-        img_q_bshd, img_k_bshd = AttentionUtils.apply_rope_bshd(img_q_bshd, img_k_bshd, img_cos, img_sin)
-        txt_q_bshd, txt_k_bshd = AttentionUtils.apply_rope_bshd(txt_q_bshd, txt_k_bshd, txt_cos, txt_sin)
+        q_bshd, k_bshd = AttentionUtils.apply_rope_bshd(q_bshd, k_bshd, cos, sin)
 
-        # Back to [B,H,S,D]
-        img_q = mx.transpose(img_q_bshd, (0, 2, 1, 3))
-        img_k = mx.transpose(img_k_bshd, (0, 2, 1, 3))
-        txt_q = mx.transpose(txt_q_bshd, (0, 2, 1, 3))
-        txt_k = mx.transpose(txt_k_bshd, (0, 2, 1, 3))
+        # Convert back to [B, H, S, D] format
+        q = mx.transpose(q_bshd, (0, 2, 1, 3))
+        k = mx.transpose(k_bshd, (0, 2, 1, 3))
 
-        # Concatenate back [text, image]
-        joint_q = mx.concatenate([txt_q, img_q], axis=2)
-        joint_k = mx.concatenate([txt_k, img_k], axis=2)
-
-        return joint_q, joint_k
+        return q, k

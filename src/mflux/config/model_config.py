@@ -89,6 +89,11 @@ class ModelConfig:
     def qwen_image() -> "ModelConfig":
         return AVAILABLE_MODELS["qwen-image"]
 
+    @staticmethod
+    @lru_cache
+    def qwen_image_edit() -> "ModelConfig":
+        return AVAILABLE_MODELS["qwen-image-edit"]
+
     def x_embedder_input_dim(self) -> int:
         if "Fill" in self.model_name:
             return 384
@@ -297,5 +302,17 @@ AVAILABLE_MODELS = {
         supports_guidance=None,
         requires_sigma_shift=None,
         priority=11,
+    ),
+    "qwen-image-edit": ModelConfig(
+        aliases=["qwen-image-edit", "qwen-edit"],
+        model_name="Qwen/Qwen-Image-Edit",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=None,
+        max_sequence_length=None,
+        supports_guidance=None,
+        requires_sigma_shift=None,
+        priority=12,
     ),
 }

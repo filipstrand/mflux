@@ -17,10 +17,18 @@ class QwenWeightUtil:
 
     @staticmethod
     def reshape_weights(key, value):
+        original_shape = value.shape
         if len(value.shape) == 4:
             value = value.transpose(0, 2, 3, 1)
+            print(f"🔧 4D weight {key}: {original_shape} -> {value.shape}")
         elif len(value.shape) == 5:
+            # Conv3d weights: from (O,I,D,H,W) to (O,D,H,W,I) for MLX Conv3d
+            # Original: (out_channels, in_channels, temporal, height, width)
+            # MLX wants: (out_channels, temporal, height, width, in_channels)
             value = value.transpose(0, 2, 3, 4, 1)
+            print(f"🔧 5D Conv3d weight {key}: {original_shape} -> {value.shape}")
+            if "visual.patch_embed.proj" in key:
+                print(f"🎯 VISION PATCH EMBED: {key} transposed from {original_shape} to {value.shape}")
         value = value.reshape(-1).reshape(value.shape).astype(Config.precision)
         return [(key, value)]
 

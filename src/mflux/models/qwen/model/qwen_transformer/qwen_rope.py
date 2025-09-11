@@ -19,7 +19,8 @@ class QwenEmbedRopeMLX(nn.Module):
         self.axes_dim = axes_dim
         self.scale_rope = scale_rope
 
-        # Precompute positive and negative index caches up to 1024 as in reference
+        # Precompute positive and negative index caches for video axes (sufficient for image grid sizes)
+        # Text positions can exceed this; we will compute them dynamically per request below.
         pos_index = np.arange(1024, dtype=np.int32)
         neg_index = (np.arange(1024, dtype=np.int32)[::-1] * -1) - 1
 
@@ -43,11 +44,12 @@ class QwenEmbedRopeMLX(nn.Module):
         out = np.outer(index.astype(np.float32), omega).astype(np.float32)
         return np.cos(out), np.sin(out)
 
-    def _build_video_freqs(self, frame: int, height: int, width: int) -> tuple[np.ndarray, np.ndarray]:
+    def _build_video_freqs(self, frame: int, height: int, width: int, idx: int = 0) -> tuple[np.ndarray, np.ndarray]:
         dim_f, dim_h, dim_w = self.axes_dim
 
-        cos_f = self._pos_cos[0][:frame].reshape(frame, 1, 1, -1)
-        sin_f = self._pos_sin[0][:frame].reshape(frame, 1, 1, -1)
+        # Use idx parameter for frame positioning (like Diffusers)
+        cos_f = self._pos_cos[0][idx : idx + frame].reshape(frame, 1, 1, -1)
+        sin_f = self._pos_sin[0][idx : idx + frame].reshape(frame, 1, 1, -1)
 
         if self.scale_rope:
             cos_h = np.concatenate(
@@ -94,20 +96,56 @@ class QwenEmbedRopeMLX(nn.Module):
         return cos, sin
 
     def __call__(self, video_fhw: tuple[int, int, int] | list[tuple[int, int, int]], txt_seq_lens: list[int]):
-        if isinstance(video_fhw, list):
-            video_fhw = video_fhw[0]
-        frame, height, width = video_fhw
+        # Support multiple image sequences (e.g., [gen_image_shape, cond_image_shape]) by concatenating
+        # their rotary frequencies along the sequence dimension, mirroring diffusers' behavior.
+        if isinstance(video_fhw, tuple):
+            video_fhw_list = [video_fhw]
+        else:
+            video_fhw_list = list(video_fhw)
 
-        cos_v, sin_v = self._build_video_freqs(frame, height, width)
+        # Build concatenated video cos/sin across all provided shapes
+        cos_v_list = []
+        sin_v_list = []
+        max_vid_index = 0
+        for idx, (frame, height, width) in enumerate(video_fhw_list):
+            cos_v, sin_v = self._build_video_freqs(frame, height, width, idx)
+            cos_v_list.append(cos_v)
+            sin_v_list.append(sin_v)
+            if self.scale_rope:
+                max_vid_index = max(max_vid_index, height // 2, width // 2)
+            else:
+                max_vid_index = max(max_vid_index, height, width)
 
-        # Build text freqs using max_vid_index rule
-        max_vid_index = max(height // 2, width // 2) if self.scale_rope else max(height, width)
+        cos_v = np.concatenate(cos_v_list, axis=0)
+        sin_v = np.concatenate(sin_v_list, axis=0)
+
+        # Build text freqs using max_vid_index rule (matching Diffusers exactly)
         txt_len = max(txt_seq_lens)
-        # Combine axes cos/sin for positions starting at max_vid_index
-        cos_full = np.concatenate(self._pos_cos, axis=1)  # [1024, 128]
-        sin_full = np.concatenate(self._pos_sin, axis=1)
-        cos_t = cos_full[max_vid_index : max_vid_index + txt_len]
-        sin_t = sin_full[max_vid_index : max_vid_index + txt_len]
+
+        # Generate text frequencies starting from max_vid_index (like Diffusers)
+        # Use precomputed positive frequencies if available, otherwise compute dynamically
+        max_precomputed = min(len(self._pos_cos[0]), 1024)  # Our precomputed cache size
+
+        if max_vid_index + txt_len <= max_precomputed:
+            # Use precomputed frequencies
+            cos_parts = []
+            sin_parts = []
+            for i, dim in enumerate(self.axes_dim):
+                cos_parts.append(self._pos_cos[i][max_vid_index : max_vid_index + txt_len])
+                sin_parts.append(self._pos_sin[i][max_vid_index : max_vid_index + txt_len])
+            cos_t = np.concatenate(cos_parts, axis=1)
+            sin_t = np.concatenate(sin_parts, axis=1)
+        else:
+            # Compute dynamically for longer sequences
+            text_indices = np.arange(max_vid_index, max_vid_index + txt_len, dtype=np.int32)
+            cos_parts = []
+            sin_parts = []
+            for dim in self.axes_dim:
+                cos_p, sin_p = self._rope_params(text_indices, dim)
+                cos_parts.append(cos_p)
+                sin_parts.append(sin_p)
+            cos_t = np.concatenate(cos_parts, axis=1)
+            sin_t = np.concatenate(sin_parts, axis=1)
 
         def to_rot(cos: np.ndarray, sin: np.ndarray) -> mx.array:
             row0 = np.stack([cos, -sin], axis=-1)

@@ -30,6 +30,9 @@ class QwenTransformer(nn.Module):
         self.time_text_embed = QwenTimeTextEmbed(timestep_proj_dim=256, inner_dim=self.inner_dim)
         self.pos_embed = QwenEmbedRopeMLX(theta=10000, axes_dim=[16, 56, 56], scale_rope=True)
         self.transformer_blocks = [QwenTransformerBlock(dim=self.inner_dim, num_heads=num_attention_heads, head_dim=attention_head_dim) for i in range(num_layers)]  # fmt: off
+        # Register blocks as attributes so parameters are tracked
+        for i, block in enumerate(self.transformer_blocks):
+            setattr(self, f"transformer_blocks_{i}", block)
         self.norm_out = AdaLayerNormContinuous(self.inner_dim, self.inner_dim)
         self.proj_out = nn.Linear(self.inner_dim, patch_size * patch_size * out_channels)
 
@@ -40,12 +43,20 @@ class QwenTransformer(nn.Module):
         hidden_states: mx.array,
         encoder_hidden_states: mx.array,
         encoder_hidden_states_mask: mx.array,
+        qwen_image_ids: mx.array | None = None,
+        cond_image_grid: tuple[int, int, int] | None = None,
     ) -> mx.array:
         # 1. Create embeddings
         hidden_states = self.img_in(hidden_states)
         encoder_hidden_states = self.txt_in(self.txt_norm(encoder_hidden_states))
         text_embeddings = QwenTransformer._compute_text_embeddings(t, hidden_states, self.time_text_embed, config)
-        image_rotary_embeddings = QwenTransformer._compute_rotary_embeddings(encoder_hidden_states_mask, self.pos_embed, config)  # fmt: off
+        image_rotary_embeddings = QwenTransformer._compute_rotary_embeddings(
+            encoder_hidden_states_mask,
+            self.pos_embed,
+            config,
+            cond_image_grid,
+            hidden_states,
+        )  # fmt: off
 
         # 2. Run the transformer blocks
         for idx, block in enumerate(self.transformer_blocks):
@@ -100,10 +111,26 @@ class QwenTransformer(nn.Module):
         encoder_hidden_states_mask: mx.array,
         pos_embed: QwenEmbedRopeMLX,
         config: RuntimeConfig,
+        cond_image_grid: tuple[int, int, int] | None,
+        hidden_states: mx.array,
     ) -> tuple[mx.array, mx.array]:
-        latent_height = config.height // 16
-        latent_width = config.width // 16
-        img_shapes = [(1, latent_height, latent_width)]
+        # Build list of image shapes for RoPE: generation latents + optional conditioning latents
+        gen_h = config.height // 16
+        gen_w = config.width // 16
+        img_shapes: list[tuple[int, int, int]] = [(1, gen_h, gen_w)]
+        if cond_image_grid is not None:
+            img_shapes.append(cond_image_grid)
+        
+        print(f"🔧 Debug: gen_h={gen_h}, gen_w={gen_w}")
+        print(f"🔧 Debug: img_shapes={img_shapes}")
+        print(f"🔧 Debug: hidden_states.shape={hidden_states.shape}")
+        print(f"🔧 Debug: encoder_hidden_states_mask.shape={encoder_hidden_states_mask.shape}")
+        
         txt_seq_lens = [int(mx.sum(encoder_hidden_states_mask[i]).item()) for i in range(encoder_hidden_states_mask.shape[0])]  # fmt: off
+        print(f"🔧 Debug: txt_seq_lens={txt_seq_lens}")
+        
         img_rotary_emb, txt_rotary_emb = pos_embed(video_fhw=img_shapes, txt_seq_lens=txt_seq_lens)
+        print(f"🔧 Debug: img_rotary_emb.shape={img_rotary_emb.shape}")
+        print(f"🔧 Debug: txt_rotary_emb.shape={txt_rotary_emb.shape}")
+
         return img_rotary_emb, txt_rotary_emb

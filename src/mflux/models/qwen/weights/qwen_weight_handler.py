@@ -667,10 +667,11 @@ class QwenWeightHandler:
         converted_count = 0
         skipped_count = 0
 
-        # Skip LM head and vision encoder weights - we only need the text encoder
+        # For Qwen Image Edit, we need the complete VL model including visual weights
+        # Only skip LM head weights since we don't need text generation capabilities
         filtered_weights = {}
         for hf_name, weight in hf_weights.items():
-            if hf_name.startswith("lm_head") or hf_name.startswith("visual."):
+            if hf_name.startswith("lm_head"):
                 skipped_count += 1
                 continue
             filtered_weights[hf_name] = weight
@@ -737,4 +738,89 @@ class QwenWeightHandler:
             layers.append(layer)
 
         weights["encoder"]["layers"] = layers
+
+        # 4. Visual components (for Qwen Image Edit VL capabilities)
+        # Map visual.* weights to encoder.visual.* for integrated VL model
+        visual_weights = {}
+        
+        # Patch embedding
+        if "visual.patch_embed.proj.weight" in filtered_weights:
+            # Apply Conv3d transpose for MLX: (O,I,D,H,W) -> (O,D,H,W,I)
+            patch_embed_weight = filtered_weights["visual.patch_embed.proj.weight"]
+            if len(patch_embed_weight.shape) == 5:
+                patch_embed_weight = patch_embed_weight.transpose(0, 2, 3, 4, 1)
+                print(f"🎯 VISION PATCH EMBED: visual.patch_embed.proj.weight transposed from {filtered_weights['visual.patch_embed.proj.weight'].shape} to {patch_embed_weight.shape}")
+            
+            visual_weights["patch_embed"] = {
+                "proj": {
+                    "weight": patch_embed_weight
+                }
+            }
+            converted_count += 1
+        
+        # Vision transformer blocks (32 blocks)
+        visual_blocks = []
+        for block_idx in range(32):
+            if f"visual.blocks.{block_idx}.attn.qkv.weight" in filtered_weights:
+                block = {}
+                
+                # Attention
+                block["attn"] = {
+                    "qkv": {
+                        "weight": filtered_weights[f"visual.blocks.{block_idx}.attn.qkv.weight"],
+                        "bias": filtered_weights[f"visual.blocks.{block_idx}.attn.qkv.bias"],
+                    },
+                    "proj": {
+                        "weight": filtered_weights[f"visual.blocks.{block_idx}.attn.proj.weight"],
+                        "bias": filtered_weights[f"visual.blocks.{block_idx}.attn.proj.bias"],
+                    },
+                }
+                converted_count += 4
+                
+                # MLP
+                block["mlp"] = {
+                    "gate_proj": {
+                        "weight": filtered_weights[f"visual.blocks.{block_idx}.mlp.gate_proj.weight"],
+                        "bias": filtered_weights[f"visual.blocks.{block_idx}.mlp.gate_proj.bias"],
+                    },
+                    "up_proj": {
+                        "weight": filtered_weights[f"visual.blocks.{block_idx}.mlp.up_proj.weight"],
+                        "bias": filtered_weights[f"visual.blocks.{block_idx}.mlp.up_proj.bias"],
+                    },
+                    "down_proj": {
+                        "weight": filtered_weights[f"visual.blocks.{block_idx}.mlp.down_proj.weight"],
+                        "bias": filtered_weights[f"visual.blocks.{block_idx}.mlp.down_proj.bias"],
+                    },
+                }
+                converted_count += 6
+                
+                # Layer norms
+                block["norm1"] = {"weight": filtered_weights[f"visual.blocks.{block_idx}.norm1.weight"]}
+                block["norm2"] = {"weight": filtered_weights[f"visual.blocks.{block_idx}.norm2.weight"]}
+                converted_count += 2
+                
+                visual_blocks.append(block)
+        
+        if visual_blocks:
+            visual_weights["blocks"] = visual_blocks
+        
+        # Patch merger
+        if "visual.merger.ln_q.weight" in filtered_weights:
+            visual_weights["merger"] = {
+                "ln_q": {"weight": filtered_weights["visual.merger.ln_q.weight"]},
+                "mlp_0": {
+                    "weight": filtered_weights["visual.merger.mlp.0.weight"],
+                    "bias": filtered_weights["visual.merger.mlp.0.bias"],
+                },
+                "mlp_2": {
+                    "weight": filtered_weights["visual.merger.mlp.2.weight"],
+                    "bias": filtered_weights["visual.merger.mlp.2.bias"],
+                },
+            }
+            converted_count += 5
+
+        if visual_weights:
+            weights["encoder"]["visual"] = visual_weights
+
+        print(f"🔧 Text encoder weight mapping: {converted_count} weights converted, {skipped_count} skipped")
         return weights

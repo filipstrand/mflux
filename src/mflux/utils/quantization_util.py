@@ -91,4 +91,17 @@ class QuantizationUtil:
             bits = int(q_level) if q_level is not None else quantize
             nn.quantize(vae, bits=bits)
             nn.quantize(transformer, bits=bits)
-            nn.quantize(text_encoder, bits=bits)
+            
+            # For text encoder, exclude visual components from quantization
+            # as they have dimensions not compatible with MLX quantization
+            if hasattr(text_encoder, 'encoder') and hasattr(text_encoder.encoder, 'visual'):
+                # Quantize everything except visual components
+                nn.quantize(text_encoder.encoder.embed_tokens, bits=bits)
+                # Quantize each layer individually since layers is a list
+                for layer in text_encoder.encoder.layers:
+                    nn.quantize(layer, bits=bits)
+                nn.quantize(text_encoder.encoder.norm, bits=bits)
+                # Skip text_encoder.encoder.visual - leave unquantized
+                print(f"🔧 Quantized text encoder to {bits} bits (excluding visual components)")
+            else:
+                nn.quantize(text_encoder, bits=bits)
