@@ -4,6 +4,7 @@ from typing import Dict, Tuple
 import mlx.core as mx
 import mlx.nn as nn
 
+from mflux.models.common.lora.layer.fused_linear_lora_layer import FusedLoRALinear
 from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
 from mflux.models.common.lora.mapping.lora_mapping import LoRATarget
 
@@ -170,25 +171,43 @@ class LoRALoader:
         # Calculate final scale - only use user scale, matching Diffusers approach
         effective_scale = scale
 
-        # Replace the linear layer with LoRA layer
+        # Create new LoRA layer
         if hasattr(current_module, 'weight'):
-            original_layer = current_module
-
             # Create LoRA layer
             lora_layer = LoRALinear.from_linear(
-                original_layer,
+                current_module,
                 r=lora_A.shape[1],
                 scale=effective_scale
             )
 
             # Set the LoRA matrices - use the correct dimensions from the LoRA file
-            # This overrides any incorrect dimension calculations in from_linear
             lora_layer.lora_A = lora_A
             lora_layer.lora_B = lora_B
 
             # Apply alpha scaling to the matrices if present
             if "alpha" in lora_data:
                 lora_layer.lora_B = lora_layer.lora_B * alpha_scale
+
+            # Handle fusion: if the current module is already a LoRA layer, fuse them
+            if isinstance(current_module, LoRALinear):
+                print(f"   🔀 Fusing with existing LoRA at {target_path}")
+                # Create fused layer with the existing LoRA and the new one
+                fused_layer = FusedLoRALinear(
+                    base_linear=current_module.linear,
+                    loras=[current_module, lora_layer]
+                )
+                replacement_layer = fused_layer
+            elif isinstance(current_module, FusedLoRALinear):
+                print(f"   🔀 Adding to existing fusion at {target_path}")
+                # Add to existing fusion
+                fused_layer = FusedLoRALinear(
+                    base_linear=current_module.base_linear,
+                    loras=current_module.loras + [lora_layer]
+                )
+                replacement_layer = fused_layer
+            else:
+                # First LoRA on this layer
+                replacement_layer = lora_layer
 
             # Replace the layer in the parent module
             parent_module = transformer
@@ -200,9 +219,9 @@ class LoRALoader:
 
             final_attr = path_parts[-1]
             if final_attr.isdigit():
-                parent_module[int(final_attr)] = lora_layer
+                parent_module[int(final_attr)] = replacement_layer
             else:
-                setattr(parent_module, final_attr, lora_layer)
+                setattr(parent_module, final_attr, replacement_layer)
 
             return True
         else:
