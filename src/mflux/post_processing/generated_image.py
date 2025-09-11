@@ -3,8 +3,8 @@ from pathlib import Path
 import mlx.core as mx
 import PIL.Image
 
-from mflux.community.concept_attention.attention_data import ConceptHeatmap
 from mflux.config.model_config import ModelConfig
+from mflux.models.flux.variants.concept_attention.attention_data import ConceptHeatmap
 from mflux.utils.version_util import VersionUtil
 
 
@@ -31,6 +31,7 @@ class GeneratedImage:
         redux_image_paths: list[str] | list[Path] | None = None,
         redux_image_strengths: list[float] | None = None,
         concept_heatmap: ConceptHeatmap | None = None,
+        negative_prompt: str | None = None,
     ):
         self.image = image
         self.model_config = model_config
@@ -52,6 +53,7 @@ class GeneratedImage:
         self.redux_image_paths = redux_image_paths
         self.redux_image_strengths = redux_image_strengths
         self.concept_heatmap = concept_heatmap
+        self.negative_prompt = negative_prompt
 
     def get_right_half(self) -> "GeneratedImage":
         # Calculate the coordinates for the right half
@@ -151,4 +153,5 @@ class GeneratedImage:
             "redux_image_paths": str(self.redux_image_paths) if self.redux_image_paths else None,
             "redux_image_strengths": self._format_redux_strengths(),
             "prompt": self.prompt,
+            "negative_prompt": self.negative_prompt if self.negative_prompt else None,
         }

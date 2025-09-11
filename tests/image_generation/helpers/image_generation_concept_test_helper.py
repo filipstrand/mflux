@@ -1,10 +1,10 @@
 import os
 from pathlib import Path
 
-from mflux.community.concept_attention.flux_concept import Flux1Concept
-from mflux.community.concept_attention.flux_concept_from_image import Flux1ConceptFromImage
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
+from mflux.models.flux.variants.concept_attention.flux_concept import Flux1Concept
+from mflux.models.flux.variants.concept_attention.flux_concept_from_image import Flux1ConceptFromImage
 
 from .image_compare import check_images_close_enough
 

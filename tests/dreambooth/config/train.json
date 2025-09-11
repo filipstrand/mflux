@@ -61,7 +61,7 @@
     }
   },
   "examples": {
-    "path": "../../../src/mflux/dreambooth/_example/images/",
+    "path": "../../../src/mflux/models/flux/variants/dreambooth/_example/images/",
     "images": [
         {
           "image": "01.jpeg",

@@ -12,7 +12,7 @@ class CallbackManager:
     @staticmethod
     def register_callbacks(
         args: Namespace,
-        flux,
+        model,
         enable_canny_saver: bool = False,
         enable_depth_saver: bool = False,
     ) -> MemorySaver | None:
@@ -20,7 +20,7 @@ class CallbackManager:
         CallbackManager._register_battery_saver(args)
 
         # VAE Tiling (if requested)
-        CallbackManager._register_vae_tiling(args, flux)
+        CallbackManager._register_vae_tiling(args, model)
 
         # Specialized savers (based on flags)
         if enable_canny_saver:
@@ -30,10 +30,10 @@ class CallbackManager:
             CallbackManager._register_depth_saver(args)
 
         # Stepwise handler (if requested)
-        CallbackManager._register_stepwise_handler(args, flux)
+        CallbackManager._register_stepwise_handler(args, model)
 
         # Memory saver (if requested)
-        return CallbackManager._register_memory_saver(args, flux)
+        return CallbackManager._register_memory_saver(args, model)
 
     @staticmethod
     def _register_battery_saver(args: Namespace) -> None:
@@ -41,10 +41,10 @@ class CallbackManager:
         CallbackRegistry.register_before_loop(battery_saver)
 
     @staticmethod
-    def _register_vae_tiling(args: Namespace, flux) -> None:
+    def _register_vae_tiling(args: Namespace, model) -> None:
         if args.vae_tiling:
-            flux.vae.decoder.enable_tiling = True
-            flux.vae.decoder.split_direction = args.vae_tiling_split
+            model.vae.decoder.enable_tiling = True
+            model.vae.decoder.split_direction = args.vae_tiling_split
 
     @staticmethod
     def _register_canny_saver(args: Namespace) -> None:
@@ -59,18 +59,18 @@ class CallbackManager:
             CallbackRegistry.register_before_loop(depth_image_saver)
 
     @staticmethod
-    def _register_stepwise_handler(args: Namespace, flux) -> None:
+    def _register_stepwise_handler(args: Namespace, model) -> None:
         if args.stepwise_image_output_dir:
-            handler = StepwiseHandler(flux=flux, output_dir=args.stepwise_image_output_dir)
+            handler = StepwiseHandler(model=model, output_dir=args.stepwise_image_output_dir)
             CallbackRegistry.register_before_loop(handler)
             CallbackRegistry.register_in_loop(handler)
             CallbackRegistry.register_interrupt(handler)
 
     @staticmethod
-    def _register_memory_saver(args: Namespace, flux) -> MemorySaver | None:
+    def _register_memory_saver(args: Namespace, model) -> MemorySaver | None:
         memory_saver = None
         if args.low_ram:
-            memory_saver = MemorySaver(flux=flux, keep_transformer=len(args.seed) > 1)
+            memory_saver = MemorySaver(model=model, keep_transformer=len(args.seed) > 1)
             CallbackRegistry.register_before_loop(memory_saver)
             CallbackRegistry.register_in_loop(memory_saver)
             CallbackRegistry.register_after_loop(memory_saver)

@@ -7,8 +7,8 @@ import numpy as np
 from PIL import Image
 
 from mflux.models.depth_pro.depth_pro_initializer import DepthProInitializer
-from mflux.models.depth_pro.depth_pro_model import DepthProModel
-from mflux.models.depth_pro.depth_pro_util import DepthProUtil
+from mflux.models.depth_pro.model.depth_pro_model import DepthProModel
+from mflux.models.depth_pro.model.depth_pro_util import DepthProUtil
 from mflux.post_processing.image_util import ImageUtil
 
 

@@ -2,7 +2,7 @@ import os
 
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
-from mflux.flux_tools.fill.flux_fill import Flux1Fill
+from mflux.models.flux.variants.fill.flux_fill import Flux1Fill
 from mflux.ui import defaults as ui_defaults
 from tests.image_generation.helpers.image_generation_test_helper import ImageGeneratorTestHelper
 

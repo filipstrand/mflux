@@ -3,7 +3,7 @@ from pathlib import Path
 
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
-from mflux.flux_tools.depth.flux_depth import Flux1Depth
+from mflux.models.flux.variants.depth.flux_depth import Flux1Depth
 
 from .image_compare import check_images_close_enough
 

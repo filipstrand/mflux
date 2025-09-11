@@ -9,8 +9,8 @@ import PIL.Image
 import PIL.ImageDraw
 from PIL._typing import StrOrBytesPath
 
-from mflux.community.concept_attention.attention_data import ConceptHeatmap
 from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.flux.variants.concept_attention.attention_data import ConceptHeatmap
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.ui.box_values import AbsoluteBoxValues, BoxValues
 
@@ -36,6 +36,7 @@ class ImageUtil:
         masked_image_path: str | Path | None = None,
         depth_image_path: str | Path | None = None,
         concept_heatmap: ConceptHeatmap | None = None,
+        negative_prompt: str | None = None,
     ) -> GeneratedImage:
         normalized = ImageUtil._denormalize(decoded_latents)
         normalized_numpy = ImageUtil._to_numpy(normalized)
@@ -61,6 +62,7 @@ class ImageUtil:
             redux_image_paths=redux_image_paths,
             redux_image_strengths=redux_image_strengths,
             concept_heatmap=concept_heatmap,
+            negative_prompt=negative_prompt,
         )
 
     @staticmethod

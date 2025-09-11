@@ -1591,16 +1591,16 @@ As of release [v.0.5.0](https://github.com/filipstrand/mflux/releases/tag/v.0.5.
 
 #### Training configuration
 
-To describe a training run, you need to provide a [training configuration](src/mflux/dreambooth/_example/train.json) file which specifies the details such as
+To describe a training run, you need to provide a [training configuration](src/mflux/models/flux/variants/dreambooth/_example/train.json) file which specifies the details such as
 what training data to use and various parameters. To try it out, one of the easiest ways is to start from the 
-provided [example configuration](src/mflux/dreambooth/_example/train.json) and simply use your own dataset and prompts by modifying the `examples` section of the json file.
+provided [example configuration](src/mflux/models/flux/variants/dreambooth/_example/train.json) and simply use your own dataset and prompts by modifying the `examples` section of the json file.
 
 #### Training example
 
-A complete example ([training configuration](src/mflux/dreambooth/_example/train.json) + [dataset](src/mflux/dreambooth/_example/images)) is provided in this repository. To start a training run, go to the project folder `cd mflux`, and simply run:
+A complete example ([training configuration](src/mflux/models/flux/variants/dreambooth/_example/train.json) + [dataset](src/mflux/models/flux/variants/dreambooth/_example/images)) is provided in this repository. To start a training run, go to the project folder `cd mflux`, and simply run:
 
 ```sh
-mflux-train --train-config src/mflux/dreambooth/_example/train.json
+mflux-train --train-config src/mflux/models/flux/variants/dreambooth/_example/train.json
 ```
 
 By default, this will train an adapter with images of size `512x512` with a batch size of 1 and can take up to several hours to fully complete depending on your machine.
@@ -1717,7 +1717,7 @@ To avoid this, consider some of the following strategies to reduce memory requir
 - Use a smaller batch size, for example `"batch_size": 1`
 - Make sure your Mac is not busy with other background tasks that holds memory.
 
-Applying some of these strategies, like how [train.json](src/mflux/dreambooth/_example/train.json) is set up by default,
+Applying some of these strategies, like how [train.json](src/mflux/models/flux/variants/dreambooth/_example/train.json) is set up by default,
 will allow a 32GB M1 Pro to perform a successful fine-tuning run. 
 Note, however, that reducing the trainable parameters might lead to worse performance.
  
@@ -1738,7 +1738,7 @@ The aim is to also gradually expand the scope of this feature with alternative t
 - Loss curve can be a bit misleading/hard to read, sometimes it conveys little improvement over time, but actual image samples show the real progress.
 - When plotting the loss during training, we label it as "validation loss" but it is actually only the first 10 elements of the training examples for now. Future updates should support user inputs of separate validation images.
 - Training also works with the original model as quantized!
-- [For the curious, a motivation for the loss function can be found here](src/mflux/dreambooth/optimization/_loss_derivation/dreambooth_loss.pdf).
+- [For the curious, a motivation for the loss function can be found here](src/mflux/models/flux/variants/dreambooth/optimization/_loss_derivation/dreambooth_loss.pdf).
 - Two great resources that heavily inspired this feature are: 
   - The fine-tuning script in [mlx-examples](https://github.com/ml-explore/mlx-examples/tree/main/flux#finetuning)
   - The original fine-tuning script in [Diffusers](https://huggingface.co/docs/diffusers/v0.11.0/en/training/dreambooth)
