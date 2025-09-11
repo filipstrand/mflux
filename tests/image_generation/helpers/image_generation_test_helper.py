@@ -30,6 +30,7 @@ class ImageGeneratorTestHelper:
         lora_names: list[str] | None = None,
         lora_repo_id: str | None = None,
         negative_prompt: str | None = None,
+        guidance: float | None = None,
     ):
         # resolve paths
         reference_image_path = ImageGeneratorTestHelper.resolve_path(reference_image_path)
@@ -52,16 +53,22 @@ class ImageGeneratorTestHelper:
                 model_kwargs["lora_repo_id"] = lora_repo_id
 
             model = model_class(**model_kwargs)
+            config_kwargs = {
+                "num_inference_steps": steps,
+                "image_path": ImageGeneratorTestHelper.resolve_path(image_path),
+                "image_strength": image_strength,
+                "height": height,
+                "width": width,
+            }
+
+            # Add guidance if provided
+            if guidance is not None:
+                config_kwargs["guidance"] = guidance
+
             generate_kwargs = {
                 "seed": seed,
                 "prompt": prompt,
-                "config": Config(
-                    num_inference_steps=steps,
-                    image_path=ImageGeneratorTestHelper.resolve_path(image_path),
-                    image_strength=image_strength,
-                    height=height,
-                    width=width,
-                ),
+                "config": Config(**config_kwargs),
             }
 
             # Add negative_prompt for Qwen models
