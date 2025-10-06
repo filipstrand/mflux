@@ -6,10 +6,10 @@ import numpy as np
 
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
-from mflux.dreambooth.dreambooth import DreamBooth
-from mflux.dreambooth.dreambooth_initializer import DreamBoothInitializer
-from mflux.dreambooth.state.zip_util import ZipUtil
-from mflux.flux.flux import Flux1
+from mflux.models.flux.variants.dreambooth.dreambooth import DreamBooth
+from mflux.models.flux.variants.dreambooth.dreambooth_initializer import DreamBoothInitializer
+from mflux.models.flux.variants.dreambooth.state.zip_util import ZipUtil
+from mflux.models.flux.variants.txt2img.flux import Flux1
 
 CHECKPOINT_3 = "tests/dreambooth/tmp/_checkpoints/0000003_checkpoint.zip"
 CHECKPOINT_4 = "tests/dreambooth/tmp/_checkpoints/0000004_checkpoint.zip"

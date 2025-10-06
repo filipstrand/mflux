@@ -4,9 +4,9 @@ from typing import List, Set
 import mlx.core as mx
 import pytest
 
-from mflux.dreambooth.dataset.batch import Example
-from mflux.dreambooth.dataset.dataset import Dataset
-from mflux.dreambooth.dataset.iterator import Iterator
+from mflux.models.flux.variants.dreambooth.dataset.batch import Example
+from mflux.models.flux.variants.dreambooth.dataset.dataset import Dataset
+from mflux.models.flux.variants.dreambooth.dataset.iterator import Iterator
 
 
 def get_dataset(num_examples: int) -> Dataset:

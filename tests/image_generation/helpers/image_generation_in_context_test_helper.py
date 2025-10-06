@@ -1,10 +1,10 @@
 import os
 from pathlib import Path
 
-from mflux.community.in_context.flux_in_context_dev import Flux1InContextDev
-from mflux.community.in_context.utils.in_context_loras import LORA_REPO_ID, get_lora_filename
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
+from mflux.models.flux.variants.in_context.flux_in_context_dev import Flux1InContextDev
+from mflux.models.flux.variants.in_context.utils.in_context_loras import LORA_REPO_ID, get_lora_filename
 
 from .image_compare import check_images_close_enough
 

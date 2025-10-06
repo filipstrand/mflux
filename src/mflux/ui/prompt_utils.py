@@ -46,3 +46,8 @@ def get_effective_prompt(args: Namespace) -> str:
 
     # Return regular prompt
     return args.prompt
+
+
+def get_effective_negative_prompt(args: Namespace) -> str:
+    # Return negative prompt or empty string if not provided
+    return getattr(args, "negative_prompt", "")

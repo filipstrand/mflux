@@ -5,13 +5,13 @@ import time
 import typing as t
 from pathlib import Path
 
-from mflux.community.in_context.utils.in_context_loras import LORA_NAME_MAP, LORA_REPO_ID
+from mflux.models.flux.variants.in_context.utils.in_context_loras import LORA_NAME_MAP, LORA_REPO_ID
 from mflux.ui import (
     box_values,
     defaults as ui_defaults,
     scale_factor,
 )
-from mflux.weights.lora_library import get_lora_path
+from mflux.utils.lora_library import get_lora_path
 
 
 class ModelSpecAction(argparse.Action):
@@ -105,6 +105,7 @@ class CommandLineParser(argparse.ArgumentParser):
         prompt_group = self.add_mutually_exclusive_group(required=(require_prompt and not supports_metadata_config))
         prompt_group.add_argument("--prompt", type=str, help="The textual description of the image to generate.")
         prompt_group.add_argument("--prompt-file", type=Path, help="Path to a file containing the prompt text. The file will be re-read before each generation, allowing you to edit the prompt between iterations when using multiple seeds without restarting the program.")
+        self.add_argument("--negative-prompt", type=str, default="", help="The negative prompt to guide what the model should not generate.")
         self.add_argument("--seed", type=int, default=None, nargs='+', help="Specify 1+ Entropy Seeds (Default is 1 time-based random-seed)")
         self.add_argument("--auto-seeds", type=int, default=-1, help="Auto generate N Entropy Seeds (random ints between 0 and 1 billion")
         self._add_image_generator_common_arguments(supports_dimension_scale_factor=supports_dimension_scale_factor)
