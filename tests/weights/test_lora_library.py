@@ -5,7 +5,7 @@ from unittest import mock
 
 import pytest
 
-from mflux.weights import lora_library
+from mflux.utils import lora_library
 
 
 @pytest.fixture(autouse=True)

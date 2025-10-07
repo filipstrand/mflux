@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import mlx.core as mx
+from mlx import nn
 
-from mflux.models.vae.vae import VAE
 from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.image_util import ImageUtil
 
@@ -10,7 +10,7 @@ from mflux.post_processing.image_util import ImageUtil
 class Img2Img:
     def __init__(
         self,
-        vae: VAE,
+        vae: nn.Module,
         sigmas: mx.array,
         init_time_step: int,
         image_path: str | Path | None,
@@ -71,7 +71,7 @@ class LatentCreator:
             )
 
     @staticmethod
-    def encode_image(vae: VAE, image_path: str | Path, height: int, width: int):
+    def encode_image(vae: nn.Module, image_path: str | Path, height: int, width: int):
         scaled_user_image = ImageUtil.scale_to_dimensions(
             image=ImageUtil.load_image(image_path).convert("RGB"),
             target_width=width,

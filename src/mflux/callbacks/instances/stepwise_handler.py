@@ -13,10 +13,10 @@ from mflux.post_processing.image_util import ImageUtil
 class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
     def __init__(
         self,
-        flux,
+        model,
         output_dir: str,
     ):
-        self.flux = flux
+        self.model = model
         self.output_dir = Path(output_dir)
         self.step_wise_images = []
 
@@ -80,16 +80,16 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
         time_steps: tqdm,
     ) -> None:
         unpack_latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
-        stepwise_decoded = self.flux.vae.decode(unpack_latents)
+        stepwise_decoded = self.model.vae.decode(unpack_latents)
         generation_time = time_steps.format_dict["elapsed"] if time_steps is not None else 0
         stepwise_img = ImageUtil.to_image(
             decoded_latents=stepwise_decoded,
             config=config,
             seed=seed,
             prompt=prompt,
-            quantization=self.flux.bits,
-            lora_paths=self.flux.lora_paths,
-            lora_scales=self.flux.lora_scales,
+            quantization=self.model.bits,
+            lora_paths=self.model.lora_paths,
+            lora_scales=self.model.lora_scales,
             generation_time=generation_time,
         )
         stepwise_img.save(

@@ -1,11 +1,11 @@
 from pathlib import Path
 
 from mflux.callbacks.callback_manager import CallbackManager
-from mflux.community.in_context.flux_in_context_dev import Flux1InContextDev
-from mflux.community.in_context.utils.in_context_loras import LORA_REPO_ID, get_lora_filename
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.error.exceptions import PromptFileReadError, StopImageGenerationException
+from mflux.models.flux.variants.in_context.flux_in_context_dev import Flux1InContextDev
+from mflux.models.flux.variants.in_context.utils.in_context_loras import LORA_REPO_ID, get_lora_filename
 from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_prompt
@@ -42,7 +42,7 @@ def main():
     )
 
     # 2. Register callbacks
-    memory_saver = CallbackManager.register_callbacks(args=args, flux=flux)
+    memory_saver = CallbackManager.register_callbacks(args=args, model=flux)
 
     try:
         for seed in args.seed:
