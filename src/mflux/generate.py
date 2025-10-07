@@ -51,6 +51,7 @@ def main():
                     guidance=args.guidance,
                     image_path=args.image_path,
                     image_strength=args.image_strength,
+                    scheduler=args.scheduler,
                 ),
             )
             # 4. Save the image

@@ -67,7 +67,7 @@ class QwenImage(nn.Module):
             width=runtime_config.width,
             img2img=Img2Img(
                 vae=self.vae,
-                sigmas=runtime_config.sigmas,
+                sigmas=runtime_config.scheduler.sigmas,
                 init_time_step=runtime_config.init_time_step,
                 image_path=runtime_config.image_path,
             ),
@@ -92,6 +92,9 @@ class QwenImage(nn.Module):
 
         for t in time_steps:
             try:
+                # Scale model input if needed by the scheduler
+                latents = runtime_config.scheduler.scale_model_input(latents, t)
+
                 # 3. Predict the noise
                 noise = self.transformer(
                     t=t,
@@ -110,8 +113,11 @@ class QwenImage(nn.Module):
                 guided_noise = QwenImage._compute_guided_noise(noise, noise_negative, runtime_config.guidance)
 
                 # 4.t Take one denoise step
-                dt = runtime_config.sigmas[t + 1] - runtime_config.sigmas[t]
-                latents = latents + guided_noise * dt
+                latents = runtime_config.scheduler.step(
+                    model_output=guided_noise,
+                    timestep=t,
+                    sample=latents,
+                )
 
                 # (Optional) Call subscribers in-loop
                 Callbacks.in_loop(

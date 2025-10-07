@@ -60,6 +60,7 @@ class Flux1InContextFill(nn.Module):
         config.width = original_width * 2
 
         time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
+        sigmas = config.scheduler.sigmas
 
         # 1. Create the initial latents
         latents = LatentCreator.create(
@@ -112,7 +113,7 @@ class Flux1InContextFill(nn.Module):
                 )
 
                 # 6.t Take one denoise step
-                dt = config.sigmas[t + 1] - config.sigmas[t]
+                dt = sigmas[t + 1] - sigmas[t]
                 latents += noise * dt
 
                 # (Optional) Call subscribers in-loop
