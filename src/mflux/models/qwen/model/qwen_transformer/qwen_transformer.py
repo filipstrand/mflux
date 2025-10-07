@@ -89,7 +89,7 @@ class QwenTransformer(nn.Module):
         time_text_embed: QwenTimeTextEmbed,
         config: RuntimeConfig,
     ) -> mx.array:
-        time_step = config.sigmas[t]
+        time_step = config.scheduler.sigmas[t]
         batch = hidden_states.shape[0]
         timestep = mx.array(np.full((batch,), time_step, dtype=np.float32))
         text_embeddings = time_text_embed(timestep, hidden_states)
