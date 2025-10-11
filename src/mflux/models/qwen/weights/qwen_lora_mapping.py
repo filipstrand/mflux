@@ -13,13 +13,18 @@ class QwenLoRAMapping(LoRAMapping):
                 possible_up_patterns=[
                     "transformer_blocks.{block}.attn.to_q.lora_up.weight",
                     "transformer.transformer_blocks.{block}.attn.to_q.lora.up.weight",
+                    "diffusion_model.transformer_blocks.{block}.attn.to_q.lora_B.weight",
+                    "lora_unet_transformer_blocks_{block}_attn_to_q.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     "transformer_blocks.{block}.attn.to_q.lora_down.weight",
                     "transformer.transformer_blocks.{block}.attn.to_q.lora.down.weight",
+                    "diffusion_model.transformer_blocks.{block}.attn.to_q.lora_A.weight",
+                    "lora_unet_transformer_blocks_{block}_attn_to_q.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.attn.to_q.alpha",
+                    "lora_unet_transformer_blocks_{block}_attn_to_q.alpha",
                 ]
             ),
             LoRATarget(
@@ -27,13 +32,18 @@ class QwenLoRAMapping(LoRAMapping):
                 possible_up_patterns=[
                     "transformer_blocks.{block}.attn.to_k.lora_up.weight",
                     "transformer.transformer_blocks.{block}.attn.to_k.lora.up.weight",
+                    "diffusion_model.transformer_blocks.{block}.attn.to_k.lora_B.weight",
+                    "lora_unet_transformer_blocks_{block}_attn_to_k.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     "transformer_blocks.{block}.attn.to_k.lora_down.weight",
                     "transformer.transformer_blocks.{block}.attn.to_k.lora.down.weight",
+                    "diffusion_model.transformer_blocks.{block}.attn.to_k.lora_A.weight",
+                    "lora_unet_transformer_blocks_{block}_attn_to_k.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.attn.to_k.alpha",
+                    "lora_unet_transformer_blocks_{block}_attn_to_k.alpha",
                 ]
             ),
             LoRATarget(
@@ -41,13 +51,18 @@ class QwenLoRAMapping(LoRAMapping):
                 possible_up_patterns=[
                     "transformer_blocks.{block}.attn.to_v.lora_up.weight",
                     "transformer.transformer_blocks.{block}.attn.to_v.lora.up.weight",
+                    "diffusion_model.transformer_blocks.{block}.attn.to_v.lora_B.weight",
+                    "lora_unet_transformer_blocks_{block}_attn_to_v.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     "transformer_blocks.{block}.attn.to_v.lora_down.weight",
                     "transformer.transformer_blocks.{block}.attn.to_v.lora.down.weight",
+                    "diffusion_model.transformer_blocks.{block}.attn.to_v.lora_A.weight",
+                    "lora_unet_transformer_blocks_{block}_attn_to_v.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.attn.to_v.alpha",
+                    "lora_unet_transformer_blocks_{block}_attn_to_v.alpha",
                 ]
             ),
             LoRATarget(
@@ -55,109 +70,154 @@ class QwenLoRAMapping(LoRAMapping):
                 possible_up_patterns=[
                     "transformer_blocks.{block}.attn.to_out.0.lora_up.weight",
                     "transformer.transformer_blocks.{block}.attn.to_out.0.lora.up.weight",
+                    "diffusion_model.transformer_blocks.{block}.attn.to_out.0.lora_B.weight",
+                    "lora_unet_transformer_blocks_{block}_attn_to_out_0.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     "transformer_blocks.{block}.attn.to_out.0.lora_down.weight",
                     "transformer.transformer_blocks.{block}.attn.to_out.0.lora.down.weight",
+                    "diffusion_model.transformer_blocks.{block}.attn.to_out.0.lora_A.weight",
+                    "lora_unet_transformer_blocks_{block}_attn_to_out_0.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.attn.to_out.0.alpha",
+                    "lora_unet_transformer_blocks_{block}_attn_to_out_0.alpha",
                 ]
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.add_q_proj",
                 possible_up_patterns=[
                     "transformer_blocks.{block}.attn.add_q_proj.lora_up.weight",
+                    "diffusion_model.transformer_blocks.{block}.attn.add_q_proj.lora_B.weight",
+                    "lora_unet_transformer_blocks_{block}_attn_add_q_proj.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     "transformer_blocks.{block}.attn.add_q_proj.lora_down.weight",
+                    "diffusion_model.transformer_blocks.{block}.attn.add_q_proj.lora_A.weight",
+                    "lora_unet_transformer_blocks_{block}_attn_add_q_proj.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.attn.add_q_proj.alpha",
+                    "lora_unet_transformer_blocks_{block}_attn_add_q_proj.alpha",
                 ]
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.add_k_proj",
                 possible_up_patterns=[
                     "transformer_blocks.{block}.attn.add_k_proj.lora_up.weight",
+                    "diffusion_model.transformer_blocks.{block}.attn.add_k_proj.lora_B.weight",
+                    "lora_unet_transformer_blocks_{block}_attn_add_k_proj.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     "transformer_blocks.{block}.attn.add_k_proj.lora_down.weight",
+                    "diffusion_model.transformer_blocks.{block}.attn.add_k_proj.lora_A.weight",
+                    "lora_unet_transformer_blocks_{block}_attn_add_k_proj.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.attn.add_k_proj.alpha",
+                    "lora_unet_transformer_blocks_{block}_attn_add_k_proj.alpha",
                 ]
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.add_v_proj",
                 possible_up_patterns=[
                     "transformer_blocks.{block}.attn.add_v_proj.lora_up.weight",
+                    "diffusion_model.transformer_blocks.{block}.attn.add_v_proj.lora_B.weight",
+                    "lora_unet_transformer_blocks_{block}_attn_add_v_proj.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     "transformer_blocks.{block}.attn.add_v_proj.lora_down.weight",
+                    "diffusion_model.transformer_blocks.{block}.attn.add_v_proj.lora_A.weight",
+                    "lora_unet_transformer_blocks_{block}_attn_add_v_proj.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.attn.add_v_proj.alpha",
+                    "lora_unet_transformer_blocks_{block}_attn_add_v_proj.alpha",
                 ]
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.to_add_out",
                 possible_up_patterns=[
                     "transformer_blocks.{block}.attn.to_add_out.lora_up.weight",
+                    "diffusion_model.transformer_blocks.{block}.attn.to_add_out.lora_B.weight",
+                    "lora_unet_transformer_blocks_{block}_attn_to_add_out.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     "transformer_blocks.{block}.attn.to_add_out.lora_down.weight",
+                    "diffusion_model.transformer_blocks.{block}.attn.to_add_out.lora_A.weight",
+                    "lora_unet_transformer_blocks_{block}_attn_to_add_out.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.attn.to_add_out.alpha",
+                    "lora_unet_transformer_blocks_{block}_attn_to_add_out.alpha",
                 ]
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.img_ff.mlp_in",
                 possible_up_patterns=[
                     "transformer_blocks.{block}.img_mlp.net.0.proj.lora_up.weight",
+                    "diffusion_model.transformer_blocks.{block}.img_mlp.net.0.proj.lora_B.weight",
+                    "lora_unet_transformer_blocks_{block}_img_mlp_net_0_proj.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     "transformer_blocks.{block}.img_mlp.net.0.proj.lora_down.weight",
+                    "diffusion_model.transformer_blocks.{block}.img_mlp.net.0.proj.lora_A.weight",
+                    "lora_unet_transformer_blocks_{block}_img_mlp_net_0_proj.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.img_mlp.net.0.proj.alpha",
+                    "lora_unet_transformer_blocks_{block}_img_mlp_net_0_proj.alpha",
                 ]
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.img_ff.mlp_out",
                 possible_up_patterns=[
                     "transformer_blocks.{block}.img_mlp.net.2.lora_up.weight",
+                    "diffusion_model.transformer_blocks.{block}.img_mlp.net.2.lora_B.weight",
+                    "lora_unet_transformer_blocks_{block}_img_mlp_net_2.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     "transformer_blocks.{block}.img_mlp.net.2.lora_down.weight",
+                    "diffusion_model.transformer_blocks.{block}.img_mlp.net.2.lora_A.weight",
+                    "lora_unet_transformer_blocks_{block}_img_mlp_net_2.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.img_mlp.net.2.alpha",
+                    "lora_unet_transformer_blocks_{block}_img_mlp_net_2.alpha",
                 ]
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.txt_ff.mlp_in",
                 possible_up_patterns=[
                     "transformer_blocks.{block}.txt_mlp.net.0.proj.lora_up.weight",
+                    "diffusion_model.transformer_blocks.{block}.txt_mlp.net.0.proj.lora_B.weight",
+                    "lora_unet_transformer_blocks_{block}_txt_mlp_net_0_proj.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     "transformer_blocks.{block}.txt_mlp.net.0.proj.lora_down.weight",
+                    "diffusion_model.transformer_blocks.{block}.txt_mlp.net.0.proj.lora_A.weight",
+                    "lora_unet_transformer_blocks_{block}_txt_mlp_net_0_proj.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.txt_mlp.net.0.proj.alpha",
+                    "lora_unet_transformer_blocks_{block}_txt_mlp_net_0_proj.alpha",
                 ]
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.txt_ff.mlp_out",
                 possible_up_patterns=[
                     "transformer_blocks.{block}.txt_mlp.net.2.lora_up.weight",
+                    "diffusion_model.transformer_blocks.{block}.txt_mlp.net.2.lora_B.weight",
+                    "lora_unet_transformer_blocks_{block}_txt_mlp_net_2.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     "transformer_blocks.{block}.txt_mlp.net.2.lora_down.weight",
+                    "diffusion_model.transformer_blocks.{block}.txt_mlp.net.2.lora_A.weight",
+                    "lora_unet_transformer_blocks_{block}_txt_mlp_net_2.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.txt_mlp.net.2.alpha",
+                    "lora_unet_transformer_blocks_{block}_txt_mlp_net_2.alpha",
                 ]
         ),
     ]
