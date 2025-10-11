@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import Dict, Tuple
 
@@ -83,19 +84,20 @@ class LoRALoader:
             # Pattern matching logic
             for pattern, mapping_info in lora_mappings.items():
                 if "{block}" in pattern:
-                    # Extract block number from the weight key
-                    parts = weight_key.split(".")
-                    for i, part in enumerate(parts):
-                        if part.isdigit():
-                            try:
-                                test_block_idx = int(part)
-                                concrete_pattern = pattern.format(block=test_block_idx)
-                                if weight_key == concrete_pattern:
-                                    found_mapping = mapping_info
-                                    block_idx = test_block_idx
-                                    break
-                            except (ValueError, KeyError):
-                                continue
+                    # Extract block number from the weight key - try both . and _ separators
+                    # This handles both standard LoRA formats (dot-separated) and other formats (underscore-separated)
+                    # Find all numbers in the weight key
+                    numbers_in_key = re.findall(r'\d+', weight_key)
+                    for num_str in numbers_in_key:
+                        try:
+                            test_block_idx = int(num_str)
+                            concrete_pattern = pattern.format(block=test_block_idx)
+                            if weight_key == concrete_pattern:
+                                found_mapping = mapping_info
+                                block_idx = test_block_idx
+                                break
+                        except (ValueError, KeyError):
+                            continue
                     if found_mapping:
                         break
                 else:
