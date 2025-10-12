@@ -786,6 +786,7 @@ dependencies = [
 
 [package.optional-dependencies]
 dev = [
+    { name = "matplotlib" },
     { name = "mlx" },
     { name = "pytest" },
     { name = "pytest-timer" },
@@ -797,6 +798,7 @@ requires-dist = [
     { name = "filelock", specifier = ">=3.18.0" },
     { name = "huggingface-hub", specifier = ">=0.24.5,<1.0" },
     { name = "matplotlib", specifier = ">=3.9.2,<4.0" },
+    { name = "matplotlib", marker = "extra == 'dev'", specifier = ">3.10,<4.0" },
     { name = "mlx", specifier = ">=0.27.0,<0.28.0" },
     { name = "mlx", marker = "extra == 'dev'", specifier = "==0.27.1" },
     { name = "numpy", specifier = ">=2.0.1,<3.0" },

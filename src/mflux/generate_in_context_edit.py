@@ -61,6 +61,7 @@ def main():
                     height=height,
                     width=width,
                     guidance=args.guidance,
+                    scheduler=args.scheduler,
                 ),
             )
 

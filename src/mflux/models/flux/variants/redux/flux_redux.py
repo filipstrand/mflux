@@ -92,6 +92,9 @@ class Flux1Redux(nn.Module):
 
         for t in time_steps:
             try:
+                # Scale model input if needed by the scheduler
+                latents = runtime_config.scheduler.scale_model_input(latents, t)
+
                 # 3.t Predict the noise
                 noise = self.transformer(
                     t=t,
@@ -102,8 +105,11 @@ class Flux1Redux(nn.Module):
                 )
 
                 # 4.t Take one denoise step
-                dt = runtime_config.sigmas[t + 1] - runtime_config.sigmas[t]
-                latents += noise * dt
+                latents = runtime_config.scheduler.step(
+                    model_output=noise,
+                    timestep=t,
+                    sample=latents,
+                )
 
                 # (Optional) Call subscribers in-loop
                 Callbacks.in_loop(

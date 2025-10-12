@@ -674,6 +674,21 @@ def test_fill_default_guidance():
         assert args.guidance == ui_defaults.DEFAULT_DEV_FILL_GUIDANCE
 
 
+def test_scheduler_by_name(mflux_generate_parser, mflux_generate_minimal_model_argv):
+    with patch("sys.argv", mflux_generate_minimal_model_argv + ["--scheduler", "linear"]):
+        args = mflux_generate_parser.parse_args()
+        # we just want the arg to be accepted
+        assert args.scheduler == "linear"
+
+    with patch("sys.argv", mflux_generate_minimal_model_argv + ["--scheduler", "foobar"]):
+        # let the CLI will accept "foobar" - later RuntimeConfig will validate
+        args = mflux_generate_parser.parse_args()
+
+    with patch("sys.argv", mflux_generate_minimal_model_argv + ["--scheduler", "mflux.someplugin.SchedulerBaz"]):
+        # let the CLI will accept external import paths - later RuntimeConfig will validate
+        args = mflux_generate_parser.parse_args()
+
+
 def test_save_depth_args(mflux_save_depth_parser, mflux_save_depth_minimal_argv):
     # Test required arguments
     with patch("sys.argv", mflux_save_depth_minimal_argv):

@@ -78,7 +78,7 @@ class Flux1ConceptFromImage(nn.Module):
         latents = LatentCreator.add_noise_by_interpolation(
             clean=ArrayUtil.pack_latents(latents=encoded_image, height=config.height, width=config.width),
             noise=static_noise,
-            sigma=config.sigmas[config.init_time_step],
+            sigma=config.scheduler.sigmas[config.init_time_step],
         )
 
         # 2. Encode the main prompt
@@ -112,6 +112,9 @@ class Flux1ConceptFromImage(nn.Module):
         attention_data = GenerationAttentionData()
         for t in time_steps:
             try:
+                # Scale model input if needed by the scheduler
+                latents = config.scheduler.scale_model_input(latents, t)
+
                 # 4.t Predict the noise (we don't use the noise, only the attention)
                 _, attention = self.transformer(
                     t=t,
@@ -128,7 +131,7 @@ class Flux1ConceptFromImage(nn.Module):
                 latents = LatentCreator.add_noise_by_interpolation(
                     clean=ArrayUtil.pack_latents(latents=encoded_image, height=config.height, width=config.width),
                     noise=static_noise,
-                    sigma=config.sigmas[t + 1],
+                    sigma=config.scheduler.sigmas[t + 1],
                 )
 
                 # (Optional) Call subscribers in-loop

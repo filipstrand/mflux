@@ -89,6 +89,9 @@ class Flux1Fill(nn.Module):
 
         for t in time_steps:
             try:
+                # Scale model input if needed by the scheduler
+                latents = config.scheduler.scale_model_input(latents, t)
+
                 # 4.t Concatenate the updated latents with the static masked latents
                 hidden_states = mx.concatenate([latents, static_masked_latents], axis=-1)
 
@@ -102,8 +105,11 @@ class Flux1Fill(nn.Module):
                 )
 
                 # 6.t Take one denoise step
-                dt = config.sigmas[t + 1] - config.sigmas[t]
-                latents += noise * dt
+                latents = config.scheduler.step(
+                    model_output=noise,
+                    timestep=t,
+                    sample=latents,
+                )
 
                 # (Optional) Call subscribers in-loop
                 Callbacks.in_loop(

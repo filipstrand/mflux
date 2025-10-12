@@ -63,7 +63,7 @@ class Flux1(nn.Module):
             img2img=Img2Img(
                 vae=self.vae,
                 image_path=config.image_path,
-                sigmas=config.sigmas,
+                sigmas=config.scheduler.sigmas,
                 init_time_step=config.init_time_step,
             ),
         )
@@ -88,6 +88,9 @@ class Flux1(nn.Module):
 
         for t in time_steps:
             try:
+                # Scale model input if needed by the scheduler
+                latents = config.scheduler.scale_model_input(latents, t)
+
                 # 3.t Predict the noise
                 noise = self.transformer(
                     t=t,
@@ -98,8 +101,11 @@ class Flux1(nn.Module):
                 )
 
                 # 4.t Take one denoise step
-                dt = config.sigmas[t + 1] - config.sigmas[t]
-                latents += noise * dt
+                latents = config.scheduler.step(
+                    model_output=noise,
+                    timestep=t,
+                    sample=latents,
+                )
 
                 # (Optional) Call subscribers in-loop
                 Callbacks.in_loop(
