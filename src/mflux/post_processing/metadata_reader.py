@@ -35,8 +35,11 @@ class MetadataReader:
             user_comment = exif_dict["Exif"].get(0x9286, b"")
 
             if user_comment:
-                # Try to parse as JSON
-                metadata_str = user_comment.decode("utf-8")
+                # Try to parse as JSON (strip the ASCII prefix if present)
+                if user_comment.startswith(b"ASCII\x00\x00\x00"):
+                    metadata_str = user_comment[8:].decode("utf-8")
+                else:
+                    metadata_str = user_comment.decode("utf-8")
                 return json.loads(metadata_str)
 
             return None

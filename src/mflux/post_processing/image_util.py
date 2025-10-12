@@ -261,7 +261,8 @@ class ImageUtil:
             metadata_str = json.dumps(metadata)
 
             # Convert the string to bytes (using UTF-8 encoding)
-            user_comment_bytes = metadata_str.encode("utf-8")
+            # Add the ASCII character code prefix required by EXIF spec
+            user_comment_bytes = b"ASCII\x00\x00\x00" + metadata_str.encode("utf-8")
 
             # Define the UserComment tag ID
             USER_COMMENT_TAG_ID = 0x9286

@@ -194,8 +194,6 @@ class CommandLineParser(argparse.ArgumentParser):
 
     def add_info_arguments(self) -> None:
         self.add_argument("image_path", type=str, help="Path to the image file to inspect")
-        self.add_argument("--format", type=str, choices=["text", "json"], default="text", help="Output format (text or json)")
-        self.add_argument("--brief", action="store_true", help="Show only key information (prompt, seed, steps, etc.)")
 
     def parse_args(self) -> argparse.Namespace:  # type: ignore
         namespace = super().parse_args()
