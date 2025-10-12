@@ -68,7 +68,7 @@ dev = [
     "matplotlib>3.10,<4.0",
     "pytest>=8.3.0,<9.0",
     "pytest-timer>=1.0,<2.0",
-    "mlx==0.27.1",  # Used ONLY during test runs to ensure deterministic test results
+    "mlx==0.29.2",  # Used ONLY during test runs to ensure deterministic test results
 ]
 
 [project.urls]
