@@ -58,7 +58,6 @@ class Flux1Controlnet(nn.Module):
         # 0. Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.num_inference_steps))
-        sigmas = config.scheduler.sigmas
 
         # 1. Encode the controlnet reference image
         controlnet_condition, canny_image = ControlnetUtil.encode_image(
@@ -97,6 +96,9 @@ class Flux1Controlnet(nn.Module):
 
         for t in time_steps:
             try:
+                # Scale model input if needed by the scheduler
+                latents = config.scheduler.scale_model_input(latents, t)
+
                 # 4.t Compute controlnet samples
                 controlnet_block_samples, controlnet_single_block_samples = self.transformer_controlnet(
                     t=t,
@@ -119,8 +121,11 @@ class Flux1Controlnet(nn.Module):
                 )
 
                 # 6.t Take one denoise step
-                dt = sigmas[t + 1] - sigmas[t]
-                latents += noise * dt
+                latents = config.scheduler.step(
+                    model_output=noise,
+                    timestep=t,
+                    sample=latents,
+                )
 
                 # (Optional) Call subscribers in-loop
                 Callbacks.in_loop(

@@ -56,7 +56,6 @@ class Flux1InContextDev(nn.Module):
         # 0. Create a new runtime config based on the model type and input parameters
         config = RuntimeConfig(config, self.model_config)
         time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
-        sigmas = config.scheduler.sigmas
 
         # 1. Encode the reference image
         encoded_image = LatentCreator.encode_image(
@@ -90,6 +89,9 @@ class Flux1InContextDev(nn.Module):
 
         for t in time_steps:
             try:
+                # Scale model input if needed by the scheduler
+                latents = config.scheduler.scale_model_input(latents, t)
+
                 # 4.t Predict the noise
                 noise = self.transformer(
                     t=t,
@@ -100,8 +102,11 @@ class Flux1InContextDev(nn.Module):
                 )
 
                 # 5.t Take one denoise step and update latents
-                dt = sigmas[t + 1] - sigmas[t]
-                latents += noise * dt
+                latents = config.scheduler.step(
+                    model_output=noise,
+                    timestep=t,
+                    sample=latents,
+                )
 
                 # 6.t Override the left-hand side of latents by linearly interpolating between latents and static noise
                 latents = Flux1InContextDev._update_latents(
@@ -110,7 +115,7 @@ class Flux1InContextDev(nn.Module):
                     latents=latents,
                     encoded_image=encoded_image,
                     static_noise=static_noise,
-                    sigmas=sigmas,
+                    sigmas=config.scheduler.sigmas,
                 )
 
                 # (Optional) Call subscribers in-loop
