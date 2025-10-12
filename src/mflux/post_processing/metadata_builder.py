@@ -15,6 +15,7 @@ class MetadataBuilder:
     def embed_metadata(metadata: dict, path: str | Path) -> None:
         """
         Embed XMP and IPTC metadata into an image file without touching existing EXIF.
+        Only supports PNG format.
 
         Args:
             metadata: Dictionary containing image generation metadata
@@ -23,6 +24,12 @@ class MetadataBuilder:
         Raises:
             Exception: If there's an error during metadata embedding
         """
+        # Check if file is PNG format
+        path_obj = Path(path) if isinstance(path, str) else path
+        if path_obj.suffix.lower() != ".png":
+            log.warning(f"XMP/IPTC metadata embedding is only supported for PNG files, skipping: {path_obj}")
+            return
+
         try:
             from PIL import PngImagePlugin
 

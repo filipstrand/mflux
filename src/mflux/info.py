@@ -1,6 +1,7 @@
 """Display metadata information from MFLUX generated images."""
 
 import json
+import sys
 from pathlib import Path
 
 from mflux.post_processing.metadata_reader import MetadataReader
@@ -27,7 +28,7 @@ def format_brief(metadata: dict) -> str:
 
     if width := exif.get("width"):
         lines.append(f"Width: {width}")
-    
+
     if height := exif.get("height"):
         lines.append(f"Height: {height}")
 
@@ -105,10 +106,15 @@ def main():
     image_path = Path(args.image_path)
     if not image_path.exists():
         print(f"Error: Image file not found: {image_path}")
-        return
+        sys.exit(1)
 
     # Read metadata
     metadata = MetadataReader.read_all_metadata(image_path)
+
+    # Check if metadata was found
+    if not metadata or (not metadata.get("exif") and not metadata.get("xmp")):
+        print("No metadata found")
+        sys.exit(1)
 
     # Format and display based on options
     if args.format == "json":
