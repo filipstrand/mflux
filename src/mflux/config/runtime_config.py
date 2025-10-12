@@ -105,7 +105,7 @@ class RuntimeConfig:
         if self.config.scheduler_str == "linear":
             self._scheduler = LinearScheduler(self)
         elif (registered_scheduler := SCHEDULER_REGISTRY.get(self.config.scheduler_str, None)) is not None:
-            self._scheduler = registered_scheduler
+            self._scheduler = registered_scheduler(self)
         elif "." in self.config.scheduler_str:
             # this raises ValueError if scheduler is not importable
             scheduler_cls = try_import_external_scheduler(self.config.scheduler_str)
