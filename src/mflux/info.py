@@ -55,6 +55,15 @@ def format_brief(metadata: dict) -> str:
     if gen_time := exif.get("generation_time_seconds"):
         lines.append(f"\nGeneration Time: {gen_time:.2f}s")
 
+    if created_at := exif.get("created_at"):
+        # Parse ISO format and make it more readable
+        try:
+            from datetime import datetime
+            dt = datetime.fromisoformat(created_at)
+            lines.append(f"Created: {dt.strftime('%Y-%m-%d %H:%M:%S')}")
+        except (ValueError, AttributeError):
+            lines.append(f"Created: {created_at}")
+
     if version := exif.get("mflux_version"):
         lines.append(f"MFLUX Version: {version}")
 

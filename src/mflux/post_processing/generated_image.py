@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 
 import mlx.core as mx
@@ -150,6 +151,7 @@ class GeneratedImage:
             "precision": str(self.precision),
             "quantize": self.quantization,
             "generation_time_seconds": round(self.generation_time, 2),
+            "created_at": datetime.now().isoformat(),
             "lora_paths": [str(p) for p in self.lora_paths] if self.lora_paths else None,
             "lora_scales": [round(scale, 2) for scale in self.lora_scales] if self.lora_scales else None,
             "image_path": str(self.image_path) if self.image_path else None,
