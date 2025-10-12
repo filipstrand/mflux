@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 
 import mlx.core as mx
@@ -22,6 +23,8 @@ class GeneratedImage:
         generation_time: float,
         lora_paths: list[str],
         lora_scales: list[float],
+        height: int | None = None,
+        width: int | None = None,
         controlnet_image_path: str | Path | None = None,
         controlnet_strength: float | None = None,
         image_path: str | Path | None = None,
@@ -44,6 +47,8 @@ class GeneratedImage:
         self.generation_time = generation_time
         self.lora_paths = lora_paths
         self.lora_scales = lora_scales
+        self.height = height
+        self.width = width
         self.controlnet_image_path = controlnet_image_path
         self.controlnet_strength = controlnet_strength
         self.image_path = image_path
@@ -73,6 +78,8 @@ class GeneratedImage:
             generation_time=self.generation_time,
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
+            height=self.height,
+            width=self.width,
             controlnet_image_path=self.controlnet_image_path,
             controlnet_strength=self.controlnet_strength,
             image_path=self.image_path,
@@ -139,9 +146,12 @@ class GeneratedImage:
             "seed": self.seed,
             "steps": self.steps,
             "guidance": self.guidance if self.model_config.supports_guidance else None,
+            "height": self.height,
+            "width": self.width,
             "precision": str(self.precision),
             "quantize": self.quantization,
             "generation_time_seconds": round(self.generation_time, 2),
+            "created_at": datetime.now().isoformat(),
             "lora_paths": [str(p) for p in self.lora_paths] if self.lora_paths else None,
             "lora_scales": [round(scale, 2) for scale in self.lora_scales] if self.lora_scales else None,
             "image_path": str(self.image_path) if self.image_path else None,

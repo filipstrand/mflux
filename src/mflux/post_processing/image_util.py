@@ -12,6 +12,7 @@ from PIL._typing import StrOrBytesPath
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.flux.variants.concept_attention.attention_data import ConceptHeatmap
 from mflux.post_processing.generated_image import GeneratedImage
+from mflux.post_processing.metadata_builder import MetadataBuilder
 from mflux.ui.box_values import AbsoluteBoxValues, BoxValues
 
 log = logging.getLogger(__name__)
@@ -53,6 +54,8 @@ class ImageUtil:
             generation_time=generation_time,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
+            height=config.height,
+            width=config.width,
             image_path=image_path,
             image_strength=image_strength,
             controlnet_image_path=controlnet_image_path,
@@ -242,21 +245,24 @@ class ImageUtil:
                 with open(f"{file_path.with_suffix('.json')}", "w") as json_file:
                     json.dump(metadata, json_file, indent=4)
 
-            # Embed metadata
+            # Embed metadata in multiple formats for maximum compatibility
             if metadata is not None:
                 ImageUtil._embed_metadata(metadata, file_path)
+                MetadataBuilder.embed_metadata(metadata, file_path)
                 log.info(f"Metadata embedded successfully at: {file_path}")
         except Exception as e:  # noqa: BLE001
             log.error(f"Error saving image: {e}")
 
     @staticmethod
     def _embed_metadata(metadata: dict, path: str | Path) -> None:
+        """Original EXIF metadata embedding - preserved for compatibility"""
         try:
             # Convert metadata dictionary to a string
             metadata_str = json.dumps(metadata)
 
             # Convert the string to bytes (using UTF-8 encoding)
-            user_comment_bytes = metadata_str.encode("utf-8")
+            # Add the ASCII character code prefix required by EXIF spec
+            user_comment_bytes = b"ASCII\x00\x00\x00" + metadata_str.encode("utf-8")
 
             # Define the UserComment tag ID
             USER_COMMENT_TAG_ID = 0x9286
@@ -273,7 +279,7 @@ class ImageUtil:
             image.save(path, exif=exif_bytes)
 
         except Exception as e:  # noqa: BLE001
-            log.error(f"Error embedding metadata: {e}")
+            log.error(f"Error embedding EXIF metadata: {e}")
 
     @staticmethod
     def preprocess_for_model(

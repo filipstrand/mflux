@@ -192,6 +192,9 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--train-config", type=str, required=False, help="Local path of the training configuration file")
         self.add_argument("--train-checkpoint", type=str, required=False, help="Local path of the checkpoint file which specifies how to continue the training process")
 
+    def add_info_arguments(self) -> None:
+        self.add_argument("image_path", type=str, help="Path to the image file to inspect")
+
     def parse_args(self) -> argparse.Namespace:  # type: ignore
         namespace = super().parse_args()
 

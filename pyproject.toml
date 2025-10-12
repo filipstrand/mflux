@@ -91,6 +91,7 @@ mflux-save-depth = "mflux.save_depth:main"
 mflux-train = "mflux.train:main"
 mflux-upscale = "mflux.upscale:main"
 mflux-lora-library = "mflux.lora_library:main"
+mflux-info = "mflux.info:main"
 mflux-completions = "mflux.ui.cli.completions.install:main"
 
 
