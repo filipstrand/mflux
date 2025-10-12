@@ -25,6 +25,12 @@ def format_brief(metadata: dict) -> str:
     if model := exif.get("model"):
         lines.append(f"Model: {model}")
 
+    if width := exif.get("width"):
+        lines.append(f"Width: {width}")
+    
+    if height := exif.get("height"):
+        lines.append(f"Height: {height}")
+
     if seed := exif.get("seed"):
         lines.append(f"Seed: {seed}")
 

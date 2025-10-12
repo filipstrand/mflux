@@ -54,6 +54,8 @@ class ImageUtil:
             generation_time=generation_time,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
+            height=config.height,
+            width=config.width,
             image_path=image_path,
             image_strength=image_strength,
             controlnet_image_path=controlnet_image_path,
