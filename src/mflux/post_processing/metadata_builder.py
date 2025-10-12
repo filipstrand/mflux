@@ -32,12 +32,15 @@ class MetadataBuilder:
             # Get existing PNG info to preserve it
             existing_info = image.info if hasattr(image, "info") else {}
 
+            # Preserve existing EXIF separately (if it exists)
+            existing_exif = existing_info.get("exif")
+
             # Create new PngInfo preserving existing data
             pnginfo = PngImagePlugin.PngInfo()
 
             # Copy existing metadata
             for key, value in existing_info.items():
-                if key not in ["XML:com.adobe.xmp", "IPTC"]:  # Don't duplicate what we're adding
+                if key not in ["XML:com.adobe.xmp", "IPTC", "exif"]:  # Handle these separately
                     pnginfo.add_text(key, str(value))
 
             # Build XMP and IPTC metadata using builder methods
@@ -50,7 +53,11 @@ class MetadataBuilder:
                 pnginfo.add_text("IPTC", iptc_binary.hex())
 
             # Save preserving ALL existing metadata + adding XMP/IPTC
-            image.save(path, pnginfo=pnginfo)
+            # Pass exif separately to preserve it correctly
+            if existing_exif:
+                image.save(path, pnginfo=pnginfo, exif=existing_exif)
+            else:
+                image.save(path, pnginfo=pnginfo)
 
         except Exception as e:  # noqa: BLE001
             log.error(f"Error embedding XMP/IPTC metadata: {e}")

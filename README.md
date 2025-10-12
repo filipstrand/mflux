@@ -254,7 +254,7 @@ mflux-generate \
 
 - **`--lora-scales`** (optional, `[float]`, default: `None`): The scale for each respective [LoRA](#-LoRA) (will default to `1.0` if not specified and only one LoRA weight is loaded.)
 
-- **`--metadata`** (optional): Exports a `.json` file containing the metadata for the image with the same name. (Even without this flag, the image metadata is saved and can be viewed using `exiftool image.png`)
+- **`--metadata`** (optional): Exports a `.json` file containing the metadata for the image with the same name. (Even without this flag, the image metadata is saved and can be viewed using `mflux-info image.png` or `exiftool image.png`)
 
 - **`--image-path`** (optional, `str`, default: `None`): Local path to the initial image for image-to-image generation.
 
@@ -643,7 +643,7 @@ system_profiler SPHardwareDataType SPDisplaysDataType
 
 
 *Note that these numbers includes starting the application from scratch, which means doing model i/o, setting/quantizing weights etc.
-If we assume that the model is already loaded, you can inspect the image metadata using `exiftool image.png` and see the total duration of the denoising loop (excluding text embedding).*
+If we assume that the model is already loaded, you can inspect the image metadata using `mflux-info image.png` (or `exiftool image.png`) and see the total duration of the denoising loop (excluding text embedding).*
 
 *These benchmarks are not very scientific and is only intended to give ballpark numbers. They were performed during different times with different MFLUX and MLX-versions etc. Additional hardware information such as number of GPU cores, Mac device etc. are not always known.*
 
