@@ -745,6 +745,8 @@ mflux-save \
     --quantize 8
 ```
 
+The `mflux-save` command works with both Flux and Qwen models.
+
 *Note that when saving a quantized version, you will need the original huggingface weights.*
 
 It is also possible to specify [LoRA](#-lora) adapters when saving the model, e.g
