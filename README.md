@@ -56,6 +56,7 @@ All models are implemented from scratch in MLX and only the tokenizers are used 
 [Huggingface Transformers](https://github.com/huggingface/transformers) library. Other than that, there are only minimal dependencies
 like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) for simple image post-processing.
 
+As of v.0.11.0, MFLUX now supports the Qwen Image model.
 ---
 
 ### 💿 Installation
@@ -152,6 +153,12 @@ This example uses the more powerful `dev` model with 25 time steps:
 mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2 -q 8
 ```
 
+This example uses the `qwen` model with 20 time steps:
+
+```sh
+mflux-generate --model qwen --prompt "Luxury food photograph" --steps 20 --seed 2 -q 6
+```
+
 You can also pipe prompts from other commands using stdin:
 
 ```sh
@@ -168,8 +175,8 @@ from mflux.config.config import Config
 
 # Load the model
 flux = Flux1.from_name(
-   model_name="schnell",  # "schnell", "dev", or "krea-dev"
-       quantize=8,            # 3, 4, 5, 6, or 8
+   model_name="schnell",  # "schnell", "dev", "krea-dev", or "qwen"
+   quantize=8,            # 3, 4, 5, 6, or 8
 )
 
 # Generate an image
@@ -177,7 +184,7 @@ image = flux.generate_image(
    seed=2,
    prompt="Luxury food photograph",
    config=Config(
-      num_inference_steps=2,  # "schnell" works well with 2-4 steps, "dev" and "krea-dev" work well with 20-25 steps
+      num_inference_steps=2,  # "schnell" works well with 2-4 steps, "dev", "krea-dev", and "qwen" work well with 20-25 steps
       height=1024,
       width=1024,
    )
@@ -188,7 +195,7 @@ image.save(path="image.png")
 
 For more advanced Python usage and additional configuration options, you can explore the entry point files in the source code, such as [`generate.py`](src/mflux/generate.py), [`generate_controlnet.py`](src/mflux/generate_controlnet.py), [`generate_fill.py`](src/mflux/generate_fill.py), and others in the [`src/mflux/`](src/mflux/) directory. These files demonstrate how to use the Python API for various features and provide examples of advanced configurations.
 
-⚠️ *If the specific model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB in size for the Schnell or Dev model respectively). See the [quantization](#%EF%B8%8F-quantization) section for running compressed versions of the model.* ⚠️
+⚠️ *If the specific model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB for Schnell/Dev models, ~58GB for Qwen). See the [quantization](#%EF%B8%8F-quantization) section for running compressed versions of the model.* ⚠️
 
 *By default, mflux caches files in `~/Library/Caches/mflux/`. The Hugging Face model files themselves are cached separately in the Hugging Face cache directory (e.g., `~/.cache/huggingface/`).*
 
@@ -228,9 +235,9 @@ mflux-generate \
 
 - **`--prompt`** (required, `str`): Text description of the image to generate. Use `-` to read the prompt from stdin (e.g., `echo "A beautiful sunset" | mflux-generate --prompt -`).
 
-- **`--model`** or **`-m`** (required, `str`): Model to use for generation. Can be one of the official models (`"schnell"`, `"dev"`, or `"krea-dev"`) or a HuggingFace repository ID for a compatible third-party model (e.g., `"Freepik/flux.1-lite-8B-alpha"`).
+- **`--model`** or **`-m`** (required, `str`): Model to use for generation. Can be one of the official models (`"schnell"`, `"dev"`, `"krea-dev"`, or `"qwen"`) or a HuggingFace repository ID for a compatible third-party model (e.g., `"Freepik/flux.1-lite-8B-alpha"`).
 
-- **`--base-model`** (optional, `str`, default: `None`): Specifies which base architecture a third-party model is derived from (`"schnell"`, `"dev"`, or `"krea-dev"`). Required when using third-party models from HuggingFace.
+- **`--base-model`** (optional, `str`, default: `None`): Specifies which base architecture a third-party model is derived from (`"schnell"`, `"dev"`, `"krea-dev"`, or `"qwen"`). Required when using third-party models from HuggingFace.
 
 - **`--output`** (optional, `str`, default: `"image.png"`): Output image filename. If `--seed` or `--auto-seeds` establishes multiple seed values, the output filename will automatically be modified to include the seed value (e.g., `image_seed_42.png`).
 
@@ -244,7 +251,7 @@ mflux-generate \
 
 - **`--steps`** (optional, `int`, default: `4`): Number of inference steps.
 
-- **`--guidance`** (optional, `float`, default: `3.5`): Guidance scale (only used for `"dev"` model).
+- **`--guidance`** (optional, `float`, default: `3.5`): Guidance scale (only used for `"dev"`, `"krea-dev"` and `qwen` models).
 
 - **`--path`** (optional, `str`, default: `None`): Path to a local model on disk.
 
@@ -745,6 +752,8 @@ mflux-save \
     --quantize 8
 ```
 
+The `mflux-save` command works with both Flux and Qwen models.
+
 *Note that when saving a quantized version, you will need the original huggingface weights.*
 
 It is also possible to specify [LoRA](#-lora) adapters when saving the model, e.g
@@ -792,6 +801,7 @@ In other words, you can reclaim the 34GB diskspace (per model) by deleting the f
   - [dhairyashil/FLUX.1-dev-mflux-4bit](https://huggingface.co/dhairyashil/FLUX.1-dev-mflux-4bit)
   - [akx/FLUX.1-Kontext-dev-mflux-4bit](https://huggingface.co/akx/FLUX.1-Kontext-dev-mflux-4bit)
   - [filipstrand/FLUX.1-Krea-dev-mflux-4bit](https://huggingface.co/filipstrand/FLUX.1-Krea-dev-mflux-4bit)
+  - [filipstrand/Qwen-Image-mflux-6bit](https://huggingface.co/filipstrand/Qwen-Image-mflux-6bit)
 
 
 Using the [community model support](#-third-party-huggingface-model-support), the quantized weights can be also be automatically downloaded when running the generate command:
@@ -940,7 +950,7 @@ mflux-generate --prompt "pikachu, Paper Cutout Style" --model schnell --steps 4 
 
 *Note that LoRA trained weights are typically trained with a **trigger word or phrase**. For example, in the latter case, the sentence should include the phrase **"Paper Cutout Style"**.*
 
-*Also note that the same LoRA weights can work well with both the `schnell` and `dev` models. Refer to the original LoRA repository to see what mode it was trained for.*
+*Also note that the same LoRA weights can work well with both the `schnell` and `dev` models. Qwen models support LoRA but may require Qwen-specific LoRA weights. Refer to the original LoRA repository to see what mode it was trained for.*
 
 #### Multi-LoRA
 
@@ -1863,6 +1873,7 @@ See `uv run tools/rename_images.py --help` for full CLI usage help.
 - Set up shell aliases for required args examples:
   - shortcut for dev model: `alias mflux-dev='mflux-generate --model dev'`
   - shortcut for schnell model *and* always save metadata: `alias mflux-schnell='mflux-generate --model schnell --metadata'`
+  - shortcut for qwen model: `alias mflux-qwen='mflux-generate --model qwen'`
 - For systems with limited memory, use the `--low-ram` flag to reduce memory usage by constraining the MLX cache size and releasing components after use
 - On battery-powered Macs, use `--battery-percentage-stop-limit` (or `-B`) to prevent your laptop from shutting down during long generation sessions
 - When generating multiple images with different seeds, use `--seed` with multiple values or `--auto-seeds` to automatically generate a series of random seeds

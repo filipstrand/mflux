@@ -93,7 +93,7 @@ check: ensure-ruff
 .PHONY: test
 test: ensure-pytest
 	# 🏗️ Running tests...
-	uv pip install mlx==0.27.1  # Install pinned MLX version specifically for testing
+	uv pip install mlx==0.29.2  # Install pinned MLX version specifically for testing
 	$(PYTHON) -m pytest
 	# ✅ Tests completed
 

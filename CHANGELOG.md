@@ -5,6 +5,79 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2025-10-12
+
+# MFLUX v.0.11.0 Release Notes
+
+### 🎨 New Model Support
+
+- **Qwen Image Support**: Added support for the Qwen Image text-to-image model, enabling a new generation of visual content creation
+- **New command**: `mflux-generate` now supports Qwen models for image generation
+- **Qwen-specific features**: Full LoRA support with Qwen naming conventions, img2img support, and optimized weight handling
+- **Qwen-Image-mflux-6bit Model**: Added [filipstrand/Qwen-Image-mflux-6bit](https://huggingface.co/filipstrand/Qwen-Image-mflux-6bit) quantized model to HF
+
+### 🏗️ Major Architecture Improvements
+
+- **Package Restructure**: Complete reorganization of the codebase to support multiple model architectures
+  - Moved from flat structure to organized `models/` hierarchy (`models/flux/`, `models/qwen/`, `models/depth_pro/`)
+  - Better separation of concerns with dedicated model, variant, tokenizer, and weight handler modules
+  - Improved maintainability and extensibility for future model additions
+- **Namespace Package**: Converted mflux to a namespace package (in preparation for mflux.mcp extension)
+- **Common Module**: Extracted shared functionality into `models/common/` for better code reuse
+  - Unified LoRA handling across different model types
+  - Shared attention utilities
+  - Common download and weight management utilities
+
+### 📊 Metadata Enhancements
+
+- **XMP/IPTC Metadata Support**: Added comprehensive metadata support for professional workflows
+  - Write XMP and IPTC metadata to generated images
+  - Industry-standard metadata formats for better compatibility with professional image tools
+  - Enhanced metadata reading and writing capabilities
+- **New `mflux-info` command**: Display detailed metadata information from generated images
+  - View generation parameters, model information, and settings
+  - Extract metadata from any mflux-generated image
+  - Professional-grade metadata inspection
+
+### 🔧 Scheduler System
+
+- **Scheduler Interface**: Introduced a new scheduler abstraction for better extensibility
+  - Clean interface for implementing custom sampling schedulers
+  - Foundation for future scheduler additions (Euler, DPM++, etc.)
+  - Current implementation: Linear scheduler (existing behavior preserved)
+- **Scheduler Selection**: Added `--scheduler` command-line argument for choosing schedulers
+
+### 🐛 Bug Fixes
+
+- **Non-Quantized Model Loading**: Fixed critical bug where locally saved non-quantized models failed to load properly
+- **Model Weight Handling**: Improved weight loading reliability for edge cases
+
+### 🔧 Developer Experience
+
+- **MLX 0.29.2 Support**: Updated MLX dependency to support the latest version (mlx>=0.27.0,<0.30.0)
+- **Python 3.13 Support**: Unblocked sentencepiece and torch dependencies for Python 3.13
+  - Updated dependency specifications for better Python 3.13 compatibility
+  - Ensured smooth experience on latest Python versions
+- **Test Improvements**: Enhanced image comparison logic to allow similar images that are "close enough"
+  - More robust test suite that accommodates minor numerical differences
+  - Reduced false positives in image generation tests
+- **CI Updates**: Removed Claude CI agent (replacement coming soon)
+
+### 🔄 Breaking Changes
+
+⚠️ **Import Path Changes**: Due to the package restructure, some internal import paths have changed. If you're using mflux as a library and importing internal modules directly, you may need to update your imports:
+- Flux modules moved from `mflux.flux.*` to `mflux.models.flux.*`
+- Common utilities moved to `mflux.models.common.*`
+- CLI tools remain unchanged and fully backward compatible
+
+### 👩‍💻 Contributors
+
+- **Filip Strand (@filipstrand)**: Qwen model support, package restructure, core development
+- **Alessandro Rizzo (@azrahello)**: XMP/IPTC metadata support, info command implementation
+- **Anthony Wu (@anthonywu)**: Scheduler interface, namespace package conversion, Python 3.13 improvements, bug fixes
+
+---
+
 ## [0.10.0] - 2025-08-04
 
 # MFLUX v.0.10.0 Release Notes

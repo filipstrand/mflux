@@ -56,7 +56,7 @@ def format_metadata(metadata: dict) -> str:
     if lora_paths := exif.get("lora_paths"):
         lines.append("")
         lines.append(f"LoRAs ({len(lora_paths)}):")
-        lora_scales = exif.get("lora_scales", [])
+        lora_scales = exif.get("lora_scales") or []
         for i, lora in enumerate(lora_paths):
             scale = lora_scales[i] if i < len(lora_scales) else 1.0
             lora_name = Path(lora).name

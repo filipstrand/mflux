@@ -174,33 +174,49 @@ class LoRALoader:
         effective_scale = scale
 
         # Create new LoRA layer
-        if hasattr(current_module, 'weight'):
-            # Create LoRA layer
-            lora_layer = LoRALinear.from_linear(
-                current_module,
-                r=lora_A.shape[1],
-                scale=effective_scale
-            )
-
-            # Set the LoRA matrices - use the correct dimensions from the LoRA file
-            lora_layer.lora_A = lora_A
-            lora_layer.lora_B = lora_B
-
-            # Apply alpha scaling to the matrices if present
-            if "alpha" in lora_data:
-                lora_layer.lora_B = lora_layer.lora_B * alpha_scale
-
+        # Check if it's a linear layer (either nn.Linear, LoRALinear, or FusedLoRALinear)
+        is_linear = hasattr(current_module, 'weight')
+        is_lora_linear = isinstance(current_module, LoRALinear)
+        is_fused_linear = isinstance(current_module, FusedLoRALinear)
+        
+        if is_linear or is_lora_linear or is_fused_linear:
             # Handle fusion: if the current module is already a LoRA layer, fuse them
-            if isinstance(current_module, LoRALinear):
+            if is_lora_linear:
                 print(f"   🔀 Fusing with existing LoRA at {target_path}")
+                # Create a temporary LoRA layer from the base linear of the existing LoRA
+                lora_layer = LoRALinear.from_linear(
+                    current_module.linear,
+                    r=lora_A.shape[1],
+                    scale=effective_scale
+                )
+                # Set the LoRA matrices
+                lora_layer.lora_A = lora_A
+                lora_layer.lora_B = lora_B
+                # Apply alpha scaling to the matrices if present
+                if "alpha" in lora_data:
+                    lora_layer.lora_B = lora_layer.lora_B * alpha_scale
+                
                 # Create fused layer with the existing LoRA and the new one
                 fused_layer = FusedLoRALinear(
                     base_linear=current_module.linear,
                     loras=[current_module, lora_layer]
                 )
                 replacement_layer = fused_layer
-            elif isinstance(current_module, FusedLoRALinear):
+            elif is_fused_linear:
                 print(f"   🔀 Adding to existing fusion at {target_path}")
+                # Create a temporary LoRA layer from the base linear
+                lora_layer = LoRALinear.from_linear(
+                    current_module.base_linear,
+                    r=lora_A.shape[1],
+                    scale=effective_scale
+                )
+                # Set the LoRA matrices
+                lora_layer.lora_A = lora_A
+                lora_layer.lora_B = lora_B
+                # Apply alpha scaling to the matrices if present
+                if "alpha" in lora_data:
+                    lora_layer.lora_B = lora_layer.lora_B * alpha_scale
+                
                 # Add to existing fusion
                 fused_layer = FusedLoRALinear(
                     base_linear=current_module.base_linear,
@@ -209,6 +225,19 @@ class LoRALoader:
                 replacement_layer = fused_layer
             else:
                 # First LoRA on this layer
+                # Create LoRA layer
+                lora_layer = LoRALinear.from_linear(
+                    current_module,
+                    r=lora_A.shape[1],
+                    scale=effective_scale
+                )
+                # Set the LoRA matrices - use the correct dimensions from the LoRA file
+                lora_layer.lora_A = lora_A
+                lora_layer.lora_B = lora_B
+                # Apply alpha scaling to the matrices if present
+                if "alpha" in lora_data:
+                    lora_layer.lora_B = lora_layer.lora_B * alpha_scale
+                
                 replacement_layer = lora_layer
 
             # Replace the layer in the parent module

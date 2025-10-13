@@ -214,7 +214,8 @@ class MetadataBuilder:
         Returns:
             Comma-separated string of LoRA names and scales, or empty string
         """
-        if "lora_paths" not in metadata or not metadata["lora_paths"]:
+        # Check if lora_paths exists and is not None/empty
+        if "lora_paths" not in metadata or metadata["lora_paths"] is None or not metadata["lora_paths"]:
             return ""
 
         lora_list = []

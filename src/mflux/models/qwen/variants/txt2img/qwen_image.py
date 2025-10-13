@@ -13,6 +13,7 @@ from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenText
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer
 from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
 from mflux.models.qwen.qwen_initializer import QwenImageInitializer
+from mflux.models.qwen.weights.qwen_model_saver import QwenModelSaver
 from mflux.post_processing.array_util import ArrayUtil
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
@@ -167,6 +168,9 @@ class QwenImage(nn.Module):
             generation_time=time_steps.format_dict["elapsed"],
             negative_prompt=negative_prompt,
         )
+
+    def save_model(self, base_path: str) -> None:
+        QwenModelSaver.save_model(self, self.bits, base_path)
 
     @staticmethod
     def _compute_guided_noise(

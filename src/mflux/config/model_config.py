@@ -128,7 +128,9 @@ class ModelConfig:
             default_base = next((b for b in base_models if base_model == b.model_name or base_model in b.aliases), None)
         else:
             # Infer from model_name substring - prefer longer matches (more specific)
-            matching_bases = [(b, alias) for b in base_models for alias in b.aliases if alias and alias in model_name]
+            # Use case-insensitive matching for better compatibility
+            model_name_lower = model_name.lower()
+            matching_bases = [(b, alias) for b in base_models for alias in b.aliases if alias and alias.lower() in model_name_lower]
 
             if matching_bases:
                 # Sort by alias length descending, then by priority ascending
