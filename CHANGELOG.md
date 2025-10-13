@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Qwen Image Support**: Added support for the Qwen Image text-to-image model, enabling a new generation of visual content creation
 - **New command**: `mflux-generate` now supports Qwen models for image generation
 - **Qwen-specific features**: Full LoRA support with Qwen naming conventions, img2img support, and optimized weight handling
+- **Qwen-Image-mflux-6bit Model**: Added [filipstrand/Qwen-Image-mflux-6bit](https://huggingface.co/filipstrand/Qwen-Image-mflux-6bit) quantized model to HF
 
 ### 🏗️ Major Architecture Improvements
 
