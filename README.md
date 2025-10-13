@@ -153,6 +153,12 @@ This example uses the more powerful `dev` model with 25 time steps:
 mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2 -q 8
 ```
 
+This example uses the `qwen` model with 20 time steps:
+
+```sh
+mflux-generate --model qwen --prompt "Luxury food photograph" --steps 20 --seed 2 -q 6
+```
+
 You can also pipe prompts from other commands using stdin:
 
 ```sh
@@ -795,6 +801,7 @@ In other words, you can reclaim the 34GB diskspace (per model) by deleting the f
   - [dhairyashil/FLUX.1-dev-mflux-4bit](https://huggingface.co/dhairyashil/FLUX.1-dev-mflux-4bit)
   - [akx/FLUX.1-Kontext-dev-mflux-4bit](https://huggingface.co/akx/FLUX.1-Kontext-dev-mflux-4bit)
   - [filipstrand/FLUX.1-Krea-dev-mflux-4bit](https://huggingface.co/filipstrand/FLUX.1-Krea-dev-mflux-4bit)
+  - [filipstrand/Qwen-Image-mflux-6bit](https://huggingface.co/filipstrand/Qwen-Image-mflux-6bit)
 
 
 Using the [community model support](#-third-party-huggingface-model-support), the quantized weights can be also be automatically downloaded when running the generate command:
