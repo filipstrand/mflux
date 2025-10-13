@@ -56,18 +56,80 @@ class QwenWeightHandler:
     @staticmethod
     def load_transformer(root_path: Path) -> tuple[dict, int | None, str | None]:
         flat = QwenWeightHandler._load_safetensors_shards(root_path / "transformer", loading_mode="multi_glob")
+
+        # Check if this is a saved quantized model (with metadata) or HuggingFace weights
+        # Saved models from mflux-save are already in MLX structure and don't need manual mapping
+        quantization_level = None
+        mflux_version = None
+
+        # Try to get metadata from the first weight shard
+        import mlx.core as mx
+        from mlx.utils import tree_unflatten
+
+        file_glob = sorted((root_path / "transformer").glob("*.safetensors"))
+        if file_glob:
+            data = mx.load(str(file_glob[0]), return_metadata=True)
+            if len(data) > 1:
+                quantization_level = data[1].get("quantization_level")
+                mflux_version = data[1].get("mflux_version")
+
+        # If this is a saved model (has metadata), use tree_unflatten directly
+        if quantization_level is not None or mflux_version is not None:
+            return tree_unflatten(list(flat.items())), quantization_level, mflux_version
+
+        # Otherwise, it's HuggingFace weights that need manual mapping
         mapped_weights = QwenWeightHandler._manual_transformer_mapping(flat)
         return mapped_weights, None, None
 
     @staticmethod
     def _load_qwen_text_encoder(root_path: Path) -> tuple[dict, int | None, str | None]:
+        import mlx.core as mx
+        from mlx.utils import tree_unflatten
+
+        # Check for saved model metadata FIRST to determine loading mode
+        quantization_level = None
+        mflux_version = None
+        file_glob = sorted((root_path / "text_encoder").glob("*.safetensors"))
+        if file_glob:
+            data = mx.load(str(file_glob[0]), return_metadata=True)
+            if len(data) > 1:
+                quantization_level = data[1].get("quantization_level")
+                mflux_version = data[1].get("mflux_version")
+
+        # If this is a saved model, load without expecting index.json
+        if quantization_level is not None or mflux_version is not None:
+            all_weights = QwenWeightHandler._load_safetensors_shards(
+                root_path / "text_encoder", loading_mode="multi_glob"
+            )
+            return tree_unflatten(list(all_weights.items())), quantization_level, mflux_version
+
+        # Otherwise, it's HuggingFace weights that need manual mapping
         all_weights = QwenWeightHandler._load_safetensors_shards(root_path / "text_encoder", loading_mode="multi_json")
         mapped_weights = QwenWeightHandler._manual_text_encoder_mapping(all_weights)
         return mapped_weights, None, None
 
     @staticmethod
     def _load_vae(root_path: Path) -> tuple[dict, int | None, str | None]:
+        import mlx.core as mx
+        from mlx.utils import tree_unflatten
+
         weights = QwenWeightHandler._load_safetensors_shards(root_path / "vae", loading_mode="single")
+
+        # Check for saved model metadata
+        quantization_level = None
+        mflux_version = None
+        file_glob = sorted((root_path / "vae").glob("*.safetensors"))
+        if file_glob:
+            data = mx.load(str(file_glob[0]), return_metadata=True)
+            if len(data) > 1:
+                quantization_level = data[1].get("quantization_level")
+                mflux_version = data[1].get("mflux_version")
+
+        # If this is a saved model, use tree_unflatten directly
+        if quantization_level is not None or mflux_version is not None:
+            return tree_unflatten(list(weights.items())), quantization_level, mflux_version
+
+        # Otherwise, it's HuggingFace weights that need manual mapping and reshaping
         reshaped_weights = [QwenWeightUtil.reshape_weights(k, v) for k, v in weights.items()]
         reshaped_weights = QwenWeightUtil.flatten(reshaped_weights)
         weights = dict(reshaped_weights)
