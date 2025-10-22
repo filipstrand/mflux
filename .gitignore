@@ -24,3 +24,6 @@ build/
 .fls
 .aux
 .log
+
+# Debug session logs
+logs/

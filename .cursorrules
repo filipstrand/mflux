@@ -1,0 +1,35 @@
+# Cursor AI Agent Rules for MFLUX
+
+## 🚨 CRITICAL: Always Use `uv` Commands
+
+**This project uses `uv` for Python package management and command execution.**
+
+**ALWAYS use:**
+- `uv run python` instead of `python` or `python3`
+- `uv run uvicorn` instead of `uvicorn`
+- `uv pip install` instead of `pip install`
+- `uv run <command>` for any Python-related commands
+
+**NEVER use bare `python`, `python3`, `pip`, `uvicorn`, etc.**
+
+## 🚨 BEFORE Starting Any Debugging Session
+
+**YOU MUST read this file in its entirety:**
+
+📖 **`src/mflux_debugger/examples/README.md`**
+
+Pay special attention to:
+- **"Core Philosophy"** section - Interactive Debugging Over Scripts
+- **"Complete Debugging Workflows"** - Real-world examples
+- **"MLX Lazy Evaluation"** - Essential for MLX debugging
+- **"Model Porting Guide"** - Working backwards strategy
+
+## Key Takeaway
+
+**DO NOT write comparison/verification scripts unless the user explicitly requests them.**
+
+Use the interactive debugger to inspect the real code instead.
+
+---
+
+**All details, examples, and instructions are in the README. Read it first.**

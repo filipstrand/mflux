@@ -27,7 +27,11 @@ license = { file = "LICENSE" }
 requires-python = ">=3.10"
 dependencies = [
     "accelerate>=0.31.0",
+    "debugpy>=1.8.0,<2.0",  # Debug Adapter Protocol for interactive debugging
+    "mcp>=1.2.0,<2.0",  # Model Context Protocol for MCP server
     "filelock>=3.18.0",
+    "protobuf>=3.20.0",  # Required by transformers for T5 tokenizer
+    "psutil>=5.9.0",  # System and process monitoring for debugger
     "huggingface-hub>=0.24.5,<1.0",
     "matplotlib>=3.9.2,<4.0",
     "mlx>=0.27.0,<0.30.0",
@@ -93,6 +97,7 @@ mflux-upscale = "mflux.upscale:main"
 mflux-lora-library = "mflux.lora_library:main"
 mflux-info = "mflux.info:main"
 mflux-completions = "mflux.ui.cli.completions.install:main"
+mflux-debugger-mcp-server = "mflux_debugger.mcp_server_lightweight:cli_main"
 
 
 [tool.ruff]
