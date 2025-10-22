@@ -48,12 +48,12 @@ class QwenAttention(nn.Module):
         key_states = self.k_proj(hidden_states)
         value_states = self.v_proj(hidden_states)
 
-        # Reshape and transpose
+        # Reshape and transpose - needed for ALL layers
         query_states = query_states.reshape(bsz, q_len, self.num_attention_heads, self.head_dim).transpose(0, 2, 1, 3)
         key_states = key_states.reshape(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(0, 2, 1, 3)
         value_states = value_states.reshape(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(0, 2, 1, 3)
 
-        # Apply RoPE
+        # Apply RoPE - needed for ALL layers
         query_states, key_states = QwenAttention._apply_multimodal_rotary_pos_emb(
             q=query_states,
             k=key_states,
@@ -61,7 +61,7 @@ class QwenAttention(nn.Module):
             mrope_section=self.rope_scaling["mrope_section"],
         )
 
-        # GQA expansion using repeat_interleave semantics
+        # GQA expansion using repeat_interleave semantics - needed for ALL layers
         if self.num_key_value_heads != self.num_attention_heads:
             key_states = QwenAttention._repeat_kv(key_states, self.num_key_value_groups)
             value_states = QwenAttention._repeat_kv(value_states, self.num_key_value_groups)
@@ -100,25 +100,26 @@ class QwenAttention(nn.Module):
     ) -> tuple[mx.array, mx.array]:
         mrope_section_doubled = [s * 2 for s in mrope_section]
 
+        cos, sin = position_embeddings
+
+        # Split along the last dimension (head_dim) into chunks
         cos_chunks = []
         sin_chunks = []
         start_idx = 0
-
-        cos, sin = position_embeddings
         for section_size in mrope_section_doubled:
             end_idx = start_idx + section_size
-            cos_chunk = cos[..., start_idx:end_idx]
-            sin_chunk = sin[..., start_idx:end_idx]
+            cos_chunk = cos[..., start_idx:end_idx]  # Shape: (3, batch, seq, section_size)
+            sin_chunk = sin[..., start_idx:end_idx]  # Shape: (3, batch, seq, section_size)
             cos_chunks.append(cos_chunk)
             sin_chunks.append(sin_chunk)
             start_idx = end_idx
 
-        # For each chunk position, select the corresponding modality
+        # For each chunk, select the corresponding modality from dimension 0
         # chunk 0 -> modality 0, chunk 1 -> modality 1, chunk 2 -> modality 2, etc.
         cos_selected = [chunk[i % 3] for i, chunk in enumerate(cos_chunks)]
         sin_selected = [chunk[i % 3] for i, chunk in enumerate(sin_chunks)]
 
-        # Concatenate back together
+        # Concatenate back together along the last dimension
         cos_combined = mx.concatenate(cos_selected, axis=-1)
         sin_combined = mx.concatenate(sin_selected, axis=-1)
 
@@ -130,9 +131,21 @@ class QwenAttention(nn.Module):
             cos_combined = mx.expand_dims(cos_combined, axis=2)
             sin_combined = mx.expand_dims(sin_combined, axis=2)
 
-        # Apply rotary embedding with properly processed cos/sin
+        # Apply rotary embedding with float32 precision to match PyTorch
+        # PyTorch does RoPE computation in float32, then converts back to bfloat16
+        orig_q_dtype = q.dtype
+        orig_k_dtype = k.dtype
+        q = q.astype(mx.float32)
+        k = k.astype(mx.float32)
+        cos_combined = cos_combined.astype(mx.float32)
+        sin_combined = sin_combined.astype(mx.float32)
+
         q_embed = (q * cos_combined) + (QwenAttention._rotate_half(q) * sin_combined)
         k_embed = (k * cos_combined) + (QwenAttention._rotate_half(k) * sin_combined)
+
+        # Convert back to original dtype
+        q_embed = q_embed.astype(orig_q_dtype)
+        k_embed = k_embed.astype(orig_k_dtype)
 
         return q_embed, k_embed
 

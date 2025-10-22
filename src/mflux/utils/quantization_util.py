@@ -91,4 +91,7 @@ class QuantizationUtil:
             bits = int(q_level) if q_level is not None else quantize
             nn.quantize(vae, bits=bits)
             nn.quantize(transformer, bits=bits)
-            nn.quantize(text_encoder, bits=bits)
+
+            # Skip text encoder quantization entirely to preserve semantic accuracy
+            # Quantization of text encoder causes significant semantic degradation
+            print(f"🔧 Quantized VAE and transformer to {bits} bits (skipping text encoder quantization)")

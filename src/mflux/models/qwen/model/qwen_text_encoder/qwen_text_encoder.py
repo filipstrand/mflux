@@ -15,12 +15,14 @@ class QwenTextEncoder(nn.Module):
         attention_mask: mx.array | None = None,
     ) -> tuple[mx.array, mx.array]:
         hidden_states = self.encoder(input_ids, attention_mask)
+
         prompt_embeds, encoder_attention_mask = QwenTextEncoder._process_text_embeddings_mlx(
             hidden_states=hidden_states,
             attention_mask=attention_mask,
             drop_idx=34,
             dtype=mx.bfloat16,
         )
+
         return prompt_embeds, encoder_attention_mask
 
     @staticmethod

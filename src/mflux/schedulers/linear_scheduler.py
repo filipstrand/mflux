@@ -17,10 +17,15 @@ class LinearScheduler(BaseScheduler):
     def __init__(self, runtime_config: "RuntimeConfig"):
         self.runtime_config = runtime_config
         self._sigmas = self._get_sigmas()
+        self._timesteps = self._get_timesteps()
 
     @property
     def sigmas(self) -> mx.array:
         return self._sigmas
+
+    @property
+    def timesteps(self) -> mx.array:
+        return self._timesteps
 
     def _get_sigmas(self) -> mx.array:
         model_config = self.runtime_config.model_config
@@ -43,6 +48,16 @@ class LinearScheduler(BaseScheduler):
             return shifted_sigmas
         else:
             return sigmas
+
+    def _get_timesteps(self) -> mx.array:
+        """
+        Generate timesteps as indices for the linear scheduler.
+        Returns indices [0, 1, 2, ..., num_steps-1] to match the loop in txt2img.
+        """
+        num_steps = self.runtime_config.num_inference_steps
+        timesteps = mx.arange(num_steps, dtype=mx.float32)
+
+        return timesteps
 
     def step(self, model_output: mx.array, timestep: int, sample: mx.array, **kwargs) -> mx.array:
         dt = self._sigmas[timestep + 1] - self._sigmas[timestep]

@@ -5,8 +5,8 @@ from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenText
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer
 from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
 from mflux.models.qwen.tokenizer.qwen_tokenizer_handler import QwenTokenizerHandler
-from mflux.models.qwen.weights.qwen_weight_handler import QwenWeightHandler
 from mflux.models.qwen.weights.qwen_lora_mapping import QwenLoRAMapping
+from mflux.models.qwen.weights.qwen_weight_handler import QwenWeightHandler
 from mflux.models.qwen.weights.qwen_weight_util import QwenWeightUtil
 
 
@@ -70,5 +70,3 @@ class QwenImageInitializer:
             )
         else:
             print("⚠️  No LoRA paths provided, skipping LoRA setup")
-
-        print("🔧 === END QWEN LORA WEIGHT SETUP DEBUG ===\n")

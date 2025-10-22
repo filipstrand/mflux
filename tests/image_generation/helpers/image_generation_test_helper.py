@@ -4,10 +4,16 @@ from typing import Type, Union
 
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
-from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
 
 from .image_compare import check_images_close_enough
+
+
+# Lazy import Flux1 to avoid import errors when only running Qwen tests
+def _get_flux1():
+    from mflux.models.flux.variants.txt2img.flux import Flux1
+
+    return Flux1
 
 
 class ImageGeneratorTestHelper:
@@ -15,7 +21,7 @@ class ImageGeneratorTestHelper:
     def assert_matches_reference_image(
         reference_image_path: str,
         output_image_path: str,
-        model_class: Type[Union[Flux1, QwenImage]],
+        model_class: Type[Union[QwenImage]],
         model_config: ModelConfig,
         prompt: str,
         steps: int,

@@ -27,8 +27,12 @@ license = { file = "LICENSE" }
 requires-python = ">=3.10"
 dependencies = [
     "accelerate>=0.31.0",
+    "debugpy>=1.8.0,<2.0",  # Debug Adapter Protocol for interactive debugging
+    "mcp>=1.2.0,<2.0",  # Model Context Protocol for MCP server
     "filelock>=3.18.0",
-    "huggingface-hub>=0.24.5,<1.0",
+    "protobuf>=3.20.0",  # Required by transformers for T5 tokenizer
+    "psutil>=5.9.0",  # System and process monitoring for debugger
+    "huggingface-hub>=0.24.5",
     "matplotlib>=3.9.2,<4.0",
     "mlx>=0.27.0,<0.30.0",
     "numpy>=2.0.1,<3.0",
@@ -44,7 +48,8 @@ dependencies = [
     "sentencepiece>=0.2.0,<1.0; python_version<'3.13'",
     # sentencepiece 0.2.1 is first release with 3.13 and 3.14 wheels: https://pypi.org/project/sentencepiece/0.2.1/
     "sentencepiece>=0.2.1,<1.0; python_version>='3.13'",
-    "tokenizers>=0.20.3; python_version>='3.13'", # transformers -> tokenizers
+    "tokenizers>=0.20.3; python_version>='3.13'",
+    # transformers -> tokenizers
     "toml>=0.10.2,<1.0",
     "torch>=2.7.1",
     "torch>=2.3.1,<3.0; python_version<'3.13'",
@@ -52,6 +57,7 @@ dependencies = [
     "tqdm>=4.66.5,<5.0",
     "transformers>=4.55.0,<5.0",
     "twine>=6.1.0,<7.0",
+    "torchvision>=0.22.1",
 ]
 classifiers = [
     "Intended Audience :: Developers",
@@ -71,6 +77,12 @@ dev = [
     "mlx==0.29.2",  # Used ONLY during test runs to ensure deterministic test results
 ]
 
+[tool.uv.sources]
+# Editable installs for model porting - these override the version constraints above
+# Comment these out if not doing model porting work
+transformers = { path = "/Users/filip/Desktop/transformers", editable = true }
+diffusers = { path = "/Users/filip/Desktop/diffusers", editable = true }
+
 [project.urls]
 homepage = "https://github.com/filipstrand/mflux"
 
@@ -84,6 +96,7 @@ mflux-generate-fill = "mflux.generate_fill:main"
 mflux-generate-depth = "mflux.generate_depth:main"
 mflux-generate-redux = "mflux.generate_redux:main"
 mflux-generate-kontext = "mflux.generate_kontext:main"
+mflux-generate-qwen-edit = "mflux.generate_qwen_edit:main"
 mflux-concept = "mflux.concept:main"
 mflux-concept-from-image = "mflux.concept_from_image:main"
 mflux-save = "mflux.save:main"
@@ -93,6 +106,11 @@ mflux-upscale = "mflux.upscale:main"
 mflux-lora-library = "mflux.lora_library:main"
 mflux-info = "mflux.info:main"
 mflux-completions = "mflux.ui.cli.completions.install:main"
+mflux-debug-mlx = "mflux_debugger.cli_wrapper:main_mlx"
+mflux-debug-pytorch = "mflux_debugger.cli_wrapper:main_pytorch"
+mflux-debug-clean = "mflux_debugger.cleanup:main"
+mflux-debug-kill-all = "mflux_debugger.kill_all:main"
+mflux-debug-inspect-weights = "mflux_debugger.cli_inspect_weights:main"
 
 
 [tool.ruff]
@@ -180,5 +198,6 @@ disable_error_code = [
 error_summary = true
 ignore_missing_imports = true
 implicit_optional = true
+explicit_package_bases = true
 # we should feel free to use new hinting features even if we back support to earlier versions
 python_version = "3.12"

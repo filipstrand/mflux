@@ -10,7 +10,8 @@ class QwenLayerNorm(nn.Module):
 
     def __call__(self, hidden_states: mx.array, text_embeddings: mx.array) -> tuple[mx.array, mx.array, mx.array]:
         # Compute modulation parameters from text embeddings
-        mod_params = self.mod_linear(nn.silu(text_embeddings))
+        temb_silu = nn.silu(text_embeddings)
+        mod_params = self.mod_linear(temb_silu)
         mod1, mod2 = mx.split(mod_params, 2, axis=-1)
 
         # Stage 1: Apply normalization and modulation for attention

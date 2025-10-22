@@ -41,14 +41,22 @@ class QwenEncoderLayer(nn.Module):
     ) -> mx.array:
         residual = hidden_states
         hidden_states = self.input_layernorm(hidden_states)
+
+        # Process attention for ALL layers
         hidden_states = self.self_attn(
             hidden_states=hidden_states,
             attention_mask=attention_mask,
             position_embeddings=position_embeddings,
         )
+
+        # Add residual for ALL layers
         hidden_states = residual + hidden_states
+
         residual = hidden_states
         hidden_states = self.post_attention_layernorm(hidden_states)
+
         hidden_states = self.mlp(hidden_states)
+
         hidden_states = residual + hidden_states
+
         return hidden_states
