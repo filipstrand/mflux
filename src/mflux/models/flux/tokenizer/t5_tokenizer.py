@@ -3,7 +3,7 @@ from transformers import T5Tokenizer
 
 
 class TokenizerT5:
-    def __init__(self, tokenizer: T5Tokenizer, max_length: int = 256):
+    def __init__(self, tokenizer: T5Tokenizer, max_length: int = 512):
         self.tokenizer = tokenizer
         self.max_length = max_length
 
