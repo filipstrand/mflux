@@ -1,17 +1,17 @@
 import torch
-from diffusers import FluxPipeline
+from diffusers import DiffusionPipeline
 
 
 def main():
-    model_name = "black-forest-labs/FLUX.1-schnell"
+    model_name = "Qwen/Qwen-Image"
     prompt = "A cat holding a sign that says hello world"
     seed = 42
     height = 256
     width = 256
-    num_steps = 4
-    guidance = 0.0
+    num_steps = 20
+    guidance = 3.5
 
-    pipe = FluxPipeline.from_pretrained(model_name, torch_dtype=torch.bfloat16)
+    pipe = DiffusionPipeline.from_pretrained(model_name, torch_dtype=torch.bfloat16)
 
     try:
         pipe = pipe.to("mps")
@@ -26,7 +26,7 @@ def main():
         height=height,
         width=width,
         num_inference_steps=num_steps,
-        guidance_scale=guidance,
+        true_cfg_scale=guidance,
         generator=generator,
     ).images[0]
 
