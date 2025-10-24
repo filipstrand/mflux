@@ -2,7 +2,7 @@
 
 Interactive debugging system optimized for ML workloads. Designed for AI agents to step through code, inspect tensors, and verify model implementations in real-time.
 
-**Version: 0.2.0** - Now with async execution, trace recording, and crash resilience!
+**Version: 0.2.2** - Now with async execution, trace recording, crash resilience, clean slate debugging workflow, and real-world model porting examples!
 
 ---
 
@@ -194,7 +194,7 @@ Traces are automatically saved for offline comparison!
 ✅ **More stable** - HTTP is battle-tested  
 ✅ **Language agnostic** - Any tool can use it  
 ✅ **Better for automation** - Easy to script  
-✅ **Interactive docs** - Swagger UI built-in  
+✅ **Interactive docs** - Swagger UI built-in
 
 ### Key Endpoints
 
@@ -221,6 +221,7 @@ Traces are automatically saved for offline comparison!
 
 **Solution:** Async execution with polling
 
+#### Basic Polling (Infinite Loop)
 ```bash
 # Start execution (returns immediately)
 curl -X POST http://localhost:8000/debug/continue_async
@@ -238,6 +239,37 @@ done
 # Now inspect
 curl http://localhost:8000/debug/location
 ```
+
+#### Smart Polling with Progress Indicator (Recommended)
+```bash
+# Start execution
+curl -X POST http://localhost:8000/debug/continue_async
+
+# Poll with countdown and progress indicator
+# Adjust max iterations based on expected load time:
+# - 10 iterations = ~20 seconds (for quick operations)
+# - 20 iterations = ~60 seconds (for model loading)
+# - 30 iterations = ~60 seconds (for slower models)
+echo "Waiting for breakpoint..." && for i in {1..20}; do
+  sleep 3
+  STATUS=$(curl -s http://localhost:8000/debug/status | grep -o '"state":"[^"]*"' | cut -d'"' -f4)
+  echo "[$i/20] Status: $STATUS"
+  if [ "$STATUS" = "paused" ]; then
+    echo "✅ Hit breakpoint!"
+    break
+  fi
+done
+
+# Now inspect
+curl http://localhost:8000/debug/location
+```
+
+**Why this is better:**
+- ✅ Shows progress with `[N/20]` counter
+- ✅ Exits early when breakpoint hits (doesn't wait full duration)
+- ✅ Uses `grep` instead of `jq` (fewer dependencies)
+- ✅ Visual feedback with ✅ emoji
+- ✅ Clear timeout indication if max iterations reached
 
 ---
 
@@ -266,11 +298,13 @@ curl -X POST http://localhost:8000/debug/breakpoint \
 # Start async execution
 curl -X POST http://localhost:8000/debug/continue_async
 
-# Wait for model loading (~45 seconds)
-sleep 50
-
-# Check if paused
-curl http://localhost:8000/debug/location
+# Poll for model loading with progress indicator (~45 seconds)
+echo "Waiting for model to load..." && for i in {1..20}; do
+  sleep 3
+  STATUS=$(curl -s http://localhost:8000/debug/status | grep -o '"state":"[^"]*"' | cut -d'"' -f4)
+  echo "[$i/20] Status: $STATUS"
+  if [ "$STATUS" = "paused" ]; then echo "✅ Hit breakpoint!"; break; fi
+done
 
 # Inspect text embeddings
 curl -X POST http://localhost:8000/debug/evaluate \
@@ -280,7 +314,14 @@ curl -X POST http://localhost:8000/debug/evaluate \
 
 # Continue to next breakpoint
 curl -X POST http://localhost:8000/debug/continue_async
-sleep 2
+
+# Poll for next breakpoint (faster this time)
+for i in {1..5}; do
+  sleep 1
+  STATUS=$(curl -s http://localhost:8000/debug/status | grep -o '"state":"[^"]*"' | cut -d'"' -f4)
+  echo "[$i/5] Status: $STATUS"
+  if [ "$STATUS" = "paused" ]; then echo "✅ Hit breakpoint!"; break; fi
+done
 
 # Inspect latents
 curl -X POST http://localhost:8000/debug/evaluate \
@@ -309,15 +350,15 @@ curl -X POST http://localhost:8000/debug/breakpoint \
 # Start async execution
 curl -X POST http://localhost:8000/debug/continue_async
 
-# Poll for breakpoint (model loads for ~60 seconds)
-for i in {1..30}; do
-  STATUS=$(curl -s http://localhost:8000/debug/status | jq -r '.data.state')
+# Poll for breakpoint with progress indicator (model loads for ~60 seconds)
+echo "Waiting for MLX model to load..." && for i in {1..30}; do
+  sleep 2
+  STATUS=$(curl -s http://localhost:8000/debug/status | grep -o '"state":"[^"]*"' | cut -d'"' -f4)
+  echo "[$i/30] Status: $STATUS"
   if [ "$STATUS" = "paused" ]; then
-    echo "✅ Paused at VAE decode!"
+    echo "✅ Hit breakpoint!"
     break
   fi
-  echo "[$i/30] Still loading..."
-  sleep 3
 done
 
 # Inspect latents before VAE
@@ -473,9 +514,9 @@ Text ← Latent ← Transformer ← VAE ← Image
 
 **Problem:** Breakpoints not hitting in Diffusers pipeline
 
-**Root cause:** 
+**Root cause:**
 - Breakpoints stored with absolute paths: `/Users/.../diffusers/file.py`
-- Frame paths were relative: `../diffusers/file.py`  
+- Frame paths were relative: `../diffusers/file.py`
 - Mismatch → breakpoint never matched!
 
 **Fix:** Normalize all paths to absolute before comparison
@@ -673,6 +714,120 @@ uvicorn mflux_debugger.fastapi_server:app --host 127.0.0.1 --port 8000
 - ❌ Installing regular (non-editable) packages after editable ones
 - ❌ Having multiple conflicting versions in different locations
 
+### Session 8: Real-World Model Port Verification (QWEN IMAGE)
+
+**Task:** Verify PyTorch→MLX port by comparing tensor values at key stages
+
+**The typical request:**
+> "I would like you to step through the main chunks of the model (text encoder, initial latent, transformer, VAE) for both diffusers and MLX. Compare tensor values to ensure correct porting."
+
+**Challenge:** Random seed produces different initial latents across frameworks
+
+#### Solution: Minimal Code Intervention (No Helper Scripts!)
+
+**Step 1: Save reference latents from diffusers**
+
+```python
+# In /path/to/diffusers/src/diffusers/pipelines/qwenimage/pipeline_qwenimage.py
+# After line: latents = self.prepare_latents(...)
+
+# TEMP: Save latents for debugging
+np.save("/Users/you/Desktop/initial_latents_diffusers.npy", latents.cpu().float().numpy())
+import sys; sys.exit(0)  # Exit immediately after saving
+```
+
+Run once to save, then comment out the exit:
+```python
+# TEMP: Save latents for debugging
+np.save("/Users/you/Desktop/initial_latents_diffusers.npy", latents.cpu().float().numpy())
+# import sys; sys.exit(0)  # (commented out for full debugging)
+```
+
+**Step 2: Load saved latents in MLX**
+
+```python
+# In /path/to/mflux/src/mflux/latent_creator/latent_creator.py
+import numpy as np
+from pathlib import Path
+
+@staticmethod
+def create(seed: int, height: int, width: int) -> mx.array:
+    # TEMP: Load latents from diffusers for comparison
+    latents_path = Path("/Users/you/Desktop/initial_latents_diffusers.npy")
+    if latents_path.exists():
+        latents_np = np.load(latents_path)
+        return mx.array(latents_np)
+    
+    # Original random generation
+    return mx.random.normal(...)
+```
+
+**Step 3: Debug both implementations interactively**
+
+```bash
+# Debug Diffusers
+curl -X POST http://localhost:8000/debug/start \
+  -d '{"script_path": "src/mflux_debugger/examples/debug_diffusers.py"}'
+
+# Set breakpoints at key locations
+curl -X POST http://localhost:8000/debug/breakpoint \
+  -d '{"file_path": "/path/to/pipeline.py", "line": 623}'  # After text encoding
+curl -X POST http://localhost:8000/debug/breakpoint \
+  -d '{"file_path": "/path/to/pipeline.py", "line": 639}'  # After latents
+curl -X POST http://localhost:8000/debug/breakpoint \
+  -d '{"file_path": "/path/to/pipeline.py", "line": 765}'  # Before VAE
+
+# Run and inspect at each breakpoint
+curl -X POST http://localhost:8000/debug/continue_async
+
+# Poll for breakpoints and evaluate tensors
+echo "Waiting..." && for i in {1..20}; do
+  sleep 3
+  STATUS=$(curl -s http://localhost:8000/debug/status | grep -o '"state":"[^"]*"' | cut -d'"' -f4)
+  echo "[$i/20] Status: $STATUS"
+  if [ "$STATUS" = "paused" ]; then break; fi
+done
+
+# Inspect
+curl -X POST http://localhost:8000/debug/evaluate \
+  -d '{"expression": "prompt_embeds.shape"}'
+curl -X POST http://localhost:8000/debug/evaluate \
+  -d '{"expression": "(latents.mean().item(), latents.std().item())"}'
+
+# Continue to next breakpoint...
+curl -X POST http://localhost:8000/debug/continue_async
+```
+
+Repeat for MLX implementation.
+
+#### Results from Real Session
+
+| Component | Diffusers | MLX | Match? |
+|-----------|-----------|-----|--------|
+| **Text Encoder** | [1, 14, 3584]<br>mean=-0.104, std=5.09 | [1, 14, 3584]<br>mean=-0.101, std=5.06 | ✅ |
+| **Initial Latents** | [1, 256, 64]<br>*(saved to disk)* | [1, 256, 64]<br>*(loaded from disk)* | ✅ |
+| **Latents before VAE** | [1, 16, 1, 32, 32]<br>mean=-0.052, std=1.07 | [1, 16, 32, 32]<br>mean=-0.028, std=0.56 | ⚠️ |
+
+**Finding:** Text encoder matches perfectly. Denoising loop has divergence (transformer/scheduler issue).
+
+#### Key Principles Demonstrated
+
+1. **✅ Minimal code changes:** 2 lines to save, 3 lines to load
+2. **✅ No helper scripts:** All debugging via API calls in terminal
+3. **✅ No workspace clutter:** Temporary changes in source files (easily reverted)
+4. **✅ Interactive inspection:** Live evaluation at each breakpoint
+5. **✅ Comment after use:** Once saved, comment out exit line for full debugging
+6. **✅ Direct comparison:** Same input latents ensure fair comparison
+
+**Why this approach is better than writing scripts:**
+- ❌ Scripts need maintenance and accumulate over time
+- ❌ Scripts can compare wrong things or be written incorrectly
+- ✅ Interactive debugging inspects actual production code
+- ✅ Git makes it easy to revert temporary changes
+- ✅ Follows "Core Philosophy" of the debugger
+
+**Lesson:** When asked to compare implementations, use **minimal inline changes + interactive debugging**, not helper scripts!
+
 ---
 
 ## Tips for AI Agents
@@ -680,14 +835,30 @@ uvicorn mflux_debugger.fastapi_server:app --host 127.0.0.1 --port 8000
 ### Do's ✅
 
 - **Always install libraries in editable mode** (`uv pip install -e`) when debugging external code
+- **Test with simple breakpoints first** before debugging deep library code
+- **Kill and restart server** if breakpoints mysteriously don't hit
 - Use async execution (`/debug/continue_async`) for ML workloads
-- Poll status every 2-5 seconds during long operations
+- **Use smart polling with progress indicators** instead of blind sleep:
+  ```bash
+  # ✅ GOOD - Shows progress, exits early
+  for i in {1..20}; do
+    sleep 3
+    STATUS=$(curl -s http://localhost:8000/debug/status | grep -o '"state":"[^"]*"' | cut -d'"' -f4)
+    echo "[$i/20] Status: $STATUS"
+    if [ "$STATUS" = "paused" ]; then echo "✅ Hit breakpoint!"; break; fi
+  done
+  
+  # ❌ BAD - Blind wait, no feedback
+  sleep 60 && curl http://localhost:8000/debug/location
+  ```
 - Remove breakpoints after first hit in loops
 - Start with PyTorch (reference) before debugging MLX
 - Check trace files for offline analysis
 - Use `/debug/evaluate` for quick inspections
 - Verify which package version is loaded (`import X; print(X.__file__)`)
 - Use absolute paths for breakpoints
+- **For model comparison:** Make minimal inline changes (save/load data) rather than writing comparison scripts
+- Comment out temporary debugging lines after use (e.g., `sys.exit()` after saving data)
 
 ### Don'ts ❌
 
@@ -695,7 +866,9 @@ uvicorn mflux_debugger.fastapi_server:app --host 127.0.0.1 --port 8000
 - Don't set breakpoints in ML library code (slow!)
 - Don't leave breakpoints in tight loops
 - Don't compare different computation points across implementations
-- Don't write temporary scripts unless explicitly requested
+- **Don't write temporary comparison scripts** - use interactive debugging instead
+- **Don't immediately debug library code** - start with entry point breakpoints first
+- Don't create helper files that clutter the workspace - make minimal inline changes
 
 ---
 
@@ -801,13 +974,83 @@ uv pip install torch diffusers
 
 5. **Is the line executable?** Set breakpoint on actual code, not comments/blank lines
 
+6. **Clean slate approach:** If breakpoints mysteriously don't hit, try this workflow:
+   ```bash
+   # 1. Kill any stale debug servers
+   pkill -f "uvicorn mflux_debugger"
+   
+   # 2. Start fresh server
+   uvicorn mflux_debugger.fastapi_server:app --host 127.0.0.1 --port 8000 &
+   sleep 2
+   
+   # 3. Start new session
+   curl -X POST http://localhost:8000/debug/start \
+     -H "Content-Type: application/json" \
+     -d '{"script_path": "your_script.py"}'
+   
+   # 4. Test with a SIMPLE breakpoint first (entry point of your script)
+   curl -X POST http://localhost:8000/debug/breakpoint \
+     -H "Content-Type: application/json" \
+     -d '{"file_path": "/absolute/path/to/your_script.py", "line": 6}'
+   
+   # 5. Run and verify it hits with smart polling
+   curl -X POST http://localhost:8000/debug/continue_async
+   
+   # Poll with progress (adjust iterations based on your script)
+   for i in {1..5}; do
+     sleep 1
+     STATUS=$(curl -s http://localhost:8000/debug/status | grep -o '"state":"[^"]*"' | cut -d'"' -f4)
+     echo "[$i/5] Status: $STATUS"
+     if [ "$STATUS" = "paused" ]; then echo "✅ Hit breakpoint!"; break; fi
+   done
+   
+   curl http://localhost:8000/debug/location
+   
+   # 6. If that works, clear it and set your real breakpoints
+   curl -X POST http://localhost:8000/debug/breakpoints/clear
+   # Now set breakpoints in library code...
+   ```
+
+### Best Practice: Test Simple First, Then Complex
+
+**❌ DON'T start with:**
+```bash
+# Immediately setting breakpoints deep in library code
+curl -X POST .../debug/breakpoint -d '{"file_path": ".../diffusers/.../pipeline.py", "line": 856}'
+curl -X POST .../debug/continue_async
+# 😱 Doesn't hit, now what's wrong?
+```
+
+**✅ DO start with:**
+```bash
+# First: Set breakpoint at entry point of YOUR script
+curl -X POST .../debug/breakpoint -d '{"file_path": "/path/to/your_script.py", "line": 6}'
+curl -X POST .../debug/continue_async
+# ✅ Hits? Great! Debugger is working. Clear and set real breakpoints.
+# ❌ Doesn't hit? Fix the fundamentals (editable install, server restart, etc)
+```
+
+**Why this matters:**
+- ✅ Verifies debugger trace is working
+- ✅ Confirms paths are resolving correctly
+- ✅ Ensures clean session state
+- ✅ Builds confidence before debugging complex library code
+
+**Rule of thumb:** If unsure, start with breakpoints in your own script, then work your way into libraries.
+
 ### "Still running" after 60 seconds?
 
-**This is normal for model loading!** Use async execution:
+**This is normal for model loading!** Use async execution with smart polling:
 ```bash
 curl -X POST http://localhost:8000/debug/continue_async
-# Then poll every few seconds
-curl http://localhost:8000/debug/status
+
+# Poll with progress indicator (adjust iterations for your model)
+echo "Waiting for model..." && for i in {1..30}; do
+  sleep 2
+  STATUS=$(curl -s http://localhost:8000/debug/status | grep -o '"state":"[^"]*"' | cut -d'"' -f4)
+  echo "[$i/30] Status: $STATUS"
+  if [ "$STATUS" = "paused" ]; then echo "✅ Hit breakpoint!"; break; fi
+done
 ```
 
 ### Variables show `null`?
@@ -825,16 +1068,21 @@ ls -lt mflux_debugger/traces/*.json | head -1
 
 ## Credits
 
-Developed through live debugging sessions comparing FLUX.1 PyTorch (Diffusers) and MLX implementations.
+Developed through live debugging sessions comparing FLUX.1 and Qwen-Image PyTorch (Diffusers) and MLX implementations.
 
-**Version 0.2.0** includes lessons learned from:
+**Version 0.2.2** includes lessons learned from:
+- **Real-world model port verification** (QWEN-Image PyTorch→MLX)
+- **Minimal code intervention philosophy** (no helper scripts)
+- **Smart polling patterns** (progress indicators for async operations)
 - **Editable installation discovery** (breakpoint path matching)
+- **Clean slate debugging workflow** (test simple breakpoints first)
 - Path normalization debugging
-- Crash resilience testing  
+- Crash resilience testing
 - Loop breakpoint management
 - Async execution for ML workloads
 - Tensor shape verification across frameworks
 - Virtual environment best practices
+- Stale server state troubleshooting
 
 ---
 
