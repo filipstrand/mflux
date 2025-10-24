@@ -9,12 +9,13 @@ Interactive debugging system optimized for ML workloads. Designed for AI agents 
 ## Table of Contents
 
 1. [Quick Start](#quick-start)
-2. [Core Philosophy](#core-philosophy)
-3. [REST API Usage](#rest-api-usage-recommended)
-4. [Complete Debugging Workflows](#complete-debugging-workflows)
-5. [MLX Lazy Evaluation](#mlx-lazy-evaluation-essential)
-6. [Model Porting Guide](#model-porting-guide)
-7. [Live Debugging Lessons Learned](#live-debugging-lessons-learned)
+2. [Installing Dependencies in Editable Mode](#installing-dependencies-in-editable-mode)
+3. [Core Philosophy](#core-philosophy)
+4. [REST API Usage](#rest-api-usage-recommended)
+5. [Complete Debugging Workflows](#complete-debugging-workflows)
+6. [MLX Lazy Evaluation](#mlx-lazy-evaluation-essential)
+7. [Model Porting Guide](#model-porting-guide)
+8. [Live Debugging Lessons Learned](#live-debugging-lessons-learned)
 
 ---
 
@@ -57,6 +58,85 @@ curl -X POST http://localhost:8000/debug/terminate
 ```
 
 **Interactive API docs:** http://localhost:8000/docs
+
+---
+
+## Installing Dependencies in Editable Mode
+
+### CRITICAL: When debugging code from external libraries (like `diffusers`), you **must** install them in editable mode. Otherwise, breakpoints won't work because Python loads the installed package from `.venv/lib/python3.XX/site-packages/` instead of your local clone.
+
+### Why This Matters:
+- When you set a breakpoint at `/Users/you/Desktop/diffusers/src/diffusers/file.py:123`
+- But Python loads `/Users/you/mflux/.venv/lib/.../diffusers/file.py`
+- The paths don't match → breakpoint never hits! 🚨
+
+### Solution:
+
+```bash
+# 1. Clone the library you want to debug
+cd ~/Desktop
+git clone https://github.com/huggingface/diffusers.git
+
+# 2. Install it in editable mode in your mflux environment
+cd ~/Desktop/mflux
+source .venv/bin/activate
+uv pip install -e ~/Desktop/diffusers
+
+# 3. Also install mflux itself in editable mode for debugging
+uv pip install -e .
+
+# 4. Verify editable installation
+uv pip list | grep diffusers
+# Should show: diffusers  X.X.X  /Users/you/Desktop/diffusers
+
+# 5. Now breakpoints will work!
+# Set breakpoint at: /Users/you/Desktop/diffusers/src/diffusers/pipelines/flux/pipeline_flux.py:856
+```
+
+### Common Debugging Setup:
+
+```bash
+# Install commonly debugged libraries in editable mode
+uv pip install -e ~/Desktop/diffusers     # For PyTorch reference implementations
+uv pip install -e ~/Desktop/transformers  # For text encoders
+uv pip install -e ~/Desktop/mflux         # For MFLUX itself
+
+# Verify all are editable
+uv pip list | grep -E "(diffusers|transformers|mflux)"
+```
+
+### Troubleshooting Path Issues:
+
+**If breakpoints still don't hit:**
+
+1. **Check which version is loaded:**
+```python
+# In your debug session, evaluate:
+import diffusers
+print(diffusers.__file__)
+# Should point to: /Users/you/Desktop/diffusers/...
+# NOT: .venv/lib/python3.XX/site-packages/diffusers/...
+```
+
+2. **Use absolute paths for breakpoints:**
+```bash
+# ✅ GOOD - Absolute path
+curl -X POST http://localhost:8000/debug/breakpoint \
+  -d '{"file_path": "/Users/you/Desktop/diffusers/src/diffusers/pipelines/flux/pipeline_flux.py", "line": 856}'
+
+# ❌ BAD - Relative path
+curl -X POST http://localhost:8000/debug/breakpoint \
+  -d '{"file_path": "../diffusers/src/diffusers/pipelines/flux/pipeline_flux.py", "line": 856}'
+```
+
+3. **Restart your debug server after installing in editable mode:**
+```bash
+# Kill the old server
+pkill -f "uvicorn mflux_debugger"
+
+# Start fresh
+uvicorn mflux_debugger.fastapi_server:app --host 127.0.0.1 --port 8000
+```
 
 ---
 
@@ -505,18 +585,109 @@ curl -X POST http://localhost:8000/debug/continue_async
 
 **Location:** `mflux_debugger/traces/debug_NAME_TIMESTAMP.json`
 
+### Session 6: Editable Installation Discovery (CRITICAL!)
+
+**Problem:** Breakpoints not hitting in external library code (diffusers, transformers)
+
+**Root cause:** Python loading package from `.venv/lib/python3.XX/site-packages/` instead of local clone
+
+**Symptoms:**
+- Breakpoint set at `/Users/you/Desktop/diffusers/src/diffusers/file.py:856`
+- But Python loads from `/Users/you/mflux/.venv/lib/python3.11/site-packages/diffusers/...`
+- Path mismatch → debugger never pauses!
+
+**The Fix:** Install external libraries in editable mode:
+```bash
+uv pip install -e ~/Desktop/diffusers
+uv pip install -e ~/Desktop/transformers
+uv pip install -e ~/Desktop/mflux  # Don't forget mflux itself!
+```
+
+**How to verify:**
+```python
+# In debug session, evaluate:
+import diffusers
+print(diffusers.__file__)
+# ✅ Should show: /Users/you/Desktop/diffusers/...
+# ❌ BAD: .venv/lib/.../site-packages/diffusers/...
+```
+
+**Alternative check:**
+```bash
+uv pip list | grep diffusers
+# ✅ Good: diffusers  0.30.0  /Users/you/Desktop/diffusers
+# ❌ Bad: diffusers  0.30.0
+```
+
+**Result:** This single change makes debugging external libraries possible! Without editable mode, you can only debug your own code effectively.
+
+**Important:** Always restart the debug server after switching to editable mode:
+```bash
+pkill -f "uvicorn mflux_debugger"
+uvicorn mflux_debugger.fastapi_server:app --host 127.0.0.1 --port 8000
+```
+
+### Session 7: Virtual Environment Best Practices
+
+**Lesson:** Keep debugging environments clean and consistent
+
+**Best practices:**
+1. **One virtual environment per project being debugged:**
+   ```bash
+   # mflux environment (for debugging mflux)
+   cd ~/Desktop/mflux
+   python3 -m venv .venv
+   source .venv/bin/activate
+   uv pip install -e .
+   uv pip install -e ~/Desktop/diffusers  # Reference implementation
+   ```
+
+2. **Always verify which environment is active:**
+   ```bash
+   which python
+   # Should show: /Users/you/Desktop/mflux/.venv/bin/python
+   ```
+
+3. **Document your setup in a script:**
+   ```bash
+   # ~/Desktop/mflux/setup_debug_env.sh
+   #!/bin/bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   uv pip install -e .
+   uv pip install -e ~/Desktop/diffusers
+   uv pip install -e ~/Desktop/transformers
+   uv pip install fastapi uvicorn
+   ```
+
+4. **Reset environment if things get weird:**
+   ```bash
+   cd ~/Desktop/mflux
+   rm -rf .venv
+   ./setup_debug_env.sh
+   ```
+
+**Common mistakes:**
+- ❌ Installing packages in global Python
+- ❌ Forgetting to activate venv before debugging
+- ❌ Installing regular (non-editable) packages after editable ones
+- ❌ Having multiple conflicting versions in different locations
+
 ---
 
 ## Tips for AI Agents
 
 ### Do's ✅
 
+- **Always install libraries in editable mode** (`uv pip install -e`) when debugging external code
 - Use async execution (`/debug/continue_async`) for ML workloads
 - Poll status every 2-5 seconds during long operations
 - Remove breakpoints after first hit in loops
 - Start with PyTorch (reference) before debugging MLX
 - Check trace files for offline analysis
 - Use `/debug/evaluate` for quick inspections
+- Verify which package version is loaded (`import X; print(X.__file__)`)
+- Use absolute paths for breakpoints
 
 ### Don'ts ❌
 
@@ -599,9 +770,36 @@ uv pip install torch diffusers
 ### Breakpoint not hitting?
 
 **Check:**
-1. Is the path absolute? Use absolute paths for `file_path`
-2. Is the script running? Check `/debug/status`
-3. Is the line executable? Set breakpoint on actual code, not comments/blank lines
+1. **Is the library installed in editable mode?** This is the #1 cause!
+   ```bash
+   uv pip list | grep library_name
+   # Should show a path like: /Users/you/Desktop/library_name
+   ```
+   If not, install in editable mode:
+   ```bash
+   uv pip install -e ~/Desktop/library_name
+   ```
+   Then restart the debug server.
+
+2. **Is the path absolute?** Use absolute paths for `file_path`
+   ```bash
+   # ✅ Good
+   /Users/you/Desktop/diffusers/src/diffusers/pipelines/flux/pipeline_flux.py
+   
+   # ❌ Bad
+   ../diffusers/src/diffusers/pipelines/flux/pipeline_flux.py
+   ```
+
+3. **Is Python loading the right version?**
+   ```bash
+   curl -X POST http://localhost:8000/debug/evaluate \
+     -d '{"expression": "import diffusers; diffusers.__file__"}'
+   # Should show your editable install path
+   ```
+
+4. **Is the script running?** Check `/debug/status`
+
+5. **Is the line executable?** Set breakpoint on actual code, not comments/blank lines
 
 ### "Still running" after 60 seconds?
 
@@ -630,11 +828,13 @@ ls -lt mflux_debugger/traces/*.json | head -1
 Developed through live debugging sessions comparing FLUX.1 PyTorch (Diffusers) and MLX implementations.
 
 **Version 0.2.0** includes lessons learned from:
+- **Editable installation discovery** (breakpoint path matching)
 - Path normalization debugging
 - Crash resilience testing  
 - Loop breakpoint management
 - Async execution for ML workloads
 - Tensor shape verification across frameworks
+- Virtual environment best practices
 
 ---
 
