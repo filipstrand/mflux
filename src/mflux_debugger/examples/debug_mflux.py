@@ -1,19 +1,19 @@
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
-from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
+from mflux.models.flux.variants.txt2img.flux import Flux1
 
 
 def main():
-    model_name = "qwen"
+    model_name = "schnell"
     prompt = "A cat holding a sign that says hello world"
     seed = 42
     height = 256
     width = 256
-    num_steps = 20
-    guidance = 3.5
+    num_steps = 4
+    guidance = 0.0
 
-    model = QwenImage(
-        model_config=ModelConfig.from_name(model_name=model_name),
+    model = Flux1(
+        model_config=ModelConfig.from_name(model_name=model_name, base_model=None),
         quantize=None,
         local_path=None,
         lora_paths=None,
