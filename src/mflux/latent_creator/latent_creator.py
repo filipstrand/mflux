@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import mlx.core as mx
+import numpy as np
 from mlx import nn
 
 from mflux.post_processing.array_util import ArrayUtil
@@ -28,6 +29,13 @@ class LatentCreator:
         height: int,
         width: int,
     ) -> mx.array:
+        # TEMP: Load latents from diffusers for comparison
+        latents_path = Path("/Users/filip/Desktop/initial_latents_diffusers.npy")
+        if latents_path.exists():
+            latents_np = np.load(latents_path)
+            return mx.array(latents_np)
+
+        # Original random generation
         return mx.random.normal(
             shape=[1, (height // 16) * (width // 16), 64],
             key=mx.random.key(seed),

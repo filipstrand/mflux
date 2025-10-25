@@ -4,6 +4,7 @@ import mlx.core as mx
 from mlx import nn
 
 from mflux.models.flux.model.flux_transformer.common.attention_utils import AttentionUtils
+from mflux.models.qwen.model.qwen_transformer.custom_rms_norm import DiffusersStyleRMSNorm
 
 
 class QwenAttention(nn.Module):
@@ -23,11 +24,11 @@ class QwenAttention(nn.Module):
         self.add_k_proj = nn.Linear(dim, dim)
         self.add_v_proj = nn.Linear(dim, dim)
 
-        # Query/Key normalization
-        self.norm_q = nn.RMSNorm(self.head_dim, eps=1e-6)
-        self.norm_k = nn.RMSNorm(self.head_dim, eps=1e-6)
-        self.norm_added_q = nn.RMSNorm(self.head_dim, eps=1e-6)
-        self.norm_added_k = nn.RMSNorm(self.head_dim, eps=1e-6)
+        # Query/Key normalization - using diffusers-style for consistency
+        self.norm_q = DiffusersStyleRMSNorm(self.head_dim, eps=1e-6)
+        self.norm_k = DiffusersStyleRMSNorm(self.head_dim, eps=1e-6)
+        self.norm_added_q = DiffusersStyleRMSNorm(self.head_dim, eps=1e-6)
+        self.norm_added_k = DiffusersStyleRMSNorm(self.head_dim, eps=1e-6)
 
         # Output projections
         self.attn_to_out = [nn.Linear(dim, dim)]

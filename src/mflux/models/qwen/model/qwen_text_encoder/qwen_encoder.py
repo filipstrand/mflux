@@ -36,6 +36,8 @@ class QwenEncoder(nn.Module):
     ) -> mx.array:
         batch_size, seq_len = input_ids.shape
         inputs_embeds = self.embed_tokens(input_ids)
+        # Convert to bfloat16 to match Diffusers precision
+        inputs_embeds = inputs_embeds.astype(mx.bfloat16)
         cache_position = mx.arange(seq_len, dtype=mx.int32)
         position_ids = mx.expand_dims(mx.expand_dims(cache_position, axis=0), axis=0)
         position_ids = mx.broadcast_to(position_ids, (3, batch_size, seq_len))

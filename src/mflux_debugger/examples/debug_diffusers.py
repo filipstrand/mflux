@@ -6,8 +6,8 @@ def main():
     model_name = "Qwen/Qwen-Image"
     prompt = "A cat holding a sign that says hello world"
     seed = 42
-    height = 256
-    width = 256
+    height = 512
+    width = 512
     num_steps = 20
     guidance = 3.5
 

@@ -6,6 +6,7 @@ from mlx import nn
 
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.flux.model.flux_transformer.ada_layer_norm_continuous import AdaLayerNormContinuous
+from mflux.models.qwen.model.qwen_transformer.custom_rms_norm import DiffusersStyleRMSNorm
 from mflux.models.qwen.model.qwen_transformer.qwen_rope import QwenEmbedRopeMLX
 from mflux.models.qwen.model.qwen_transformer.qwen_time_text_embed import QwenTimeTextEmbed
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer_block import QwenTransformerBlock
@@ -25,7 +26,7 @@ class QwenTransformer(nn.Module):
         super().__init__()
         self.inner_dim = num_attention_heads * attention_head_dim
         self.img_in = nn.Linear(in_channels, self.inner_dim)
-        self.txt_norm = nn.RMSNorm(joint_attention_dim, eps=1e-6)
+        self.txt_norm = DiffusersStyleRMSNorm(joint_attention_dim, eps=1e-6)
         self.txt_in = nn.Linear(joint_attention_dim, self.inner_dim)
         self.time_text_embed = QwenTimeTextEmbed(timestep_proj_dim=256, inner_dim=self.inner_dim)
         self.pos_embed = QwenEmbedRopeMLX(theta=10000, axes_dim=[16, 56, 56], scale_rope=True)

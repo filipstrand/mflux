@@ -82,6 +82,23 @@ class QwenWeightHandler:
         return mapped_weights, None, None
 
     @staticmethod
+    def _convert_to_bfloat16(weights_dict):
+        """Recursively convert all arrays in a dictionary to bfloat16."""
+        import mlx.core as mx
+
+        def convert_tree(obj):
+            if isinstance(obj, mx.array):
+                return obj.astype(mx.bfloat16)
+            elif isinstance(obj, dict):
+                return {k: convert_tree(v) for k, v in obj.items()}
+            elif isinstance(obj, (list, tuple)):
+                return type(obj)(convert_tree(item) for item in obj)
+            else:
+                return obj
+
+        return convert_tree(weights_dict)
+
+    @staticmethod
     def _load_qwen_text_encoder(root_path: Path) -> tuple[dict, int | None, str | None]:
         import mlx.core as mx
         from mlx.utils import tree_unflatten
@@ -101,11 +118,16 @@ class QwenWeightHandler:
             all_weights = QwenWeightHandler._load_safetensors_shards(
                 root_path / "text_encoder", loading_mode="multi_glob"
             )
-            return tree_unflatten(list(all_weights.items())), quantization_level, mflux_version
+            weights = tree_unflatten(list(all_weights.items()))
+            # Convert to bfloat16 to match Diffusers precision
+            weights = QwenWeightHandler._convert_to_bfloat16(weights)
+            return weights, quantization_level, mflux_version
 
         # Otherwise, it's HuggingFace weights that need manual mapping
         all_weights = QwenWeightHandler._load_safetensors_shards(root_path / "text_encoder", loading_mode="multi_json")
         mapped_weights = QwenWeightHandler._manual_text_encoder_mapping(all_weights)
+        # Convert to bfloat16 to match Diffusers precision
+        mapped_weights = QwenWeightHandler._convert_to_bfloat16(mapped_weights)
         return mapped_weights, None, None
 
     @staticmethod
