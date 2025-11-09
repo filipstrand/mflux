@@ -343,7 +343,7 @@ import atexit
 
 def __save_profile():
     __profiler.stop()
-    __output_dir = Path("mflux_debugger/profiles")
+    __output_dir = Path("mflux_debugger/prune")
     __output_dir.mkdir(parents=True, exist_ok=True)
     __output_file = __profiler.save(__output_dir)
     print(f"\\n✅ Profile saved: {{__output_file}}")
@@ -399,7 +399,7 @@ atexit.register(__save_profile)
             return profile_path
 
     # Fallback: find most recent profile
-    profile_dir = Path("mflux_debugger/profiles")
+    profile_dir = Path("mflux_debugger/prune")
     if profile_dir.exists():
         profiles = sorted(profile_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
         if profiles:
@@ -609,8 +609,9 @@ def cmd_prune(script_path: Path, force: bool = False) -> int:
 
     analysis = analyze_profile(profile_path)
 
-    # Generate markdown report
-    report_path = Path(f"PROFILE_REPORT_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md")
+    # Generate markdown report in prune directory (same location as JSON profile)
+    prune_dir = profile_path.parent
+    report_path = prune_dir / f"PROFILE_REPORT_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
     generate_markdown_report(analysis, report_path, script_path)
 
     print()
@@ -713,11 +714,11 @@ def _show_basic_tutorial():
     print("│  Example: mflux-debug-prune prune src/mflux_debugger/_scripts/debug_diffusers_txt2img.py")
     print("│  What it does:")
     print("│    1. Profiles the script execution (tracks which files are executed)")
-    print("│    2. Generates a PROFILE_REPORT_*.md file (git-ignored)")
+    print("│    2. Generates a PROFILE_REPORT_*.md file in mflux_debugger/prune/ (git-ignored)")
     print("│    3. Deletes files that weren't executed (keeps essential infrastructure)")
     print("│    4. Commits deletions to main-pruned branch")
     print("│  Expected:")
-    print("│    • Profile report generated")
+    print("│    • Profile report generated in mflux_debugger/prune/")
     print("│    • Summary showing kept/deleted files")
     print("│    • Git commits created in both repos")
     print("│  Note: General infrastructure files are kept automatically")
@@ -784,7 +785,7 @@ def _show_basic_tutorial():
     print("=" * 70)
     print("\n💡 TIPS:")
     print("  • Check git log to see restore history: git log --oneline --grep='Restore'")
-    print("  • Profile reports are git-ignored (PROFILE_REPORT_*.md)")
+    print("  • Profile reports are saved in mflux_debugger/prune/ (git-ignored)")
     print("  • Each restore commit documents what was needed")
     print("  • General infrastructure files are added to essential list automatically")
     print("  • Model-specific files stay manual for flexibility")

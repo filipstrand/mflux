@@ -271,7 +271,7 @@ mflux-debug-prune setup
 # Profile your reference script and prune unused files
 mflux-debug-prune prune src/mflux_debugger/_scripts/debug_diffusers_txt2img.py
 
-# Review the generated markdown report (PROFILE_REPORT_*.md)
+# Review the generated markdown report (mflux_debugger/prune/PROFILE_REPORT_*.md)
 # Shows all files ranked by usage with categories
 
 # If script breaks, restore files iteratively:

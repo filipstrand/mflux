@@ -2,11 +2,7 @@
 """
 Cleanup utility for MFLUX debugger resources.
 
-This script removes all debugging artifacts to start fresh:
-- Debug tensors (*.npy files)
-- Generated debug images
-- Debug server logs
-- Debug trace files (*.json)
+This script removes everything in the mflux_debugger/ directory to start fresh.
 """
 
 import argparse
@@ -21,19 +17,6 @@ def get_debugger_dir() -> Path:
     src_dir = Path(__file__).parent  # src/mflux_debugger
     repo_root = src_dir.parent.parent  # /Users/filip/Desktop/mflux
     return repo_root / "mflux_debugger"
-
-
-def get_cleanup_targets() -> dict[str, Path]:
-    """Get all directories that can be cleaned up."""
-    debugger_dir = get_debugger_dir()
-    logs_dir = debugger_dir / "logs"
-    return {
-        "tensors": debugger_dir / "tensors",
-        "images": debugger_dir / "images",
-        "debugger_logs": logs_dir / "debugger",  # Server logs
-        "runs": logs_dir / "runs",  # Script execution logs + checkpoints
-        "logs": logs_dir,  # All logs (debugger + runs)
-    }
 
 
 def get_directory_info(directory: Path) -> tuple[int, float]:
@@ -54,60 +37,21 @@ def get_directory_info(directory: Path) -> tuple[int, float]:
     return file_count, size_mb
 
 
-def clean_directory(directory: Path, dry_run: bool = False) -> tuple[int, float]:
-    """
-    Clean a directory by removing all files.
-
-    Args:
-        directory: Path to clean
-        dry_run: If True, don't actually delete anything
-
-    Returns:
-        Tuple of (files_removed, mb_freed)
-    """
-    if not directory.exists():
-        return 0, 0.0
-
-    file_count, size_mb = get_directory_info(directory)
-
-    if not dry_run and file_count > 0:
-        # Remove all files but keep the directory
-        for item in directory.iterdir():
-            if item.is_file():
-                item.unlink()
-            elif item.is_dir():
-                shutil.rmtree(item)
-
-    return file_count, size_mb
-
-
 def main():
     """Main cleanup function."""
     parser = argparse.ArgumentParser(
-        description="Clean up MFLUX debugger resources",
+        description="Clean up MFLUX debugger resources - removes everything in mflux_debugger/",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   # Show what would be cleaned (dry run)
   mflux-debug-clean --dry-run
 
-  # Clean only debug tensors
-  mflux-debug-clean --target debug_tensors
-
   # Clean everything without confirmation
   mflux-debug-clean --yes
-
-  # Clean specific targets
-  mflux-debug-clean --target images --target debugger_logs --target runs
         """,
     )
 
-    parser.add_argument(
-        "--target",
-        action="append",
-        choices=["tensors", "images", "debugger_logs", "runs", "logs", "all"],
-        help="Specific target(s) to clean (default: all)",
-    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -122,15 +66,7 @@ Examples:
 
     args = parser.parse_args()
 
-    # Determine targets
-    targets = get_cleanup_targets()
-    if args.target:
-        if "all" in args.target:
-            selected_targets = targets
-        else:
-            selected_targets = {k: v for k, v in targets.items() if k in args.target}
-    else:
-        selected_targets = targets
+    debugger_dir = get_debugger_dir()
 
     # Scan what will be cleaned
     print("=" * 70)
@@ -138,28 +74,20 @@ Examples:
     print("=" * 70)
     print()
 
-    total_files = 0
-    total_size_mb = 0.0
-    target_info = {}
+    if not debugger_dir.exists():
+        print("✨ mflux_debugger/ directory doesn't exist - nothing to clean!")
+        return 0
 
-    for name, path in selected_targets.items():
-        file_count, size_mb = get_directory_info(path)
-        target_info[name] = (path, file_count, size_mb)
-        total_files += file_count
-        total_size_mb += size_mb
+    file_count, size_mb = get_directory_info(debugger_dir)
 
-        if file_count > 0:
-            print(f"📁 {name}:")
-            print(f"   Path: {path}")
-            print(f"   Files: {file_count}")
-            print(f"   Size: {size_mb:.2f} MB")
-            print()
-
-    if total_files == 0:
+    if file_count == 0:
         print("✨ No files to clean - everything is already clean!")
         return 0
 
-    print(f"Total: {total_files} files, {total_size_mb:.2f} MB")
+    print("📁 mflux_debugger/:")
+    print(f"   Path: {debugger_dir}")
+    print(f"   Files: {file_count}")
+    print(f"   Size: {size_mb:.2f} MB")
     print()
 
     # Dry run mode
@@ -170,32 +98,29 @@ Examples:
 
     # Confirmation
     if not args.yes:
-        print("⚠️  This will permanently delete all files in the selected directories.")
+        print("⚠️  This will permanently delete everything in mflux_debugger/")
         response = input("Continue? [y/N]: ").strip().lower()
         if response != "y":
             print("❌ Cancelled")
             return 1
 
-    # Perform cleanup
+    # Perform cleanup - remove everything in mflux_debugger/
     print()
     print("🧹 Cleaning up...")
     print()
 
-    cleaned_files = 0
-    cleaned_size_mb = 0.0
-
-    for name, (path, file_count, size_mb) in target_info.items():
-        if file_count > 0:
-            removed_files, freed_mb = clean_directory(path, dry_run=False)
-            cleaned_files += removed_files
-            cleaned_size_mb += freed_mb
-            print(f"✅ Cleaned {name}: {removed_files} files, {freed_mb:.2f} MB freed")
+    # Remove all contents but keep the directory itself
+    for item in debugger_dir.iterdir():
+        if item.is_file():
+            item.unlink()
+        elif item.is_dir():
+            shutil.rmtree(item)
 
     print()
     print("=" * 70)
     print("✨ Cleanup complete!")
-    print(f"   Files removed: {cleaned_files}")
-    print(f"   Space freed: {cleaned_size_mb:.2f} MB")
+    print(f"   Files removed: {file_count}")
+    print(f"   Space freed: {size_mb:.2f} MB")
     print("=" * 70)
 
     return 0

@@ -1684,11 +1684,11 @@ class DebuggerCLI:
         print("└─────────────────────────────────────────────────────────────────\n")
 
         print("┌─ STEP 15: Use cleanup command")
-        print("│  Command: mflux-debug-clean --target runs --dry-run")
-        print("│  Purpose: Preview what logs would be cleaned")
-        print("│  Expected: Shows size of logs/runs/ directory and what would be removed")
-        print("│  Then try: mflux-debug-clean --target tensors --dry-run")
-        print("│  Note: Use --dry-run first to see what will be deleted!")
+        print("│  Command: mflux-debug-clean --dry-run")
+        print("│  Purpose: Preview what would be cleaned")
+        print("│  Expected: Shows size of mflux_debugger/ directory and what would be removed")
+        print("│  Then try: mflux-debug-clean --yes")
+        print("│  Note: Removes everything in mflux_debugger/ - use --dry-run first!")
         print("└─────────────────────────────────────────────────────────────────\n")
 
         print("┌─ STEP 16: Clean up all debugger processes (FINAL)")
@@ -1743,7 +1743,7 @@ class DebuggerCLI:
         print("     The MLX tutorial will use debug_load() to compare implementations.")
         print("\n💡 Cleanup Reminder:")
         print("  • Use 'mflux-debug-kill-all' to kill all debugger servers when done")
-        print("  • Use 'mflux-debug-clean --target all' to clean up all debug artifacts")
+        print("  • Use 'mflux-debug-clean --yes' to clean up all debug artifacts")
         print("=" * 70)
         print()
 
@@ -1915,11 +1915,11 @@ class DebuggerCLI:
         print("└─────────────────────────────────────────────────────────────────\n")
 
         print("┌─ STEP 20: Use cleanup command")
-        print("│  Command: mflux-debug-clean --target debugger_logs --dry-run")
-        print("│  Purpose: Preview what server logs would be cleaned")
-        print("│  Expected: Shows size of logs/debugger/ directory")
-        print("│  Then try: mflux-debug-clean --target runs")
-        print("│  Note: 'runs' cleans script logs, 'debugger_logs' cleans server logs!")
+        print("│  Command: mflux-debug-clean --dry-run")
+        print("│  Purpose: Preview what would be cleaned")
+        print("│  Expected: Shows size of mflux_debugger/ directory and what would be removed")
+        print("│  Then try: mflux-debug-clean --yes")
+        print("│  Note: Removes everything in mflux_debugger/ - use --dry-run first!")
         print("└─────────────────────────────────────────────────────────────────\n")
 
         print("┌─ STEP 21: Clean up all debugger processes (FINAL)")
@@ -1969,7 +1969,7 @@ class DebuggerCLI:
         print("  • Apply these techniques to your own MFLUX model porting work!")
         print("\n💡 Cleanup Reminder:")
         print("  • Use 'mflux-debug-kill-all' to kill all debugger servers when done")
-        print("  • Use 'mflux-debug-clean --target all' to clean up all debug artifacts")
+        print("  • Use 'mflux-debug-clean --yes' to clean up all debug artifacts")
         print("=" * 70)
         print()
 

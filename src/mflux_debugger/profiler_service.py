@@ -223,8 +223,8 @@ class ExecutionProfiler:
             raise RuntimeError("No profile data to save")
 
         if output_dir is None:
-            # Save to mflux_debugger/profiles in current directory
-            output_dir = Path("mflux_debugger") / "profiles"
+            # Save to mflux_debugger/prune in current directory
+            output_dir = Path("mflux_debugger") / "prune"
 
         output_dir.mkdir(parents=True, exist_ok=True)
 

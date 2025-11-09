@@ -112,8 +112,8 @@ class CheckpointWriter:
                 f"   Current size: {size_gb:.2f}GB\n"
                 f"   Directory: {debugger_root}\n\n"
                 f"   Please clean up:\n"
-                f"   • Run: mflux-debug-clean --target all\n"
-                f"   • Or clean specific targets: mflux-debug-clean --target runs --target tensors"
+                f"   • Run: mflux-debug-clean --yes\n"
+                f"   • Or preview first: mflux-debug-clean --dry-run"
             )
             logger.error(error_msg)
             raise RuntimeError(error_msg)
