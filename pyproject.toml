@@ -111,6 +111,7 @@ mflux-debug-pytorch = "mflux_debugger.cli_wrapper:main_pytorch"
 mflux-debug-clean = "mflux_debugger.cleanup:main"
 mflux-debug-kill-all = "mflux_debugger.kill_all:main"
 mflux-debug-inspect-weights = "mflux_debugger.cli_inspect_weights:main"
+mflux-debug-prune = "mflux_debugger.cli_prune:main"
 
 
 [tool.ruff]
