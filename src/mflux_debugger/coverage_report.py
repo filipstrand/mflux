@@ -522,6 +522,122 @@ def _get_context_lines(
     return before_lines, at_lines, after_lines
 
 
+def _find_unused_definition_body_ranges(
+    tree: ast.AST, unused_definitions: List[UnusedDefinition]
+) -> List[Tuple[int, int]]:
+    """Find body line ranges for unused definitions (from definition line to end of body)."""
+    # Separate by type - we need to handle classes, functions, and methods differently
+    unused_class_lines = {unused.definition_line for unused in unused_definitions if unused.type == "class"}
+    unused_function_lines = {unused.definition_line for unused in unused_definitions if unused.type == "function"}
+    unused_method_lines = {unused.definition_line for unused in unused_definitions if unused.type == "method"}
+
+    class BodyRangeVisitor(ast.NodeVisitor):
+        def __init__(
+            self, unused_class_lines: Set[int], unused_function_lines: Set[int], unused_method_lines: Set[int]
+        ):
+            self.unused_class_lines = unused_class_lines
+            self.unused_function_lines = unused_function_lines
+            self.unused_method_lines = unused_method_lines
+            self.body_ranges = []
+            self.current_class_line = None
+
+        def visit_ClassDef(self, node: ast.ClassDef):
+            old_class_line = self.current_class_line
+            if node.lineno in self.unused_class_lines:
+                self.current_class_line = node.lineno
+                # Find the end of the class body
+                if node.body:
+                    end_line = node.lineno
+                    for stmt in node.body:
+                        for child in ast.walk(stmt):
+                            if hasattr(child, "end_lineno") and child.end_lineno:
+                                end_line = max(end_line, child.end_lineno)
+                            elif hasattr(child, "lineno") and child.lineno:
+                                end_line = max(end_line, child.lineno)
+                    # Use end_lineno if available, otherwise use computed end_line
+                    if hasattr(node, "end_lineno") and node.end_lineno:
+                        end_line = max(end_line, node.end_lineno)
+                    self.body_ranges.append((node.lineno, end_line))
+            self.generic_visit(node)
+            self.current_class_line = old_class_line
+
+        def visit_FunctionDef(self, node: ast.FunctionDef):
+            # Check if it's a method (inside a class) or a function
+            if self.current_class_line is not None:
+                # It's a method - check if it's unused
+                if node.lineno in self.unused_method_lines:
+                    # Find the end of the method body
+                    if node.body:
+                        end_line = node.lineno
+                        for stmt in node.body:
+                            for child in ast.walk(stmt):
+                                if hasattr(child, "end_lineno") and child.end_lineno:
+                                    end_line = max(end_line, child.end_lineno)
+                                elif hasattr(child, "lineno") and child.lineno:
+                                    end_line = max(end_line, child.lineno)
+                        # Use end_lineno if available, otherwise use computed end_line
+                        if hasattr(node, "end_lineno") and node.end_lineno:
+                            end_line = max(end_line, node.end_lineno)
+                        self.body_ranges.append((node.lineno, end_line))
+            else:
+                # It's a function - check if it's unused
+                if node.lineno in self.unused_function_lines:
+                    # Find the end of the function body
+                    if node.body:
+                        end_line = node.lineno
+                        for stmt in node.body:
+                            for child in ast.walk(stmt):
+                                if hasattr(child, "end_lineno") and child.end_lineno:
+                                    end_line = max(end_line, child.end_lineno)
+                                elif hasattr(child, "lineno") and child.lineno:
+                                    end_line = max(end_line, child.lineno)
+                        # Use end_lineno if available, otherwise use computed end_line
+                        if hasattr(node, "end_lineno") and node.end_lineno:
+                            end_line = max(end_line, node.end_lineno)
+                        self.body_ranges.append((node.lineno, end_line))
+            self.generic_visit(node)
+
+        def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+            # Check if it's a method (inside a class) or a function
+            if self.current_class_line is not None:
+                # It's a method - check if it's unused
+                if node.lineno in self.unused_method_lines:
+                    # Find the end of the method body
+                    if node.body:
+                        end_line = node.lineno
+                        for stmt in node.body:
+                            for child in ast.walk(stmt):
+                                if hasattr(child, "end_lineno") and child.end_lineno:
+                                    end_line = max(end_line, child.end_lineno)
+                                elif hasattr(child, "lineno") and child.lineno:
+                                    end_line = max(end_line, child.lineno)
+                        # Use end_lineno if available, otherwise use computed end_line
+                        if hasattr(node, "end_lineno") and node.end_lineno:
+                            end_line = max(end_line, node.end_lineno)
+                        self.body_ranges.append((node.lineno, end_line))
+            else:
+                # It's a function - check if it's unused
+                if node.lineno in self.unused_function_lines:
+                    # Find the end of the function body
+                    if node.body:
+                        end_line = node.lineno
+                        for stmt in node.body:
+                            for child in ast.walk(stmt):
+                                if hasattr(child, "end_lineno") and child.end_lineno:
+                                    end_line = max(end_line, child.end_lineno)
+                                elif hasattr(child, "lineno") and child.lineno:
+                                    end_line = max(end_line, child.lineno)
+                        # Use end_lineno if available, otherwise use computed end_line
+                        if hasattr(node, "end_lineno") and node.end_lineno:
+                            end_line = max(end_line, node.end_lineno)
+                        self.body_ranges.append((node.lineno, end_line))
+            self.generic_visit(node)
+
+    visitor = BodyRangeVisitor(unused_class_lines, unused_function_lines, unused_method_lines)
+    visitor.visit(tree)
+    return visitor.body_ranges
+
+
 def generate_markdown_report(report: CoverageReport, output_path: Optional[Path] = None) -> Path:
     """
     Generate markdown coverage report with improved dead code detection.
@@ -764,6 +880,36 @@ def generate_markdown_report(report: CoverageReport, output_path: Optional[Path]
 
                 # Merge nearby blocks to show full class/method context
                 merged_blocks = _merge_nearby_blocks(blocks, max_distance=30)
+
+                # Filter out blocks that belong to unused definitions (already shown in unused definitions section)
+                file_unused = unused_by_file.get(file_path, [])
+                if file_unused:
+                    # Parse file to find body ranges for unused definitions
+                    try:
+                        with open(file_path, "r", encoding="utf-8") as src:
+                            source = src.read()
+                        tree = ast.parse(source, filename=file_path)
+
+                        # Find body ranges for unused definitions
+                        unused_body_ranges = _find_unused_definition_body_ranges(tree, file_unused)
+
+                        # Filter out blocks that overlap with unused definition bodies
+                        filtered_blocks = []
+                        for block_start, block_end in merged_blocks:
+                            # Check if block overlaps with any unused definition body
+                            overlaps_unused = False
+                            for unused_start, unused_end in unused_body_ranges:
+                                if block_start <= unused_end and block_end >= unused_start:
+                                    overlaps_unused = True
+                                    break
+
+                            if not overlaps_unused:
+                                filtered_blocks.append((block_start, block_end))
+
+                        merged_blocks = filtered_blocks
+                    except Exception:  # noqa: BLE001
+                        # If parsing fails, show all blocks
+                        pass
 
                 if merged_blocks:
                     f.write("**Dead Code Blocks:**\n\n")
