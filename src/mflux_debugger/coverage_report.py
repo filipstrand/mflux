@@ -430,6 +430,28 @@ def _find_contiguous_blocks(dead_lines: List[int], max_gap: int = 2) -> List[Tup
     return blocks
 
 
+def _merge_nearby_blocks(blocks: List[Tuple[int, int]], max_distance: int = 30) -> List[Tuple[int, int]]:
+    """Merge blocks that are close together (within max_distance lines)."""
+    if not blocks:
+        return []
+
+    merged = []
+    current_start, current_end = blocks[0]
+
+    for block_start, block_end in blocks[1:]:
+        # If the next block is close to the current one, merge them
+        if block_start - current_end <= max_distance:
+            # Merge: extend current block to include the next one
+            current_end = max(current_end, block_end)
+        else:
+            # Too far apart, start a new block
+            merged.append((current_start, current_end))
+            current_start, current_end = block_start, block_end
+
+    merged.append((current_start, current_end))
+    return merged
+
+
 def _get_context_lines(
     file_path: str, dead_line: int, executed_lines: Set[int], context_size: int = 3
 ) -> Tuple[List[Tuple[int, str, bool]], List[Tuple[int, str, bool]], List[Tuple[int, str, bool]]]:
@@ -584,20 +606,23 @@ def generate_markdown_report(report: CoverageReport, output_path: Optional[Path]
                 dead_lines_list = sorted(report.dead_lines.get(file_path, []))
                 blocks = _find_contiguous_blocks(dead_lines_list)
 
-                if blocks:
+                # Merge nearby blocks to show full class/method context
+                merged_blocks = _merge_nearby_blocks(blocks, max_distance=30)
+
+                if merged_blocks:
                     f.write("**Dead Code Blocks:**\n\n")
-                    for block_start, block_end in blocks[:10]:  # Show first 10 blocks
+                    for block_start, block_end in merged_blocks[:10]:  # Show first 10 blocks
                         if block_start == block_end:
                             f.write(f"- **Line {block_start}** (single line)\n")
                         else:
                             f.write(f"- **Lines {block_start}-{block_end}** ({block_end - block_start + 1} lines)\n")
 
-                        # Show context around the block
+                        # Show context around the block (show full context for merged blocks)
                         try:
                             with open(file_path, "r", encoding="utf-8") as src:
                                 all_lines = src.readlines()
 
-                            # Show context before block
+                            # Show context before and after block (more context for merged blocks)
                             context_start = max(0, block_start - 4)
                             context_end = min(len(all_lines), block_end + 3)
 
