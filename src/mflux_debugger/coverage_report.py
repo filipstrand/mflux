@@ -243,9 +243,64 @@ class CoverageAnalyzer:
         )
 
 
+def _find_contiguous_blocks(dead_lines: List[int], max_gap: int = 2) -> List[Tuple[int, int]]:
+    """Find contiguous blocks of dead lines (allowing small gaps)."""
+    if not dead_lines:
+        return []
+
+    blocks = []
+    start = dead_lines[0]
+    end = dead_lines[0]
+
+    for i in range(1, len(dead_lines)):
+        if dead_lines[i] - end <= max_gap + 1:
+            # Continue the block (allowing small gaps)
+            end = dead_lines[i]
+        else:
+            # End current block, start new one
+            blocks.append((start, end))
+            start = dead_lines[i]
+            end = dead_lines[i]
+
+    blocks.append((start, end))
+    return blocks
+
+
+def _get_context_lines(
+    file_path: str, dead_line: int, executed_lines: Set[int], context_size: int = 3
+) -> Tuple[List[Tuple[int, str, bool]], List[Tuple[int, str, bool]], List[Tuple[int, str, bool]]]:
+    """Get context lines before, at, and after a dead line."""
+    try:
+        with open(file_path, "r", encoding="utf-8") as src:
+            all_lines = src.readlines()
+    except Exception:  # noqa: BLE001
+        return [], [], []
+
+    before_lines = []
+    at_lines = []
+    after_lines = []
+
+    # Get lines before
+    for i in range(max(0, dead_line - context_size - 1), dead_line - 1):
+        if i < len(all_lines):
+            is_executed = (i + 1) in executed_lines
+            before_lines.append((i + 1, all_lines[i].rstrip(), is_executed))
+
+    # Get the dead line itself
+    if dead_line - 1 < len(all_lines):
+        at_lines.append((dead_line, all_lines[dead_line - 1].rstrip(), False))
+
+    # Get lines after
+    for i in range(dead_line, min(len(all_lines), dead_line + context_size)):
+        is_executed = (i + 1) in executed_lines
+        after_lines.append((i + 1, all_lines[i].rstrip(), is_executed))
+
+    return before_lines, at_lines, after_lines
+
+
 def generate_markdown_report(report: CoverageReport, output_path: Optional[Path] = None) -> Path:
     """
-    Generate markdown coverage report.
+    Generate markdown coverage report with improved dead code detection.
 
     Args:
         report: CoverageReport to generate report from
@@ -258,6 +313,25 @@ def generate_markdown_report(report: CoverageReport, output_path: Optional[Path]
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         script_name = Path(report.script_path).stem
         output_path = Path(f"COVERAGE_REPORT_{script_name}_{timestamp}.md")
+
+    # Categorize files by priority
+    high_priority_files = []  # Files with both executed and dead code (cleanup opportunities)
+    low_priority_files = []  # Files that are completely dead or completely executed
+
+    for file_path in report.executed_lines.keys():
+        dead_count = len(report.dead_lines.get(file_path, []))
+        executed_count = len(report.executed_lines.get(file_path, set()))
+
+        if dead_count > 0 and executed_count > 0:
+            # Mixed execution - high priority for cleanup
+            high_priority_files.append(file_path)
+        else:
+            low_priority_files.append(file_path)
+
+    # Sort high priority by dead code density (dead lines / total lines)
+    high_priority_files.sort(
+        key=lambda fp: len(report.dead_lines.get(fp, [])) / max(report.total_lines.get(fp, 1), 1), reverse=True
+    )
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write("# Coverage Report\n\n")
@@ -274,49 +348,151 @@ def generate_markdown_report(report: CoverageReport, output_path: Optional[Path]
         f.write(f"- **Files analyzed:** {total_files}\n")
         f.write(f"- **Lines executed:** {total_executed}\n")
         f.write(f"- **Dead lines:** {total_dead}\n")
-        f.write(f"- **Dead branches:** {len(report.dead_branches)}\n\n")
+        f.write(f"- **Dead branches:** {len(report.dead_branches)}\n")
+        f.write(f"- **High priority files (mixed execution):** {len(high_priority_files)}\n")
+        f.write(f"- **Low priority files (all dead/all executed):** {len(low_priority_files)}\n\n")
 
-        # Per-file coverage
-        f.write("## File Coverage\n\n")
-        for file_path in sorted(report.executed_lines.keys()):
-            coverage_pct = report.coverage_percentage.get(file_path, 0.0)
-            dead_count = len(report.dead_lines.get(file_path, []))
-            executed_count = len(report.executed_lines.get(file_path, set()))
+        # High Priority Section - Dead code near executed code
+        if high_priority_files:
+            f.write("## 🔴 High Priority: Dead Code Near Executed Code\n\n")
+            f.write("These files have both executed and dead code - suggesting cleanup opportunities:\n\n")
 
-            f.write(f"### `{file_path}`\n\n")
-            f.write(f"- **Coverage:** {coverage_pct:.1f}%\n")
-            f.write(f"- **Executed lines:** {executed_count}\n")
-            f.write(f"- **Dead lines:** {dead_count}\n\n")
+            for file_path in high_priority_files[:30]:  # Limit to top 30
+                coverage_pct = report.coverage_percentage.get(file_path, 0.0)
+                dead_count = len(report.dead_lines.get(file_path, []))
+                executed_count = len(report.executed_lines.get(file_path, set()))
+                executed_lines_set = report.executed_lines.get(file_path, set())
 
-            # Show dead lines
-            if dead_count > 0:
-                dead_lines_list = sorted(report.dead_lines[file_path])
-                f.write("**Dead lines:**\n")
-                # Show first 20 dead lines
-                for line_num in dead_lines_list[:20]:
-                    try:
-                        with open(file_path, "r", encoding="utf-8") as src:
-                            lines = src.readlines()
-                            if line_num <= len(lines):
-                                line_content = lines[line_num - 1].strip()
-                                f.write(f"- Line {line_num}: `{line_content[:80]}`\n")
-                    except Exception:  # noqa: BLE001, PERF203
-                        f.write(f"- Line {line_num}\n")
+                f.write(f"### `{file_path}`\n\n")
+                f.write(f"- **Coverage:** {coverage_pct:.1f}%\n")
+                f.write(f"- **Executed lines:** {executed_count}\n")
+                f.write(f"- **Dead lines:** {dead_count}\n\n")
 
-                if len(dead_lines_list) > 20:
-                    f.write(f"- ... and {len(dead_lines_list) - 20} more\n")
-                f.write("\n")
+                # Find contiguous dead code blocks
+                dead_lines_list = sorted(report.dead_lines.get(file_path, []))
+                blocks = _find_contiguous_blocks(dead_lines_list)
 
-        # Dead branches
+                if blocks:
+                    f.write("**Dead Code Blocks:**\n\n")
+                    for block_start, block_end in blocks[:10]:  # Show first 10 blocks
+                        if block_start == block_end:
+                            f.write(f"- **Line {block_start}** (single line)\n")
+                        else:
+                            f.write(f"- **Lines {block_start}-{block_end}** ({block_end - block_start + 1} lines)\n")
+
+                        # Show context around the block
+                        try:
+                            with open(file_path, "r", encoding="utf-8") as src:
+                                all_lines = src.readlines()
+
+                            # Show context before block
+                            context_start = max(0, block_start - 4)
+                            context_end = min(len(all_lines), block_end + 3)
+
+                            f.write("  ```python\n")
+                            for line_num in range(context_start, context_end):
+                                if line_num < len(all_lines):
+                                    is_executed = (line_num + 1) in executed_lines_set
+                                    is_dead = (line_num + 1) in dead_lines_list
+                                    # Use fixed-width format for alignment
+                                    # Use emoji for all lines to ensure consistent width
+                                    if is_dead:
+                                        marker_area = "❌"
+                                    elif is_executed:
+                                        marker_area = "✅"
+                                    else:
+                                        # Use white circle emoji - same width as other emojis
+                                        marker_area = "⚪"  # White circle - same emoji width as ❌ and ✅
+                                    line_content = all_lines[line_num].rstrip()
+                                    # Format: 2 spaces + marker_area + space + line_num (4 digits) + " |" + content
+                                    f.write(f"  {marker_area} {line_num + 1:4d} | {line_content}\n")
+                            f.write("  ```\n\n")
+                        except Exception:  # noqa: BLE001
+                            pass
+
+                    if len(blocks) > 10:
+                        f.write(f"- ... and {len(blocks) - 10} more blocks\n\n")
+                    f.write("\n")
+
+        # Dead Branches with Context
         if report.dead_branches:
-            f.write("## Dead Branches\n\n")
-            for branch in report.dead_branches[:50]:  # Limit to first 50
-                f.write(f"### `{branch.file}:{branch.line}`\n\n")
-                f.write(f"- **Type:** {branch.branch_type}\n")
-                f.write(f"- **Condition:** `{branch.condition}`\n")
-                f.write("- **Status:** ❌ Never executed\n\n")
+            f.write("## 🔴 Dead Branches (Near Executed Code)\n\n")
+            f.write("These branches were never taken, but their parent code was executed:\n\n")
 
-            if len(report.dead_branches) > 50:
-                f.write(f"... and {len(report.dead_branches) - 50} more dead branches\n\n")
+            # Group branches by file
+            branches_by_file: Dict[str, List[BranchInfo]] = {}
+            for branch in report.dead_branches:
+                if branch.file not in branches_by_file:
+                    branches_by_file[branch.file] = []
+                branches_by_file[branch.file].append(branch)
+
+            # Only show branches from high-priority files (where code was executed)
+            shown_count = 0
+            for file_path in high_priority_files:
+                if file_path in branches_by_file and shown_count < 30:
+                    file_branches = branches_by_file[file_path]
+                    executed_lines_set = report.executed_lines.get(file_path, set())
+
+                    for branch in file_branches[:5]:  # Max 5 per file
+                        if shown_count >= 30:
+                            break
+
+                        f.write(f"### `{branch.file}:{branch.line}`\n\n")
+                        f.write(f"- **Type:** {branch.branch_type}\n")
+                        f.write(f"- **Condition:** `{branch.condition}`\n")
+                        f.write("- **Status:** ❌ Never executed\n")
+
+                        # Show context around the branch
+                        try:
+                            with open(branch.file, "r", encoding="utf-8") as src:
+                                all_lines = src.readlines()
+
+                            context_start = max(0, branch.line - 3)
+                            context_end = min(len(all_lines), branch.line + 5)
+
+                            f.write("\n**Context:**\n```python\n")
+                            for line_num in range(context_start, context_end):
+                                if line_num < len(all_lines):
+                                    is_executed = (line_num + 1) in executed_lines_set
+                                    is_branch_line = (line_num + 1) == branch.line
+                                    # Use fixed-width format for alignment
+                                    # Use emoji for all lines to ensure consistent width
+                                    if is_branch_line:
+                                        marker_area = "❌"
+                                    elif is_executed:
+                                        marker_area = "✅"
+                                    else:
+                                        # Use white circle emoji - same width as other emojis
+                                        marker_area = "⚪"  # White circle - same emoji width as ❌ and ✅
+                                    line_content = all_lines[line_num].rstrip()
+                                    # Format: marker_area + space + line_num (4 digits) + " |" + content
+                                    f.write(f"{marker_area} {line_num + 1:4d} | {line_content}\n")
+                            f.write("```\n\n")
+                        except Exception:  # noqa: BLE001
+                            pass
+
+                        shown_count += 1
+
+                    if shown_count >= 30:
+                        break
+
+            remaining_branches = len(report.dead_branches) - shown_count
+            if remaining_branches > 0:
+                f.write(f"... and {remaining_branches} more dead branches\n\n")
+
+        # Low Priority Section - All other files
+        if low_priority_files:
+            f.write("## ⚪ Low Priority: Completely Dead or Executed Files\n\n")
+            f.write("These files are either completely unused or fully executed:\n\n")
+
+            for file_path in sorted(low_priority_files):
+                coverage_pct = report.coverage_percentage.get(file_path, 0.0)
+                dead_count = len(report.dead_lines.get(file_path, []))
+                executed_count = len(report.executed_lines.get(file_path, set()))
+
+                f.write(f"### `{file_path}`\n\n")
+                f.write(f"- **Coverage:** {coverage_pct:.1f}%\n")
+                f.write(f"- **Executed lines:** {executed_count}\n")
+                f.write(f"- **Dead lines:** {dead_count}\n\n")
 
     return output_path
