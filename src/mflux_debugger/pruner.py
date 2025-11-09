@@ -204,7 +204,7 @@ def prune_files(
         "constants.py",  # Constants imported by __init__
         "dependency_versions_check.py",  # Version checking
         "dependency_versions_table.py",  # Version table
-        "_fast.py",  # Fast implementations (often imported conditionally)
+        # NOTE: _fast.py removed - only keep if model is executed (model-specific fast implementations)
         "_base.py",  # Base classes (imported but not executed)
     ]
 
@@ -267,6 +267,7 @@ def prune_files(
 
     # Essential directories - keep ALL files in these dirs
     # These have __init__.py files that import many modules
+    # NOTE: models/ subdirectories are NOT essential - only keep executed files
     ESSENTIAL_DIRS = [
         "utils/",  # All utils are infrastructure
         "integrations/",  # Integration modules (flash_attention, hub_kernels, etc.)
@@ -277,11 +278,9 @@ def prune_files(
         "guiders/",  # Guidance utilities
         "loss/",  # Loss functions (transformers)
         "generation/",  # Generation utilities (GenerationMixin, utils, etc.)
-        "models/unets/",  # UNet models
-        "models/controlnets/",  # ControlNet models
-        "models/autoencoders/",  # Autoencoder models
-        "models/transformers/",  # Transformer models
-        # Note: pipelines/qwenimage/ removed - qwen-specific, should be restored manually
+        # NOTE: models/unets/, models/controlnets/, models/autoencoders/, models/transformers/
+        # are NOT essential - only keep files that are actually executed
+        # This allows pruning of unused model architectures
     ]
 
     # Get set of files that WERE executed (define before is_essential uses it)
@@ -399,8 +398,17 @@ def prune_files(
                 kept_count += 1
             elif rel_path.endswith("__init__.py"):
                 # Special handling for __init__.py files:
-                # Keep only if executed OR if directory has other Python files that are kept
+                # Keep if executed OR if directory has other Python files that are kept
+                # ALSO keep __init__.py in models/ subdirectories (unets, autoencoders, etc.)
+                # because they're imported by the main __init__.py
                 dir_path = file_path.parent
+                is_model_subdir = (
+                    "models/unets/" in rel_path
+                    or "models/autoencoders/" in rel_path
+                    or "models/transformers/" in rel_path
+                    or "models/controlnets/" in rel_path
+                )
+
                 # Check if directory has other Python files (not just __init__.py)
                 all_dir_files = list(dir_path.glob("*.py"))
                 other_py_files = [f for f in all_dir_files if f.name != "__init__.py"]
@@ -417,8 +425,8 @@ def prune_files(
                         has_kept_files = True
                         break
 
-                if rel_path in executed or has_kept_files:
-                    # Keep __init__.py if executed or directory has other kept files
+                if rel_path in executed or has_kept_files or is_model_subdir:
+                    # Keep __init__.py if executed, directory has other kept files, or it's a model subdir
                     kept_count += 1
                     if rel_path not in executed:
                         essential_kept += 1
