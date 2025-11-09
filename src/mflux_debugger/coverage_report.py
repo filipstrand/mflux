@@ -27,6 +27,17 @@ class BranchInfo:
 
 
 @dataclass
+class UnusedDefinition:
+    """Information about an unused class or function definition."""
+
+    file: str
+    line: int
+    name: str
+    type: str  # "class" or "function"
+    definition_line: int  # Line where class/function is defined
+
+
+@dataclass
 class CoverageReport:
     """Coverage analysis report."""
 
@@ -37,6 +48,7 @@ class CoverageReport:
     dead_lines: Dict[str, List[int]]  # file -> list of unexecuted lines
     branches: List[BranchInfo]  # All branches found
     dead_branches: List[BranchInfo]  # Branches never taken
+    unused_definitions: List[UnusedDefinition]  # Classes/functions defined but never used
 
 
 class CoverageAnalyzer:
@@ -51,7 +63,7 @@ class CoverageAnalyzer:
         """
         self.coverage_data = coverage_data
 
-    def analyze_file(self, file_path: str) -> Tuple[List[int], List[BranchInfo]]:
+    def analyze_file(self, file_path: str) -> Tuple[List[int], List[BranchInfo], List[UnusedDefinition]]:
         """
         Analyze a single file for dead code.
 
@@ -59,19 +71,19 @@ class CoverageAnalyzer:
             file_path: Path to Python file
 
         Returns:
-            Tuple of (dead_lines, branches)
+            Tuple of (dead_lines, branches, unused_definitions)
         """
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 source = f.read()
         except Exception:  # noqa: BLE001
-            return [], []
+            return [], [], []
 
         # Parse AST to find executable lines and branches
         try:
             tree = ast.parse(source, filename=file_path)
         except SyntaxError:
-            return [], []
+            return [], [], []
 
         # Find all executable lines
         executable_lines = self._find_executable_lines(tree, source)
@@ -85,7 +97,10 @@ class CoverageAnalyzer:
         # Find branches
         branches = self._find_branches(tree, file_path, executed_lines)
 
-        return dead_lines, branches
+        # Find unused classes and functions
+        unused_definitions = self._find_unused_definitions(tree, file_path, executed_lines)
+
+        return dead_lines, branches, unused_definitions
 
     def _find_executable_lines(self, tree: ast.AST, source: str) -> List[int]:
         """Find all executable line numbers in the AST."""
@@ -183,6 +198,150 @@ class CoverageAnalyzer:
 
         return visitor.branches
 
+    def _find_unused_definitions(
+        self, tree: ast.AST, file_path: str, executed_lines: Set[int]
+    ) -> List[UnusedDefinition]:
+        """Find classes and functions that are defined but never used (only definition line executed)."""
+
+        class DefinitionVisitor(ast.NodeVisitor):
+            def __init__(self, file_path: str, executed_lines: Set[int]):
+                self.file_path = file_path
+                self.executed_lines = executed_lines
+                self.unused = []
+                self.current_class = None  # Track if we're inside a class
+
+            def _get_body_lines(self, node: ast.AST, exclude_definitions: bool = False) -> Set[int]:
+                """Get all executable line numbers in a node's body.
+
+                Args:
+                    node: AST node with a body
+                    exclude_definitions: If True, exclude function/class definition lines (only check their bodies)
+                """
+                body_lines = set()
+                if hasattr(node, "body"):
+                    for stmt in node.body:
+                        # Skip function/class definitions if exclude_definitions is True
+                        # (we only want to check if their bodies are executed, not the definition lines themselves)
+                        if exclude_definitions and isinstance(
+                            stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+                        ):
+                            # Recursively get body lines from the function/class, excluding its own definition
+                            body_lines.update(self._get_body_lines(stmt, exclude_definitions=True))
+                            continue
+
+                        for child in ast.walk(stmt):
+                            if hasattr(child, "lineno") and child.lineno:
+                                # Skip docstrings
+                                if isinstance(child, (ast.Expr, ast.Constant)):
+                                    if isinstance(child, ast.Expr) and isinstance(child.value, ast.Constant):
+                                        if isinstance(child.value.value, str):
+                                            continue
+                                # Skip the definition line itself if exclude_definitions is True
+                                if exclude_definitions and isinstance(
+                                    stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+                                ):
+                                    if child.lineno == stmt.lineno:
+                                        continue
+                                body_lines.add(child.lineno)
+                return body_lines
+
+            def visit_ClassDef(self, node: ast.ClassDef):
+                # Check if class definition line is executed
+                if node.lineno not in self.executed_lines:
+                    self.generic_visit(node)
+                    return
+
+                # Save current class context
+                old_class = self.current_class
+                self.current_class = node
+
+                # Get all body lines (methods, assignments, etc.)
+                # Exclude method definition lines - we only care if method bodies are executed
+                body_lines = self._get_body_lines(node, exclude_definitions=True)
+
+                # Check if any body line is executed
+                body_executed = any(line in self.executed_lines for line in body_lines)
+
+                if not body_executed:
+                    # Class is defined but never instantiated or called
+                    self.unused.append(
+                        UnusedDefinition(
+                            file=self.file_path,
+                            line=node.lineno,
+                            name=node.name,
+                            type="class",
+                            definition_line=node.lineno,
+                        )
+                    )
+
+                self.generic_visit(node)
+
+                # Restore class context
+                self.current_class = old_class
+
+            def visit_FunctionDef(self, node: ast.FunctionDef):
+                # Skip methods inside classes - they're handled by visit_ClassDef
+                if self.current_class is not None:
+                    self.generic_visit(node)
+                    return
+
+                # Check if function definition line is executed
+                if node.lineno not in self.executed_lines:
+                    self.generic_visit(node)
+                    return
+
+                # Get all body lines (excluding nested function definitions)
+                body_lines = self._get_body_lines(node, exclude_definitions=True)
+
+                # Check if any body line is executed
+                body_executed = any(line in self.executed_lines for line in body_lines)
+
+                if not body_executed:
+                    # Function is defined but never called
+                    self.unused.append(
+                        UnusedDefinition(
+                            file=self.file_path,
+                            line=node.lineno,
+                            name=node.name,
+                            type="function",
+                            definition_line=node.lineno,
+                        )
+                    )
+
+                self.generic_visit(node)
+
+            def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+                # Skip methods inside classes - they're handled by visit_ClassDef
+                if self.current_class is not None:
+                    self.generic_visit(node)
+                    return
+
+                # Same logic as FunctionDef
+                if node.lineno not in self.executed_lines:
+                    self.generic_visit(node)
+                    return
+
+                body_lines = self._get_body_lines(node, exclude_definitions=True)
+                body_executed = any(line in self.executed_lines for line in body_lines)
+
+                if not body_executed:
+                    self.unused.append(
+                        UnusedDefinition(
+                            file=self.file_path,
+                            line=node.lineno,
+                            name=node.name,
+                            type="function",
+                            definition_line=node.lineno,
+                        )
+                    )
+
+                self.generic_visit(node)
+
+        visitor = DefinitionVisitor(file_path, executed_lines)
+        visitor.visit(tree)
+
+        return visitor.unused
+
     def generate_report(self, script_path: str, watch_files: Optional[Set[str]] = None) -> CoverageReport:
         """
         Generate coverage report.
@@ -200,9 +359,10 @@ class CoverageAnalyzer:
         dead_lines = {}
         all_branches = []
         dead_branches = []
+        all_unused_definitions = []
 
         for file_path in files_to_analyze:
-            file_dead_lines, file_branches = self.analyze_file(file_path)
+            file_dead_lines, file_branches, file_unused = self.analyze_file(file_path)
 
             # Count total executable lines
             try:
@@ -222,6 +382,9 @@ class CoverageAnalyzer:
                 if not branch.executed:
                     dead_branches.append(branch)
 
+            # Collect unused definitions
+            all_unused_definitions.extend(file_unused)
+
         # Calculate coverage percentages
         coverage_percentage = {}
         for file_path in files_to_analyze:
@@ -240,6 +403,7 @@ class CoverageAnalyzer:
             dead_lines=dead_lines,
             branches=all_branches,
             dead_branches=dead_branches,
+            unused_definitions=all_unused_definitions,
         )
 
 
@@ -318,11 +482,23 @@ def generate_markdown_report(report: CoverageReport, output_path: Optional[Path]
     high_priority_files = []  # Files with both executed and dead code (cleanup opportunities)
     low_priority_files = []  # Files that are completely dead or completely executed
 
+    # Get unused definitions by file for filtering
+    unused_by_file: Dict[str, List[UnusedDefinition]] = {}
+    for unused in report.unused_definitions:
+        if unused.file not in unused_by_file:
+            unused_by_file[unused.file] = []
+        unused_by_file[unused.file].append(unused)
+
     for file_path in report.executed_lines.keys():
         dead_count = len(report.dead_lines.get(file_path, []))
         executed_count = len(report.executed_lines.get(file_path, set()))
+        file_unused = unused_by_file.get(file_path, [])
 
-        if dead_count > 0 and executed_count > 0:
+        # Check if file only has unused definitions (definition lines executed, but no body code)
+        # If so, exclude from high-priority (it's already in unused definitions section)
+        only_unused_definitions = len(file_unused) > 0 and executed_count <= len(file_unused) * 2
+
+        if dead_count > 0 and executed_count > 0 and not only_unused_definitions:
             # Mixed execution - high priority for cleanup
             high_priority_files.append(file_path)
         else:
@@ -349,8 +525,44 @@ def generate_markdown_report(report: CoverageReport, output_path: Optional[Path]
         f.write(f"- **Lines executed:** {total_executed}\n")
         f.write(f"- **Dead lines:** {total_dead}\n")
         f.write(f"- **Dead branches:** {len(report.dead_branches)}\n")
+        f.write(f"- **Unused definitions (defined but never used):** {len(report.unused_definitions)}\n")
         f.write(f"- **High priority files (mixed execution):** {len(high_priority_files)}\n")
         f.write(f"- **Low priority files (all dead/all executed):** {len(low_priority_files)}\n\n")
+
+        # Unused Definitions Section - Classes/functions defined but never used
+        if report.unused_definitions:
+            f.write("## ⚠️ Unused Definitions (Defined But Never Used)\n\n")
+            f.write(
+                "These classes and functions are defined (imported) but never actually used:\n"
+                "Only their definition lines were executed, but no method/function bodies.\n\n"
+            )
+
+            # Group by file (reuse unused_by_file from above)
+            for file_path in sorted(unused_by_file.keys())[:50]:  # Limit to top 50 files
+                file_unused = unused_by_file[file_path]
+                f.write(f"### `{file_path}`\n\n")
+
+                # Group by type
+                classes = [u for u in file_unused if u.type == "class"]
+                functions = [u for u in file_unused if u.type == "function"]
+
+                if classes:
+                    f.write(f"- **Unused classes ({len(classes)}):**\n")
+                    for cls in sorted(classes, key=lambda x: x.line):
+                        f.write(f"  - `{cls.name}` (line {cls.line})\n")
+                    f.write("\n")
+
+                if functions:
+                    f.write(f"- **Unused functions ({len(functions)}):**\n")
+                    for func in sorted(functions, key=lambda x: x.line):
+                        f.write(f"  - `{func.name}` (line {func.line})\n")
+                    f.write("\n")
+
+            remaining = len(report.unused_definitions) - sum(
+                len(unused_by_file.get(fp, [])) for fp in sorted(unused_by_file.keys())[:50]
+            )
+            if remaining > 0:
+                f.write(f"... and {remaining} more unused definitions\n\n")
 
         # High Priority Section - Dead code near executed code
         if high_priority_files:
