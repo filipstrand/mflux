@@ -620,6 +620,136 @@ def cmd_prune(script_path: Path) -> int:
     return 0
 
 
+def cmd_tutorial(lesson: str = "basic") -> int:
+    """Show interactive tutorial for the pruning workflow."""
+    if lesson == "basic":
+        _show_basic_tutorial()
+    else:
+        print(f"❌ Unknown tutorial: {lesson}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def _show_basic_tutorial():
+    """Show step-by-step guide for basic pruning tutorial."""
+    print("🎓 Interactive Pruning Tutorial - Iterative Workflow")
+    print("=" * 70)
+    print("\n📚 What you'll learn:")
+    print("  1. Prerequisites: Editable installs and git setup")
+    print("  2. Initial pruning: Profile and delete unused files")
+    print("  3. Iterative restoration: Fix broken scripts by restoring files")
+    print("  4. Understanding essential vs. model-specific files")
+    print("  5. Git workflow: Each restore is a separate commit")
+    print("\n" + "=" * 70)
+    print("\n💡 KEY CONCEPTS:")
+    print("  • The tool profiles your script to see which files are actually executed")
+    print("  • It deletes files that weren't executed (with safeguards for infrastructure)")
+    print("  • Some files are imported but not executed - these need manual restoration")
+    print("  • The workflow is iterative: prune → test → restore → repeat")
+    print("  • General infrastructure files are kept automatically")
+    print("  • Model-specific files (like qwen) need manual restoration")
+    print("\n" + "=" * 70)
+    print("\n📋 STEP-BY-STEP INSTRUCTIONS:")
+    print("   Follow these steps to prune transformers/diffusers repos.\n")
+
+    print("┌─ STEP 1: Prerequisites - Editable Installs")
+    print("│  Purpose: Ensure transformers and diffusers are installed in editable mode")
+    print("│  Command: mflux-debug-prune setup")
+    print("│  What it does:")
+    print("│    • Checks that transformers and diffusers are editable installs")
+    print("│    • Creates/checks out 'main-pruned' branches in both repos")
+    print("│    • Ensures repos are on Desktop (~/Desktop/transformers, ~/Desktop/diffusers)")
+    print("│  Expected: ✅ Success messages for both repos")
+    print("│  Note: This is a one-time setup per repo")
+    print("└─────────────────────────────────────────────────────────────────\n")
+
+    print("┌─ STEP 2: Initial Pruning")
+    print("│  Purpose: Profile your script and delete unused files")
+    print("│  Command: mflux-debug-prune prune <path_to_script>")
+    print("│  Example: mflux-debug-prune prune src/mflux_debugger/_scripts/debug_diffusers_txt2img.py")
+    print("│  What it does:")
+    print("│    1. Profiles the script execution (tracks which files are executed)")
+    print("│    2. Generates a PROFILE_REPORT_*.md file (git-ignored)")
+    print("│    3. Deletes files that weren't executed (keeps essential infrastructure)")
+    print("│    4. Commits deletions to main-pruned branch")
+    print("│  Expected:")
+    print("│    • Profile report generated")
+    print("│    • Summary showing kept/deleted files")
+    print("│    • Git commits created in both repos")
+    print("│  Note: General infrastructure files are kept automatically")
+    print("└─────────────────────────────────────────────────────────────────\n")
+
+    print("┌─ STEP 3: Test the Script")
+    print("│  Purpose: Verify the script still works after pruning")
+    print("│  Command: uv run python <path_to_script>")
+    print("│  Expected: Script runs successfully OR fails with ImportError/ModuleNotFoundError")
+    print("│  If it works: ✅ Done! The pruning was successful.")
+    print("│  If it fails: Continue to Step 4 (iterative restoration)")
+    print("└─────────────────────────────────────────────────────────────────\n")
+
+    print("┌─ STEP 4: Iterative Restoration (if script breaks)")
+    print("│  Purpose: Restore files that are needed but weren't in execution profile")
+    print("│  Common error: ModuleNotFoundError or ImportError")
+    print("│  Example error: 'No module named transformers.models.qwen2_5_vl.modeling_qwen2_5_vl'")
+    print("│")
+    print("│  For transformers:")
+    print("│    cd ~/Desktop/transformers")
+    print("│    git checkout main -- src/transformers/models/qwen2_5_vl/modeling_qwen2_5_vl.py")
+    print('│    git commit -m "Restore: models/qwen2_5_vl/modeling_qwen2_5_vl.py"')
+    print("│")
+    print("│  For diffusers:")
+    print("│    cd ~/Desktop/diffusers")
+    print("│    git checkout main -- src/diffusers/pipelines/qwenimage/pipeline_qwenimage.py")
+    print('│    git commit -m "Restore: pipelines/qwenimage/pipeline_qwenimage.py"')
+    print("│")
+    print("│  Note: Each restore should be a separate commit for clear history")
+    print("└─────────────────────────────────────────────────────────────────\n")
+
+    print("┌─ STEP 5: Re-test and Repeat")
+    print("│  Purpose: Verify restoration fixed the issue")
+    print("│  Command: uv run python <path_to_script>")
+    print("│  If it works: ✅ Success! Move to next error or you're done.")
+    print("│  If it still fails: Repeat Step 4 for the next missing file")
+    print("│  Note: Usually 3-5 manual restores needed for model-specific files")
+    print("└─────────────────────────────────────────────────────────────────\n")
+
+    print("┌─ STEP 6: Understanding What Gets Kept Automatically")
+    print("│  The tool automatically keeps:")
+    print("│    • All files in utils/, integrations/, generation/ directories")
+    print("│    • General infrastructure (modeling_outputs.py, activations.py, etc.)")
+    print("│    • Auto modules (modeling_auto.py, processing_auto.py, etc.)")
+    print("│    • Files matching patterns (_fast.py, _base.py, __init__.py)")
+    print("│    • Files in execution profile with 'modeling_' or 'pipeline_' in path")
+    print("│")
+    print("│  Files that need manual restoration:")
+    print("│    • Model-specific files (qwen2, qwen2_5_vl, etc.)")
+    print("│    • Configuration files for specific models")
+    print("│    • Pipeline files for specific models")
+    print("│    • Tokenization files for specific models")
+    print("│")
+    print("│  Why: These are imported but not directly executed, so they're not in the profile")
+    print("└─────────────────────────────────────────────────────────────────\n")
+
+    print("┌─ STEP 7: Final Prune (Optional)")
+    print("│  Purpose: Run prune again after all restorations")
+    print("│  Command: mflux-debug-prune prune <path_to_script>")
+    print("│  Expected: No deletions (all needed files are now kept)")
+    print("│  Note: This confirms the pruning is complete")
+    print("└─────────────────────────────────────────────────────────────────\n")
+
+    print("=" * 70)
+    print("\n💡 TIPS:")
+    print("  • Check git log to see restore history: git log --oneline --grep='Restore'")
+    print("  • Profile reports are git-ignored (PROFILE_REPORT_*.md)")
+    print("  • Each restore commit documents what was needed")
+    print("  • General infrastructure files are added to essential list automatically")
+    print("  • Model-specific files stay manual for flexibility")
+    print("\n📖 For more details, see the code comments in src/mflux_debugger/pruner.py")
+    print("   Look for ESSENTIAL_ROOT_FILES and ESSENTIAL_DIRS lists.")
+    print("\n✅ Tutorial complete! You're ready to prune repos.")
+    print("=" * 70)
+
+
 def main() -> int:
     """Main entry point."""
     parser = argparse.ArgumentParser(
@@ -653,6 +783,14 @@ Examples:
     prune_parser = subparsers.add_parser("prune", help="Profile script and prune unused files")
     prune_parser.add_argument("script", type=Path, help="Path to script to profile")
 
+    # Tutorial command
+    tutorial_parser = subparsers.add_parser(
+        "tutorial", help="Interactive tutorial - learn the iterative pruning workflow"
+    )
+    tutorial_parser.add_argument(
+        "lesson", nargs="?", default="basic", choices=["basic"], help="Tutorial lesson (default: basic)"
+    )
+
     args = parser.parse_args()
 
     if not args.command:
@@ -663,6 +801,8 @@ Examples:
         return cmd_setup()
     elif args.command == "prune":
         return cmd_prune(args.script)
+    elif args.command == "tutorial":
+        return cmd_tutorial(args.lesson)
     else:
         parser.print_help()
         return 1
