@@ -114,6 +114,29 @@ mflux-debug-mlx eval "array.shape"
 4. **Sequential execution is fine** - one session waits, then the other
 5. **Don't use `&` to background** - defeats automatic polling
 
+## 🚨 Git Conventions
+
+**CRITICAL: Commit vs Push Behavior**
+
+1. **When asked to commit:**
+   - ✅ Commit locally only
+   - ❌ **DO NOT push** unless explicitly asked to push
+   - This applies to all repositories (mflux, transformers, diffusers)
+
+2. **When asked to push:**
+   - ✅ **ALWAYS push to mflux repository only** (`/Users/filip/Desktop/mflux`)
+   - ❌ **NEVER push to transformers or diffusers repositories**
+   - These are external repos - we can commit locally but never push
+
+3. **Local commits are fine:**
+   - ✅ Can commit locally to transformers/diffusers for pruning/restoration work
+   - ✅ These local commits stay on `main-pruned` branches
+   - ❌ Never push these commits to origin
+
+**Summary:**
+- `git commit` = local only, no push
+- `git push` = mflux repo only, never transformers/diffusers
+
 ---
 
 **Run `mflux-debug-mlx tutorial` to learn interactively, then see README for advanced features.**
