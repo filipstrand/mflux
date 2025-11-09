@@ -332,8 +332,14 @@ def prune_files(
     files_to_delete: list[Path] = []
 
     for repo_name, repo_path in repos.items():
-        # Get all Python files
-        all_files = list(repo_path.rglob("*.py"))
+        # Get all Python files and README files
+        all_py_files = list(repo_path.rglob("*.py"))
+        all_readme_files = (
+            list(repo_path.rglob("README.md"))
+            + list(repo_path.rglob("README.rst"))
+            + list(repo_path.rglob("README.txt"))
+        )
+        all_files = all_py_files + all_readme_files
         executed = executed_files[repo_name]
 
         # Build set of directories that have executed files
@@ -347,6 +353,12 @@ def prune_files(
         for file_path in all_files:
             rel_path = str(file_path.relative_to(repo_path))
             file_dir = str(Path(rel_path).parent) if "/" in rel_path else ""
+
+            # Always delete README files (not essential, not executed)
+            if rel_path.endswith("README.md") or rel_path.endswith("README.rst") or rel_path.endswith("README.txt"):
+                deleted_count += 1
+                files_to_delete.append(file_path)
+                continue
 
             if rel_path in executed:
                 kept_count += 1
