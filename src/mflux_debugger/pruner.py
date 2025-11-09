@@ -267,7 +267,6 @@ def prune_files(
 
     # Essential directories - keep ALL files in these dirs
     # These have __init__.py files that import many modules
-    # NOTE: models/ subdirectories are NOT essential - only keep executed files
     ESSENTIAL_DIRS = [
         "utils/",  # All utils are infrastructure
         "integrations/",  # Integration modules (flash_attention, hub_kernels, etc.)
@@ -278,7 +277,8 @@ def prune_files(
         "guiders/",  # Guidance utilities
         "loss/",  # Loss functions (transformers)
         "generation/",  # Generation utilities (GenerationMixin, utils, etc.)
-        # NOTE: models/unets/, models/controlnets/, models/autoencoders/, models/transformers/
+        "models/unets/",  # UNet architectures - __init__.py imports all variants
+        # NOTE: models/controlnets/, models/autoencoders/, models/transformers/
         # are NOT essential - only keep files that are actually executed
         # This allows pruning of unused model architectures
     ]
@@ -399,12 +399,12 @@ def prune_files(
             elif rel_path.endswith("__init__.py"):
                 # Special handling for __init__.py files:
                 # Keep if executed OR if directory has other Python files that are kept
-                # ALSO keep __init__.py in models/ subdirectories (unets, autoencoders, etc.)
+                # ALSO keep __init__.py in models/ subdirectories (autoencoders, transformers, controlnets)
                 # because they're imported by the main __init__.py
+                # NOTE: models/unets/ is now in ESSENTIAL_DIRS, so handled separately
                 dir_path = file_path.parent
                 is_model_subdir = (
-                    "models/unets/" in rel_path
-                    or "models/autoencoders/" in rel_path
+                    "models/autoencoders/" in rel_path
                     or "models/transformers/" in rel_path
                     or "models/controlnets/" in rel_path
                 )
