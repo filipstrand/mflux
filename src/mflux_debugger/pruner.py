@@ -231,12 +231,15 @@ def prune_files(
         "processing_utils.py",  # transformers (processing base)
         "feature_extraction_utils.py",  # transformers (feature extraction base - imported but not executed)
         "tokenization_utils.py",  # transformers (tokenization utilities - imported by tokenizers)
+        "tokenization_utils_fast.py",  # transformers (fast tokenization - covered by _fast.py pattern, but explicit for clarity)
         "activations.py",  # transformers (activation functions - imported by model files)
         "cache_utils.py",  # transformers (cache utilities - imported by model files)
         "masking_utils.py",  # transformers (masking utilities - imported by model files)
         "modeling_layers.py",  # transformers (modeling layer utilities - imported by model files)
         "modeling_rope_utils.py",  # transformers (RoPE utilities - imported by model files)
         "modeling_outputs.py",  # transformers (model output classes - imported but not executed)
+        "dynamic_module_utils.py",  # transformers (dynamic module loading - general infrastructure)
+        "image_processing_utils_fast.py",  # transformers (fast image processing - covered by _fast.py pattern, but explicit)
         "models/auto/modeling_auto.py",  # transformers (AutoModel classes - imported but not executed)
         "models/auto/auto_factory.py",  # transformers (AutoModel factory - imported but not executed)
         "models/auto/configuration_auto.py",  # transformers (AutoConfig classes - imported but not executed)
@@ -246,6 +249,19 @@ def prune_files(
         "models/auto/tokenization_auto.py",  # transformers (AutoTokenizer - needed by auto_docstring)
         "models/auto/video_processing_auto.py",  # transformers (AutoVideoProcessor - needed by auto_docstring)
         "utils/auto_docstring.py",  # transformers (auto docstring generation - used at module level)
+        # Diffusers general model infrastructure (not model-specific)
+        "models/_modeling_parallel.py",  # diffusers (parallel modeling utilities)
+        "models/activations.py",  # diffusers (activation functions)
+        "models/attention.py",  # diffusers (attention mechanisms)
+        "models/attention_dispatch.py",  # diffusers (attention dispatch)
+        "models/attention_processor.py",  # diffusers (attention processors)
+        "models/cache_utils.py",  # diffusers (cache utilities)
+        "models/downsampling.py",  # diffusers (downsampling layers)
+        "models/embeddings.py",  # diffusers (embedding layers)
+        "models/model_loading_utils.py",  # diffusers (model loading utilities)
+        "models/normalization.py",  # diffusers (normalization layers)
+        "models/resnet.py",  # diffusers (residual network blocks)
+        "models/upsampling.py",  # diffusers (upsampling layers)
     ]
 
     # Essential directories - keep ALL files in these dirs
@@ -264,7 +280,7 @@ def prune_files(
         "models/controlnets/",  # ControlNet models
         "models/autoencoders/",  # Autoencoder models
         "models/transformers/",  # Transformer models
-        "pipelines/qwenimage/",  # QwenImage pipeline (keep all files in this pipeline)
+        # Note: pipelines/qwenimage/ removed - qwen-specific, should be restored manually
     ]
 
     # Get set of files that WERE executed (define before is_essential uses it)
