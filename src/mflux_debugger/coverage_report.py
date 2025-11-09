@@ -514,11 +514,117 @@ def generate_markdown_report(report: CoverageReport, output_path: Optional[Path]
     for file_path in report.executed_lines.keys():
         dead_count = len(report.dead_lines.get(file_path, []))
         executed_count = len(report.executed_lines.get(file_path, set()))
+        executed_lines_set = report.executed_lines.get(file_path, set())
         file_unused = unused_by_file.get(file_path, [])
 
         # Check if file only has unused definitions (definition lines executed, but no body code)
         # If so, exclude from high-priority (it's already in unused definitions section)
-        only_unused_definitions = len(file_unused) > 0 and executed_count <= len(file_unused) * 2
+        # Count how many executed lines are definition lines for unused definitions
+        if file_unused:
+            # Get all definition lines for unused definitions (class/function definitions)
+            unused_definition_lines = {unused.definition_line for unused in file_unused}
+
+            # For unused classes, also find method definition lines within those classes
+            # Parse the file to find method definitions within unused classes
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    source = f.read()
+                tree = ast.parse(source, filename=file_path)
+
+                # Find method definition lines within unused classes
+                class MethodDefVisitor(ast.NodeVisitor):
+                    def __init__(self, unused_class_lines: Set[int]):
+                        self.unused_class_lines = unused_class_lines
+                        self.method_def_lines = set()
+                        self.current_class_line = None
+
+                    def visit_ClassDef(self, node: ast.ClassDef):
+                        if node.lineno in self.unused_class_lines:
+                            self.current_class_line = node.lineno
+                            self.generic_visit(node)
+                            self.current_class_line = None
+                        else:
+                            self.generic_visit(node)
+
+                    def visit_FunctionDef(self, node: ast.FunctionDef):
+                        if self.current_class_line is not None:
+                            # Method definition within unused class
+                            # Include decorator lines (e.g., @staticmethod)
+                            for decorator in node.decorator_list:
+                                if hasattr(decorator, "lineno") and decorator.lineno:
+                                    self.method_def_lines.add(decorator.lineno)
+                            # Include all lines from definition to first body line (covers multi-line signatures)
+                            self.method_def_lines.add(node.lineno)
+                            # Also include parameter lines if method has a body
+                            if node.body:
+                                first_body_line = node.body[0].lineno
+                                # Add all lines from definition to first body line
+                                for line_num in range(node.lineno, first_body_line):
+                                    self.method_def_lines.add(line_num)
+                        self.generic_visit(node)
+
+                    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+                        if self.current_class_line is not None:
+                            # Method definition within unused class
+                            # Include decorator lines (e.g., @staticmethod)
+                            for decorator in node.decorator_list:
+                                if hasattr(decorator, "lineno") and decorator.lineno:
+                                    self.method_def_lines.add(decorator.lineno)
+                            # Include all lines from definition to first body line (covers multi-line signatures)
+                            self.method_def_lines.add(node.lineno)
+                            # Also include parameter lines if method has a body
+                            if node.body:
+                                first_body_line = node.body[0].lineno
+                                # Add all lines from definition to first body line
+                                for line_num in range(node.lineno, first_body_line):
+                                    self.method_def_lines.add(line_num)
+                        self.generic_visit(node)
+
+                visitor = MethodDefVisitor({unused.definition_line for unused in file_unused if unused.type == "class"})
+                visitor.visit(tree)
+
+                # Combine class/function definition lines with method definition lines
+                all_unused_def_lines = unused_definition_lines | visitor.method_def_lines
+            except Exception:  # noqa: BLE001
+                # If parsing fails, fall back to just definition lines
+                all_unused_def_lines = unused_definition_lines
+
+            executed_unused_def_lines = len(all_unused_def_lines & executed_lines_set)
+
+            # Exclude import lines and other module-level non-definition code from the count
+            # Parse the file to find import lines
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    source = f.read()
+                tree = ast.parse(source, filename=file_path)
+
+                # Find import lines (import and from ... import statements)
+                import_lines = set()
+                for node in ast.walk(tree):
+                    if isinstance(node, (ast.Import, ast.ImportFrom)):
+                        if hasattr(node, "lineno") and node.lineno:
+                            import_lines.add(node.lineno)
+                        # Also include continuation lines for multi-line imports
+                        if isinstance(node, ast.ImportFrom) and hasattr(node, "names"):
+                            for alias in node.names:
+                                if hasattr(alias, "lineno") and alias.lineno:
+                                    import_lines.add(alias.lineno)
+            except Exception:  # noqa: BLE001
+                import_lines = set()
+
+            # Count non-import executed lines
+            non_import_executed = executed_lines_set - import_lines
+            non_import_executed_count = len(non_import_executed)
+
+            # If most non-import executed lines (>=80%) are just definition lines for unused definitions,
+            # exclude from high-priority (the class/function is imported but never used)
+            if non_import_executed_count > 0:
+                unused_ratio = executed_unused_def_lines / non_import_executed_count
+                only_unused_definitions = unused_ratio >= 0.8
+            else:
+                only_unused_definitions = False
+        else:
+            only_unused_definitions = False
 
         if dead_count > 0 and executed_count > 0 and not only_unused_definitions:
             # Mixed execution - high priority for cleanup
