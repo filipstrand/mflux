@@ -388,8 +388,8 @@ def prune_files(
                 continue
 
             # Only process Python files (.py and .pyi) - delete everything else
-            # Keep py.typed markers (type stub markers)
-            if not (rel_path.endswith(".py") or rel_path.endswith(".pyi") or rel_path.endswith("py.typed")):
+            # Keep py.typed markers (type stub markers) - check if filename is exactly "py.typed"
+            if not (rel_path.endswith(".py") or rel_path.endswith(".pyi") or file_path.name == "py.typed"):
                 # Delete any other non-Python files we haven't caught above
                 deleted_count += 1
                 files_to_delete.append(file_path)
