@@ -265,18 +265,26 @@ uv pip list --editable
 Use the **Profile & Prune** tool to discover and keep only the files actually executed:
 
 ```bash
-# Profile your reference script to see what's actually used
-python profile_and_prune.py src/mflux_debugger/examples/debug_diffusers_edit.py
+# First-time setup: Create main-pruned branches
+mflux-debug-prune setup
+
+# Profile your reference script and prune unused files
+mflux-debug-prune prune src/mflux_debugger/_scripts/debug_diffusers_txt2img.py
 
 # Review the generated markdown report (PROFILE_REPORT_*.md)
 # Shows all files ranked by usage with categories
 
-# See what would be deleted (dry run)
-python profile_and_prune.py src/mflux_debugger/examples/debug_diffusers_edit.py --dry-run
+# If script breaks, restore files iteratively:
+cd ~/Desktop/transformers
+git checkout main -- src/transformers/models/qwen2_5_vl/modeling_qwen2_5_vl.py
+git commit -m "Restore: models/qwen2_5_vl/modeling_qwen2_5_vl.py"
 
-# Actually prune unused files (81% reduction!)
-python profile_and_prune.py src/mflux_debugger/examples/debug_diffusers_edit.py --prune
+# Re-test and repeat until script works
+# Then run prune again - it will keep the restored files
+mflux-debug-prune prune src/mflux_debugger/_scripts/debug_diffusers_txt2img.py
 ```
+
+**Learn the workflow:** Run `mflux-debug-prune tutorial` for an interactive guide!
 
 **Key insight:** The tool profiles **actual execution** (not imports), so you only keep files that are genuinely used in the computation.
 
