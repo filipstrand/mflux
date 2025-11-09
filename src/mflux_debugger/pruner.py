@@ -360,8 +360,15 @@ def prune_files(
                 files_to_delete.append(file_path)
                 continue
 
-            # Always delete README files (not essential, not executed)
-            if rel_path.endswith("README.md") or rel_path.endswith("README.rst") or rel_path.endswith("README.txt"):
+            # Always delete documentation files (not essential, not executed)
+            if (
+                rel_path.endswith(".md")
+                or rel_path.endswith(".rst")
+                or rel_path.endswith(".txt")
+                or rel_path.endswith("README.md")
+                or rel_path.endswith("README.rst")
+                or rel_path.endswith("README.txt")
+            ):
                 deleted_count += 1
                 files_to_delete.append(file_path)
                 continue
