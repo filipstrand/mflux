@@ -99,3 +99,36 @@ def get_run_checkpoints_dir(script_name: str, timestamp: str) -> Path:
 def get_run_output_log_path(script_name: str, timestamp: str) -> Path:
     """Get script output log file path."""
     return get_run_session_dir(script_name, timestamp) / "script_output.log"
+
+
+# Coverage reports
+def get_coverage_dir() -> Path:
+    """Get coverage base directory."""
+    dir_path = get_debugger_root() / "coverage"
+    dir_path.mkdir(parents=True, exist_ok=True)
+    return dir_path
+
+
+def get_coverage_latest_dir() -> Path:
+    """Get latest coverage directory."""
+    dir_path = get_coverage_dir() / "latest"
+    dir_path.mkdir(parents=True, exist_ok=True)
+    return dir_path
+
+
+def get_coverage_archive_dir() -> Path:
+    """Get coverage archive directory."""
+    dir_path = get_coverage_dir() / "archive"
+    dir_path.mkdir(parents=True, exist_ok=True)
+    return dir_path
+
+
+def get_coverage_session_dir(script_name: str, timestamp: str) -> Path:
+    """
+    Get session directory for a coverage run.
+
+    Returns: coverage/latest/{script_name}_{timestamp}/
+    """
+    session_dir = get_coverage_latest_dir() / f"{script_name}_{timestamp}"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    return session_dir

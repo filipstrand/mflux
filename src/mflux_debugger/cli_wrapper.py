@@ -1161,7 +1161,7 @@ class DebuggerCLI:
         """
         from pathlib import Path
 
-        from mflux_debugger.coverage_report import CoverageAnalyzer, generate_markdown_report
+        from mflux_debugger.coverage_report import generate_marked_up_file
 
         script_path = Path(script).resolve()
         if not script_path.exists():
@@ -1331,24 +1331,70 @@ class DebuggerCLI:
         else:
             print(f"📋 Filtered out {excluded_count} files (only analyzing src/mflux code)", file=sys.stderr)
 
-        # Analyze coverage
-        print("🔍 Analyzing coverage...", file=sys.stderr)
-        analyzer = CoverageAnalyzer(mflux_coverage_sets)
+        # Create coverage session directory
+        from datetime import datetime
+
+        from mflux_debugger.log_paths import get_coverage_session_dir
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        script_name = script_path.stem
+        coverage_dir = get_coverage_session_dir(script_name, timestamp)
+
+        print(f"📁 Creating coverage directory: {coverage_dir}", file=sys.stderr)
 
         # Get watch files from filtered coverage
         watch_files = set(mflux_coverage_sets.keys())
 
-        report = analyzer.generate_report(str(script_path), watch_files)
+        # Generate marked-up copies of all files
+        print("📝 Generating marked-up file copies...", file=sys.stderr)
+        files_generated = 0
+        for file_path in watch_files:
+            executed_lines = mflux_coverage_sets.get(file_path, set())
 
-        # Generate markdown report
-        output_path = Path(output) if output else None
-        report_path = generate_markdown_report(report, output_path)
+            # Create relative path structure in coverage directory
+            # Preserve directory structure from project root
+            try:
+                file_path_obj = Path(file_path)
+                if file_path_obj.is_absolute():
+                    # Try to get relative path from project root
+                    try:
+                        rel_path = file_path_obj.relative_to(project_root)
+                    except ValueError:
+                        # File not under project root, use filename only
+                        rel_path = Path(file_path_obj.name)
+                else:
+                    rel_path = Path(file_path)
 
-        print(f"\n✅ Coverage report generated: {report_path}", file=sys.stderr)
-        print("\nSummary:", file=sys.stderr)
-        print(f"  Files analyzed: {len(report.executed_lines)}", file=sys.stderr)
-        print(f"  Dead lines: {sum(len(lines) for lines in report.dead_lines.values())}", file=sys.stderr)
-        print(f"  Dead branches: {len(report.dead_branches)}", file=sys.stderr)
+                # Create output path preserving directory structure
+                output_file_path = coverage_dir / rel_path
+                generate_marked_up_file(file_path, executed_lines, output_file_path)
+                files_generated += 1
+            except Exception as e:  # noqa: BLE001
+                print(f"⚠️  Failed to generate marked-up file for {file_path}: {e}", file=sys.stderr)
+                continue
+
+        print(f"✅ Generated {files_generated} marked-up file(s)", file=sys.stderr)
+
+        # Print simple summary
+        total_executed = sum(len(lines) for lines in mflux_coverage_sets.values())
+        total_dead = 0
+        for file_path in watch_files:
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    total_lines = len(
+                        [line for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
+                    )
+                executed_count = len(mflux_coverage_sets.get(file_path, set()))
+                total_dead += total_lines - executed_count
+            except Exception:  # noqa: BLE001, PERF203
+                pass
+
+        print("\n📊 Coverage Summary:", file=sys.stderr)
+        print(f"  Files analyzed: {len(watch_files)}", file=sys.stderr)
+        print(f"  Lines executed: {total_executed}", file=sys.stderr)
+        print(f"  Dead lines: {total_dead}", file=sys.stderr)
+        print(f"\n📁 Coverage files saved to: {coverage_dir}", file=sys.stderr)
+        print("   Browse marked-up files to see ✅ (executed), ❌ (dead), ⚪ (non-executable)", file=sys.stderr)
 
         # Terminate session
         self._api_call("POST", "/debug/terminate")
@@ -1581,30 +1627,31 @@ class DebuggerCLI:
         print("┌─ STEP 14: Run coverage analysis (NEW!)")
         print(f"│  Command: mflux-debug-{self.framework} coverage {script_path} --include src/mflux_debugger")
         print("│  Purpose: Analyze code coverage to find dead code paths")
-        print("│  Expected: Script runs to completion, generates coverage report")
+        print("│  Expected: Script runs to completion, generates coverage report and marked-up files")
         print("│  Note: Coverage mode runs without pausing at checkpoints")
         print("│  Note: Default is src/mflux only, but --include adds additional directories")
         print("│  Note: Using --include src/mflux_debugger to analyze this tutorial script too")
-        print("│  Output: COVERAGE_REPORT_*.md file with dead lines and branches")
+        print("│  Output: Coverage folder with marked-up files")
+        print("│  ✨ NEW: Creates marked-up copies of all files showing:")
+        print("│         ✅ (green) = line was executed")
+        print("│         ❌ (red) = line exists but wasn't executed (dead code)")
+        print("│         ⚪ (white) = line is not executable (blank, comment, etc.)")
         print("└─────────────────────────────────────────────────────────────────\n")
 
-        print("┌─ STEP 14b: View coverage report")
-        print("│  Command: ls -lh COVERAGE_REPORT_*.md")
-        print("│  Purpose: Find the generated coverage report")
-        print("│  Expected: Shows coverage report file with timestamp")
-        print("│  Then: head -50 COVERAGE_REPORT_*.md")
-        print("│  Purpose: View summary and file-by-file coverage")
-        print("│  Expected: Shows files analyzed, dead lines, dead branches")
-        print("│  Then: grep '^###' COVERAGE_REPORT_*.md | head -10")
-        print("│  Purpose: See which files were analyzed")
-        print("│  Expected: List of file paths that were covered")
-        print("│  Then: Open the report file in your editor to explore:")
-        print("│        - Summary section (files analyzed, dead lines, dead branches)")
-        print("│        - File Coverage section (coverage % per file)")
-        print("│        - Dead lines listed with code snippets")
-        print("│        - Dead branches section (if/else paths never taken)")
-        print("│  Note: With --include src/mflux_debugger, you'll see debugger code coverage")
-        print("│  Note: For real mflux scripts (without --include), only src/mflux code is analyzed")
+        print("┌─ STEP 14b: View marked-up coverage files")
+        print("│  Command: ls -la mflux_debugger/coverage/latest/tutorial_basic_pytorch_*/")
+        print("│  Purpose: See the coverage directory structure")
+        print("│  Expected: Shows coverage folder with src/ subdirectory and report file")
+        print("│  Then: find mflux_debugger/coverage/latest/tutorial_basic_pytorch_*/ -type f | head -5")
+        print("│  Purpose: List all generated marked-up files")
+        print("│  Expected: Shows all Python files that were executed, with directory structure preserved")
+        print(
+            "│  Then: head -30 mflux_debugger/coverage/latest/tutorial_basic_pytorch_*/src/mflux_debugger/examples/tutorial_basic_pytorch.py"
+        )
+        print("│  Purpose: View a marked-up file showing execution status")
+        print("│  Expected: Shows file with ✅/❌/⚪ markers for each line")
+        print("│  Note: All files are full copies - easy to browse and see what was executed!")
+        print("│  Note: Files preserve the same directory structure as your source code")
         print("└─────────────────────────────────────────────────────────────────\n")
 
         print("┌─ STEP 15: Use cleanup command")
@@ -1642,6 +1689,7 @@ class DebuggerCLI:
         print("  ✓ How to use cleanup commands to manage debug artifacts")
         print("  ✓ How to prepare tensors for MLX comparison")
         print("  ✓ How to use coverage analysis to find dead code paths")
+        print("  ✓ How to browse marked-up coverage files showing executed vs dead code")
         print("\n💡 Pro Tips:")
         print("  • ✨ NEW: Checkpoint values are automatically displayed when paused!")
         print("           Shows tensor shapes, sample values (first 10), and statistics")
@@ -1659,7 +1707,8 @@ class DebuggerCLI:
         print("  • Use debug_save() at key computation steps")
         print("  • Use descriptive names for tensors (e.g., 'hidden_states_block_0')")
         print("  • ✨ NEW: Use 'coverage' command to find dead code paths in your codebase!")
-        print("           Coverage reports show which lines and branches are never executed")
+        print("           Coverage creates marked-up file copies showing ✅/❌/⚪ for each line")
+        print("           Browse files in mflux_debugger/coverage/latest/ to see what was executed")
         print("\n🚀 Next Step:")
         print("  ✅ Run 'mflux-debug-mlx tutorial' NEXT to load and compare these PyTorch tensors in MLX!")
         print("     The MLX tutorial will use debug_load() to compare implementations.")
@@ -1811,30 +1860,31 @@ class DebuggerCLI:
         print("┌─ STEP 19: Run coverage analysis (NEW!)")
         print(f"│  Command: mflux-debug-{self.framework} coverage {script_path} --include src/mflux_debugger")
         print("│  Purpose: Analyze code coverage to find dead code paths")
-        print("│  Expected: Script runs to completion, generates coverage report")
+        print("│  Expected: Script runs to completion, generates coverage report and marked-up files")
         print("│  Note: Coverage mode runs without pausing at checkpoints")
         print("│  Note: Default is src/mflux only, but --include adds additional directories")
         print("│  Note: Using --include src/mflux_debugger to analyze this tutorial script too")
-        print("│  Output: COVERAGE_REPORT_*.md file with dead lines and branches")
+        print("│  Output: Coverage folder with marked-up files")
+        print("│  ✨ NEW: Creates marked-up copies of all files showing:")
+        print("│         ✅ (green) = line was executed")
+        print("│         ❌ (red) = line exists but wasn't executed (dead code)")
+        print("│         ⚪ (white) = line is not executable (blank, comment, etc.)")
         print("└─────────────────────────────────────────────────────────────────\n")
 
-        print("┌─ STEP 19b: View coverage report")
-        print("│  Command: ls -lh COVERAGE_REPORT_*.md")
-        print("│  Purpose: Find the generated coverage report")
-        print("│  Expected: Shows coverage report file with timestamp")
-        print("│  Then: head -50 COVERAGE_REPORT_*.md")
-        print("│  Purpose: View summary and file-by-file coverage")
-        print("│  Expected: Shows files analyzed, dead lines, dead branches")
-        print("│  Then: grep '^###' COVERAGE_REPORT_*.md | head -10")
-        print("│  Purpose: See which files were analyzed")
-        print("│  Expected: List of file paths that were covered")
-        print("│  Then: Open the report file in your editor to explore:")
-        print("│        - Summary section (files analyzed, dead lines, dead branches)")
-        print("│        - File Coverage section (coverage % per file)")
-        print("│        - Dead lines listed with code snippets")
-        print("│        - Dead branches section (if/else paths never taken)")
-        print("│  Note: With --include src/mflux_debugger, you'll see debugger code coverage")
-        print("│  Note: For real mflux scripts (without --include), only src/mflux code is analyzed")
+        print("┌─ STEP 19b: View marked-up coverage files")
+        print("│  Command: ls -la mflux_debugger/coverage/latest/tutorial_basic_mlx_*/")
+        print("│  Purpose: See the coverage directory structure")
+        print("│  Expected: Shows coverage folder with src/ subdirectory and report file")
+        print("│  Then: find mflux_debugger/coverage/latest/tutorial_basic_mlx_*/ -type f | head -5")
+        print("│  Purpose: List all generated marked-up files")
+        print("│  Expected: Shows all Python files that were executed, with directory structure preserved")
+        print(
+            "│  Then: head -30 mflux_debugger/coverage/latest/tutorial_basic_mlx_*/src/mflux_debugger/examples/tutorial_basic_mlx.py"
+        )
+        print("│  Purpose: View a marked-up file showing execution status")
+        print("│  Expected: Shows file with ✅/❌/⚪ markers for each line")
+        print("│  Note: All files are full copies - easy to browse and see what was executed!")
+        print("│  Note: Files preserve the same directory structure as your source code")
         print("└─────────────────────────────────────────────────────────────────\n")
 
         print("┌─ STEP 20: Use cleanup command")
@@ -1869,6 +1919,7 @@ class DebuggerCLI:
         print("  ✓ How to compare MLX vs PyTorch using checkpoint JSON files")
         print("  ✓ How to use cleanup commands to manage debug artifacts")
         print("  ✓ How to use coverage analysis to find dead code paths")
+        print("  ✓ How to browse marked-up coverage files showing executed vs dead code")
         print("\n💡 Pro Tips:")
         print("  • ✨ NEW: Checkpoint values are automatically displayed when paused!")
         print("           Shows tensor shapes, sample values (first 10), and statistics")
@@ -1880,7 +1931,8 @@ class DebuggerCLI:
         print("  • Use --dry-run with cleanup commands to preview what will be deleted")
         print("  • Use debug_checkpoint() with metadata - more maintainable than line numbers!")
         print("  • ✨ NEW: Use 'coverage' command to find dead code paths in your codebase!")
-        print("           Coverage reports show which lines and branches are never executed")
+        print("           Coverage creates marked-up file copies showing ✅/❌/⚪ for each line")
+        print("           Browse files in mflux_debugger/coverage/latest/ to see what was executed")
         print("\n🚀 What's Next:")
         print("  • You've completed the MLX tutorial! 🎉")
         print("  • If you ran 'mflux-debug-pytorch tutorial' first, you practiced cross-framework comparison")

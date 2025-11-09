@@ -1035,3 +1035,48 @@ def generate_markdown_report(report: CoverageReport, output_path: Optional[Path]
                 f.write(f"- **Dead lines:** {dead_count}\n\n")
 
     return output_path
+
+
+def generate_marked_up_file(file_path: str, executed_lines: Set[int], output_path: Path) -> None:
+    """
+    Generate a marked-up copy of a file showing which lines were executed.
+
+    Super simple approach:
+    - ✅ (green) = line was executed
+    - ❌ (red) = line exists but wasn't executed (dead code)
+    - ⚪ (white) = line is not executable (blank, comment, etc.)
+
+    Args:
+        file_path: Path to source file
+        executed_lines: Set of executed line numbers
+        output_path: Path where marked-up file should be saved
+    """
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+    except Exception:  # noqa: BLE001
+        return
+
+    # Create output directory if needed
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        for line_num, line_content in enumerate(lines, start=1):
+            # Determine marker based on line type and execution status
+            stripped = line_content.rstrip()
+
+            # Check if line is executable (not blank, not just a comment)
+            is_executable = bool(stripped) and not stripped.strip().startswith("#")
+
+            if is_executable:
+                # Line is executable - check if it was executed
+                if line_num in executed_lines:
+                    marker = "✅"  # Hit
+                else:
+                    marker = "❌"  # Not hit (dead code)
+            else:
+                # Line is not executable (blank or comment)
+                marker = "⚪"  # Not in scope
+
+            # Write marked-up line: marker + space + line number + " | " + content
+            f.write(f"{marker} {line_num:4d} | {line_content}")
