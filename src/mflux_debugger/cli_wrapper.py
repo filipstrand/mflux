@@ -1260,7 +1260,8 @@ class DebuggerCLI:
         # Optional include: additional directories via --include flag
 
         # Build list of directories to include
-        include_patterns = ["src/mflux/"]
+        # Default: src/mflux/ and src/mflux_debugger/examples/ (examples are allowed)
+        include_patterns = ["src/mflux/", "src/mflux_debugger/examples/"]
         if include_dirs:
             # Normalize include directories (ensure they end with /)
             for include_dir in include_dirs:
@@ -1277,6 +1278,12 @@ class DebuggerCLI:
 
             # Skip files from external libraries (always exclude)
             if "/diffusers/" in path_normalized or "/transformers/" in path_normalized:
+                excluded_count += 1
+                continue
+
+            # Always exclude debugger implementation code (but allow examples)
+            # Exclude src/mflux_debugger/ but allow src/mflux_debugger/examples/
+            if "/mflux_debugger/" in path_normalized and "/mflux_debugger/examples/" not in path_normalized:
                 excluded_count += 1
                 continue
 
@@ -1332,12 +1339,36 @@ class DebuggerCLI:
             print(f"📋 Filtered out {excluded_count} files (only analyzing src/mflux code)", file=sys.stderr)
 
         # Create coverage session directory
+        import shutil
         from datetime import datetime
 
-        from mflux_debugger.log_paths import get_coverage_session_dir
+        from mflux_debugger.log_paths import get_coverage_archive_dir, get_coverage_latest_dir, get_coverage_session_dir
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         script_name = script_path.stem
+
+        # Archive old coverage sessions for this script
+        latest_dir = get_coverage_latest_dir()
+        if latest_dir.exists():
+            pattern = f"{script_name}_*"
+            old_sessions = list(latest_dir.glob(pattern))
+            if old_sessions:
+                archive_dir = get_coverage_archive_dir()
+                archived_count = 0
+                for session_dir in old_sessions:
+                    if session_dir.is_dir():
+                        archive_path = archive_dir / session_dir.name
+                        try:
+                            if archive_path.exists():
+                                # If already archived, remove the old archive
+                                shutil.rmtree(archive_path)
+                            shutil.move(str(session_dir), str(archive_path))
+                            archived_count += 1
+                        except Exception as e:  # noqa: BLE001
+                            print(f"⚠️  Failed to archive {session_dir.name}: {e}", file=sys.stderr)
+                if archived_count > 0:
+                    print(f"📦 Archived {archived_count} old coverage session(s)", file=sys.stderr)
+
         coverage_dir = get_coverage_session_dir(script_name, timestamp)
 
         print(f"📁 Creating coverage directory: {coverage_dir}", file=sys.stderr)
@@ -1625,12 +1656,12 @@ class DebuggerCLI:
         print("└─────────────────────────────────────────────────────────────────\n")
 
         print("┌─ STEP 14: Run coverage analysis (NEW!)")
-        print(f"│  Command: mflux-debug-{self.framework} coverage {script_path} --include src/mflux_debugger")
+        print(f"│  Command: mflux-debug-{self.framework} coverage {script_path}")
         print("│  Purpose: Analyze code coverage to find dead code paths")
-        print("│  Expected: Script runs to completion, generates coverage report and marked-up files")
+        print("│  Expected: Script runs to completion, generates marked-up files")
         print("│  Note: Coverage mode runs without pausing at checkpoints")
-        print("│  Note: Default is src/mflux only, but --include adds additional directories")
-        print("│  Note: Using --include src/mflux_debugger to analyze this tutorial script too")
+        print("│  Note: Default analyzes src/mflux/ code only")
+        print("│  Note: Debugger implementation code is always excluded, but examples are allowed")
         print("│  Output: Coverage folder with marked-up files")
         print("│  ✨ NEW: Creates marked-up copies of all files showing:")
         print("│         ✅ (green) = line was executed")
@@ -1641,13 +1672,11 @@ class DebuggerCLI:
         print("┌─ STEP 14b: View marked-up coverage files")
         print("│  Command: ls -la mflux_debugger/coverage/latest/tutorial_basic_pytorch_*/")
         print("│  Purpose: See the coverage directory structure")
-        print("│  Expected: Shows coverage folder with src/ subdirectory and report file")
+        print("│  Expected: Shows coverage folder with src/ subdirectory")
         print("│  Then: find mflux_debugger/coverage/latest/tutorial_basic_pytorch_*/ -type f | head -5")
         print("│  Purpose: List all generated marked-up files")
-        print("│  Expected: Shows all Python files that were executed, with directory structure preserved")
-        print(
-            "│  Then: head -30 mflux_debugger/coverage/latest/tutorial_basic_pytorch_*/src/mflux_debugger/examples/tutorial_basic_pytorch.py"
-        )
+        print("│  Expected: Shows Python files from src/mflux/ that were executed")
+        print("│  Then: head -30 mflux_debugger/coverage/latest/tutorial_basic_pytorch_*/src/mflux/...")
         print("│  Purpose: View a marked-up file showing execution status")
         print("│  Expected: Shows file with ✅/❌/⚪ markers for each line")
         print("│  Note: All files are full copies - easy to browse and see what was executed!")
@@ -1858,12 +1887,12 @@ class DebuggerCLI:
         print("└─────────────────────────────────────────────────────────────────\n")
 
         print("┌─ STEP 19: Run coverage analysis (NEW!)")
-        print(f"│  Command: mflux-debug-{self.framework} coverage {script_path} --include src/mflux_debugger")
+        print(f"│  Command: mflux-debug-{self.framework} coverage {script_path}")
         print("│  Purpose: Analyze code coverage to find dead code paths")
-        print("│  Expected: Script runs to completion, generates coverage report and marked-up files")
+        print("│  Expected: Script runs to completion, generates marked-up files")
         print("│  Note: Coverage mode runs without pausing at checkpoints")
-        print("│  Note: Default is src/mflux only, but --include adds additional directories")
-        print("│  Note: Using --include src/mflux_debugger to analyze this tutorial script too")
+        print("│  Note: Default analyzes src/mflux/ code only")
+        print("│  Note: Debugger implementation code is always excluded, but examples are allowed")
         print("│  Output: Coverage folder with marked-up files")
         print("│  ✨ NEW: Creates marked-up copies of all files showing:")
         print("│         ✅ (green) = line was executed")
@@ -1874,13 +1903,11 @@ class DebuggerCLI:
         print("┌─ STEP 19b: View marked-up coverage files")
         print("│  Command: ls -la mflux_debugger/coverage/latest/tutorial_basic_mlx_*/")
         print("│  Purpose: See the coverage directory structure")
-        print("│  Expected: Shows coverage folder with src/ subdirectory and report file")
+        print("│  Expected: Shows coverage folder with src/ subdirectory")
         print("│  Then: find mflux_debugger/coverage/latest/tutorial_basic_mlx_*/ -type f | head -5")
         print("│  Purpose: List all generated marked-up files")
-        print("│  Expected: Shows all Python files that were executed, with directory structure preserved")
-        print(
-            "│  Then: head -30 mflux_debugger/coverage/latest/tutorial_basic_mlx_*/src/mflux_debugger/examples/tutorial_basic_mlx.py"
-        )
+        print("│  Expected: Shows Python files from src/mflux/ that were executed")
+        print("│  Then: head -30 mflux_debugger/coverage/latest/tutorial_basic_mlx_*/src/mflux/...")
         print("│  Purpose: View a marked-up file showing execution status")
         print("│  Expected: Shows file with ✅/❌/⚪ markers for each line")
         print("│  Note: All files are full copies - easy to browse and see what was executed!")
