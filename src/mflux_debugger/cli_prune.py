@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from mflux_debugger.kill_all import find_target_processes, get_process_info
 from mflux_debugger.pruner import analyze_profile, generate_markdown_report, prune_files
 
 
@@ -511,11 +512,54 @@ def cmd_setup() -> int:
         return 1
 
 
-def cmd_prune(script_path: Path) -> int:
+def check_running_debug_processes() -> tuple[list, list]:
+    """Check for running mflux debug processes."""
+    mlx_processes, pytorch_processes = find_target_processes(mlx_only=False, pytorch_only=False)
+    return mlx_processes, pytorch_processes
+
+
+def cmd_prune(script_path: Path, force: bool = False) -> int:
     """Profile script and prune unused files."""
     if not script_path.exists():
         print(f"❌ Script not found: {script_path}")
         return 1
+
+    # Safety check: Ensure no debug processes are running
+    if not force:
+        print("=" * 70)
+        print("🔍 SAFETY CHECK: Checking for running debug processes")
+        print("=" * 70)
+        print()
+
+        mlx_processes, pytorch_processes = check_running_debug_processes()
+        total_processes = len(mlx_processes) + len(pytorch_processes)
+
+        if total_processes > 0:
+            print("❌ Found running mflux debug processes!")
+            print()
+            print("   Pruning should not be run while debug sessions are active.")
+            print("   Please stop all debug sessions before pruning.")
+            print()
+
+            if mlx_processes:
+                print(f"🎯 Found {len(mlx_processes)} MLX debug process(es):")
+                for proc in mlx_processes:
+                    print(get_process_info(proc))
+                print()
+
+            if pytorch_processes:
+                print(f"🔥 Found {len(pytorch_processes)} PyTorch debug process(es):")
+                for proc in pytorch_processes:
+                    print(get_process_info(proc))
+                print()
+
+            print("   To stop all processes, run: mflux-debug-kill-all")
+            print("   To bypass this check, use: --force")
+            print()
+            return 1
+
+        print("✅ No running debug processes detected")
+        print()
 
     # Check editable installs first
     if not check_editable_installs():
@@ -782,6 +826,11 @@ Examples:
     # Prune command
     prune_parser = subparsers.add_parser("prune", help="Profile script and prune unused files")
     prune_parser.add_argument("script", type=Path, help="Path to script to profile")
+    prune_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Skip safety check for running debug processes (use with caution)",
+    )
 
     # Tutorial command
     tutorial_parser = subparsers.add_parser(
@@ -800,7 +849,7 @@ Examples:
     if args.command == "setup":
         return cmd_setup()
     elif args.command == "prune":
-        return cmd_prune(args.script)
+        return cmd_prune(args.script, force=args.force)
     elif args.command == "tutorial":
         return cmd_tutorial(args.lesson)
     else:

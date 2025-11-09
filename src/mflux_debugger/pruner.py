@@ -6,6 +6,7 @@ with safeguards to preserve essential infrastructure files.
 """
 
 import json
+import shutil
 import subprocess
 from collections import defaultdict
 from datetime import datetime
@@ -392,6 +393,7 @@ def prune_files(
                 files_to_delete.append(file_path)
 
     # Delete files
+    deleted_dirs: set[Path] = set()  # Track directories that had files deleted
     for file_path in files_to_delete:
         # Determine which repo this file belongs to
         if transformers_path and transformers_path in file_path.parents:
@@ -406,5 +408,99 @@ def prune_files(
 
         file_path.unlink()
         print(f"   ❌ [{repo_name}] {rel_path}")
+        # Track parent directory for potential cleanup
+        deleted_dirs.add(file_path.parent)
+
+    # Remove empty directories (bottom-up, deepest first)
+    # First, collect all directories that might become empty (including parents)
+    all_dirs_to_check: set[Path] = set(deleted_dirs)
+    for dir_path in deleted_dirs:
+        # Add all parent directories up to the repo root
+        parent = dir_path.parent
+        while parent.exists():
+            # Only check directories within the repo paths
+            is_in_transformers = transformers_path and transformers_path in parent.parents
+            is_in_diffusers = diffusers_path and diffusers_path in parent.parents
+
+            if is_in_transformers or is_in_diffusers:
+                all_dirs_to_check.add(parent)
+                # Stop if we've reached the repo root
+                if (is_in_transformers and parent == transformers_path) or (
+                    is_in_diffusers and parent == diffusers_path
+                ):
+                    break
+                parent = parent.parent
+            else:
+                break
+
+    empty_dirs_removed = 0
+    # Sort by depth (deepest first) so we can remove parent dirs after children
+    sorted_dirs = sorted(all_dirs_to_check, key=lambda p: len(p.parts), reverse=True)
+
+    for dir_path in sorted_dirs:
+        # Skip if directory doesn't exist (already removed)
+        if not dir_path.exists():
+            continue
+
+        # Never remove the repo root directories
+        if dir_path == transformers_path or dir_path == diffusers_path:
+            continue
+
+        # Check if directory is empty (ignore __pycache__ directories)
+        try:
+            items = list(dir_path.iterdir())
+            # Filter out __pycache__ directories
+            non_cache_items = [item for item in items if item.name != "__pycache__"]
+
+            if len(non_cache_items) == 0:
+                # Directory is empty (or only has __pycache__), remove it
+                # First remove __pycache__ if it exists
+                cache_dir = dir_path / "__pycache__"
+                if cache_dir.exists():
+                    shutil.rmtree(cache_dir)
+
+                # Determine which repo this directory belongs to
+                if transformers_path and transformers_path in dir_path.parents:
+                    rel_path = str(dir_path.relative_to(transformers_path))
+                    repo_name = "transformers"
+                elif diffusers_path and diffusers_path in dir_path.parents:
+                    rel_path = str(dir_path.relative_to(diffusers_path))
+                    repo_name = "diffusers"
+                else:
+                    rel_path = str(dir_path.name)
+                    repo_name = "unknown"
+
+                dir_path.rmdir()
+                empty_dirs_removed += 1
+                print(f"   🗑️  [{repo_name}] {rel_path}/ (empty directory)")
+        except OSError:
+            # Directory might have been removed already or permission issue
+            continue
+
+    if empty_dirs_removed > 0:
+        print(f"\n   Removed {empty_dirs_removed} empty directories")
+
+    # Remove all __pycache__ directories (they're generated files, shouldn't be in repo)
+    cache_dirs_removed = 0
+    repos_to_check = []
+    if transformers_path:
+        repos_to_check.append(("transformers", transformers_path))
+    if diffusers_path:
+        repos_to_check.append(("diffusers", diffusers_path))
+
+    for repo_name, repo_path in repos_to_check:
+        for cache_dir in repo_path.rglob("__pycache__"):
+            if cache_dir.is_dir():
+                try:
+                    shutil.rmtree(cache_dir)
+                    rel_path = str(cache_dir.relative_to(repo_path))
+                    print(f"   🗑️  [{repo_name}] {rel_path}/ (__pycache__)")
+                    cache_dirs_removed += 1
+                except OSError:
+                    # Permission issue or already removed
+                    continue
+
+    if cache_dirs_removed > 0:
+        print(f"\n   Removed {cache_dirs_removed} __pycache__ directories")
 
     return kept_count, deleted_count, essential_kept
