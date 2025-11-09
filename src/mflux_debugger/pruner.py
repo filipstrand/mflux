@@ -354,6 +354,12 @@ def prune_files(
             rel_path = str(file_path.relative_to(repo_path))
             file_dir = str(Path(rel_path).parent) if "/" in rel_path else ""
 
+            # Skip test files - they're never executed and not needed for runtime
+            if rel_path.startswith("tests/") or "/tests/" in rel_path:
+                deleted_count += 1
+                files_to_delete.append(file_path)
+                continue
+
             # Always delete README files (not essential, not executed)
             if rel_path.endswith("README.md") or rel_path.endswith("README.rst") or rel_path.endswith("README.txt"):
                 deleted_count += 1
