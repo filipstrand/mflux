@@ -103,6 +103,10 @@ class LightweightDebugger:
         self.script_process: Optional[subprocess.Popen] = None
         self._trace_debug_counts: Dict[str, int] = {}
 
+        # Coverage tracking (zero overhead when disabled)
+        self.coverage_mode: bool = False  # Opt-in flag - no overhead when False
+        self.coverage_data: Optional[Dict[str, Set[int]]] = None  # file -> set of executed line numbers
+
         # Pause state cache for thread-safe async execution
         self._pause_cache: Dict[str, Any] = {
             "location": None,  # (file, line, function)
@@ -146,6 +150,31 @@ class LightweightDebugger:
 
         Returns True only for user code we're watching.
         """
+        # COVERAGE MODE: Track all executed Python files (except stdlib and heavy ML libraries)
+        if self.coverage_mode:
+            # Skip standard library
+            if "/lib/python" in filename or "/lib64/python" in filename:
+                return False
+
+            # Skip heavy ML libraries (to avoid overhead) but keep mflux code
+            # Only skip if in site-packages (external installs), not if in project
+            for lib in self.SKIP_LIBRARIES:
+                if lib == "mlx":  # Skip MLX library code, but track mflux code
+                    if f"/site-packages/{lib}/" in filename or f"/dist-packages/{lib}/" in filename:
+                        return False
+                else:
+                    # Skip transformers, diffusers, torch, etc. even if editable
+                    if f"/site-packages/{lib}/" in filename or f"/dist-packages/{lib}/" in filename:
+                        return False
+
+            # Track all other Python files (including mflux code, user code, etc.)
+            # Skip frozen imports and non-file code objects
+            if "<frozen" in filename or "<builtin" in filename:
+                return False
+
+            return True  # Track everything else in coverage mode
+
+        # NORMAL DEBUGGING MODE: Only trace watched files (existing behavior)
         # FIRST: Check if we have explicit breakpoints in this file
         # If so, always trace it regardless of library skip rules
         if self.breakpoints:
@@ -437,6 +466,10 @@ class LightweightDebugger:
 
     def _handle_line(self, frame: Any) -> Optional[Callable]:
         """Handle line execution event."""
+        # Coverage tracking (zero overhead when disabled - single if check)
+        if self.coverage_mode:
+            self._track_line_coverage(frame)
+
         # Check for breakpoint
         if self.check_breakpoint(frame):
             self._pause_at(frame, "breakpoint")
@@ -455,6 +488,23 @@ class LightweightDebugger:
             return self.trace_function
 
         return self.trace_function
+
+    def _track_line_coverage(self, frame: Any) -> None:
+        """Track executed line for coverage (minimal overhead - fast set addition)."""
+        if not self.coverage_data:
+            self.coverage_data = {}
+
+        filename = frame.f_code.co_filename
+        lineno = frame.f_lineno
+
+        # Fast set addition - O(1) average case
+        if filename not in self.coverage_data:
+            self.coverage_data[filename] = set()
+        self.coverage_data[filename].add(lineno)
+
+    def get_coverage_data(self) -> Optional[Dict[str, Set[int]]]:
+        """Get coverage data (file -> set of executed line numbers)."""
+        return self.coverage_data.copy() if self.coverage_data else None
 
     def _handle_return(self, frame: Any, return_value: Any) -> Optional[Callable]:
         """Handle function return event."""
@@ -1132,6 +1182,10 @@ class LightweightDebugger:
         # NEW BEHAVIOR: Checkpoints break by default unless explicitly configured otherwise
         should_break = True  # Break by default (code-first philosophy)
         should_record = True  # Always record
+
+        # CRITICAL: In coverage mode, never break at checkpoints (we want full execution)
+        if self.coverage_mode:
+            should_break = False
 
         # Override: Don't break if there's an explicit matching breakpoint that's disabled
         if matching_breakpoint is not None and not matching_breakpoint.enabled:

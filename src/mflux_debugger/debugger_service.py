@@ -138,7 +138,11 @@ class DebuggerService:
             return 0
 
     def start_session(
-        self, script_path: str, framework: str | None = None, clear_tensors: bool | None = None
+        self,
+        script_path: str,
+        framework: str | None = None,
+        clear_tensors: bool | None = None,
+        coverage_mode: bool = False,
     ) -> DebuggerResponse:
         """
         Start a debugging session.
@@ -217,6 +221,14 @@ class DebuggerService:
 
             # Create a fresh debugger instance for this session
             self.debugger = LightweightDebugger()
+
+            # Enable coverage mode if requested
+            if coverage_mode:
+                self.debugger.coverage_mode = True
+                # CRITICAL: Disable checkpoint breaking in coverage mode
+                # We want full execution without pauses
+                self.debugger.break_all_checkpoints = False
+                logger.info("📊 Coverage tracking enabled (checkpoints will not pause execution)")
 
             # Register this debugger as the active instance for semantic checkpoints
             from mflux_debugger.lightweight_debugger import set_active_debugger
@@ -1832,6 +1844,34 @@ class DebuggerService:
         except (ValueError, KeyError, AttributeError) as e:
             logger.error(f"Failed to get checkpoint history: {e}")
             return DebuggerResponse(success=False, message="Failed to get checkpoint history", error=str(e))
+
+    def get_coverage(self) -> DebuggerResponse:
+        """
+        Get coverage data from the debugger.
+
+        Returns:
+            DebuggerResponse with coverage data (file -> list of executed line numbers)
+        """
+        try:
+            coverage_data = self.debugger.get_coverage_data()
+            if coverage_data is None:
+                return DebuggerResponse(
+                    success=False,
+                    message="Coverage data not available (coverage mode not enabled)",
+                    error="Coverage mode not enabled",
+                )
+
+            # Convert sets to lists for JSON serialization
+            coverage_dict = {file: sorted(lines) for file, lines in coverage_data.items()}
+
+            return DebuggerResponse(
+                success=True,
+                message=f"Coverage data for {len(coverage_dict)} file(s)",
+                data={"coverage_data": coverage_dict},
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Failed to get coverage data: {e}")
+            return DebuggerResponse(success=False, message="Failed to get coverage data", error=str(e))
 
     def get_checkpoint_verification_status(self) -> DebuggerResponse:
         """

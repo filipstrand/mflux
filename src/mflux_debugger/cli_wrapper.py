@@ -1151,6 +1151,208 @@ class DebuggerCLI:
         else:
             print(f"❌ {api_response.get('message', 'Failed to clear tensors')}", file=sys.stderr)
 
+    def cmd_coverage(self, script: str, output: Optional[str] = None, include_dirs: Optional[list[str]] = None):
+        """Run script with coverage tracking to find dead code.
+
+        Args:
+            script: Path to script to analyze
+            output: Optional output path for coverage report
+            include_dirs: Optional list of additional directories to include (default: src/mflux only)
+        """
+        from pathlib import Path
+
+        from mflux_debugger.coverage_report import CoverageAnalyzer, generate_markdown_report
+
+        script_path = Path(script).resolve()
+        if not script_path.exists():
+            print(f"❌ Script not found: {script_path}", file=sys.stderr)
+            sys.exit(1)
+
+        print("=" * 70, file=sys.stderr)
+        print("🔍 COVERAGE ANALYSIS", file=sys.stderr)
+        print("=" * 70, file=sys.stderr)
+        print(f"Script: {script_path}", file=sys.stderr)
+        print("Running script with coverage tracking...\n", file=sys.stderr)
+
+        # CRITICAL: Kill all previous debug sessions first (like cmd_start does)
+        print("🧹 Cleaning up previous debug sessions...", file=sys.stderr)
+        self._cleanup_stale_sessions()
+
+        # Ensure server is running
+        if not self._ensure_server_running():
+            sys.exit(1)
+
+        # Start session with coverage enabled
+        data = {"script_path": str(script_path), "coverage_mode": True}
+        response = self._api_call("POST", "/debug/start", data)
+
+        if not response.get("success"):
+            print(f"❌ Failed to start session: {response.get('error', 'Unknown error')}", file=sys.stderr)
+            sys.exit(1)
+
+        # CRITICAL: Disable ALL checkpoint breaking in coverage mode BEFORE starting execution
+        # This ensures checkpoints never pause execution
+        print("⚙️  Disabling checkpoint breaks for full execution...", file=sys.stderr)
+        self._api_call("POST", "/debug/checkpoint/break-all", {"enabled": False})
+
+        # Run script to completion
+        print("⏳ Running script (no breakpoints will pause execution)...", file=sys.stderr)
+        self._api_call("POST", "/debug/continue_async")
+
+        # Poll until finished
+        max_wait = 300  # 5 minutes max
+        interval = 2
+        iterations = max_wait // interval
+
+        print(
+            "⏳ Waiting for script to complete (this may take a while for model loading/inference)...", file=sys.stderr
+        )
+
+        for i in range(iterations):
+            time.sleep(interval)
+            status_response = self._api_call("GET", "/debug/status", timeout=2)
+            state = status_response.get("data", {}).get("state")
+
+            # Show progress every 10 seconds
+            if (i + 1) % 5 == 0:
+                elapsed = (i + 1) * interval
+                print(f"   [{elapsed}s] Status: {state}...", file=sys.stderr)
+
+            if state == "finished":
+                print("✅ Script completed", file=sys.stderr)
+                break
+            elif state == "failed":
+                print("❌ Script execution failed", file=sys.stderr)
+                self.cmd_status(verbose=False)
+                sys.exit(1)
+        else:
+            print("⚠️  Script did not complete within timeout", file=sys.stderr)
+            sys.exit(1)
+
+        # Get coverage data
+        print("\n📊 Collecting coverage data...", file=sys.stderr)
+        coverage_response = self._api_call("GET", "/debug/coverage")
+
+        if not coverage_response.get("success"):
+            print(f"❌ Failed to get coverage data: {coverage_response.get('error')}", file=sys.stderr)
+            sys.exit(1)
+
+        coverage_data = coverage_response.get("data", {}).get("coverage_data", {})
+
+        if not coverage_data:
+            print("⚠️  No coverage data collected", file=sys.stderr)
+            sys.exit(1)
+
+        # Convert to sets
+        coverage_sets = {file: set(lines) for file, lines in coverage_data.items()}
+
+        # Filter to only include mflux project files (exclude diffusers/transformers)
+        # Find project root by looking for pyproject.toml
+        project_root = script_path.parent
+        while project_root != project_root.parent:
+            if (project_root / "pyproject.toml").exists():
+                break
+            project_root = project_root.parent
+
+        # Filter coverage data - default to src/mflux, but allow additional directories
+        # Exclude: diffusers, transformers (external libraries)
+        # Default include: src/mflux/
+        # Optional include: additional directories via --include flag
+
+        # Build list of directories to include
+        include_patterns = ["src/mflux/"]
+        if include_dirs:
+            # Normalize include directories (ensure they end with /)
+            for include_dir in include_dirs:
+                normalized = include_dir.replace("\\", "/")
+                if not normalized.endswith("/"):
+                    normalized += "/"
+                include_patterns.append(normalized)
+
+        mflux_coverage_sets = {}
+        excluded_count = 0
+        for file_path, lines in coverage_sets.items():
+            # Normalize path for cross-platform compatibility
+            path_normalized = file_path.replace("\\", "/")
+
+            # Skip files from external libraries (always exclude)
+            if "/diffusers/" in path_normalized or "/transformers/" in path_normalized:
+                excluded_count += 1
+                continue
+
+            # Check if file matches any include pattern
+            try:
+                file_path_obj = Path(file_path)
+                if file_path_obj.is_absolute():
+                    # Check if file is under project root
+                    try:
+                        rel_path = file_path_obj.relative_to(project_root)
+                        rel_path_str = str(rel_path).replace("\\", "/")
+
+                        # Check if file matches any include pattern
+                        matches_pattern = False
+                        for pattern in include_patterns:
+                            if rel_path_str.startswith(pattern):
+                                matches_pattern = True
+                                break
+
+                        if matches_pattern:
+                            mflux_coverage_sets[file_path] = lines
+                        else:
+                            excluded_count += 1
+                            continue
+                    except ValueError:
+                        # File is not under project root, skip it
+                        excluded_count += 1
+                        continue
+                else:
+                    # Relative path - check if it matches any include pattern
+                    rel_path_str = file_path.replace("\\", "/")
+                    matches_pattern = False
+                    for pattern in include_patterns:
+                        if rel_path_str.startswith(pattern):
+                            matches_pattern = True
+                            break
+
+                    if matches_pattern:
+                        mflux_coverage_sets[file_path] = lines
+                    else:
+                        excluded_count += 1
+                        continue
+            except Exception:  # noqa: BLE001
+                # Skip files we can't parse
+                excluded_count += 1
+                continue
+
+        # Build description of what's being analyzed
+        if include_dirs:
+            analyzed_dirs = ", ".join(include_patterns)
+            print(f"📋 Filtered out {excluded_count} files (analyzing: {analyzed_dirs})", file=sys.stderr)
+        else:
+            print(f"📋 Filtered out {excluded_count} files (only analyzing src/mflux code)", file=sys.stderr)
+
+        # Analyze coverage
+        print("🔍 Analyzing coverage...", file=sys.stderr)
+        analyzer = CoverageAnalyzer(mflux_coverage_sets)
+
+        # Get watch files from filtered coverage
+        watch_files = set(mflux_coverage_sets.keys())
+
+        report = analyzer.generate_report(str(script_path), watch_files)
+
+        # Generate markdown report
+        output_path = Path(output) if output else None
+        report_path = generate_markdown_report(report, output_path)
+
+        print(f"\n✅ Coverage report generated: {report_path}", file=sys.stderr)
+        print("\nSummary:", file=sys.stderr)
+        print(f"  Files analyzed: {len(report.executed_lines)}", file=sys.stderr)
+        print(f"  Dead lines: {sum(len(lines) for lines in report.dead_lines.values())}", file=sys.stderr)
+        print(f"  Dead branches: {len(report.dead_branches)}", file=sys.stderr)
+
+        # Terminate session
+        self._api_call("POST", "/debug/terminate")
+
     def cmd_tutorial(self, lesson: str = "basic"):
         """Provide interactive guidance for learning debugger usage - agent executes commands."""
         from pathlib import Path
@@ -1186,6 +1388,7 @@ class DebuggerCLI:
             print("  7. Conditional breakpoints in loops (skip on condition)")
             print("  8. Using debug_save() to save PyTorch tensors")
             print("  9. Preparing tensors for MLX comparison")
+            print("  10. Using coverage analysis to find dead code paths")
             print("\n✅ RECOMMENDED: Complete this PyTorch tutorial FIRST")
             print("   Then run 'mflux-debug-mlx tutorial' to compare the saved tensors in MLX.")
             print("\n🎯 Tutorial Script Location:")
@@ -1208,6 +1411,7 @@ class DebuggerCLI:
             print("  5. Conditional breakpoints in loops (skip on condition)")
             print("  6. Inspecting variables at breakpoints")
             print("  7. Using debug_load() to compare with PyTorch tensors")
+            print("  8. Using coverage analysis to find dead code paths")
             print("\n💡 NOTE: For the full cross-framework comparison experience:")
             print("   Run 'mflux-debug-pytorch tutorial' FIRST (if you haven't already)")
             print("   to save PyTorch tensors. This tutorial can then load and compare them.")
@@ -1374,7 +1578,36 @@ class DebuggerCLI:
         print("│  Note: Variables are auto-captured from local scope when not explicitly passed!")
         print("└─────────────────────────────────────────────────────────────────\n")
 
-        print("┌─ STEP 14: Use cleanup command")
+        print("┌─ STEP 14: Run coverage analysis (NEW!)")
+        print(f"│  Command: mflux-debug-{self.framework} coverage {script_path} --include src/mflux_debugger")
+        print("│  Purpose: Analyze code coverage to find dead code paths")
+        print("│  Expected: Script runs to completion, generates coverage report")
+        print("│  Note: Coverage mode runs without pausing at checkpoints")
+        print("│  Note: Default is src/mflux only, but --include adds additional directories")
+        print("│  Note: Using --include src/mflux_debugger to analyze this tutorial script too")
+        print("│  Output: COVERAGE_REPORT_*.md file with dead lines and branches")
+        print("└─────────────────────────────────────────────────────────────────\n")
+
+        print("┌─ STEP 14b: View coverage report")
+        print("│  Command: ls -lh COVERAGE_REPORT_*.md")
+        print("│  Purpose: Find the generated coverage report")
+        print("│  Expected: Shows coverage report file with timestamp")
+        print("│  Then: head -50 COVERAGE_REPORT_*.md")
+        print("│  Purpose: View summary and file-by-file coverage")
+        print("│  Expected: Shows files analyzed, dead lines, dead branches")
+        print("│  Then: grep '^###' COVERAGE_REPORT_*.md | head -10")
+        print("│  Purpose: See which files were analyzed")
+        print("│  Expected: List of file paths that were covered")
+        print("│  Then: Open the report file in your editor to explore:")
+        print("│        - Summary section (files analyzed, dead lines, dead branches)")
+        print("│        - File Coverage section (coverage % per file)")
+        print("│        - Dead lines listed with code snippets")
+        print("│        - Dead branches section (if/else paths never taken)")
+        print("│  Note: With --include src/mflux_debugger, you'll see debugger code coverage")
+        print("│  Note: For real mflux scripts (without --include), only src/mflux code is analyzed")
+        print("└─────────────────────────────────────────────────────────────────\n")
+
+        print("┌─ STEP 15: Use cleanup command")
         print("│  Command: mflux-debug-clean --target runs --dry-run")
         print("│  Purpose: Preview what logs would be cleaned")
         print("│  Expected: Shows size of logs/runs/ directory and what would be removed")
@@ -1382,7 +1615,7 @@ class DebuggerCLI:
         print("│  Note: Use --dry-run first to see what will be deleted!")
         print("└─────────────────────────────────────────────────────────────────\n")
 
-        print("┌─ STEP 15: Clean up all debugger processes (FINAL)")
+        print("┌─ STEP 16: Clean up all debugger processes (FINAL)")
         print("│  Command: mflux-debug-kill-all --dry-run")
         print("│  Purpose: Preview all running debugger processes")
         print("│  Expected: Shows PyTorch/MLX debugger processes")
@@ -1408,6 +1641,7 @@ class DebuggerCLI:
         print("  ✓ How automatic tensor archiving works on session start")
         print("  ✓ How to use cleanup commands to manage debug artifacts")
         print("  ✓ How to prepare tensors for MLX comparison")
+        print("  ✓ How to use coverage analysis to find dead code paths")
         print("\n💡 Pro Tips:")
         print("  • ✨ NEW: Checkpoint values are automatically displayed when paused!")
         print("           Shows tensor shapes, sample values (first 10), and statistics")
@@ -1424,6 +1658,8 @@ class DebuggerCLI:
         print("  • Use debug_checkpoint() with metadata to hint which variables to capture")
         print("  • Use debug_save() at key computation steps")
         print("  • Use descriptive names for tensors (e.g., 'hidden_states_block_0')")
+        print("  • ✨ NEW: Use 'coverage' command to find dead code paths in your codebase!")
+        print("           Coverage reports show which lines and branches are never executed")
         print("\n🚀 Next Step:")
         print("  ✅ Run 'mflux-debug-mlx tutorial' NEXT to load and compare these PyTorch tensors in MLX!")
         print("     The MLX tutorial will use debug_load() to compare implementations.")
@@ -1572,7 +1808,36 @@ class DebuggerCLI:
         print("│  Note: No need to rerun scripts - checkpoint logs persist!")
         print("└─────────────────────────────────────────────────────────────────\n")
 
-        print("┌─ STEP 19: Use cleanup command")
+        print("┌─ STEP 19: Run coverage analysis (NEW!)")
+        print(f"│  Command: mflux-debug-{self.framework} coverage {script_path} --include src/mflux_debugger")
+        print("│  Purpose: Analyze code coverage to find dead code paths")
+        print("│  Expected: Script runs to completion, generates coverage report")
+        print("│  Note: Coverage mode runs without pausing at checkpoints")
+        print("│  Note: Default is src/mflux only, but --include adds additional directories")
+        print("│  Note: Using --include src/mflux_debugger to analyze this tutorial script too")
+        print("│  Output: COVERAGE_REPORT_*.md file with dead lines and branches")
+        print("└─────────────────────────────────────────────────────────────────\n")
+
+        print("┌─ STEP 19b: View coverage report")
+        print("│  Command: ls -lh COVERAGE_REPORT_*.md")
+        print("│  Purpose: Find the generated coverage report")
+        print("│  Expected: Shows coverage report file with timestamp")
+        print("│  Then: head -50 COVERAGE_REPORT_*.md")
+        print("│  Purpose: View summary and file-by-file coverage")
+        print("│  Expected: Shows files analyzed, dead lines, dead branches")
+        print("│  Then: grep '^###' COVERAGE_REPORT_*.md | head -10")
+        print("│  Purpose: See which files were analyzed")
+        print("│  Expected: List of file paths that were covered")
+        print("│  Then: Open the report file in your editor to explore:")
+        print("│        - Summary section (files analyzed, dead lines, dead branches)")
+        print("│        - File Coverage section (coverage % per file)")
+        print("│        - Dead lines listed with code snippets")
+        print("│        - Dead branches section (if/else paths never taken)")
+        print("│  Note: With --include src/mflux_debugger, you'll see debugger code coverage")
+        print("│  Note: For real mflux scripts (without --include), only src/mflux code is analyzed")
+        print("└─────────────────────────────────────────────────────────────────\n")
+
+        print("┌─ STEP 20: Use cleanup command")
         print("│  Command: mflux-debug-clean --target debugger_logs --dry-run")
         print("│  Purpose: Preview what server logs would be cleaned")
         print("│  Expected: Shows size of logs/debugger/ directory")
@@ -1580,7 +1845,7 @@ class DebuggerCLI:
         print("│  Note: 'runs' cleans script logs, 'debugger_logs' cleans server logs!")
         print("└─────────────────────────────────────────────────────────────────\n")
 
-        print("┌─ STEP 20: Clean up all debugger processes (FINAL)")
+        print("┌─ STEP 21: Clean up all debugger processes (FINAL)")
         print("│  Command: mflux-debug-kill-all --dry-run")
         print("│  Purpose: Preview all running debugger processes")
         print("│  Expected: Shows PyTorch/MLX debugger processes")
@@ -1603,6 +1868,7 @@ class DebuggerCLI:
         print("  ✓ How to analyze checkpoint logs offline with jq")
         print("  ✓ How to compare MLX vs PyTorch using checkpoint JSON files")
         print("  ✓ How to use cleanup commands to manage debug artifacts")
+        print("  ✓ How to use coverage analysis to find dead code paths")
         print("\n💡 Pro Tips:")
         print("  • ✨ NEW: Checkpoint values are automatically displayed when paused!")
         print("           Shows tensor shapes, sample values (first 10), and statistics")
@@ -1613,11 +1879,14 @@ class DebuggerCLI:
         print("  • Checkpoint logs persist after sessions - great for CI/CD debugging")
         print("  • Use --dry-run with cleanup commands to preview what will be deleted")
         print("  • Use debug_checkpoint() with metadata - more maintainable than line numbers!")
+        print("  • ✨ NEW: Use 'coverage' command to find dead code paths in your codebase!")
+        print("           Coverage reports show which lines and branches are never executed")
         print("\n🚀 What's Next:")
         print("  • You've completed the MLX tutorial! 🎉")
         print("  • If you ran 'mflux-debug-pytorch tutorial' first, you practiced cross-framework comparison")
         print("  • Try line-based breakpoints: mflux-debug-mlx break <file> <line>")
         print('  • Try conditional breakpoints: --condition "x > 10"')
+        print("  • Use coverage analysis to find dead code in your models")
         print("  • Apply these techniques to your own MFLUX model porting work!")
         print("\n💡 Cleanup Reminder:")
         print("  • Use 'mflux-debug-kill-all' to kill all debugger servers when done")
@@ -1748,6 +2017,17 @@ Examples:
         "lesson", nargs="?", default="basic", choices=["basic"], help="Tutorial lesson (default: basic)"
     )
 
+    # Coverage command
+    coverage_parser = subparsers.add_parser("coverage", help="Run script with coverage tracking to find dead code")
+    coverage_parser.add_argument("script", help="Path to script to analyze")
+    coverage_parser.add_argument("--output", help="Output path for coverage report (default: COVERAGE_REPORT_*.md)")
+    coverage_parser.add_argument(
+        "--include",
+        action="append",
+        dest="include_dirs",
+        help="Additional directories to include in coverage (default: src/mflux only). Can be used multiple times. Example: --include src/mflux_debugger",
+    )
+
     return parser
 
 
@@ -1797,6 +2077,10 @@ def _dispatch_command(cli: DebuggerCLI, args, parser):
         cli.cmd_debug_clear(args.name if hasattr(args, "name") and args.name else None)
     elif args.command == "tutorial":
         cli.cmd_tutorial(args.lesson)
+    elif args.command == "coverage":
+        cli.cmd_coverage(
+            args.script, args.output, include_dirs=args.include_dirs if hasattr(args, "include_dirs") else None
+        )
     else:
         parser.print_help()
         sys.exit(1)

@@ -31,6 +31,7 @@ class StartSessionRequest(BaseModel):
     clear_tensors: bool | None = (
         None  # None = default behavior (clear for PyTorch, keep for MLX), True/False = override
     )
+    coverage_mode: bool = False  # Enable coverage tracking for dead code detection
 
 
 class SetBreakpointRequest(BaseModel):
@@ -83,7 +84,12 @@ def _make_response(response):
 def start_session(request: StartSessionRequest):
     """Start a debugging session."""
     return _make_response(
-        service.start_session(request.script_path, framework=request.framework, clear_tensors=request.clear_tensors)
+        service.start_session(
+            request.script_path,
+            framework=request.framework,
+            clear_tensors=request.clear_tensors,
+            coverage_mode=request.coverage_mode,
+        )
     )
 
 
@@ -138,6 +144,12 @@ def evaluate(request: EvaluateRequest):
 def get_location():
     """Get current location."""
     return _make_response(service.get_location())
+
+
+@app.get("/debug/coverage")
+def get_coverage():
+    """Get coverage data (file -> list of executed line numbers)."""
+    return _make_response(service.get_coverage())
 
 
 @app.get("/debug/status", response_model=DebugResponse)
