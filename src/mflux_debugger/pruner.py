@@ -332,14 +332,9 @@ def prune_files(
     files_to_delete: list[Path] = []
 
     for repo_name, repo_path in repos.items():
-        # Get all Python files and README files
-        all_py_files = list(repo_path.rglob("*.py"))
-        all_readme_files = (
-            list(repo_path.rglob("README.md"))
-            + list(repo_path.rglob("README.rst"))
-            + list(repo_path.rglob("README.txt"))
-        )
-        all_files = all_py_files + all_readme_files
+        # Get all files (we'll filter to only keep Python files)
+        all_files = list(repo_path.rglob("*"))
+        all_files = [f for f in all_files if f.is_file()]  # Only files, not directories
         executed = executed_files[repo_name]
 
         # Build set of directories that have executed files
@@ -360,15 +355,42 @@ def prune_files(
                 files_to_delete.append(file_path)
                 continue
 
+            # Always delete files in deprecated directories
+            if "/deprecated/" in rel_path or rel_path.startswith("deprecated/"):
+                deleted_count += 1
+                files_to_delete.append(file_path)
+                continue
+
+            # Always delete testing utilities (deprecated, not needed for runtime)
+            if rel_path.endswith("testing_utils.py"):
+                deleted_count += 1
+                files_to_delete.append(file_path)
+                continue
+
             # Always delete documentation files (not essential, not executed)
+            if rel_path.endswith(".md") or rel_path.endswith(".rst") or rel_path.endswith(".txt"):
+                deleted_count += 1
+                files_to_delete.append(file_path)
+                continue
+
+            # Always delete shell scripts, build scripts, and other non-Python files
             if (
-                rel_path.endswith(".md")
-                or rel_path.endswith(".rst")
-                or rel_path.endswith(".txt")
-                or rel_path.endswith("README.md")
-                or rel_path.endswith("README.rst")
-                or rel_path.endswith("README.txt")
+                rel_path.endswith(".sh")
+                or rel_path.endswith(".pyx")  # Cython files
+                or rel_path.endswith(".c")
+                or rel_path.endswith(".cpp")
+                or rel_path.endswith(".h")
+                or rel_path.endswith(".hpp")
+                or rel_path.endswith(".cu")  # CUDA files
             ):
+                deleted_count += 1
+                files_to_delete.append(file_path)
+                continue
+
+            # Only process Python files (.py and .pyi) - delete everything else
+            # Keep py.typed markers (type stub markers)
+            if not (rel_path.endswith(".py") or rel_path.endswith(".pyi") or rel_path.endswith("py.typed")):
+                # Delete any other non-Python files we haven't caught above
                 deleted_count += 1
                 files_to_delete.append(file_path)
                 continue
