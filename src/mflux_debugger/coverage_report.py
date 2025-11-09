@@ -33,7 +33,7 @@ class UnusedDefinition:
     file: str
     line: int
     name: str
-    type: str  # "class" or "function"
+    type: str  # "class", "function", or "method"
     definition_line: int  # Line where class/function is defined
 
 
@@ -280,8 +280,27 @@ class CoverageAnalyzer:
                 self.current_class = old_class
 
             def visit_FunctionDef(self, node: ast.FunctionDef):
-                # Skip methods inside classes - they're handled by visit_ClassDef
+                # Check methods inside classes for unused methods
                 if self.current_class is not None:
+                    # Check if method definition line is executed
+                    if node.lineno in self.executed_lines:
+                        # Get all body lines (excluding nested function definitions)
+                        body_lines = self._get_body_lines(node, exclude_definitions=True)
+
+                        # Check if any body line is executed
+                        body_executed = any(line in self.executed_lines for line in body_lines)
+
+                        if not body_executed:
+                            # Method is defined but never called
+                            self.unused.append(
+                                UnusedDefinition(
+                                    file=self.file_path,
+                                    line=node.lineno,
+                                    name=node.name,
+                                    type="method",
+                                    definition_line=node.lineno,
+                                )
+                            )
                     self.generic_visit(node)
                     return
 
@@ -311,8 +330,27 @@ class CoverageAnalyzer:
                 self.generic_visit(node)
 
             def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
-                # Skip methods inside classes - they're handled by visit_ClassDef
+                # Check methods inside classes for unused methods
                 if self.current_class is not None:
+                    # Check if method definition line is executed
+                    if node.lineno in self.executed_lines:
+                        # Get all body lines (excluding nested function definitions)
+                        body_lines = self._get_body_lines(node, exclude_definitions=True)
+
+                        # Check if any body line is executed
+                        body_executed = any(line in self.executed_lines for line in body_lines)
+
+                        if not body_executed:
+                            # Method is defined but never called
+                            self.unused.append(
+                                UnusedDefinition(
+                                    file=self.file_path,
+                                    line=node.lineno,
+                                    name=node.name,
+                                    type="method",
+                                    definition_line=node.lineno,
+                                )
+                            )
                     self.generic_visit(node)
                     return
 
@@ -531,10 +569,11 @@ def generate_markdown_report(report: CoverageReport, output_path: Optional[Path]
                     source = f.read()
                 tree = ast.parse(source, filename=file_path)
 
-                # Find method definition lines within unused classes
+                # Find method definition lines within unused classes AND unused methods
                 class MethodDefVisitor(ast.NodeVisitor):
-                    def __init__(self, unused_class_lines: Set[int]):
+                    def __init__(self, unused_class_lines: Set[int], unused_method_lines: Set[int]):
                         self.unused_class_lines = unused_class_lines
+                        self.unused_method_lines = unused_method_lines
                         self.method_def_lines = set()
                         self.current_class_line = None
 
@@ -547,8 +586,9 @@ def generate_markdown_report(report: CoverageReport, output_path: Optional[Path]
                             self.generic_visit(node)
 
                     def visit_FunctionDef(self, node: ast.FunctionDef):
-                        if self.current_class_line is not None:
-                            # Method definition within unused class
+                        # Include if method is in unused class OR if method itself is unused
+                        if self.current_class_line is not None or node.lineno in self.unused_method_lines:
+                            # Method definition within unused class or unused method
                             # Include decorator lines (e.g., @staticmethod)
                             for decorator in node.decorator_list:
                                 if hasattr(decorator, "lineno") and decorator.lineno:
@@ -564,8 +604,9 @@ def generate_markdown_report(report: CoverageReport, output_path: Optional[Path]
                         self.generic_visit(node)
 
                     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
-                        if self.current_class_line is not None:
-                            # Method definition within unused class
+                        # Include if method is in unused class OR if method itself is unused
+                        if self.current_class_line is not None or node.lineno in self.unused_method_lines:
+                            # Method definition within unused class or unused method
                             # Include decorator lines (e.g., @staticmethod)
                             for decorator in node.decorator_list:
                                 if hasattr(decorator, "lineno") and decorator.lineno:
@@ -580,7 +621,9 @@ def generate_markdown_report(report: CoverageReport, output_path: Optional[Path]
                                     self.method_def_lines.add(line_num)
                         self.generic_visit(node)
 
-                visitor = MethodDefVisitor({unused.definition_line for unused in file_unused if unused.type == "class"})
+                unused_class_lines = {unused.definition_line for unused in file_unused if unused.type == "class"}
+                unused_method_lines = {unused.definition_line for unused in file_unused if unused.type == "method"}
+                visitor = MethodDefVisitor(unused_class_lines, unused_method_lines)
                 visitor.visit(tree)
 
                 # Combine class/function definition lines with method definition lines
@@ -589,7 +632,7 @@ def generate_markdown_report(report: CoverageReport, output_path: Optional[Path]
                 # If parsing fails, fall back to just definition lines
                 all_unused_def_lines = unused_definition_lines
 
-            executed_unused_def_lines = len(all_unused_def_lines & executed_lines_set)
+            executed_unused_def_lines = all_unused_def_lines & executed_lines_set
 
             # Exclude import lines and other module-level non-definition code from the count
             # Parse the file to find import lines
@@ -614,13 +657,13 @@ def generate_markdown_report(report: CoverageReport, output_path: Optional[Path]
 
             # Count non-import executed lines
             non_import_executed = executed_lines_set - import_lines
-            non_import_executed_count = len(non_import_executed)
 
-            # If most non-import executed lines (>=80%) are just definition lines for unused definitions,
-            # exclude from high-priority (the class/function is imported but never used)
-            if non_import_executed_count > 0:
-                unused_ratio = executed_unused_def_lines / non_import_executed_count
-                only_unused_definitions = unused_ratio >= 0.8
+            # If ALL non-import executed lines are just definition lines for unused definitions,
+            # exclude from high-priority (the class/function/method is imported but never used)
+            # No arbitrary threshold - if everything executed is just definitions, it's unused
+            if len(non_import_executed) > 0:
+                # Check if all non-import executed lines are definition lines for unused definitions
+                only_unused_definitions = non_import_executed.issubset(executed_unused_def_lines)
             else:
                 only_unused_definitions = False
         else:
@@ -673,11 +716,18 @@ def generate_markdown_report(report: CoverageReport, output_path: Optional[Path]
                 # Group by type
                 classes = [u for u in file_unused if u.type == "class"]
                 functions = [u for u in file_unused if u.type == "function"]
+                methods = [u for u in file_unused if u.type == "method"]
 
                 if classes:
                     f.write(f"- **Unused classes ({len(classes)}):**\n")
                     for cls in sorted(classes, key=lambda x: x.line):
                         f.write(f"  - `{cls.name}` (line {cls.line})\n")
+                    f.write("\n")
+
+                if methods:
+                    f.write(f"- **Unused methods ({len(methods)}):**\n")
+                    for method in sorted(methods, key=lambda x: x.line):
+                        f.write(f"  - `{method.name}` (line {method.line})\n")
                     f.write("\n")
 
                 if functions:
