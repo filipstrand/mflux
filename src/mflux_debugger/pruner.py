@@ -198,8 +198,8 @@ def prune_files(
     """
     # Essential files that should NEVER be deleted (even if not executed)
     # These are critical infrastructure files needed for package imports
+    # Note: __init__.py is handled specially - only kept if executed or directory has other files
     ESSENTIAL_PATTERNS = [
-        "__init__.py",  # Package initialization
         "constants.py",  # Constants imported by __init__
         "dependency_versions_check.py",  # Version checking
         "dependency_versions_table.py",  # Version table
@@ -349,6 +349,35 @@ def prune_files(
 
             if rel_path in executed:
                 kept_count += 1
+            elif rel_path.endswith("__init__.py"):
+                # Special handling for __init__.py files:
+                # Keep only if executed OR if directory has other Python files that are kept
+                dir_path = file_path.parent
+                # Check if directory has other Python files (not just __init__.py)
+                all_dir_files = list(dir_path.glob("*.py"))
+                other_py_files = [f for f in all_dir_files if f.name != "__init__.py"]
+
+                # Check if any of those other files are executed or will be kept
+                has_kept_files = False
+                for other_file in other_py_files:
+                    other_rel_path = str(other_file.relative_to(repo_path))
+                    if (
+                        other_rel_path in executed
+                        or is_essential(other_rel_path)
+                        or str(Path(other_rel_path).parent) in executed_dirs
+                    ):
+                        has_kept_files = True
+                        break
+
+                if rel_path in executed or has_kept_files:
+                    # Keep __init__.py if executed or directory has other kept files
+                    kept_count += 1
+                    if rel_path not in executed:
+                        essential_kept += 1
+                else:
+                    # Only __init__.py in directory (or other files will be deleted), can be pruned
+                    deleted_count += 1
+                    files_to_delete.append(file_path)
             elif is_essential(rel_path):
                 # Keep essential files even if not executed
                 kept_count += 1
