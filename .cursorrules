@@ -22,10 +22,26 @@ cd /Users/filip/Desktop/mflux
 uv tool install --editable .
 ```
 
+**Available Debugger Commands (from pyproject.toml):**
+- `mflux-debug-mlx` - MLX debugger CLI
+- `mflux-debug-pytorch` - PyTorch debugger CLI
+- `mflux-debug-clean` - Clean up debug resources (tensors, images, logs)
+- `mflux-debug-kill-all` - Kill all running debug processes
+- `mflux-debug-inspect-weights` - Inspect model weights
+- `mflux-debug-prune` - Profile and prune unused files from transformers/diffusers
+
+**Command Aliases/Shortcuts:**
+- "kill all" / "killall" → `mflux-debug-kill-all`
+- "start debugger" / "start debugging" → `mflux-debug-mlx start <script>` or `mflux-debug-pytorch start <script>`
+- "clean" / "cleanup" → `mflux-debug-clean`
+- "prune" / "pruning" → `mflux-debug-prune prune <script>`
+- "setup prune" → `mflux-debug-prune setup`
+
 **Learn interactively first:**
 ```bash
 mflux-debug-mlx tutorial      # For MLX debugging
 mflux-debug-pytorch tutorial  # For PyTorch debugging
+mflux-debug-prune tutorial    # For pruning workflow
 ```
 
 **Critical reminders:**
