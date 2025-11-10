@@ -57,8 +57,6 @@ class QwenImageEditPlus(nn.Module):
     ) -> GeneratedImage:
         # Support multiple images: use image_paths if provided, otherwise fallback to config.image_path
         if image_paths is None:
-            if config.image_path is None:
-                raise ValueError("Either image_paths or config.image_path must be provided")
             image_paths = [config.image_path]
 
         # Use last image for size calculation (matching PyTorch line 686)

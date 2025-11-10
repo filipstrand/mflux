@@ -59,11 +59,8 @@ class QwenEncoder(nn.Module):
         start_idx = 0
         for split_size in split_sizes:
             end_idx = start_idx + split_size
-            if end_idx <= image_embeds.shape[0]:
-                image_embeds_split.append(image_embeds[start_idx:end_idx])
-                start_idx = end_idx
-            else:
-                break
+            image_embeds_split.append(image_embeds[start_idx:end_idx])
+            start_idx = end_idx
 
         return image_embeds_split
 
@@ -85,14 +82,8 @@ class QwenEncoder(nn.Module):
             batch_size, seq_len, _ = inputs_embeds.shape
 
         if pixel_values is not None and image_grid_thw is not None:
-            if len(pixel_values.shape) == 5:
-                image_embeds = self.get_image_features(pixel_values, image_grid_thw)
-                image_embeds = mx.concatenate(image_embeds, axis=0)
-            elif len(pixel_values.shape) == 2:
-                image_embeds_split = self.get_image_features(pixel_values, image_grid_thw)
-                image_embeds = mx.concatenate(image_embeds_split, axis=0)
-            else:
-                raise ValueError(f"Unsupported pixel_values format: {pixel_values.shape}")
+            image_embeds_split = self.get_image_features(pixel_values, image_grid_thw)
+            image_embeds = mx.concatenate(image_embeds_split, axis=0)
 
             image_positions = input_ids == self.image_token_id
             n_image_tokens = mx.sum(image_positions).item()
