@@ -30,15 +30,14 @@ class QwenTransformer(nn.Module):
         self.txt_in = nn.Linear(joint_attention_dim, self.inner_dim)
         self.time_text_embed = QwenTimeTextEmbed(timestep_proj_dim=256, inner_dim=self.inner_dim)
         self.pos_embed = QwenEmbedRopeMLX(theta=10000, axes_dim=[16, 56, 56], scale_rope=True)
-        self.transformer_blocks = []
-        for i in range(num_layers):
-            block = QwenTransformerBlock(
+        self.transformer_blocks = [
+            QwenTransformerBlock(
                 dim=self.inner_dim,
                 num_heads=num_attention_heads,
                 head_dim=attention_head_dim,
             )
-            self.transformer_blocks.append(block)
-            setattr(self, f"transformer_block_{i}", block)
+            for _ in range(num_layers)
+        ]
         self.norm_out = AdaLayerNormContinuous(self.inner_dim, self.inner_dim)
         self.proj_out = nn.Linear(self.inner_dim, patch_size * patch_size * out_channels)
 

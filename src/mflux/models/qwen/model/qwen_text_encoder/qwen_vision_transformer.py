@@ -36,9 +36,6 @@ class VisionTransformer(nn.Module):
         self.rotary_pos_emb = VisionRotaryEmbedding(head_dim // 2)
 
         self.blocks = [VisionBlock(embed_dim, num_heads, mlp_ratio) for _ in range(depth)]
-        # Register blocks as attributes for parameter tracking
-        for i, block in enumerate(self.blocks):
-            setattr(self, f"blocks_{i}", block)
 
         # Use proper patch merger to match HF
         self.merger = PatchMerger(embed_dim, hidden_size, spatial_merge_size)
