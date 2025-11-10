@@ -12,7 +12,7 @@ class QwenTextEncoder(nn.Module):
     def __call__(
         self,
         input_ids: mx.array,
-        attention_mask: mx.array | None = None,
+        attention_mask: mx.array,
     ) -> tuple[mx.array, mx.array]:
         hidden_states = self.encoder(input_ids, attention_mask)
 

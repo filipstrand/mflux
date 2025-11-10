@@ -59,7 +59,7 @@ class QwenEncoder(nn.Module):
     def __call__(
         self,
         input_ids: mx.array,
-        attention_mask: mx.array | None = None,
+        attention_mask: mx.array,
         pixel_values: mx.array | None = None,
         image_grid_thw: mx.array | None = None,
     ) -> mx.array:
@@ -75,11 +75,7 @@ class QwenEncoder(nn.Module):
             if n_image_tokens > 0 and image_embeds.shape[0] >= n_image_tokens:
                 image_positions_flat = image_positions.flatten()
                 inputs_embeds_flat = inputs_embeds.reshape(-1, inputs_embeds.shape[-1])
-
-                if image_embeds.shape[0] <= n_image_tokens:
-                    image_embeds_to_use = image_embeds
-                else:
-                    image_embeds_to_use = image_embeds[:n_image_tokens]
+                image_embeds_to_use = image_embeds
 
                 new_embeds_list = []
                 image_idx = 0
@@ -95,15 +91,12 @@ class QwenEncoder(nn.Module):
         cache_position = mx.arange(seq_len, dtype=mx.int32)
         position_ids = mx.expand_dims(mx.expand_dims(cache_position, axis=0), axis=0)
         position_ids = mx.broadcast_to(position_ids, (3, batch_size, seq_len))
-        if attention_mask is not None:
-            padding_mask = mx.where(
-                attention_mask == 1,
-                mx.zeros_like(attention_mask).astype(mx.float32),
-                mx.ones_like(attention_mask).astype(mx.float32) * (-float("inf")),
-            )
-            padding_mask = mx.expand_dims(mx.expand_dims(padding_mask, axis=1), axis=1)
-        else:
-            padding_mask = None
+        padding_mask = mx.where(
+            attention_mask == 1,
+            mx.zeros_like(attention_mask).astype(mx.float32),
+            mx.ones_like(attention_mask).astype(mx.float32) * (-float("inf")),
+        )
+        padding_mask = mx.expand_dims(mx.expand_dims(padding_mask, axis=1), axis=1)
 
         idx = mx.arange(seq_len, dtype=mx.int32)
         j = mx.expand_dims(idx, axis=0)
@@ -114,10 +107,7 @@ class QwenEncoder(nn.Module):
         causal_tri_mask = mx.where(tri_bool, neginf_2d, zeros_2d)
         causal_tri_mask = mx.expand_dims(mx.expand_dims(causal_tri_mask, axis=0), axis=0)
         causal_tri_mask = mx.broadcast_to(causal_tri_mask, (batch_size, 1, seq_len, seq_len))
-        if padding_mask is not None:
-            attention_mask_4d = causal_tri_mask + padding_mask
-        else:
-            attention_mask_4d = causal_tri_mask
+        attention_mask_4d = causal_tri_mask + padding_mask
         hidden_states = inputs_embeds
         position_embeddings = self.rotary_emb(hidden_states, position_ids)
         for i, layer in enumerate(self.layers):
