@@ -93,9 +93,11 @@ class QwenImageEdit(nn.Module):
         vl_width = calculated_width
         vl_height = calculated_height
 
-        # Get timesteps from the scheduler (these are the actual time values, not just indices)
+        # Get timesteps from the scheduler
+        # Note: timesteps array contains actual timestep values, but we iterate using indices [0, 1, 2, ...]
+        # The transformer's _compute_timestep method maps these indices to sigmas: sigmas[i] corresponds to timesteps[i]
         timesteps = runtime_config.scheduler.timesteps
-        time_steps = tqdm(enumerate(timesteps), total=len(timesteps))
+        time_steps = tqdm(range(len(timesteps)))
 
         # 1. Create initial latents
         latents = LatentCreator.create(
@@ -143,49 +145,45 @@ class QwenImageEdit(nn.Module):
             config=runtime_config,
         )
 
-        for step_idx, timestep_value in time_steps:
+        for t in time_steps:
             try:
                 # 4.t Concatenate the updated latents with the static image latents
                 hidden_states = mx.concatenate([latents, static_image_latents], axis=1)
                 hidden_states_neg = mx.concatenate([latents, static_image_latents], axis=1)  # noqa: F841
 
                 # 5.t Predict the noise
-                # Note: Pass the sigma value (timestep / 1000) to the transformer, matching PyTorch
-
-                # 🔧 Use transformer with MLX's native RoPE computation
                 noise = self.transformer(
-                    t=float(timestep_value.item()) / 1000.0,  # Convert to sigma [0, 1]
+                    t=t,
                     config=runtime_config,
                     hidden_states=hidden_states,
                     encoder_hidden_states=prompt_embeds,
                     encoder_hidden_states_mask=prompt_mask,
-                    qwen_image_ids=qwen_image_ids,  # Pass image IDs for conditioning
-                    cond_image_grid=(1, cond_h_patches, cond_w_patches),  # Use VAE conditioning grid, not VL grid
+                    qwen_image_ids=qwen_image_ids,
+                    cond_image_grid=(1, cond_h_patches, cond_w_patches),
                 )[:, : latents.shape[1]]
 
                 noise_negative = self.transformer(
-                    t=float(timestep_value.item()) / 1000.0,  # Convert to sigma [0, 1]
+                    t=t,
                     config=runtime_config,
                     hidden_states=hidden_states_neg,
                     encoder_hidden_states=negative_prompt_embeds,
                     encoder_hidden_states_mask=negative_prompt_mask,
                     qwen_image_ids=qwen_image_ids,
-                    cond_image_grid=(1, cond_h_patches, cond_w_patches),  # Use VAE conditioning grid, not VL grid
+                    cond_image_grid=(1, cond_h_patches, cond_w_patches),
                 )[:, : latents.shape[1]]
 
                 guided_noise = QwenImage.compute_guided_noise(noise, noise_negative, runtime_config.guidance)
 
                 # 6.t Take one denoise step
-                # Note: Pass the step index (0, 1, 2...) to the scheduler, not the timestep value
                 latents = runtime_config.scheduler.step(
                     model_output=guided_noise,
-                    timestep=step_idx,  # Scheduler uses index
+                    timestep=t,
                     sample=latents,
                 )
 
                 # (Optional) Call subscribers in-loop
                 Callbacks.in_loop(
-                    t=step_idx,
+                    t=t,
                     seed=seed,
                     prompt=prompt,
                     latents=latents,
@@ -198,14 +196,14 @@ class QwenImageEdit(nn.Module):
 
             except KeyboardInterrupt:  # noqa: PERF203
                 Callbacks.interruption(
-                    t=step_idx,
+                    t=t,
                     seed=seed,
                     prompt=prompt,
                     latents=latents,
                     config=runtime_config,
                     time_steps=time_steps,
                 )
-                raise StopImageGenerationException(f"Stopping image generation at step {step_idx + 1}/{len(timesteps)}")
+                raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(timesteps)}")
 
         # (Optional) Call subscribers after loop
         Callbacks.after_loop(

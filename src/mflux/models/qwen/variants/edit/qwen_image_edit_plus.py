@@ -103,8 +103,10 @@ class QwenImageEditPlus(nn.Module):
         vl_height = round(vl_height / 32) * 32
 
         # Get timesteps from the scheduler
+        # Note: timesteps array contains actual timestep values, but we iterate using indices [0, 1, 2, ...]
+        # The transformer's _compute_timestep method maps these indices to sigmas: sigmas[i] corresponds to timesteps[i]
         timesteps = runtime_config.scheduler.timesteps
-        time_steps = tqdm(enumerate(timesteps), total=len(timesteps))
+        time_steps = tqdm(range(len(timesteps)))
 
         # 1. Create initial latents
         latents = LatentCreator.create(
@@ -153,7 +155,7 @@ class QwenImageEditPlus(nn.Module):
             config=runtime_config,
         )
 
-        for step_idx, timestep_value in time_steps:
+        for t in time_steps:
             try:
                 # 4.t Concatenate the updated latents with the static image latents
                 hidden_states = mx.concatenate([latents, static_image_latents], axis=1)
@@ -167,7 +169,7 @@ class QwenImageEditPlus(nn.Module):
                     cond_image_grid = (1, cond_h_patches, cond_w_patches)
 
                 noise = self.transformer(
-                    t=float(timestep_value.item()) / 1000.0,  # Convert to sigma [0, 1]
+                    t=t,
                     config=runtime_config,
                     hidden_states=hidden_states,
                     encoder_hidden_states=prompt_embeds,
@@ -176,7 +178,7 @@ class QwenImageEditPlus(nn.Module):
                     cond_image_grid=cond_image_grid,
                 )[:, : latents.shape[1]]
                 noise_negative = self.transformer(
-                    t=float(timestep_value.item()) / 1000.0,
+                    t=t,
                     config=runtime_config,
                     hidden_states=hidden_states_neg,
                     encoder_hidden_states=negative_prompt_embeds,
@@ -189,13 +191,13 @@ class QwenImageEditPlus(nn.Module):
                 # 6.t Take one denoise step
                 latents = runtime_config.scheduler.step(
                     model_output=guided_noise,
-                    timestep=step_idx,
+                    timestep=t,
                     sample=latents,
                 )
 
                 # (Optional) Call subscribers in-loop
                 Callbacks.in_loop(
-                    t=step_idx,
+                    t=t,
                     seed=seed,
                     prompt=prompt,
                     latents=latents,
@@ -208,14 +210,14 @@ class QwenImageEditPlus(nn.Module):
 
             except KeyboardInterrupt:  # noqa: PERF203
                 Callbacks.interruption(
-                    t=step_idx,
+                    t=t,
                     seed=seed,
                     prompt=prompt,
                     latents=latents,
                     config=runtime_config,
                     time_steps=time_steps,
                 )
-                raise StopImageGenerationException(f"Stopping image generation at step {step_idx + 1}/{len(timesteps)}")
+                raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(timesteps)}")
 
         # (Optional) Call subscribers after loop
         Callbacks.after_loop(
