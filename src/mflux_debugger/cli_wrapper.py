@@ -1440,11 +1440,12 @@ class DebuggerCLI:
             output: Optional output path for coverage report
             include_dirs: Optional list of additional directories to include (default: src/mflux only)
         """
+        import shutil
         from datetime import datetime
         from pathlib import Path
 
         from mflux_debugger.coverage_report import generate_marked_up_file
-        from mflux_debugger.log_paths import get_coverage_session_dir
+        from mflux_debugger.log_paths import get_coverage_archive_dir, get_coverage_latest_dir, get_coverage_session_dir
 
         if len(scripts) < 2:
             print("❌ Need at least 2 scripts for multi-run coverage", file=sys.stderr)
@@ -1596,9 +1597,32 @@ class DebuggerCLI:
         for run_coverage in all_runs_coverage:
             all_files.update(run_coverage.keys())
 
-        # Create coverage directory
+        # Archive old coverage sessions for this multi-run script combination
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         script_names = "_".join([Path(s).stem for s in scripts])
+        pattern = f"multi_{script_names}_*"
+
+        latest_dir = get_coverage_latest_dir()
+        if latest_dir.exists():
+            old_sessions = list(latest_dir.glob(pattern))
+            if old_sessions:
+                archive_dir = get_coverage_archive_dir()
+                archived_count = 0
+                for session_dir in old_sessions:
+                    if session_dir.is_dir():
+                        archive_path = archive_dir / session_dir.name
+                        try:
+                            if archive_path.exists():
+                                # If already archived, remove the old archive
+                                shutil.rmtree(archive_path)
+                            shutil.move(str(session_dir), str(archive_path))
+                            archived_count += 1
+                        except Exception as e:  # noqa: BLE001
+                            print(f"⚠️  Failed to archive {session_dir.name}: {e}", file=sys.stderr)
+                if archived_count > 0:
+                    print(f"📦 Archived {archived_count} old multi-run coverage session(s)", file=sys.stderr)
+
+        # Create coverage directory
         coverage_dir = get_coverage_session_dir(f"multi_{script_names}", timestamp)
 
         print(f"📁 Creating coverage directory: {coverage_dir}", file=sys.stderr)
