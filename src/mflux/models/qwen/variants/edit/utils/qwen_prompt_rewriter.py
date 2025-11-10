@@ -5,7 +5,7 @@ class QwenPromptRewriter:
     @staticmethod
     def detect_language(prompt: str) -> str:
         chinese_ranges = [
-            ("\u4e00", "\u9fff"),  # CJK Unified Ideographs
+            ("\u4e00", "\u9fff"),
         ]
         for char in prompt:
             if any(start <= char <= end for start, end in chinese_ranges):
