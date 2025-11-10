@@ -54,12 +54,8 @@ class QwenEditUtil:
             )
             all_image_latents.append(image_latents)
 
-        # 3) Concatenate all image latents along sequence dimension (matching PyTorch line 536)
-        # PyTorch: image_latents = torch.cat(all_image_latents, dim=1)
-        # In MLX, packed latents are [batch, seq_len, channels], so concatenate along dim=1
         image_latents = mx.concatenate(all_image_latents, axis=1)
 
-        # 4) Create image IDs for positional embeddings (one for each image, then concatenate)
         all_image_ids = []
         for _ in image_paths:
             image_ids = QwenEditUtil._create_image_ids(
@@ -67,17 +63,11 @@ class QwenEditUtil:
                 width=calc_w,
             )
             all_image_ids.append(image_ids)
-        # Concatenate image IDs along sequence dimension (matching latents)
         image_ids = mx.concatenate(all_image_ids, axis=1)
 
-        # 5) Return latents, ids, and the packed latent patch grid for RoPE.
-        # VAE downsamples by 8 and we pack by 2, so the patch grid is H//16, W//16.
         cond_h_patches = calc_h // 16
         cond_w_patches = calc_w // 16
         num_images = len(image_paths)
-        print(
-            f"🔎 MLX EditUtil: conditioning {num_images} image(s) {calc_w}x{calc_h} → {cond_w_patches}x{cond_h_patches} patches"
-        )
         return image_latents, image_ids, cond_h_patches, cond_w_patches, num_images
 
     @staticmethod
@@ -85,44 +75,37 @@ class QwenEditUtil:
         height: int,
         width: int,
     ) -> mx.array:
-        # Create image IDs similar to Kontext implementation but adapted for Qwen
-        latent_height = height // 16  # VAE downsampling factor (same as Flux)
+        latent_height = height // 16
         latent_width = width // 16
 
-        # Create coordinate grid for image positioning
         image_ids = mx.zeros((latent_height, latent_width, 3))
 
-        # Add row coordinates
         row_coords = mx.arange(0, latent_height)[:, None]
         row_coords = mx.broadcast_to(row_coords, (latent_height, latent_width))
         image_ids = mx.concatenate(
             [
-                image_ids[:, :, :1],  # Keep first dimension as 0 for now
-                row_coords[:, :, None],  # Set row coordinates
-                image_ids[:, :, 2:],  # Keep remaining dimensions
+                image_ids[:, :, :1],
+                row_coords[:, :, None],
+                image_ids[:, :, 2:],
             ],
             axis=2,
         )
 
-        # Add column coordinates
         col_coords = mx.arange(0, latent_width)[None, :]
         col_coords = mx.broadcast_to(col_coords, (latent_height, latent_width))
         image_ids = mx.concatenate(
             [
-                image_ids[:, :, :2],  # Keep first two dimensions
-                col_coords[:, :, None],  # Set column coordinates
+                image_ids[:, :, :2],
+                col_coords[:, :, None],
             ],
             axis=2,
         )
 
-        # Reshape to sequence format
         image_ids = mx.reshape(image_ids, (latent_height * latent_width, 3))
 
-        # Set the first dimension to 1 to distinguish from generation latents (which use 0)
         first_dim = mx.ones((image_ids.shape[0], 1))
         image_ids = mx.concatenate([first_dim, image_ids[:, 1:]], axis=1)
 
-        # Add batch dimension
         image_ids = mx.expand_dims(image_ids, axis=0)
 
         return image_ids

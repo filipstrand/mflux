@@ -26,8 +26,6 @@ class QwenTransformer(nn.Module):
         super().__init__()
         self.inner_dim = num_attention_heads * attention_head_dim
         self.img_in = nn.Linear(in_channels, self.inner_dim)
-        # PyTorch: self.txt_norm = RMSNorm(joint_attention_dim, eps=1e-6, elementwise_affine=False)
-        # Use custom RMSNorm to match PyTorch's dtype handling exactly
         self.txt_norm = QwenTransformerRMSNorm(joint_attention_dim, eps=1e-6)
         self.txt_in = nn.Linear(joint_attention_dim, self.inner_dim)
         self.time_text_embed = QwenTimeTextEmbed(timestep_proj_dim=256, inner_dim=self.inner_dim)
@@ -63,30 +61,17 @@ class QwenTransformer(nn.Module):
         qwen_image_ids: mx.array | None = None,  # Optional: for Edit model
         cond_image_grid: tuple[int, int, int] | None = None,  # Optional: for Edit model
     ) -> mx.array:
-        # Match PyTorch QwenImageTransformer.forward exactly (lines 637-695)
-
-        # 1. Image input projection
-        # PyTorch: hidden_states = self.img_in(hidden_states)
         hidden_states = self.img_in(hidden_states)
 
-        # 2. Convert timestep to hidden_states dtype BEFORE time_text_embed
-        # PyTorch: timestep = timestep.to(hidden_states.dtype)
         batch_size = hidden_states.shape[0]
         timestep = QwenTransformer._compute_timestep(t, config)
         timestep = mx.broadcast_to(timestep, (batch_size,)).astype(hidden_states.dtype)
 
-        # 3. Text normalization and input projection
-        # PyTorch: encoder_hidden_states = self.txt_norm(encoder_hidden_states)
-        # PyTorch: encoder_hidden_states = self.txt_in(encoder_hidden_states)
         encoder_hidden_states = self.txt_norm(encoder_hidden_states)
         encoder_hidden_states = self.txt_in(encoder_hidden_states)
 
-        # 4. Compute text embeddings (time + text conditioning)
-        # PyTorch: temb = self.time_text_embed(timestep, hidden_states)
         text_embeddings = self.time_text_embed(timestep, hidden_states)
 
-        # 5. Compute rotary embeddings
-        # PyTorch: image_rotary_emb = self.pos_embed(img_shapes, txt_seq_lens, device=hidden_states.device)
         image_rotary_embeddings = QwenTransformer._compute_rotary_embeddings(
             encoder_hidden_states_mask=encoder_hidden_states_mask,
             pos_embed=self.pos_embed,
@@ -94,8 +79,6 @@ class QwenTransformer(nn.Module):
             cond_image_grid=cond_image_grid,
         )
 
-        # 6. Run the transformer blocks
-        # PyTorch: for index_block, block in enumerate(self.transformer_blocks): ...
         for idx, block in enumerate(self.transformer_blocks):
             encoder_hidden_states, hidden_states = QwenTransformer._apply_transformer_block(
                 idx=idx,
@@ -107,9 +90,6 @@ class QwenTransformer(nn.Module):
                 image_rotary_embeddings=image_rotary_embeddings,
             )
 
-        # 7. Apply output normalization and projection
-        # PyTorch: hidden_states = self.norm_out(hidden_states, temb)
-        # PyTorch: output = self.proj_out(hidden_states)
         hidden_states = self.norm_out(hidden_states, text_embeddings)
         hidden_states = self.proj_out(hidden_states)
         return hidden_states
@@ -140,41 +120,25 @@ class QwenTransformer(nn.Module):
     ) -> mx.array:
         """
         Compute timestep tensor from step index or value.
-        Matches PyTorch's timestep handling (before conversion to hidden_states.dtype).
-
-        Returns:
-            timestep array [batch_size] - will be converted to hidden_states.dtype in __call__
         """
-        # Handle two cases:
-        # 1. txt2img: passes indices (0, 1, 2...) which are small integers
-        # 2. edit: passes actual timestep values (1000, 967, 932...) which are large integers
-        # 3. If t is a float, it's already the sigma value
         if isinstance(t, int):
-            # Check if t is a small index or a large timestep value
             if t < len(config.scheduler.sigmas):
-                # Case 1: Small value, likely an index (txt2img)
                 timestep_idx = t
                 time_step = config.scheduler.sigmas[timestep_idx]
             else:
-                # Case 2: Large value, likely an actual timestep (edit model)
-                # Find which sigma corresponds to this timestep value
                 timestep_idx = None
                 for idx, ts in enumerate(config.scheduler.timesteps):
-                    if abs(int(ts.item()) - t) < 1:  # Allow small tolerance for rounding
+                    if abs(int(ts.item()) - t) < 1:
                         timestep_idx = idx
                         break
                 if timestep_idx is None:
-                    # Fallback: use the timestep value directly as sigma (might be pre-normalized)
-                    time_step = t / 1000.0  # Normalize to [0, 1] range
+                    time_step = t / 1000.0
                 else:
                     time_step = config.scheduler.sigmas[timestep_idx]
         else:
             timestep_idx = None
             time_step = t
 
-        # Create timestep tensor (will be converted to hidden_states.dtype in __call__)
-        # PyTorch receives timestep as LongTensor, then converts to hidden_states.dtype
-        # We create as float32 first, then convert in __call__
         timestep = mx.array(np.full((1,), time_step, dtype=np.float32))
         return timestep
 
@@ -185,27 +149,15 @@ class QwenTransformer(nn.Module):
         config: RuntimeConfig,
         cond_image_grid: tuple[int, int, int] | list[tuple[int, int, int]] | None = None,
     ) -> tuple[mx.array, mx.array]:
-        # Latents are packed (2x2), so patch counts are already divided by 4
-        # Generation latents: height//16, width//16 (already packed)
-        # Conditioning latents: cond_h_patches, cond_w_patches (already packed)
-        # RoPE frequencies need to match the actual sequence length of packed latents
         latent_height = config.height // 16
         latent_width = config.width // 16
 
-        # For txt2img (simple case), just use generation shape
-        # For Edit model with conditioning image(s), pass list of shapes
         if cond_image_grid is None:
             img_shapes = [(1, latent_height, latent_width)]
         else:
-            # Edit model needs both generation and conditioning shapes
-            # Pass both to generate RoPE embeddings for concatenated latents
-            # If cond_image_grid is a list, it means multiple conditioning images
-            # NOTE: cond_image_grid already contains packed patch counts (from EditUtil)
             if isinstance(cond_image_grid, list):
-                # Multiple conditioning images: [gen_shape, cond1, cond2, ...]
                 img_shapes = [(1, latent_height, latent_width)] + cond_image_grid
             else:
-                # Single conditioning image: [gen_shape, cond_shape]
                 img_shapes = [(1, latent_height, latent_width), cond_image_grid]
 
         txt_seq_lens = [int(mx.sum(encoder_hidden_states_mask[i]).item()) for i in range(encoder_hidden_states_mask.shape[0])]  # fmt: off

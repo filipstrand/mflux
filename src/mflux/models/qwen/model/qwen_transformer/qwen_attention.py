@@ -40,17 +40,14 @@ class QwenAttention(nn.Module):
         image_rotary_emb: tuple[mx.array, mx.array],
         block_idx: int | None = None,  # For debugging context
     ) -> tuple[mx.array, mx.array]:
-        # 1a. Compute QKV for image stream
         img_query = self.to_q(img_modulated)
         img_key = self.to_k(img_modulated)
         img_value = self.to_v(img_modulated)
 
-        # 1b. Compute QKV for text stream
         txt_query = self.add_q_proj(txt_modulated)
         txt_key = self.add_k_proj(txt_modulated)
         txt_value = self.add_v_proj(txt_modulated)
 
-        # 2. Reshape for multi-head attention: [B, S, H*D] -> [B, S, H, D]
         img_query = mx.reshape(img_query, (img_query.shape[0], img_query.shape[1], self.num_heads, self.head_dim))
         img_key = mx.reshape(img_key, (img_key.shape[0], img_key.shape[1], self.num_heads, self.head_dim))
         img_value = mx.reshape(img_value, (img_value.shape[0], img_value.shape[1], self.num_heads, self.head_dim))
@@ -59,7 +56,6 @@ class QwenAttention(nn.Module):
         txt_key = mx.reshape(txt_key, (txt_key.shape[0], txt_key.shape[1], self.num_heads, self.head_dim))
         txt_value = mx.reshape(txt_value, (txt_value.shape[0], txt_value.shape[1], self.num_heads, self.head_dim))
 
-        # 3. Apply QK normalization
         if self.norm_q is not None:
             img_query = self.norm_q(img_query)
         if self.norm_k is not None:
@@ -69,7 +65,6 @@ class QwenAttention(nn.Module):
         if self.norm_added_k is not None:
             txt_key = self.norm_added_k(txt_key)
 
-        # 4. Apply RoPE
         if image_rotary_emb is not None:
             (img_cos, img_sin), (txt_cos, txt_sin) = image_rotary_emb
             img_query = QwenAttention._apply_rope_qwen(img_query, img_cos, img_sin)
@@ -77,12 +72,10 @@ class QwenAttention(nn.Module):
             txt_query = QwenAttention._apply_rope_qwen(txt_query, txt_cos, txt_sin)
             txt_key = QwenAttention._apply_rope_qwen(txt_key, txt_cos, txt_sin)
 
-        # 5. Concatenate for joint attention: [text, image]
         joint_query = mx.concatenate([txt_query, img_query], axis=1)
         joint_key = mx.concatenate([txt_key, img_key], axis=1)
         joint_value = mx.concatenate([txt_value, img_value], axis=1)
 
-        # 6. Compute joint attention
         seq_txt = txt_modulated.shape[1]
         mask = self._convert_mask_for_qwen(
             mask=encoder_hidden_states_mask,
@@ -98,11 +91,8 @@ class QwenAttention(nn.Module):
             block_idx=block_idx,
         )
 
-        # 7. Split attention outputs back
         txt_attn_output = hidden_states[:, :seq_txt, :]
         img_attn_output = hidden_states[:, seq_txt:, :]
-
-        # 8. Apply output projections
         img_attn_output = self.attn_to_out[0](img_attn_output)
         txt_attn_output = self.to_add_out(txt_attn_output)
 
@@ -116,7 +106,6 @@ class QwenAttention(nn.Module):
         mask: mx.array | None = None,
         block_idx: int | None = None,
     ) -> mx.array:
-        # Transpose [B, S, H, D] -> [B, H, S, D] for MLX's attention function
         query_bhsd = mx.transpose(query, (0, 2, 1, 3))
         key_bhsd = mx.transpose(key, (0, 2, 1, 3))
         value_bhsd = mx.transpose(value, (0, 2, 1, 3))
@@ -128,10 +117,8 @@ class QwenAttention(nn.Module):
             query_bhsd, key_bhsd, value_bhsd, scale=scale_value, mask=mask
         )
 
-        # Transpose back: [B, H, S, D] -> [B, S, H, D]
         hidden_states = mx.transpose(hidden_states_bhsd, (0, 2, 1, 3))
 
-        # Flatten: [B, S, H, D] -> [B, S, H*D]
         batch_size = hidden_states.shape[0]
         seq_len = hidden_states.shape[1]
         hidden_states = mx.reshape(hidden_states, (batch_size, seq_len, self.num_heads * self.head_dim))
@@ -163,14 +150,12 @@ class QwenAttention(nn.Module):
 
     @staticmethod
     def _apply_rope_qwen(x: mx.array, cos_vals: mx.array, sin_vals: mx.array) -> mx.array:
-        # Reshape to complex pairs: [B, S, H, D] -> [B, S, H, D//2, 2]
         x_float = x.astype(mx.float32)
         x_reshaped = mx.reshape(x_float, (*x.shape[:-1], -1, 2))
 
         x_real = x_reshaped[..., 0]
         x_imag = x_reshaped[..., 1]
 
-        # Prepare freqs for broadcasting: [1, S, 1, D//2]
         freqs_cos = cos_vals[None, :, None, :]
         freqs_sin = sin_vals[None, :, None, :]
 
@@ -178,11 +163,9 @@ class QwenAttention(nn.Module):
             freqs_cos = freqs_cos[..., : x_real.shape[-1]]
             freqs_sin = freqs_sin[..., : x_real.shape[-1]]
 
-        # Complex multiplication
         out_real = x_real * freqs_cos - x_imag * freqs_sin
         out_imag = x_real * freqs_sin + x_imag * freqs_cos
 
-        # Stack and flatten: [B, S, H, D//2, 2] -> [B, S, H, D]
         out_pairs = mx.stack([out_real, out_imag], axis=-1)
         x_out = mx.reshape(out_pairs, (*x.shape[:-1], -1))
 

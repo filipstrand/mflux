@@ -16,34 +16,23 @@ class PatchMerger(nn.Module):
         self.mlp_1 = nn.Linear(self.hidden_size_merged, hidden_size, bias=True)
 
     def __call__(self, x: mx.array, grid_thw: mx.array) -> mx.array:
-        # Apply RMSNorm
-        # Debug: Log weight values for verification
         if not hasattr(self, "_weights_logged"):
             self._weights_logged = True
         x = self.ln_q(x)
 
-        # Match PyTorch's simple approach - just reshape consecutive patches
-        # PyTorch does: x.view(-1, self.hidden_size) which merges consecutive groups of 4 patches
-        # After window reordering, patches are already grouped into 2x2 spatial blocks,
-        # so merging consecutive groups correctly merges spatially adjacent patches
-        # Process each image in grid_thw separately (matching the original logic)
+        # After window reordering, patches are grouped into 2x2 spatial blocks
+        # Merging consecutive groups correctly merges spatially adjacent patches
         merged_patches = []
         offset = 0
         for t, h, w in grid_thw:
             t, h, w = int(t), int(h), int(w)
             num_patches_this_image = t * h * w
-            x_this_image = x[offset : offset + num_patches_this_image]  # [t*h*w, context_dim]
-
-            # Simple reshape to merge consecutive groups of 4 patches (matching PyTorch)
-            # [t*h*w, context_dim] -> [t*h*w//4, context_dim*4] = [num_merged_patches, hidden_size_merged]
+            x_this_image = x[offset : offset + num_patches_this_image]
             x_merged = x_this_image.reshape(-1, self.hidden_size_merged)
             merged_patches.append(x_merged)
             offset += num_patches_this_image
 
-        # Concatenate all images
-        x = mx.concatenate(merged_patches, axis=0)  # [total_merged_patches, hidden_size_merged]
-
-        # Apply MLP with GELU activation
+        x = mx.concatenate(merged_patches, axis=0)
         x = self.mlp_0(x)
         x = nn.gelu(x)
         x = self.mlp_1(x)
