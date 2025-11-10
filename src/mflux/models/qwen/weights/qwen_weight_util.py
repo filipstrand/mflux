@@ -90,7 +90,7 @@ class QwenWeightUtil:
             )
             if has_visual_weights and text_encoder.encoder.visual is None:
                 print("🔧 Initializing VisionTransformer for Edit model")
-                from mflux.models.qwen.model.qwen_text_encoder.qwen_encoder import VisionTransformer
+                from mflux.models.qwen.model.qwen_text_encoder.qwen_vision_transformer import VisionTransformer
 
                 text_encoder.encoder.visual = VisionTransformer(
                     patch_size=14,
