@@ -23,10 +23,7 @@ class QwenImageEncoder3D(nn.Module):
 
         down_blocks = []
         for i, (in_dim, out_dim) in enumerate(zip(dims[:-1], dims[1:])):
-            if i < len(self.temporal_downsample):
-                downsample_mode = "downsample3d" if self.temporal_downsample[i] else "downsample2d"
-            else:
-                downsample_mode = "downsample2d"
+            downsample_mode = "downsample3d" if self.temporal_downsample[i] else "downsample2d"
             # Do not downsample on the final stage only
             if i == len(dims) - 2:
                 downsample_mode = None
@@ -54,8 +51,6 @@ class QwenImageEncoder3D(nn.Module):
                     n2 = resnet.norm2(c1)
                     a2 = nn.silu(n2)
                     c2 = resnet.conv2(a2)
-                    if resnet.skip_conv is not None:
-                        residual = resnet.skip_conv(residual)
                     y = c2 + residual
                     x = y
                 else:

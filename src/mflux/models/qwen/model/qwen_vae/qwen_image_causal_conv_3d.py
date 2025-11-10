@@ -24,12 +24,7 @@ class QwenImageCausalConv3D(nn.Module):
         self.kernel_size = kernel_size
 
     def __call__(self, x: mx.array) -> mx.array:
-        if isinstance(self.padding, int):
-            pad_t = pad_h = pad_w = self.padding
-        elif isinstance(self.padding, (tuple, list)) and len(self.padding) == 3:
-            pad_t, pad_h, pad_w = self.padding
-        else:
-            pad_t = pad_h = pad_w = self.padding
+        pad_t = pad_h = pad_w = self.padding
 
         # Apply causal padding in channels-first format (B, C, T, H, W)
         if pad_t > 0 or pad_h > 0 or pad_w > 0:

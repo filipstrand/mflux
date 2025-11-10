@@ -84,8 +84,6 @@ class QwenAttention(nn.Module):
     @staticmethod
     def _repeat_kv(hidden_states: mx.array, n_rep: int) -> mx.array:
         batch, num_key_value_heads, slen, head_dim = hidden_states.shape
-        if n_rep == 1:
-            return hidden_states
         hidden_states = mx.expand_dims(hidden_states, axis=2)
         hidden_states = mx.broadcast_to(hidden_states, (batch, num_key_value_heads, n_rep, slen, head_dim))
         return hidden_states.reshape(batch, num_key_value_heads * n_rep, slen, head_dim)
@@ -127,9 +125,6 @@ class QwenAttention(nn.Module):
         if unsqueeze_dim == 1:
             cos_combined = mx.expand_dims(cos_combined, axis=1)
             sin_combined = mx.expand_dims(sin_combined, axis=1)
-        elif unsqueeze_dim == 2:
-            cos_combined = mx.expand_dims(cos_combined, axis=2)
-            sin_combined = mx.expand_dims(sin_combined, axis=2)
 
         # Apply rotary embedding with float32 precision to match PyTorch
         # PyTorch does RoPE computation in float32, then converts back to bfloat16
