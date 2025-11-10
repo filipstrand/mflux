@@ -5,14 +5,19 @@ import os
 default_hf_home = os.path.expanduser("~/.cache/huggingface")
 shared_hf_home = "/Users/Shared/.cache/huggingface"
 
-# Check for edit model in default location first (it's there)
-if os.path.exists(f"{default_hf_home}/hub/models--Qwen--Qwen-Image-Edit"):
+# Check for edit models in default location first (they're there)
+if os.path.exists(f"{default_hf_home}/hub/models--Qwen--Qwen-Image-Edit") or os.path.exists(
+    f"{default_hf_home}/hub/models--Qwen--Qwen-Image-Edit-2509"
+):
     os.environ["HF_HOME"] = default_hf_home
+    os.environ["HF_HUB_CACHE"] = f"{default_hf_home}/hub"
 # Use shared location if it exists and has the regular Qwen-Image model
 elif os.path.exists(shared_hf_home) and os.path.exists(f"{shared_hf_home}/hub/models--Qwen--Qwen-Image"):
     os.environ["HF_HOME"] = shared_hf_home
+    os.environ["HF_HUB_CACHE"] = f"{shared_hf_home}/hub"
 elif not os.environ.get("HF_HOME"):
     os.environ["HF_HOME"] = default_hf_home
+    os.environ["HF_HUB_CACHE"] = f"{default_hf_home}/hub"
 
 # Preserve test output images so they can be visually inspected
 os.environ["MFLUX_PRESERVE_TEST_OUTPUT"] = "1"
