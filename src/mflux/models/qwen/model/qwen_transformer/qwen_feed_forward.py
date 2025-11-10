@@ -3,14 +3,6 @@ from mlx import nn
 
 
 class QwenFeedForward(nn.Module):
-    """
-    Matches PyTorch FeedForward class exactly (diffusers/models/attention.py:1668-1731).
-
-    PyTorch initialization:
-        FeedForward(dim=dim, dim_out=dim, activation_fn="gelu-approximate")
-        # Creates: GELU(dim, inner_dim=4*dim, approximate="tanh", bias=True) -> Dropout(0.0) -> Linear(4*dim, dim, bias=True)
-    """
-
     def __init__(self, dim: int = 3072):
         super().__init__()
         # PyTorch: self.net[0] = GELU(dim, inner_dim=4*dim, approximate="tanh", bias=True)

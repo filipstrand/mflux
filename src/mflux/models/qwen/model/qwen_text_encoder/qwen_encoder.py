@@ -6,96 +6,6 @@ from mflux.models.qwen.model.qwen_text_encoder.qwen_rms_norm import QwenRMSNorm
 from mflux.models.qwen.model.qwen_text_encoder.qwen_rope import QwenRotaryEmbedding
 
 
-def preprocess_image_for_vision_transformer(image, target_size: tuple[int, int] = (1024, 1024)):
-    """
-    Preprocess image for vision transformer exactly as the reference does.
-    This matches the Qwen2VL preprocessing pipeline exactly.
-
-    Args:
-        image: PIL Image
-        target_size: Target (width, height) for resizing
-
-    Returns:
-        Preprocessed image tensor ready for patch extraction [C, H, W]
-    """
-    import numpy as np
-    from PIL import Image
-
-    # Resize image using BICUBIC (matches Qwen2VL processor)
-    image = image.resize(target_size, Image.BICUBIC)
-
-    # Convert to numpy array and normalize to [0, 1]
-    image_array = np.array(image).astype(np.float32) / 255.0
-
-    # Apply Qwen2VL normalization (matches the reference exactly)
-    # These are the exact values used in Qwen2VL processor
-    mean = np.array([0.48145466, 0.4578275, 0.40821073])
-    std = np.array([0.26862954, 0.26130258, 0.27577711])
-    image_array = (image_array - mean) / std
-
-    # Convert to MLX array: [H, W, C] -> [C, H, W]
-    image_tensor = mx.array(image_array.transpose(2, 0, 1))
-
-    return image_tensor
-
-
-def extract_image_patches(image_tensor: mx.array, patch_size: int = 14, temporal_patch_size: int = 2):
-    """
-    Extract patches from image tensor for vision transformer processing.
-
-    Args:
-        image_tensor: [C, H, W] image tensor
-        patch_size: Spatial patch size (14x14)
-        temporal_patch_size: Temporal patch size (2)
-
-    Returns:
-        patches: [num_patches, C, temporal_patch_size, patch_size, patch_size]
-        grid_thw: [1, 3] tensor with [temporal, height_patches, width_patches]
-    """
-    C, H, W = image_tensor.shape
-
-    # Ensure dimensions are divisible by patch_size
-    H_padded = ((H + patch_size - 1) // patch_size) * patch_size
-    W_padded = ((W + patch_size - 1) // patch_size) * patch_size
-
-    # Pad if necessary
-    if H_padded != H or W_padded != W:
-        print(f"🔎 Padding image from {H}x{W} to {H_padded}x{W_padded} for patch extraction")
-        pad_h = H_padded - H
-        pad_w = W_padded - W
-        # Pad with zeros: (left, right, top, bottom)
-        image_tensor = mx.pad(image_tensor, ((0, 0), (0, pad_h), (0, pad_w)), mode="constant", constant_values=0)
-        H, W = H_padded, W_padded
-
-    # Calculate number of patches
-    h_patches = H // patch_size
-    w_patches = W // patch_size
-
-    print(f"🔎 Extracting {h_patches}x{w_patches} patches of size {patch_size}x{patch_size}")
-
-    # Reshape image into patches: [C, H, W] -> [C, h_patches, patch_size, w_patches, patch_size]
-    patches = image_tensor.reshape(C, h_patches, patch_size, w_patches, patch_size)
-    # Transpose to: [h_patches, w_patches, C, patch_size, patch_size]
-    patches = patches.transpose(1, 3, 0, 2, 4)
-    # Reshape to: [num_patches, C, patch_size, patch_size]
-    patches = patches.reshape(h_patches * w_patches, C, patch_size, patch_size)
-
-    # Add temporal dimension: [num_patches, C, patch_size, patch_size] -> [num_patches, C, temporal_patch_size, patch_size, patch_size]
-    # For images, we repeat the patch temporal_patch_size times
-    patches = mx.expand_dims(patches, axis=2)  # [num_patches, C, 1, patch_size, patch_size]
-    patches = mx.tile(
-        patches, (1, 1, temporal_patch_size, 1, 1)
-    )  # [num_patches, C, temporal_patch_size, patch_size, patch_size]
-
-    # Transpose to MLX Conv3D format: [num_patches, temporal_patch_size, patch_size, patch_size, C]
-    patches = patches.transpose(0, 2, 3, 4, 1)  # [num_patches, temporal_patch_size, patch_size, patch_size, C]
-
-    # Create grid_thw: [temporal=1, height_patches, width_patches]
-    grid_thw = mx.array([[1, h_patches, w_patches]], dtype=mx.int32)
-
-    return patches, grid_thw
-
-
 class VisionPatchEmbed(nn.Module):
     """Vision patch embedding using 3D convolution - matches visual.patch_embed.proj"""
 
@@ -998,29 +908,6 @@ class QwenEncoder(nn.Module):
             )
 
         return image_embeds_split
-
-    def process_image_natively(self, image_path: str, target_size: tuple[int, int] = (1024, 1024)):
-        """
-        Process image natively without HuggingFace dependencies.
-
-        Args:
-            image_path: Path to image file
-            target_size: Target (width, height) for resizing
-
-        Returns:
-            pixel_values: [num_patches, C, T, H, W] patches ready for vision transformer
-            image_grid_thw: [1, 3] grid dimensions
-        """
-        from PIL import Image
-
-        # Load and preprocess image
-        image = Image.open(image_path).convert("RGB")
-        image_tensor = preprocess_image_for_vision_transformer(image, target_size)
-
-        # Extract patches
-        pixel_values, image_grid_thw = extract_image_patches(image_tensor)
-
-        return pixel_values, image_grid_thw
 
     def get_placeholder_mask(
         self,

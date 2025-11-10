@@ -3,8 +3,6 @@ from __future__ import annotations
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.flux.model.flux_transformer.common.attention_utils import AttentionUtils
-
 
 class QwenAttention(nn.Module):
     def __init__(self, dim: int = 3072, num_heads: int = 24, head_dim: int = 128):
@@ -257,60 +255,7 @@ class QwenAttention(nn.Module):
         return additive.reshape((additive.shape[0], 1, 1, additive.shape[1]))
 
     @staticmethod
-    def _apply_rotary_embeddings_joint(
-        joint_q: mx.array,
-        joint_k: mx.array,
-        txt_seq_len: int,
-        image_rotary_emb: tuple[tuple[mx.array, mx.array], tuple[mx.array, mx.array]],
-    ) -> tuple[mx.array, mx.array]:
-        """
-        Apply RoPE to joint Q,K tensors in [B,S,H,D] format using complex rotation.
-
-        Matches Diffusers' complex rotation approach (use_real=False).
-        RoPE embeddings are tuples of (cos, sin) tensors with shape [S, D/2].
-        """
-        (img_cos, img_sin), (txt_cos, txt_sin) = image_rotary_emb
-
-        # Extract separate parts from [B,S,H,D] - split on sequence dimension (axis=1)
-        txt_q = joint_q[:, :txt_seq_len, :, :]
-        img_q = joint_q[:, txt_seq_len:, :, :]
-        txt_k = joint_k[:, :txt_seq_len, :, :]
-        img_k = joint_k[:, txt_seq_len:, :, :]
-
-        # Apply RoPE using complex rotation (matches Diffusers use_real=False)
-        img_q = QwenAttention._apply_rope_complex(img_q, img_cos, img_sin)
-        img_k = QwenAttention._apply_rope_complex(img_k, img_cos, img_sin)
-        txt_q = QwenAttention._apply_rope_complex(txt_q, txt_cos, txt_sin)
-        txt_k = QwenAttention._apply_rope_complex(txt_k, txt_cos, txt_sin)
-
-        # Concatenate back [text, image] on sequence dimension (axis=1)
-        joint_q = mx.concatenate([txt_q, img_q], axis=1)
-        joint_k = mx.concatenate([txt_k, img_k], axis=1)
-
-        return joint_q, joint_k
-
-    @staticmethod
     def _apply_rope_qwen(x: mx.array, cos_vals: mx.array, sin_vals: mx.array) -> mx.array:
-        """
-        Apply RoPE using complex number multiplication (matches PyTorch apply_rotary_emb_qwen with use_real=False).
-
-        PyTorch code (lines 142-147):
-            x_rotated = torch.view_as_complex(x.float().reshape(*x.shape[:-1], -1, 2))
-            freqs_cis = freqs_cis.unsqueeze(1)
-            x_out = torch.view_as_real(x_rotated * freqs_cis).flatten(3)
-            return x_out.type_as(x)
-
-        In PyTorch, freqs_cis is a complex tensor e^(i*θ) = cos(θ) + i*sin(θ).
-        In MLX, we receive cos and sin separately.
-
-        Args:
-            x: Input tensor [B, S, H, D]
-            cos_vals: Cosine frequencies [S, D] (where D matches head_dim)
-            sin_vals: Sine frequencies [S, D]
-
-        Returns:
-            Rotated tensor [B, S, H, D]
-        """
         # Step 1: Reshape x to treat last dimension as complex pairs: [B, S, H, D] -> [B, S, H, D//2, 2]
         # PyTorch: x.float().reshape(*x.shape[:-1], -1, 2)
         x_float = x.astype(mx.float32)
@@ -352,42 +297,3 @@ class QwenAttention(nn.Module):
         # Step 7: Convert back to original dtype
         # PyTorch: .type_as(x)
         return x_out.astype(x.dtype)
-
-    @staticmethod
-    def _apply_rotary_embeddings_separate(
-        q: mx.array,
-        k: mx.array,
-        rotary_emb: tuple[mx.array, mx.array],
-    ) -> tuple[mx.array, mx.array]:
-        """Alternative RoPE application for Edit model - applies RoPE before concatenation"""
-        # rotary_emb is now a tuple of (cos, sin) with shape [S, D/2]
-        cos, sin = rotary_emb
-
-        # Convert to [B, S, H, D] format for RoPE application
-        q_bshd = mx.transpose(q, (0, 2, 1, 3))
-        k_bshd = mx.transpose(k, (0, 2, 1, 3))
-
-        seq_len = q_bshd.shape[1]
-
-        # Ensure RoPE dimensions match sequence length
-        if cos.shape[0] != seq_len:
-            if cos.shape[0] < seq_len:
-                # Pad with the last embedding
-                pad_len = seq_len - cos.shape[0]
-                last_cos = mx.tile(cos[-1:], (pad_len, 1))
-                last_sin = mx.tile(sin[-1:], (pad_len, 1))
-                cos = mx.concatenate([cos, last_cos], axis=0)
-                sin = mx.concatenate([sin, last_sin], axis=0)
-            else:
-                # Truncate to sequence length
-                cos = cos[:seq_len]
-                sin = sin[:seq_len]
-
-        # Apply RoPE
-        q_bshd, k_bshd = AttentionUtils.apply_rope_bshd(q_bshd, k_bshd, cos, sin)
-
-        # Convert back to [B, H, S, D] format
-        q = mx.transpose(q_bshd, (0, 2, 1, 3))
-        k = mx.transpose(k_bshd, (0, 2, 1, 3))
-
-        return q, k

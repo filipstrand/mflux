@@ -6,10 +6,6 @@ from mflux.models.qwen.model.qwen_transformer.qwen_timesteps import QwenTimestep
 
 
 class QwenTimeTextEmbed(nn.Module):
-    """
-    Matches PyTorch QwenTimestepProjEmbeddings exactly (transformer_qwenimage.py:150-163).
-    """
-
     def __init__(self, timestep_proj_dim: int = 256, inner_dim: int = 3072):
         super().__init__()
         # PyTorch: self.time_proj = Timesteps(num_channels=256, flip_sin_to_cos=True, downscale_freq_shift=0, scale=1000)

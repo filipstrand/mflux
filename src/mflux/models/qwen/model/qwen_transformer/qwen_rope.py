@@ -6,15 +6,6 @@ from mlx import nn
 
 
 class QwenEmbedRopeMLX(nn.Module):
-    """
-    Faithful MLX port of QwenEmbedRope from diffusers.
-
-    This implementation closely matches the PyTorch reference to ensure numerical consistency.
-    Key differences from PyTorch:
-    - Returns (cos, sin) tuples instead of complex tensors (MLX attention expects this format)
-    - Uses NumPy for caching to avoid MLX graph issues with buffers
-    """
-
     def __init__(self, theta: int, axes_dim: list[int], scale_rope: bool = False):
         super().__init__()
         self.theta = theta

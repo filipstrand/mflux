@@ -5,13 +5,6 @@ from mlx import nn
 
 
 class QwenTimesteps(nn.Module):
-    """
-    Matches PyTorch Timesteps class exactly (diffusers/models/embeddings.py:1310-1326).
-
-    PyTorch initialization:
-        Timesteps(num_channels=256, flip_sin_to_cos=True, downscale_freq_shift=0, scale=1000)
-    """
-
     def __init__(self, proj_dim: int = 256, scale: float = 1000.0):
         super().__init__()
         self.proj_dim = proj_dim
@@ -52,12 +45,5 @@ class QwenTimesteps(nn.Module):
         # PyTorch: if flip_sin_to_cos: emb = torch.cat([emb[:, half_dim:], emb[:, :half_dim]], dim=-1)
         if self.flip_sin_to_cos:
             emb = mx.concatenate([emb[:, half_dim:], emb[:, :half_dim]], axis=-1)
-
-        # PyTorch: if embedding_dim % 2 == 1: emb = torch.nn.functional.pad(emb, (0, 1, 0, 0))
-        if self.proj_dim % 2 == 1:
-            # MLX doesn't have pad, so we use concatenate with zeros
-            pad_shape = list(emb.shape)
-            pad_shape[-1] = 1
-            emb = mx.concatenate([emb, mx.zeros(pad_shape, dtype=emb.dtype)], axis=-1)
 
         return emb

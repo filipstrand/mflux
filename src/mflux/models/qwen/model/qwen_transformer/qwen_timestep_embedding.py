@@ -3,14 +3,6 @@ from mlx import nn
 
 
 class QwenTimestepEmbedding(nn.Module):
-    """
-    Matches PyTorch TimestepEmbedding class exactly (diffusers/models/embeddings.py:1262-1307).
-
-    PyTorch initialization:
-        TimestepEmbedding(in_channels=256, time_embed_dim=embedding_dim)
-        # Uses default act_fn="silu", no cond_proj, no post_act
-    """
-
     def __init__(self, proj_dim: int, inner_dim: int):
         super().__init__()
         # PyTorch: self.linear_1 = nn.Linear(in_channels, time_embed_dim, sample_proj_bias)

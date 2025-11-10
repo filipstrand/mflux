@@ -1,10 +1,3 @@
-"""
-Vision-Language encoder for Qwen Image Edit - Integrated approach matching Diffusers.
-
-This module provides a simplified VL encoder that mirrors the Diffusers reference
-implementation using the integrated Qwen2_5_VLForConditionalGeneration approach.
-"""
-
 import os
 
 import mlx.core as mx
@@ -14,13 +7,6 @@ from mflux.models.qwen.model.qwen_text_encoder.qwen_encoder import QwenEncoder
 
 
 class QwenVisionLanguageEncoder(nn.Module):
-    """
-    Vision-Language encoder for Qwen Image Edit - integrated approach matching Diffusers.
-
-    This is essentially a wrapper around the text encoder that handles vision-language
-    inputs in the same way as Qwen2_5_VLForConditionalGeneration in Diffusers.
-    """
-
     def __init__(self, encoder=None):
         super().__init__()
         self.encoder = encoder or QwenEncoder()
