@@ -66,20 +66,13 @@ class QwenEncoder(nn.Module):
 
     def __call__(
         self,
-        input_ids: mx.array | None = None,
+        input_ids: mx.array,
         attention_mask: mx.array | None = None,
-        inputs_embeds: mx.array | None = None,
         pixel_values: mx.array | None = None,
         image_grid_thw: mx.array | None = None,
     ) -> mx.array:
-        if inputs_embeds is None:
-            if input_ids is None:
-                raise ValueError("Either input_ids or inputs_embeds must be provided.")
-            batch_size, seq_len = input_ids.shape
-            inputs_embeds = self.embed_tokens(input_ids)
-
-        else:
-            batch_size, seq_len, _ = inputs_embeds.shape
+        batch_size, seq_len = input_ids.shape
+        inputs_embeds = self.embed_tokens(input_ids)
 
         if pixel_values is not None and image_grid_thw is not None:
             image_embeds_split = self.get_image_features(pixel_values, image_grid_thw)
