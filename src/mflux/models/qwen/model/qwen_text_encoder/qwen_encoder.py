@@ -7,8 +7,6 @@ from mflux.models.qwen.model.qwen_text_encoder.qwen_rope import QwenRotaryEmbedd
 
 
 class VisionPatchEmbed(nn.Module):
-    """Vision patch embedding using 3D convolution - matches visual.patch_embed.proj"""
-
     def __init__(
         self,
         patch_size: int = 14,
@@ -56,8 +54,6 @@ class VisionPatchEmbed(nn.Module):
 
 
 class VisionRotaryEmbedding(nn.Module):
-    """Vision rotary positional embedding"""
-
     def __init__(self, dim: int, theta: float = 10000.0):
         super().__init__()
         self.dim = dim
@@ -75,15 +71,6 @@ class VisionRotaryEmbedding(nn.Module):
 
 
 class VisionMLP(nn.Module):
-    """
-    Vision MLP block - GLU-style MLP matching Qwen2_5_VLMLP
-
-    Uses gated linear unit architecture:
-    output = down_proj(silu(gate_proj(x)) * up_proj(x))
-
-    This is NOT a simple 2-layer MLP! It's a 3-layer gated architecture.
-    """
-
     def __init__(self, dim: int, hidden_dim: int):
         super().__init__()
         # GLU-style MLP with 3 projections (SwiGLU variant)
@@ -100,8 +87,6 @@ class VisionMLP(nn.Module):
 
 
 class VisionAttention(nn.Module):
-    """Vision attention block - matches visual.blocks.*.attn"""
-
     def __init__(self, embed_dim: int = 1280, num_heads: int = 16):
         super().__init__()
         self.embed_dim = embed_dim
@@ -131,22 +116,6 @@ class VisionAttention(nn.Module):
                 cos_emb = cos_emb[:seq_len]
                 sin_emb = sin_emb[:seq_len]
 
-            # Debug checkpoint: Verify position embeddings before RoPE
-            from mflux_debugger.semantic_checkpoint import debug_checkpoint
-
-            debug_checkpoint(
-                "mlx_vision_attention_before_rope",
-                skip=True,
-                q_shape=q.shape,
-                k_shape=k.shape,
-                q_preview=q[0, :3, :5].tolist() if q.shape[0] > 0 and q.shape[1] > 0 else None,
-                k_preview=k[0, :3, :5].tolist() if k.shape[0] > 0 and k.shape[1] > 0 else None,
-                cos_shape=cos_emb.shape,
-                sin_shape=sin_emb.shape,
-                cos_preview=cos_emb[:3, :5].tolist() if cos_emb.shape[0] > 0 else None,
-                sin_preview=sin_emb[:3, :5].tolist() if sin_emb.shape[0] > 0 else None,
-            )
-
             # Apply RoPE to q and k (matching HF's rotate_half logic)
             # Matching QwenAttention._apply_multimodal_rotary_pos_emb implementation
             def apply_rope(x, cos, sin):
@@ -167,16 +136,6 @@ class VisionAttention(nn.Module):
 
             q = apply_rope(q, cos_emb, sin_emb)
             k = apply_rope(k, cos_emb, sin_emb)
-
-            # Debug checkpoint: Verify q and k after RoPE
-            debug_checkpoint(
-                "mlx_vision_attention_after_rope",
-                skip=True,
-                q_shape=q.shape,
-                k_shape=k.shape,
-                q_preview=q[0, :3, :5].tolist() if q.shape[0] > 0 and q.shape[1] > 0 else None,
-                k_preview=k[0, :3, :5].tolist() if k.shape[0] > 0 and k.shape[1] > 0 else None,
-            )
 
         # Process attention chunks if cu_seqlens is provided (windowed attention)
         if cu_seqlens is not None and len(cu_seqlens) > 2:
@@ -220,8 +179,6 @@ class VisionAttention(nn.Module):
 
 
 class VisionBlock(nn.Module):
-    """Vision transformer block - matches visual.blocks.*"""
-
     def __init__(self, embed_dim: int = 1280, num_heads: int = 16, mlp_ratio: float = 2.671875):
         super().__init__()
         self.norm1 = nn.RMSNorm(embed_dim, eps=1e-6)  # Fixed: was LayerNorm, should be RMSNorm
@@ -244,11 +201,6 @@ class VisionBlock(nn.Module):
 
 
 class PatchMerger(nn.Module):
-    """
-    Spatial patch merger - matches HF's Qwen2_5_VLPatchMerger.
-    Merges spatial_merge_size x spatial_merge_size patches into one patch.
-    """
-
     def __init__(self, context_dim: int, hidden_size: int, spatial_merge_size: int = 2):
         super().__init__()
         self.spatial_merge_size = spatial_merge_size
@@ -262,27 +214,9 @@ class PatchMerger(nn.Module):
         self.mlp_1 = nn.Linear(self.hidden_size_merged, hidden_size, bias=True)
 
     def __call__(self, x: mx.array, grid_thw: mx.array) -> mx.array:
-        """
-        Args:
-            x: [num_patches, context_dim]
-            grid_thw: [num_images, 3] - temporal, height, width dimensions
-        Returns:
-            [num_patches // (spatial_merge_size**2), hidden_size]
-        """
         # Apply RMSNorm
         # Debug: Log weight values for verification
         if not hasattr(self, "_weights_logged"):
-            from mflux_debugger.semantic_checkpoint import debug_checkpoint
-
-            debug_checkpoint(
-                "mlx_patch_merger_weights",
-                skip=True,
-                ln_q_weight_preview=self.ln_q.weight[:10].tolist(),
-                mlp_0_weight_preview=self.mlp_0.weight[0, :10].tolist(),
-                mlp_0_bias_preview=self.mlp_0.bias[:10].tolist(),
-                mlp_1_weight_preview=self.mlp_1.weight[0, :10].tolist(),
-                mlp_1_bias_preview=self.mlp_1.bias[:10].tolist(),
-            )
             self._weights_logged = True
         x = self.ln_q(x)
 
@@ -307,45 +241,14 @@ class PatchMerger(nn.Module):
         # Concatenate all images
         x = mx.concatenate(merged_patches, axis=0)  # [total_merged_patches, hidden_size_merged]
 
-        # Debug checkpoint after concatenation
-        from mflux_debugger.semantic_checkpoint import debug_checkpoint
-
-        debug_checkpoint(
-            "mlx_patch_merger_after_concat",
-            skip=True,
-            x_shape=x.shape,
-            x_preview=x[:5, :10].tolist() if x.shape[0] > 0 else None,
-        )
-
         # Apply MLP with GELU activation
         x = self.mlp_0(x)
-        debug_checkpoint(
-            "mlx_patch_merger_after_mlp_0",
-            skip=True,
-            x_shape=x.shape,
-            x_preview=x[:5, :10].tolist() if x.shape[0] > 0 else None,
-        )
         x = nn.gelu(x)
-        debug_checkpoint(
-            "mlx_patch_merger_after_gelu",
-            skip=True,
-            x_shape=x.shape,
-            x_preview=x[:5, :10].tolist() if x.shape[0] > 0 else None,
-        )
         x = self.mlp_1(x)
-        debug_checkpoint(
-            "mlx_patch_merger_after_mlp_1",
-            skip=True,
-            x_shape=x.shape,
-            x_preview=x[:5, :10].tolist() if x.shape[0] > 0 else None,
-        )
-
         return x
 
 
 class VisionTransformer(nn.Module):
-    """Complete vision transformer - matches the visual.* structure"""
-
     def __init__(
         self,
         patch_size: int = 14,
@@ -381,14 +284,6 @@ class VisionTransformer(nn.Module):
         self.merger = PatchMerger(embed_dim, hidden_size, spatial_merge_size)
 
     def get_window_index(self, grid_thw: mx.array):
-        """
-        Compute window indices and cumulative sequence lengths for windowed attention.
-        Matches HF's get_window_index method.
-
-        Returns:
-            window_index: Indices for spatial windowing (for reordering patches)
-            cu_window_seqlens: Cumulative sequence lengths for windowed attention chunks
-        """
         window_index = []
         cu_window_seqlens = [0]
         window_index_id = 0
@@ -440,7 +335,6 @@ class VisionTransformer(nn.Module):
         return window_index, cu_window_seqlens
 
     def rot_pos_emb(self, grid_thw: mx.array) -> mx.array:
-        """Generate rotary position embeddings with spatial merging (matching HF)"""
         pos_ids = []
         for t, h, w in grid_thw:
             t, h, w = int(t), int(h), int(w)
@@ -497,52 +391,18 @@ class VisionTransformer(nn.Module):
             pixel_values: [num_patches, channels * temporal_patch_size * patch_size * patch_size] (flattened)
             grid_thw: [num_images, 3] - temporal, height, width dimensions
         """
-        from mflux_debugger.semantic_checkpoint import debug_checkpoint
 
         # Checkpoint before vision transformer to compare inputs
-        debug_checkpoint(
-            "mlx_before_vision_transformer",
-            skip=True,
-            pixel_values_shape=pixel_values.shape,
-            pixel_values_preview=pixel_values[:10, :10].tolist() if pixel_values.shape[0] > 0 else None,
-            pixel_values_mean=float(mx.mean(pixel_values).item()),
-            pixel_values_std=float(mx.std(pixel_values).item()),
-            grid_thw=grid_thw.tolist(),
-        )
-
         # Patch embedding (will reshape internally to match PyTorch's NCDHW format)
         hidden_states = self.patch_embed(pixel_values)  # [num_patches, embed_dim]
 
         print(f"🔎 VisionTransformer: After patch_embed: {hidden_states.shape}")
         # Checkpoint after patch_embed (verified - patch_embed matches)
-        debug_checkpoint(
-            "mlx_after_patch_embed",
-            skip=True,  # Verified - matches PyTorch
-            verified=True,
-            hidden_states_shape=hidden_states.shape,
-            hidden_states_preview=hidden_states[:5, :10].tolist() if hidden_states.shape[0] > 0 else None,
-        )
-
         # Rotary position embeddings (with spatial merging order)
         rotary_pos_emb = self.rot_pos_emb(grid_thw)  # [num_patches, dim] where dim = head_dim
 
-        debug_checkpoint(
-            "mlx_after_rotary_emb",
-            skip=True,
-            rotary_pos_emb_shape=rotary_pos_emb.shape,
-            rotary_pos_emb_preview=rotary_pos_emb[:5, :10].tolist() if rotary_pos_emb.shape[0] > 0 else None,
-        )
-
         # Get window index and cu_seqlens for windowed attention
         window_index, cu_window_seqlens = self.get_window_index(grid_thw)
-
-        debug_checkpoint(
-            "mlx_after_window_index",
-            skip=True,
-            window_index_shape=window_index.shape,
-            window_index_preview=window_index[:20].tolist() if window_index.shape[0] > 0 else None,
-            cu_window_seqlens_preview=cu_window_seqlens[:10].tolist() if cu_window_seqlens.shape[0] > 0 else None,
-        )
 
         # Ensure cu_window_seqlens has unique consecutive values (matching HF's torch.unique_consecutive)
         cu_window_seqlens_unique = [cu_window_seqlens[0].item()]
@@ -568,18 +428,6 @@ class VisionTransformer(nn.Module):
         # This means groups are: [0,1,2,3], [4,5,6,7], [8,9,10,11], ... (consecutive patches in row-major order)
         # NOT 2x2 spatial blocks! The window_index expects this consecutive grouping.
 
-        debug_checkpoint(
-            "mlx_before_window_reorder",
-            skip=False,  # Verify raw patches before grouping
-            hidden_states_shape=hidden_states.shape,
-            hidden_states_preview=hidden_states[:5, :10].tolist() if hidden_states.shape[0] > 0 else None,
-            window_index_shape=window_index.shape,
-            window_index_preview=window_index[:20].tolist() if window_index.shape[0] > 0 else None,
-            spatial_merge_unit=self.spatial_merge_unit,
-            seq_len=hidden_states.shape[0],
-            num_groups=hidden_states.shape[0] // self.spatial_merge_unit,
-        )
-
         # CRITICAL FIX: Match PyTorch's simple consecutive grouping
         # PyTorch does: reshape(seq_len // spatial_merge_unit, spatial_merge_unit, -1)
         # This groups consecutive patches, NOT 2x2 spatial blocks!
@@ -590,57 +438,18 @@ class VisionTransformer(nn.Module):
             num_groups, self.spatial_merge_unit, -1
         )  # [total_groups, spatial_merge_unit, hidden_dim]
 
-        debug_checkpoint(
-            "mlx_after_grouping_before_reorder",
-            skip=False,  # Verify groups are correct (consecutive patches)
-            hidden_states_grouped_shape=hidden_states_grouped.shape,
-            hidden_states_grouped_preview=hidden_states_grouped[:3, :, :5].tolist()
-            if hidden_states_grouped.shape[0] > 0
-            else None,
-            first_group_indices=list(range(self.spatial_merge_unit)),  # Should be [0,1,2,3]
-            second_group_indices=list(
-                range(self.spatial_merge_unit, 2 * self.spatial_merge_unit)
-            ),  # Should be [4,5,6,7]
-        )
-
         # Now reorder groups using window_index
         hidden_states_grouped = hidden_states_grouped[window_index.astype(mx.int32), :, :]
-
-        debug_checkpoint(
-            "mlx_after_reorder_before_reshape",
-            skip=False,  # Verify reordered groups
-            hidden_states_grouped_shape=hidden_states_grouped.shape,
-            hidden_states_grouped_preview=hidden_states_grouped[:3, :, :5].tolist()
-            if hidden_states_grouped.shape[0] > 0
-            else None,
-            window_index_first_10=window_index[:10].tolist() if window_index.shape[0] > 0 else None,
-        )
 
         # Reshape back to individual patches: [total_groups, spatial_merge_unit, hidden_dim] -> [total_patches, hidden_dim]
         hidden_states = hidden_states_grouped.reshape(seq_len, -1)
 
         # Checkpoint after window reorder (critical - check if reordering matches PyTorch)
-        debug_checkpoint(
-            "mlx_after_window_reorder",
-            skip=False,  # Verify final reordered patches match PyTorch
-            hidden_states_shape=hidden_states.shape,
-            hidden_states_preview=hidden_states[:5, :10].tolist() if hidden_states.shape[0] > 0 else None,
-        )
-
         # CRITICAL FIX: Match PyTorch's simple consecutive grouping for rotary embeddings too
         # Same as hidden_states - group consecutive patches
         rotary_pos_emb_grouped = rotary_pos_emb.reshape(
             num_groups, self.spatial_merge_unit, -1
         )  # [total_groups, spatial_merge_unit, hidden_dim]
-
-        debug_checkpoint(
-            "mlx_rotary_after_grouping_before_reorder",
-            skip=False,  # Verify rotary groups match hidden_states grouping
-            rotary_pos_emb_grouped_shape=rotary_pos_emb_grouped.shape,
-            rotary_pos_emb_grouped_preview=rotary_pos_emb_grouped[:3, :, :5].tolist()
-            if rotary_pos_emb_grouped.shape[0] > 0
-            else None,
-        )
 
         # Now reorder groups using window_index
         rotary_pos_emb_grouped = rotary_pos_emb_grouped[window_index.astype(mx.int32), :, :]
@@ -652,19 +461,6 @@ class VisionTransformer(nn.Module):
         emb = mx.concatenate([rotary_pos_emb, rotary_pos_emb], axis=-1)  # [num_patches, dim*2]
         position_embeddings = (mx.cos(emb), mx.sin(emb))
 
-        debug_checkpoint(
-            "mlx_after_position_embeddings",
-            skip=True,
-            position_embeddings_cos_shape=position_embeddings[0].shape,
-            position_embeddings_cos_preview=position_embeddings[0][:5, :10].tolist()
-            if position_embeddings[0].shape[0] > 0
-            else None,
-            position_embeddings_sin_shape=position_embeddings[1].shape,
-            position_embeddings_sin_preview=position_embeddings[1][:5, :10].tolist()
-            if position_embeddings[1].shape[0] > 0
-            else None,
-        )
-
         # Apply vision transformer blocks with windowed/full attention switching
         for layer_num, block in enumerate(self.blocks):
             # Choose cu_seqlens based on whether this is a full attention layer
@@ -673,65 +469,10 @@ class VisionTransformer(nn.Module):
             else:
                 cu_seqlens_now = cu_window_seqlens
 
-            # Checkpoint before block
-            if layer_num == 0:
-                debug_checkpoint(
-                    "mlx_before_first_vision_block",
-                    skip=True,
-                    hidden_states_shape=hidden_states.shape,
-                    hidden_states_preview=hidden_states[:5, :10].tolist() if hidden_states.shape[0] > 0 else None,
-                )
-
             hidden_states = block(hidden_states, position_embeddings, cu_seqlens_now)
-
-            # Debug checkpoints at key layers
-            if layer_num == 0:
-                # Checkpoint after first vision block (critical - check if first block matches PyTorch)
-                debug_checkpoint(
-                    "mlx_after_first_vision_block",
-                    skip=True,  # Verified - matches PyTorch (within bfloat16 precision)
-                    verified=True,
-                    hidden_states_shape=hidden_states.shape,
-                    hidden_states_preview=hidden_states[:5, :10].tolist() if hidden_states.shape[0] > 0 else None,
-                )
-            elif layer_num == 7:  # First full attention layer
-                debug_checkpoint(
-                    "mlx_after_vision_block_7",
-                    skip=True,
-                    hidden_states_shape=hidden_states.shape,
-                    hidden_states_preview=hidden_states[:5, :10].tolist() if hidden_states.shape[0] > 0 else None,
-                )
-            elif layer_num == 15:
-                debug_checkpoint(
-                    "mlx_after_vision_block_15",
-                    skip=True,
-                    hidden_states_shape=hidden_states.shape,
-                    hidden_states_preview=hidden_states[:5, :10].tolist() if hidden_states.shape[0] > 0 else None,
-                )
-            elif layer_num == 23:
-                debug_checkpoint(
-                    "mlx_after_vision_block_23",
-                    skip=True,
-                    hidden_states_shape=hidden_states.shape,
-                    hidden_states_preview=hidden_states[:5, :10].tolist() if hidden_states.shape[0] > 0 else None,
-                )
-            elif layer_num == 31:  # Last block
-                debug_checkpoint(
-                    "mlx_after_vision_block_31",
-                    skip=True,
-                    hidden_states_shape=hidden_states.shape,
-                    hidden_states_preview=hidden_states[:5, :10].tolist() if hidden_states.shape[0] > 0 else None,
-                )
 
         print(f"🔎 VisionTransformer: After transformer blocks: {hidden_states.shape}")
         print(f"🔎 VisionTransformer: After transformer blocks std: {float(mx.std(hidden_states)):.4f}")
-        debug_checkpoint(
-            "mlx_after_all_vision_blocks",
-            skip=True,
-            hidden_states_shape=hidden_states.shape,
-            hidden_states_preview=hidden_states[:5, :10].tolist() if hidden_states.shape[0] > 0 else None,
-        )
-
         # CRITICAL: Match PyTorch order - patch merger BEFORE reverse window
         # PyTorch does: merger(on window-reordered patches) -> reverse window -> return
         # The merger operates on patches still in window-reordered order, then we reverse after merging
@@ -739,23 +480,11 @@ class VisionTransformer(nn.Module):
         # so the merger can simply merge consecutive groups of 4 patches (matching PyTorch's view(-1, hidden_size))
 
         # Checkpoint before merger to compare inputs
-        debug_checkpoint(
-            "mlx_before_patch_merger_inputs",
-            hidden_states_shape=hidden_states.shape,
-            hidden_states_preview=hidden_states[:5, :10].tolist() if hidden_states.shape[0] > 0 else None,
-        )
-
         # Apply patch merger on patches in window-reordered order (matching PyTorch)
         hidden_states = self.merger(hidden_states, grid_thw)
 
         print(f"🔎 VisionTransformer: After merger: {hidden_states.shape}")
         # Checkpoint after patch merger (critical - check if patch merger matches PyTorch)
-        debug_checkpoint(
-            "mlx_after_patch_merger",
-            hidden_states_shape=hidden_states.shape,
-            hidden_states_preview=hidden_states[:10, :10].tolist() if hidden_states.shape[0] > 0 else None,
-        )
-
         # Now reverse window reordering (matching PyTorch's simple approach)
         # PyTorch: reverse_indices = torch.argsort(window_index); hidden_states = hidden_states[reverse_indices, :]
         # window_index is for groups (196 groups), and after merger we have 196 merged patches
@@ -764,13 +493,6 @@ class VisionTransformer(nn.Module):
         hidden_states = hidden_states[reverse_indices.astype(mx.int32), :]
 
         # Checkpoint after reverse window (critical - check if reverse reordering matches PyTorch)
-        debug_checkpoint(
-            "mlx_after_reverse_window",
-            skip=True,
-            hidden_states_shape=hidden_states.shape,
-            hidden_states_preview=hidden_states[:5, :10].tolist() if hidden_states.shape[0] > 0 else None,
-        )
-
         return hidden_states
 
 
@@ -869,44 +591,6 @@ class QwenEncoder(nn.Module):
                 # If we run out of embeddings, break (shouldn't happen if sizes are correct)
                 break
 
-        # Checkpoint: Capture vision embeddings before fusion
-        from mflux_debugger.semantic_checkpoint import debug_checkpoint
-
-        # Concatenate for checkpoint (easier to compare)
-        image_embeds_concat = (
-            mx.concatenate(image_embeds_split, axis=0) if len(image_embeds_split) > 0 else image_embeds
-        )
-        debug_checkpoint(
-            "mlx_vision_embeds_raw",
-            {
-                "image_embeds_shape": image_embeds_concat.shape,
-                "image_embeds_preview": image_embeds_concat[:10, :10].tolist()
-                if image_embeds_concat.shape[0] > 0
-                else None,
-                "num_splits": len(image_embeds_split),
-                "split_sizes": split_sizes,
-                "original_split_sizes": original_split_sizes.tolist(),
-                "image_grid_thw": image_grid_thw.tolist(),
-            },
-        )
-
-        # Checkpoint: Individual image embeddings for multi-image debugging
-        if len(image_embeds_split) > 1:
-            debug_checkpoint(
-                "mlx_vision_embeds_split",
-                {
-                    "num_images": len(image_embeds_split),
-                    "image1_shape": image_embeds_split[0].shape if len(image_embeds_split) > 0 else None,
-                    "image1_preview": image_embeds_split[0][:5, :10].tolist()
-                    if len(image_embeds_split) > 0 and image_embeds_split[0].shape[0] > 0
-                    else None,
-                    "image2_shape": image_embeds_split[1].shape if len(image_embeds_split) > 1 else None,
-                    "image2_preview": image_embeds_split[1][:5, :10].tolist()
-                    if len(image_embeds_split) > 1 and image_embeds_split[1].shape[0] > 0
-                    else None,
-                },
-            )
-
         return image_embeds_split
 
     def get_placeholder_mask(
@@ -953,19 +637,7 @@ class QwenEncoder(nn.Module):
             inputs_embeds = self.embed_tokens(input_ids)
 
             # Checkpoint: After embedding lookup, before fusion
-            from mflux_debugger.semantic_checkpoint import debug_checkpoint
 
-            debug_checkpoint(
-                "mlx_after_embed_lookup_before_fusion",
-                inputs_embeds_shape=inputs_embeds.shape,
-                inputs_embeds_at_vision_positions=inputs_embeds[0, 65:70, :10].tolist()
-                if inputs_embeds.shape[0] > 0 and inputs_embeds.shape[1] > 65
-                else None,
-                seq_len=seq_len,
-                input_ids_at_vision_positions=input_ids[0, 65:70].tolist()
-                if input_ids.shape[0] > 0 and input_ids.shape[1] > 65
-                else None,
-            )
         else:
             batch_size, seq_len, _ = inputs_embeds.shape
 
@@ -995,17 +667,6 @@ class QwenEncoder(nn.Module):
                 print(f"🔎 QwenEncoder: Keeping flattened format: {pixel_values.shape}")
 
                 # Checkpoint: Right before vision transformer to compare inputs (verified - inputs match)
-                from mflux_debugger.semantic_checkpoint import debug_checkpoint
-
-                debug_checkpoint(
-                    "mlx_before_vision_transformer_call",
-                    skip=True,
-                    pixel_values_shape=pixel_values.shape,
-                    pixel_values_preview=pixel_values[:5, :10].tolist() if pixel_values.shape[0] > 0 else None,
-                    pixel_values_mean=float(mx.mean(pixel_values).item()),
-                    pixel_values_std=float(mx.std(pixel_values).item()),
-                    image_grid_thw=image_grid_thw.tolist(),
-                )
 
                 # Process through vision transformer - patch_embed expects flattened input
                 image_embeds_split = self.get_image_features(pixel_values, image_grid_thw)
@@ -1026,26 +687,6 @@ class QwenEncoder(nn.Module):
             n_image_tokens = mx.sum(image_positions).item()
 
             # Checkpoint: Analyze token distribution for multiple images
-            from mflux_debugger.semantic_checkpoint import debug_checkpoint
-
-            # Find token positions to understand distribution
-            image_positions_list = image_positions.flatten().tolist()
-            image_token_indices = [i for i, is_img in enumerate(image_positions_list) if is_img]
-
-            debug_checkpoint(
-                "mlx_image_token_analysis",
-                {
-                    "n_image_tokens": n_image_tokens,
-                    "total_embeddings": image_embeds.shape[0],
-                    "image_token_indices": image_token_indices[:20]
-                    if len(image_token_indices) > 20
-                    else image_token_indices,
-                    "num_splits": len(image_embeds_split) if "image_embeds_split" in locals() else 0,
-                    "split_sizes": [e.shape[0] for e in image_embeds_split]
-                    if "image_embeds_split" in locals() and len(image_embeds_split) > 0
-                    else None,
-                },
-            )
 
             print(f"🔎 QwenEncoder: Found {n_image_tokens} image tokens, have {image_embeds.shape[0]} image embeddings")
 
@@ -1089,7 +730,6 @@ class QwenEncoder(nn.Module):
                         )
 
                     # Checkpoint: Analyze how embeddings are distributed
-                    from mflux_debugger.semantic_checkpoint import debug_checkpoint
 
                     # Calculate which embeddings from which split are being used
                     # If we have [196, 196] splits and use 237 tokens:
@@ -1112,38 +752,7 @@ class QwenEncoder(nn.Module):
                         if remaining <= 0:
                             break
 
-                    debug_checkpoint(
-                        "mlx_embedding_distribution",
-                        {
-                            "n_image_tokens": n_image_tokens,
-                            "total_embeddings": image_embeds.shape[0],
-                            "split_sizes": split_sizes,
-                            "split_usage": split_usage,
-                            "image1_embeds_preview": image_embeds_split[0][:5, :10].tolist()
-                            if len(image_embeds_split) > 0 and image_embeds_split[0].shape[0] > 0
-                            else None,
-                            "image2_embeds_preview": image_embeds_split[1][:5, :10].tolist()
-                            if len(image_embeds_split) > 1 and image_embeds_split[1].shape[0] > 0
-                            else None,
-                            "used_embeds_preview": image_embeds_to_use[:10, :10].tolist()
-                            if image_embeds_to_use.shape[0] > 0
-                            else None,
-                        },
-                    )
-
                 # Checkpoint: Capture vision embeddings before fusion
-                from mflux_debugger.semantic_checkpoint import debug_checkpoint
-
-                debug_checkpoint(
-                    "mlx_vision_embeds_before_fusion",
-                    {
-                        "image_embeds_to_use_shape": image_embeds_to_use.shape,
-                        "image_embeds_to_use_preview": image_embeds_to_use[:10, :10].tolist()
-                        if image_embeds_to_use.shape[0] > 0
-                        else None,
-                        "n_image_tokens": n_image_tokens,
-                    },
-                )
 
                 # Build new embeddings list
                 new_embeds_list = []
@@ -1159,69 +768,6 @@ class QwenEncoder(nn.Module):
                 new_embeds = mx.stack(new_embeds_list, axis=0)
                 inputs_embeds = new_embeds.reshape(inputs_embeds.shape)
                 print(f"🔎 QwenEncoder: Replaced {image_idx} image tokens with embeddings")
-
-                # Checkpoint: After fusion to see what was actually placed
-                if len(image_embeds_split) > 1:
-                    debug_checkpoint(
-                        "mlx_after_fusion_analysis",
-                        {
-                            "inputs_embeds_shape": inputs_embeds.shape,
-                            "first_image_token_embeds": inputs_embeds[
-                                0, image_token_indices[0] : image_token_indices[0] + 5, :10
-                            ].tolist()
-                            if len(image_token_indices) > 0
-                            else None,
-                            "middle_token_embeds": inputs_embeds[
-                                0,
-                                image_token_indices[len(image_token_indices) // 2] : image_token_indices[
-                                    len(image_token_indices) // 2
-                                ]
-                                + 5,
-                                :10,
-                            ].tolist()
-                            if len(image_token_indices) > len(image_token_indices) // 2
-                            else None,
-                            "last_image_token_embeds": inputs_embeds[
-                                0, image_token_indices[-1] - 4 : image_token_indices[-1] + 1, :10
-                            ].tolist()
-                            if len(image_token_indices) > 0
-                            else None,
-                        },
-                    )
-
-                # Checkpoint: Right after fusion
-                debug_checkpoint(
-                    "mlx_after_fusion",
-                    inputs_embeds_shape=inputs_embeds.shape,
-                    inputs_embeds_at_vision_positions=inputs_embeds[0, 65:70, :10].tolist()
-                    if inputs_embeds.shape[0] > 0 and inputs_embeds.shape[1] > 65
-                    else None,
-                    seq_len=inputs_embeds.shape[1],
-                )
-
-                # Checkpoint: Capture fused embeddings at vision token positions
-                # MLX doesn't support boolean indexing, so we convert to numpy, get indices, then convert back
-                if mx.any(image_positions_flat):
-                    import numpy as np
-
-                    image_positions_np = np.array(image_positions_flat)
-                    vision_token_indices_np = np.where(image_positions_np)[0][:10]
-                    vision_token_indices = mx.array(vision_token_indices_np)
-                else:
-                    vision_token_indices = mx.array([])
-                if vision_token_indices.size > 0:
-                    vision_embeds_at_positions = (
-                        new_embeds[vision_token_indices[:5]] if len(vision_token_indices) > 0 else None
-                    )
-                    debug_checkpoint(
-                        "mlx_vision_embeds_after_fusion",
-                        {
-                            "vision_embeds_at_positions_preview": vision_embeds_at_positions[:5, :10].tolist()
-                            if vision_embeds_at_positions is not None and vision_embeds_at_positions.shape[0] > 0
-                            else None,
-                            "vision_token_indices": vision_token_indices[:10].tolist(),
-                        },
-                    )
 
         cache_position = mx.arange(seq_len, dtype=mx.int32)
         position_ids = mx.expand_dims(mx.expand_dims(cache_position, axis=0), axis=0)
@@ -1257,33 +803,10 @@ class QwenEncoder(nn.Module):
         position_embeddings = self.rotary_emb(hidden_states, position_ids)
 
         # Checkpoint before first layer to compare inputs
-        from mflux_debugger.semantic_checkpoint import debug_checkpoint
-
-        debug_checkpoint(
-            "mlx_before_first_text_layer",
-            inputs_embeds_shape=hidden_states.shape,
-            inputs_embeds_at_vision_positions=hidden_states[0, 65:70, :10].tolist()
-            if hidden_states.shape[0] > 0 and hidden_states.shape[1] > 65
-            else None,
-            seq_len=hidden_states.shape[1],
-        )
 
         # Transformer layers
         for i, layer in enumerate(self.layers):
             hidden_states = layer(hidden_states, attention_mask_4d, position_embeddings)
-
-            # Debug checkpoints at key layers to find where divergence starts
-            if i in [0, 1, 3, 7, 14, 21, 27]:  # Check key layers
-                from mflux_debugger.semantic_checkpoint import debug_checkpoint
-
-                debug_checkpoint(
-                    f"mlx_text_encoder_after_layer_{i}",
-                    hidden_states_shape=hidden_states.shape,
-                    hidden_states_at_vision_positions=hidden_states[0, 65:70, :10].tolist()
-                    if hidden_states.shape[0] > 0 and hidden_states.shape[1] > 65
-                    else None,
-                    layer_idx=i,
-                )
 
         # Apply norm AFTER ALL layers (matching PyTorch reference)
         hidden_states = self.norm(hidden_states)

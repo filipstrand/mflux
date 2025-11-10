@@ -7,13 +7,6 @@ from mflux.utils.download import snapshot_download
 
 
 class QwenTokenizerHandler:
-    """
-    Handler for Qwen tokenizer, following the same pattern as TokenizerHandler.
-
-    This loads the Qwen2Tokenizer from the model repository and wraps it
-    in our TokenizerQwen class for consistent interface.
-    """
-
     def __init__(
         self,
         repo_id: str,
@@ -34,7 +27,6 @@ class QwenTokenizerHandler:
 
     @staticmethod
     def _download_or_get_cached_tokenizer(repo_id: str) -> Path:
-        """Download or get cached tokenizer files."""
         return Path(
             snapshot_download(
                 repo_id=repo_id,

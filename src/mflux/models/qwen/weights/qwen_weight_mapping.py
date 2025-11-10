@@ -1,10 +1,3 @@
-"""
-Declarative weight mapping for Qwen models.
-
-This replaces the manual mapping logic in qwen_weight_handler.py with a declarative structure,
-similar to how qwen_lora_mapping.py works.
-"""
-
 from typing import List
 
 import mlx.core as mx
@@ -13,39 +6,32 @@ from mflux.models.common.weights.mapping.weight_mapping import WeightMapping, We
 
 
 def reshape_gamma_to_1d(tensor: mx.array) -> mx.array:
-    """Reshape gamma tensor to 1D if needed (for LayerNorm weights)."""
     if len(tensor.shape) > 1:
         return mx.reshape(tensor, (tensor.shape[0],))
     return tensor
 
 
 def transpose_patch_embed(tensor: mx.array) -> mx.array:
-    """Transpose patch embedding weight for MLX Conv3d: (O,I,D,H,W) -> (O,D,H,W,I)."""
     if len(tensor.shape) == 5:
         return tensor.transpose(0, 2, 3, 4, 1)
     return tensor
 
 
 def transpose_conv3d_weight(tensor: mx.array) -> mx.array:
-    """Transpose Conv3d weight for MLX: (O,I,D,H,W) -> (O,D,H,W,I)."""
     if len(tensor.shape) == 5:
         return tensor.transpose(0, 2, 3, 4, 1)
     return tensor
 
 
 def transpose_conv2d_weight(tensor: mx.array) -> mx.array:
-    """Transpose Conv2d weight for MLX: (O,I,H,W) -> (O,H,W,I)."""
     if len(tensor.shape) == 4:
         return tensor.transpose(0, 2, 3, 1)
     return tensor
 
 
 class QwenWeightMapping(WeightMapping):
-    """Declarative weight mappings for Qwen models (transformer + VAE)."""
-
     @staticmethod
     def get_transformer_mapping() -> List[WeightTarget]:
-        """Get weight mappings for transformer component."""
         return [
             # Top-level mappings
             WeightTarget(
@@ -237,7 +223,6 @@ class QwenWeightMapping(WeightMapping):
 
     @staticmethod
     def get_vae_mapping() -> List[WeightTarget]:
-        """Get weight mappings for VAE component."""
         return [
             # ========== Decoder ==========
             # Decoder conv_in
@@ -770,7 +755,6 @@ class QwenWeightMapping(WeightMapping):
 
     @staticmethod
     def get_text_encoder_mapping() -> List[WeightTarget]:
-        """Get weight mappings for text encoder component."""
         return [
             # Top-level embeddings
             WeightTarget(
@@ -932,5 +916,4 @@ class QwenWeightMapping(WeightMapping):
 
     @staticmethod
     def get_mapping() -> List[WeightTarget]:
-        """Get all weight mappings (currently just transformer)."""
         return QwenWeightMapping.get_transformer_mapping()

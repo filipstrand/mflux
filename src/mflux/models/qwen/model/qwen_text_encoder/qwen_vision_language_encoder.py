@@ -1,5 +1,3 @@
-import os
-
 import mlx.core as mx
 from mlx import nn
 
@@ -10,20 +8,6 @@ class QwenVisionLanguageEncoder(nn.Module):
     def __init__(self, encoder=None):
         super().__init__()
         self.encoder = encoder or QwenEncoder()
-        self._hf_fallback_enabled = os.getenv("MFLUX_QWEN_VL_USE_HF", "0") in {"1", "true", "TRUE"}
-        self._hf_model = None  # Lazy-loaded torch model when fallback is enabled
-
-        # Edit-specific prompt template matching Diffusers exactly
-        self.edit_template = (
-            "<|im_start|>system\n"
-            "Describe the key features of the input image (color, shape, size, texture, objects, background), "
-            "then explain how the user's text instruction should alter or modify the image. "
-            "Generate a new image that meets the user's requirements while maintaining consistency "
-            "with the original input where appropriate.<|im_end|>\n"
-            "<|im_start|>user\n"
-            "<|vision_start|><|image_pad|><|vision_end|>{}<|im_end|>\n"
-            "<|im_start|>assistant\n"
-        )
         self.edit_template_start_idx = 64  # Number of tokens before the actual prompt
 
     def __call__(
@@ -34,98 +18,25 @@ class QwenVisionLanguageEncoder(nn.Module):
         image_grid_thw: mx.array | None = None,
         precomputed_image_embeds: mx.array | None = None,
     ) -> tuple[mx.array, mx.array]:
-        """
-        Forward pass for vision-language encoding - integrated approach like Diffusers.
-
-        Args:
-            input_ids: Tokenized text+vision input (already processed by VL tokenizer)
-            attention_mask: Attention mask for the combined input
-            pixel_values: Pixel values (handled by integrated model weights)
-            image_grid_thw: Image grid dimensions (handled by integrated model weights)
-
-        Returns:
-            Tuple of (prompt_embeds, encoder_attention_mask)
-        """
-        print(f"🔎 VLEncoder: input_ids.shape={input_ids.shape}, attention_mask.shape={attention_mask.shape}")
-        if pixel_values is not None:
-            print(f"🔎 VLEncoder: pixel_values.shape={pixel_values.shape}")
-        if image_grid_thw is not None:
-            print(f"🔎 VLEncoder: image_grid_thw={image_grid_thw}")
-
-        # Fallback path: use local cached HF VL model to produce hidden states (no new downloads)
-        if self._hf_fallback_enabled:
-            try:
-                import numpy as np
-                import torch
-                from huggingface_hub import snapshot_download
-                from transformers import Qwen2_5_VLForConditionalGeneration
-
-                if self._hf_model is None:
-                    root = snapshot_download(
-                        repo_id="Qwen/Qwen-Image-Edit",
-                        local_files_only=True,
-                        allow_patterns=[
-                            "text_encoder/**",
-                        ],
-                    )
-                    self._hf_model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-                        root, subfolder="text_encoder", torch_dtype=torch.float32, local_files_only=True
-                    )
-                    self._hf_model.eval()
-
-                def to_t(x: mx.array | None):
-                    if x is None:
-                        return None
-                    return torch.from_numpy(np.array(x))
-
-                with torch.no_grad():
-                    out = self._hf_model(
-                        input_ids=to_t(input_ids),
-                        attention_mask=to_t(attention_mask),
-                        pixel_values=to_t(pixel_values),
-                        image_grid_thw=to_t(image_grid_thw),
-                        output_hidden_states=True,
-                    )
-                hs_np = out.hidden_states[-1].cpu().numpy()
-                hidden_states = mx.array(hs_np)
-                print(f"🔎 VLEncoder[HF]: hidden_states.shape={hidden_states.shape}")
-            except Exception as e:  # noqa: BLE001
-                print(f"⚠️ VLEncoder: HF fallback failed ({e}), using integrated encoder")
-                self._hf_fallback_enabled = False
-
-        # Integrated path: our encoder handles VL fusion internally
-        if not self._hf_fallback_enabled:
-            # The integrated text encoder handles vision-language fusion internally
-            # Matches Diffusers: text_encoder(input_ids, attention_mask, pixel_values, image_grid_thw)
-            if precomputed_image_embeds is not None:
-                # Pass precomputed image embeddings to bypass vision processing
-                hidden_states = self.encoder(
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                    pixel_values=None,  # Skip vision processing
-                    image_grid_thw=image_grid_thw,
-                    precomputed_image_embeds=precomputed_image_embeds,
-                )
-            else:
-                # Normal path with vision processing
-                hidden_states = self.encoder(
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                    pixel_values=pixel_values,
-                    image_grid_thw=image_grid_thw,
-                )
-            print(f"🔎 VLEncoder: hidden_states.shape={hidden_states.shape}")
-
-        from mflux_debugger.semantic_checkpoint import debug_checkpoint
-
-        # Large tensors will be automatically serialized as previews (first 10 + last 10 values)
-        debug_checkpoint(
-            "mlx_after_encoder_raw",
-            {
-                "hidden_states": hidden_states,
-                "attention_mask": attention_mask,
-            },
-        )
+        # The integrated text encoder handles vision-language fusion internally
+        # Matches Diffusers: text_encoder(input_ids, attention_mask, pixel_values, image_grid_thw)
+        if precomputed_image_embeds is not None:
+            # Pass precomputed image embeddings to bypass vision processing
+            hidden_states = self.encoder(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                pixel_values=None,  # Skip vision processing
+                image_grid_thw=image_grid_thw,
+                precomputed_image_embeds=precomputed_image_embeds,
+            )
+        else:
+            # Normal path with vision processing
+            hidden_states = self.encoder(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                pixel_values=pixel_values,
+                image_grid_thw=image_grid_thw,
+            )
 
         # Mask-based extraction, then drop template tokens, then pad to batch max length
         # This mirrors the reference behavior used in Diffusers pipelines
@@ -142,15 +53,6 @@ class QwenVisionLanguageEncoder(nn.Module):
         # Drop the first 64 tokens after masking
         drop_idx = self.edit_template_start_idx
         trimmed_after_drop = [t[drop_idx:] if t.shape[0] > drop_idx else t for t in trimmed]
-        debug_checkpoint(
-            "mlx_after_extract_and_drop",
-            {
-                "trimmed_after_drop_0_shape": trimmed_after_drop[0].shape if len(trimmed_after_drop) > 0 else None,
-                "trimmed_after_drop_0_preview": trimmed_after_drop[0][:5, :10].tolist()
-                if len(trimmed_after_drop) > 0 and trimmed_after_drop[0].shape[0] > 0
-                else None,
-            },
-        )
         trimmed = trimmed_after_drop
 
         # Pad sequences to max length across batch

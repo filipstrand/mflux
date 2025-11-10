@@ -181,7 +181,6 @@ class QwenWeightHandler:
 
     @staticmethod
     def _detect_metadata(path: Path) -> tuple[int | None, str | None]:
-        """Detect quantization_level and mflux_version from safetensors metadata."""
         file_glob = sorted(path.glob("*.safetensors"))
         if file_glob:
             data = mx.load(str(file_glob[0]), return_metadata=True)

@@ -105,34 +105,10 @@ class QwenVisionLanguageTokenizer:
             for i in range(len(images)):
                 base_img_prompt += img_prompt_template.format(i + 1)
             formatted_text = self.edit_template.format(base_img_prompt + prompt)
-
-            # Debug checkpoint: Check formatted text before tokenization
-            from mflux_debugger.semantic_checkpoint import debug_checkpoint
-
-            debug_checkpoint(
-                "mlx_formatted_text_before_tokenization",
-                skip=True,
-                verified=True,
-                formatted_text=formatted_text,
-                base_img_prompt=base_img_prompt,
-                prompt=prompt,
-            )
         else:
             # Regular Edit format: Vision tokens already in template
             # Just format with user prompt directly
             formatted_text = self.edit_template.format(prompt)
-
-            # Debug checkpoint: Check formatted text before tokenization
-            from mflux_debugger.semantic_checkpoint import debug_checkpoint
-
-            debug_checkpoint(
-                "mlx_formatted_text_before_tokenization",
-                skip=True,
-                verified=True,
-                formatted_text=formatted_text,
-                base_img_prompt="",
-                prompt=prompt,
-            )
 
         # Process images: convert to PIL Images and resize to CONDITION_IMAGE_SIZE
         import math
@@ -221,30 +197,6 @@ class QwenVisionLanguageTokenizer:
         print(f"🔎 VLTokenizer:   input_ids.shape={input_ids.shape}, attention_mask.shape={attention_mask.shape}")
         print(f"🔎 VLTokenizer:   pixel_values.shape={pixel_values.shape}")
         print(f"🔎 VLTokenizer:   image_grid_thw={image_grid_thw}")
-
-        # Checkpoint: Analyze token distribution for multiple images
-        if len(images) > 1:
-            from mflux_debugger.semantic_checkpoint import debug_checkpoint
-
-            image_token_id = 151655  # <|image_pad|> token
-            image_positions = input_ids == image_token_id
-            image_positions_list = image_positions.flatten().tolist()
-            image_token_indices = [i for i, is_img in enumerate(image_positions_list) if is_img]
-
-            # Try to find boundaries between Picture 1 and Picture 2
-            # Look for "Picture" token (if available) or estimate based on token count
-            debug_checkpoint(
-                "mlx_tokenization_analysis",
-                {
-                    "num_images": len(images),
-                    "total_tokens": input_ids.shape[1],
-                    "image_token_indices": image_token_indices[:50]
-                    if len(image_token_indices) > 50
-                    else image_token_indices,
-                    "num_image_tokens": len(image_token_indices),
-                    "image_grid_thw": image_grid_thw.tolist(),
-                },
-            )
 
         return input_ids, attention_mask, pixel_values, image_grid_thw
 
