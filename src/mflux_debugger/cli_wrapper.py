@@ -1430,6 +1430,215 @@ class DebuggerCLI:
         # Terminate session
         self._api_call("POST", "/debug/terminate")
 
+    def cmd_coverage_multi(
+        self, scripts: list[str], output: Optional[str] = None, include_dirs: Optional[list[str]] = None
+    ):
+        """Run coverage on multiple scripts and combine results into a multi-run report.
+
+        Args:
+            scripts: List of script paths to analyze
+            output: Optional output path for coverage report
+            include_dirs: Optional list of additional directories to include (default: src/mflux only)
+        """
+        from datetime import datetime
+        from pathlib import Path
+
+        from mflux_debugger.coverage_report import generate_marked_up_file
+        from mflux_debugger.log_paths import get_coverage_session_dir
+
+        if len(scripts) < 2:
+            print("❌ Need at least 2 scripts for multi-run coverage", file=sys.stderr)
+            sys.exit(1)
+
+        print("=" * 70, file=sys.stderr)
+        print("🔍 MULTI-RUN COVERAGE ANALYSIS", file=sys.stderr)
+        print("=" * 70, file=sys.stderr)
+        print(f"Scripts: {', '.join(scripts)}\n", file=sys.stderr)
+
+        # Find project root
+        first_script_path = Path(scripts[0]).resolve()
+        project_root = first_script_path.parent
+        while project_root != project_root.parent:
+            if (project_root / "pyproject.toml").exists():
+                break
+            project_root = project_root.parent
+
+        # Build include patterns
+        include_patterns = ["src/mflux/", "src/mflux_debugger/examples/"]
+        if include_dirs:
+            for include_dir in include_dirs:
+                normalized = include_dir.replace("\\", "/")
+                if not normalized.endswith("/"):
+                    normalized += "/"
+                include_patterns.append(normalized)
+
+        # Collect coverage from each script
+        all_runs_coverage = []  # List of dicts: [{file: set(lines)}, {file: set(lines)}, ...]
+
+        for script_idx, script in enumerate(scripts, 1):
+            script_path = Path(script).resolve()
+            if not script_path.exists():
+                print(f"❌ Script {script_idx} not found: {script_path}", file=sys.stderr)
+                sys.exit(1)
+
+            print(f"\n{'=' * 70}", file=sys.stderr)
+            print(f"📊 Run {script_idx}/{len(scripts)}: {script_path.name}", file=sys.stderr)
+            print(f"{'=' * 70}", file=sys.stderr)
+
+            # Clean up previous sessions
+            print("🧹 Cleaning up previous debug sessions...", file=sys.stderr)
+            self._cleanup_stale_sessions()
+
+            # Ensure server is running
+            if not self._ensure_server_running():
+                sys.exit(1)
+
+            # Start session with coverage enabled
+            data = {"script_path": str(script_path), "coverage_mode": True}
+            response = self._api_call("POST", "/debug/start", data)
+
+            if not response.get("success"):
+                print(f"❌ Failed to start session: {response.get('error', 'Unknown error')}", file=sys.stderr)
+                sys.exit(1)
+
+            # Disable checkpoint breaks
+            print("⚙️  Disabling checkpoint breaks for full execution...", file=sys.stderr)
+            self._api_call("POST", "/debug/checkpoint/break-all", {"enabled": False})
+
+            # Run script to completion
+            print("⏳ Running script...", file=sys.stderr)
+            self._api_call("POST", "/debug/continue_async")
+
+            # Poll until finished
+            max_wait = 300
+            interval = 2
+            iterations = max_wait // interval
+
+            for i in range(iterations):
+                time.sleep(interval)
+                status_response = self._api_call("GET", "/debug/status", timeout=2)
+                state = status_response.get("data", {}).get("state")
+
+                if (i + 1) % 5 == 0:
+                    elapsed = (i + 1) * interval
+                    print(f"   [{elapsed}s] Status: {state}...", file=sys.stderr)
+
+                if state == "finished":
+                    print("✅ Script completed", file=sys.stderr)
+                    break
+                elif state == "failed":
+                    print("❌ Script execution failed", file=sys.stderr)
+                    self.cmd_status(verbose=False)
+                    sys.exit(1)
+            else:
+                print("⚠️  Script did not complete within timeout", file=sys.stderr)
+                sys.exit(1)
+
+            # Get coverage data
+            print("📊 Collecting coverage data...", file=sys.stderr)
+            coverage_response = self._api_call("GET", "/debug/coverage")
+
+            if not coverage_response.get("success"):
+                print(f"❌ Failed to get coverage data: {coverage_response.get('error')}", file=sys.stderr)
+                sys.exit(1)
+
+            coverage_data = coverage_response.get("data", {}).get("coverage_data", {})
+
+            if not coverage_data:
+                print("⚠️  No coverage data collected", file=sys.stderr)
+                sys.exit(1)
+
+            # Convert to sets and filter
+            coverage_sets = {file: set(lines) for file, lines in coverage_data.items()}
+            mflux_coverage_sets = {}
+
+            for file_path, lines in coverage_sets.items():
+                path_normalized = file_path.replace("\\", "/")
+
+                # Skip external libraries
+                if "/diffusers/" in path_normalized or "/transformers/" in path_normalized:
+                    continue
+                if "/mflux_debugger/" in path_normalized and "/mflux_debugger/examples/" not in path_normalized:
+                    continue
+
+                # Check if file matches include patterns
+                try:
+                    file_path_obj = Path(file_path)
+                    if file_path_obj.is_absolute():
+                        try:
+                            rel_path = file_path_obj.relative_to(project_root)
+                            rel_path_str = str(rel_path).replace("\\", "/")
+                            matches_pattern = any(rel_path_str.startswith(p) for p in include_patterns)
+                            if matches_pattern:
+                                mflux_coverage_sets[file_path] = lines
+                        except ValueError:
+                            continue
+                    else:
+                        rel_path_str = file_path.replace("\\", "/")
+                        matches_pattern = any(rel_path_str.startswith(p) for p in include_patterns)
+                        if matches_pattern:
+                            mflux_coverage_sets[file_path] = lines
+                except Exception:  # noqa: BLE001
+                    continue
+
+            all_runs_coverage.append(mflux_coverage_sets)
+
+            # Terminate session
+            self._api_call("POST", "/debug/terminate")
+
+        # Combine coverage data from all runs
+        print(f"\n{'=' * 70}", file=sys.stderr)
+        print("📝 Combining coverage from all runs...", file=sys.stderr)
+        print(f"{'=' * 70}", file=sys.stderr)
+
+        # Get union of all files across all runs
+        all_files = set()
+        for run_coverage in all_runs_coverage:
+            all_files.update(run_coverage.keys())
+
+        # Create coverage directory
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        script_names = "_".join([Path(s).stem for s in scripts])
+        coverage_dir = get_coverage_session_dir(f"multi_{script_names}", timestamp)
+
+        print(f"📁 Creating coverage directory: {coverage_dir}", file=sys.stderr)
+
+        # Generate marked-up files with multi-run markers
+        print("📝 Generating marked-up file copies (multi-run)...", file=sys.stderr)
+        files_generated = 0
+        for file_path in all_files:
+            # Collect executed lines for each run
+            executed_lines_per_run = [run_coverage.get(file_path, set()) for run_coverage in all_runs_coverage]
+
+            # Create output path
+            try:
+                file_path_obj = Path(file_path)
+                if file_path_obj.is_absolute():
+                    try:
+                        rel_path = file_path_obj.relative_to(project_root)
+                    except ValueError:
+                        rel_path = Path(file_path_obj.name)
+                else:
+                    rel_path = Path(file_path)
+
+                output_file_path = coverage_dir / rel_path
+                generate_marked_up_file(file_path, executed_lines_per_run, output_file_path)
+                files_generated += 1
+            except Exception as e:  # noqa: BLE001
+                print(f"⚠️  Failed to generate marked-up file for {file_path}: {e}", file=sys.stderr)
+                continue
+
+        print(f"✅ Generated {files_generated} marked-up file(s)", file=sys.stderr)
+
+        # Print summary
+        total_executed_per_run = [sum(len(lines) for lines in run.values()) for run in all_runs_coverage]
+        print("\n📊 Multi-Run Coverage Summary:", file=sys.stderr)
+        print(f"  Files analyzed: {len(all_files)}", file=sys.stderr)
+        for i, total in enumerate(total_executed_per_run, 1):
+            print(f"  Run {i} lines executed: {total}", file=sys.stderr)
+        print(f"\n📁 Coverage files saved to: {coverage_dir}", file=sys.stderr)
+        print("   Each line shows markers for each run: ✅ (executed), ❌ (dead), ⚪ (non-executable)", file=sys.stderr)
+
     def cmd_tutorial(self, lesson: str = "basic"):
         """Provide interactive guidance for learning debugger usage - agent executes commands."""
         from pathlib import Path
@@ -2107,6 +2316,19 @@ Examples:
         help="Additional directories to include in coverage (default: src/mflux only). Can be used multiple times. Example: --include src/mflux_debugger",
     )
 
+    # Coverage-multi command
+    coverage_multi_parser = subparsers.add_parser(
+        "coverage-multi", help="Run multiple scripts with coverage tracking and combine results"
+    )
+    coverage_multi_parser.add_argument("scripts", nargs="+", help="Paths to scripts to analyze (at least 2)")
+    coverage_multi_parser.add_argument("--output", help="Output path for coverage report")
+    coverage_multi_parser.add_argument(
+        "--include",
+        action="append",
+        dest="include_dirs",
+        help="Additional directories to include in coverage (default: src/mflux only). Can be used multiple times.",
+    )
+
     return parser
 
 
@@ -2159,6 +2381,10 @@ def _dispatch_command(cli: DebuggerCLI, args, parser):
     elif args.command == "coverage":
         cli.cmd_coverage(
             args.script, args.output, include_dirs=args.include_dirs if hasattr(args, "include_dirs") else None
+        )
+    elif args.command == "coverage-multi":
+        cli.cmd_coverage_multi(
+            args.scripts, args.output, include_dirs=args.include_dirs if hasattr(args, "include_dirs") else None
         )
     else:
         parser.print_help()

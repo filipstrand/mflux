@@ -6,10 +6,10 @@ Generates marked-up file copies showing which lines were executed.
 
 import ast
 from pathlib import Path
-from typing import Set
+from typing import List, Set, Union
 
 
-def generate_marked_up_file(file_path: str, executed_lines: Set[int], output_path: Path) -> None:
+def generate_marked_up_file(file_path: str, executed_lines: Union[Set[int], List[Set[int]]], output_path: Path) -> None:
     """
     Generate a marked-up copy of a file showing which lines were executed.
 
@@ -18,11 +18,27 @@ def generate_marked_up_file(file_path: str, executed_lines: Set[int], output_pat
     - ❌ (red) = line exists but wasn't executed (dead code)
     - ⚪ (white) = line is not executable (blank, comment, function parameters, etc.)
 
+    Supports single run or multiple runs:
+    - Single run: executed_lines is a Set[int] -> shows single marker per line
+    - Multiple runs: executed_lines is List[Set[int]] -> shows multiple markers per line (one per run)
+
     Args:
         file_path: Path to source file
-        executed_lines: Set of executed line numbers
+        executed_lines: Either a single set of executed line numbers, or a list of sets (one per run)
         output_path: Path where marked-up file should be saved
     """
+    # Normalize input: convert single set to list of one set for uniform handling
+    if isinstance(executed_lines, set):
+        executed_lines_list = [executed_lines]
+    else:
+        executed_lines_list = executed_lines
+
+    # Union of all executed lines for parameter line detection
+    # (if function was executed in ANY run, mark parameters as non-executable)
+    all_executed_lines = set()
+    for lines_set in executed_lines_list:
+        all_executed_lines.update(lines_set)
+
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             source = f.read()
@@ -55,8 +71,8 @@ def generate_marked_up_file(file_path: str, executed_lines: Set[int], output_pat
                 # Find first executable line in body (skip docstrings/comments)
                 first_executable_line = self._find_first_executable_line(node.body) if node.body else None
 
-                # If function body was executed, mark parameter lines as non-executable (not dead)
-                if first_executable_line and first_executable_line in executed_lines:
+                # If function body was executed in ANY run, mark parameter lines as non-executable (not dead)
+                if first_executable_line and first_executable_line in all_executed_lines:
                     # Mark all lines from function def to first executable body line as parameter lines
                     def_line = node.lineno
                     for line_num in range(def_line + 1, first_executable_line):
@@ -66,7 +82,7 @@ def generate_marked_up_file(file_path: str, executed_lines: Set[int], output_pat
             def visit_AsyncFunctionDef(self, node):
                 # Same logic for async functions
                 first_executable_line = self._find_first_executable_line(node.body) if node.body else None
-                if first_executable_line and first_executable_line in executed_lines:
+                if first_executable_line and first_executable_line in all_executed_lines:
                     def_line = node.lineno
                     for line_num in range(def_line + 1, first_executable_line):
                         self.param_lines.add(line_num)
@@ -90,18 +106,22 @@ def generate_marked_up_file(file_path: str, executed_lines: Set[int], output_pat
             # Check if line is executable (not blank, not just a comment)
             is_executable = bool(stripped) and not stripped.strip().startswith("#")
 
-            if is_executable:
-                # Check if this is a parameter line (part of function signature)
-                if line_num in parameter_lines:
-                    # Parameter lines are non-executable (part of signature, not dead code)
-                    marker = "⚪"
-                elif line_num in executed_lines:
-                    marker = "✅"  # Hit
+            # Generate markers for each run
+            markers = []
+            for run_executed_lines in executed_lines_list:
+                if is_executable:
+                    # Check if this is a parameter line (part of function signature)
+                    if line_num in parameter_lines:
+                        # Parameter lines are non-executable (part of signature, not dead code)
+                        markers.append("⚪")
+                    elif line_num in run_executed_lines:
+                        markers.append("✅")  # Hit in this run
+                    else:
+                        markers.append("❌")  # Not hit in this run (dead code)
                 else:
-                    marker = "❌"  # Not hit (dead code)
-            else:
-                # Line is not executable (blank or comment)
-                marker = "⚪"  # Not in scope
+                    # Line is not executable (blank or comment)
+                    markers.append("⚪")  # Not in scope
 
-            # Write marked-up line: marker + space + line number + " | " + content
-            f.write(f"{marker} {line_num:4d} | {line_content}")
+            # Join markers with spaces, then add line number and content
+            markers_str = " ".join(markers)
+            f.write(f"{markers_str} {line_num:4d} | {line_content}")

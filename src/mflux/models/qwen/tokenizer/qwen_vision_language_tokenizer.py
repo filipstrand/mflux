@@ -2,7 +2,7 @@
 Qwen Vision-Language Tokenizer for Image Edit Tasks
 
 This module provides vision-language tokenization for Qwen Image Edit,
-using Qwen2VLProcessor to handle both text and image inputs.
+using Qwen2_5_VLProcessor to handle both text and image inputs.
 """
 
 from pathlib import Path
@@ -11,7 +11,7 @@ from typing import Union
 import mlx.core as mx
 import numpy as np
 from PIL import Image
-from transformers import Qwen2VLProcessor
+from transformers import Qwen2_5_VLProcessor
 
 
 class QwenVisionLanguageTokenizer:
@@ -22,7 +22,7 @@ class QwenVisionLanguageTokenizer:
 
     def __init__(
         self,
-        processor: Qwen2VLProcessor,
+        processor: Qwen2_5_VLProcessor,
         max_length: int = 1024,
         use_picture_prefix: bool = True,
     ):
@@ -30,7 +30,7 @@ class QwenVisionLanguageTokenizer:
         Initialize Qwen Vision-Language Tokenizer.
 
         Args:
-            processor: Qwen2VLProcessor instance
+            processor: Qwen2_5_VLProcessor instance
             max_length: Maximum sequence length
             use_picture_prefix: If True, adds "Picture N:" prefix (Edit Plus format).
                               If False, uses regular Edit format (vision tokens in template).

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from transformers import Qwen2VLProcessor
+from transformers import Qwen2_5_VLProcessor
 
 from mflux.config.model_config import ModelConfig
 
@@ -57,21 +57,21 @@ class QwenImageEditInitializer:
         # 1. Download or get cached vision-language processor
         root_path = Path(local_path) if local_path else QwenImageEditInitializer._download_vl_processor(repo_id)
 
-        # 2. Load Qwen2VLProcessor from the SAME model as our weights (Qwen-Image-Edit)
+        # 2. Load Qwen2_5_VLProcessor from the SAME model as our weights (Qwen-Image-Edit)
         processor_path = root_path / "processor"
         if not processor_path.exists():
             processor_path = root_path
 
         try:
             print(f"🔧 Loading processor from {processor_path} (matching our weights)")
-            processor = Qwen2VLProcessor.from_pretrained(
+            processor = Qwen2_5_VLProcessor.from_pretrained(
                 pretrained_model_name_or_path=processor_path,
                 local_files_only=True,
             )
         except OSError as e:
             print(f"🔧 Failed to load processor from local path: {e}")
             print(f"🔧 Falling back to loading processor from {repo_id}")
-            processor = Qwen2VLProcessor.from_pretrained(repo_id)
+            processor = Qwen2_5_VLProcessor.from_pretrained(repo_id)
 
         # 3. Initialize vision-language tokenizer (HuggingFace is fine for tokenization)
         # Determine if we should use Picture prefix based on model config
