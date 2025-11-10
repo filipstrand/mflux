@@ -74,17 +74,17 @@ If you need to restore these configurations:
 
 1. **Restore `.zshenv`**:
    ```bash
-   cp cursor-terminal-fix/.zshenv ~/.zshenv
+   cp src/mflux_debugger/cursor-terminal-fix/.zshenv ~/.zshenv
    ```
 
 2. **Restore `.zprofile`**:
    ```bash
-   cp cursor-terminal-fix/.zprofile ~/.zprofile
+   cp src/mflux_debugger/cursor-terminal-fix/.zprofile ~/.zprofile
    ```
 
 3. **Restore `.zshrc`**:
    ```bash
-   cp cursor-terminal-fix/.zshrc ~/.zshrc
+   cp src/mflux_debugger/cursor-terminal-fix/.zshrc ~/.zshrc
    ```
 
 ## References
