@@ -8,10 +8,8 @@ class PatchMerger(nn.Module):
         self.spatial_merge_size = spatial_merge_size
         self.hidden_size_merged = context_dim * (spatial_merge_size**2)
 
-        # RMSNorm for query (HF uses Qwen2RMSNorm, confirmed via runtime debugging)
         self.ln_q = nn.RMSNorm(context_dim, eps=1e-6)
 
-        # MLP: merged_dim -> merged_dim -> output_dim
         self.mlp_0 = nn.Linear(self.hidden_size_merged, self.hidden_size_merged, bias=True)
         self.mlp_1 = nn.Linear(self.hidden_size_merged, hidden_size, bias=True)
 
