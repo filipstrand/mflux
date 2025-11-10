@@ -55,56 +55,10 @@ class QwenImageEditPlus(nn.Module):
         negative_prompt: str | None = None,
         image_paths: list[str] | None = None,
     ) -> GeneratedImage:
-        # Support multiple images: use image_paths if provided, otherwise fallback to config.image_path
         if image_paths is None:
             image_paths = [config.image_path]
 
-        # Use last image for size calculation (matching PyTorch line 686)
-        last_image = ImageUtil.load_image(image_paths[-1]).convert("RGB")
-        image_size = last_image.size  # (width, height)
-
-        # Use Diffusers' calculate_dimensions function logic
-        # Plus pipeline uses last image for size calculation if multiple images
-        target_area = 1024 * 1024
-        ratio = image_size[0] / image_size[1]  # width / height
-        calculated_width = math.sqrt(target_area * ratio)
-        calculated_height = calculated_width / ratio
-        calculated_width = round(calculated_width / 32) * 32
-        calculated_height = round(calculated_height / 32) * 32
-
-        # Use calculated dimensions or provided ones for OUTPUT
-        use_height = config.height or calculated_height
-        use_width = config.width or calculated_width
-
-        # Apply VAE scale factor constraint
-        vae_scale_factor = 8
-        multiple_of = vae_scale_factor * 2  # 16
-        use_width = use_width // multiple_of * multiple_of
-        use_height = use_height // multiple_of * multiple_of
-
-        # Create config for OUTPUT dimensions
-        final_config = Config(
-            height=use_height,
-            width=use_width,
-            image_path=config.image_path,
-            num_inference_steps=config.num_inference_steps,
-            guidance=config.guidance,
-            scheduler=config.scheduler_str,
-        )
-        runtime_config = RuntimeConfig(final_config, self.model_config)
-
-        # CONDITIONING dimensions (for vision encoder)
-        # Plus pipeline uses separate sizes for condition (384x384) and VAE (1024x1024)
-        CONDITION_IMAGE_SIZE = 384 * 384
-        condition_ratio = image_size[0] / image_size[1]
-        vl_width = math.sqrt(CONDITION_IMAGE_SIZE * condition_ratio)
-        vl_height = vl_width / condition_ratio
-        vl_width = round(vl_width / 32) * 32
-        vl_height = round(vl_height / 32) * 32
-
-        # Get timesteps from the scheduler
-        # Note: timesteps array contains actual timestep values, but we iterate using indices [0, 1, 2, ...]
-        # The transformer's _compute_timestep method maps these indices to sigmas: sigmas[i] corresponds to timesteps[i]
+        runtime_config, vl_width, vl_height, vae_width, vae_height = self._compute_dimensions(config, image_paths)
         timesteps = runtime_config.scheduler.timesteps
         time_steps = tqdm(range(len(timesteps)))
 
@@ -115,37 +69,27 @@ class QwenImageEditPlus(nn.Module):
             width=runtime_config.width,
         )
 
-        # 2. Encode prompts with MLX (supporting multiple images)
+        # 2. Encode the prompt
         prompt_embeds, prompt_mask, negative_prompt_embeds, negative_prompt_mask = self._encode_prompts_with_image_plus(
             prompt=prompt,
             negative_prompt=negative_prompt,
             image_paths=image_paths,
             runtime_config=runtime_config,
-            vl_width=int(vl_width),
-            vl_height=int(vl_height),
+            vl_width=vl_width,
+            vl_height=vl_height,
         )
 
-        # 3. Generate image conditioning latents with MLX
-        # Use VAE-scale dimensions for the actual image conditioning
-        VAE_IMAGE_SIZE = 1024 * 1024
-        vae_ratio = image_size[0] / image_size[1]
-        vae_width = math.sqrt(VAE_IMAGE_SIZE * vae_ratio)
-        vae_height = vae_width / vae_ratio
-        vae_width = round(vae_width / 32) * 32
-        vae_height = round(vae_height / 32) * 32
-
+        # 3. Generate image conditioning latents
         static_image_latents, qwen_image_ids, cond_h_patches, cond_w_patches, num_images = (
             QwenEditUtil.create_image_conditioning_latents(
                 vae=self.vae,
-                height=int(vae_height),  # Use VAE dimensions for VAE encoding (higher quality)
-                width=int(vae_width),
+                height=vae_height,
+                width=vae_width,
                 image_paths=image_paths,
-                vl_width=int(vl_width),  # VL dimensions determine the actual patch grid for RoPE
-                vl_height=int(vl_height),  # This ensures patch counts match the actual image size
+                vl_width=vl_width,
+                vl_height=vl_height,
             )
         )
-        # NOT from VAE dimensions (1024x1024 → 64x64), because the images are resized to VL size
-        # The function uses vl_width/vl_height to compute calc_h/calc_w, which determines patch counts
 
         # (Optional) Call subscribers for beginning of loop
         Callbacks.before_loop(
@@ -162,7 +106,6 @@ class QwenImageEditPlus(nn.Module):
                 hidden_states_neg = mx.concatenate([latents, static_image_latents], axis=1)
 
                 # 5.t Predict the noise
-                # For multiple images, pass list of image shapes to RoPE
                 if num_images > 1:
                     cond_image_grid = [(1, cond_h_patches, cond_w_patches) for _ in range(num_images)]
                 else:
@@ -254,24 +197,19 @@ class QwenImageEditPlus(nn.Module):
     ) -> tuple[mx.array, mx.array, mx.array, mx.array]:
         tokenizer = self.qwen_vl_tokenizer
 
-        # Tokenizer now accepts list of image paths
-        # 2. Tokenize positive prompt
         pos_input_ids, pos_attention_mask, pos_pixel_values, pos_image_grid_thw = tokenizer.tokenize_with_image(
             prompt, image_paths, vl_width=vl_width, vl_height=vl_height
         )
 
-        # 3. Run text encoder on positive prompt
         pos_hidden_states = self.qwen_vl_encoder(
             input_ids=pos_input_ids,
             attention_mask=pos_attention_mask,
             pixel_values=pos_pixel_values,
             image_grid_thw=pos_image_grid_thw,
         )
-        # Force evaluation to prevent GPU timeout
         mx.eval(pos_hidden_states[0])
         mx.eval(pos_hidden_states[1])
 
-        # 4. Tokenize and encode negative prompt (use same images)
         neg_prompt = negative_prompt if negative_prompt is not None else ""
         neg_input_ids, neg_attention_mask, neg_pixel_values, neg_image_grid_thw = tokenizer.tokenize_with_image(
             neg_prompt, image_paths, vl_width=vl_width, vl_height=vl_height
@@ -283,18 +221,64 @@ class QwenImageEditPlus(nn.Module):
             pixel_values=neg_pixel_values,
             image_grid_thw=neg_image_grid_thw,
         )
-        # Force evaluation to prevent GPU timeout
         mx.eval(neg_hidden_states[0])
         mx.eval(neg_hidden_states[1])
 
-        # Prepare final embeddings
         final_prompt_embeds = pos_hidden_states[0].astype(mx.float16)
         final_prompt_mask = pos_hidden_states[1].astype(mx.float16)
 
-        # Return the embeddings
         return (
             final_prompt_embeds,  # prompt_embeds
             final_prompt_mask,  # prompt_mask
             neg_hidden_states[0].astype(mx.float16),  # negative_prompt_embeds
             neg_hidden_states[1].astype(mx.float16),  # negative_prompt_mask
         )
+
+    def _compute_dimensions(
+        self,
+        config: Config,
+        image_paths: list[str],
+    ) -> tuple[RuntimeConfig, int, int, int, int]:
+        last_image = ImageUtil.load_image(image_paths[-1]).convert("RGB")
+        image_size = last_image.size
+
+        target_area = 1024 * 1024
+        ratio = image_size[0] / image_size[1]
+        calculated_width = math.sqrt(target_area * ratio)
+        calculated_height = calculated_width / ratio
+        calculated_width = round(calculated_width / 32) * 32
+        calculated_height = round(calculated_height / 32) * 32
+
+        use_height = config.height or calculated_height
+        use_width = config.width or calculated_width
+
+        vae_scale_factor = 8
+        multiple_of = vae_scale_factor * 2
+        use_width = use_width // multiple_of * multiple_of
+        use_height = use_height // multiple_of * multiple_of
+
+        final_config = Config(
+            height=use_height,
+            width=use_width,
+            image_path=config.image_path,
+            num_inference_steps=config.num_inference_steps,
+            guidance=config.guidance,
+            scheduler=config.scheduler_str,
+        )
+        runtime_config = RuntimeConfig(final_config, self.model_config)
+
+        CONDITION_IMAGE_SIZE = 384 * 384
+        condition_ratio = image_size[0] / image_size[1]
+        vl_width = math.sqrt(CONDITION_IMAGE_SIZE * condition_ratio)
+        vl_height = vl_width / condition_ratio
+        vl_width = round(vl_width / 32) * 32
+        vl_height = round(vl_height / 32) * 32
+
+        VAE_IMAGE_SIZE = 1024 * 1024
+        vae_ratio = image_size[0] / image_size[1]
+        vae_width = math.sqrt(VAE_IMAGE_SIZE * vae_ratio)
+        vae_height = vae_width / vae_ratio
+        vae_width = round(vae_width / 32) * 32
+        vae_height = round(vae_height / 32) * 32
+
+        return runtime_config, int(vl_width), int(vl_height), int(vae_width), int(vae_height)

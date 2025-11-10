@@ -55,47 +55,7 @@ class QwenImageEdit(nn.Module):
         config: Config,
         negative_prompt: str | None = None,
     ) -> GeneratedImage:
-        image = ImageUtil.load_image(config.image_path).convert("RGB")
-        image_size = image.size  # (width, height)
-
-        # Use Diffusers' calculate_dimensions function logic (lines 155-162)
-        target_area = 1024 * 1024
-        ratio = image_size[0] / image_size[1]  # width / height
-        calculated_width = math.sqrt(target_area * ratio)
-        calculated_height = calculated_width / ratio
-        calculated_width = round(calculated_width / 32) * 32
-        calculated_height = round(calculated_height / 32) * 32
-
-        # Use calculated dimensions or provided ones for OUTPUT (like Diffusers lines 671-672)
-        use_height = config.height or calculated_height
-        use_width = config.width or calculated_width
-
-        # Apply VAE scale factor constraint (like Diffusers lines 674-676)
-        vae_scale_factor = 8  # Same as Diffusers
-        multiple_of = vae_scale_factor * 2  # 16
-        use_width = use_width // multiple_of * multiple_of
-        use_height = use_height // multiple_of * multiple_of
-
-        # Create config for OUTPUT dimensions
-        final_config = Config(
-            height=use_height,
-            width=use_width,
-            image_path=config.image_path,
-            num_inference_steps=config.num_inference_steps,
-            guidance=config.guidance,
-            scheduler=config.scheduler_str,  # Preserve scheduler choice
-        )
-        runtime_config = RuntimeConfig(final_config, self.model_config)
-
-        # NOT the output dimensions! This ensures conditioning matches PyTorch
-        # The regular edit model uses calculated dimensions (from 1024x1024 target) for both
-        # vision encoder and VAE encoding, unlike Edit Plus which uses 384x384 for vision encoder
-        vl_width = calculated_width
-        vl_height = calculated_height
-
-        # Get timesteps from the scheduler
-        # Note: timesteps array contains actual timestep values, but we iterate using indices [0, 1, 2, ...]
-        # The transformer's _compute_timestep method maps these indices to sigmas: sigmas[i] corresponds to timesteps[i]
+        runtime_config, vl_width, vl_height = self._compute_dimensions(config)
         timesteps = runtime_config.scheduler.timesteps
         time_steps = tqdm(range(len(timesteps)))
 
@@ -106,36 +66,30 @@ class QwenImageEdit(nn.Module):
             width=runtime_config.width,
         )
 
-        # 2. Generate prompt embeddings with MLX encoder
+        # 2. Encode the prompt
         prompt_embeds, prompt_mask, negative_prompt_embeds, negative_prompt_mask = (
             self._debug_encode_prompts_with_image(
                 prompt=prompt,
                 negative_prompt=negative_prompt,
                 image_path=runtime_config.image_path,
                 runtime_config=runtime_config,
-                vl_width=int(vl_width),
-                vl_height=int(vl_height),
+                vl_width=vl_width,
+                vl_height=vl_height,
             )
         )
-        # Note: We're using MLX text encoder output (not loading from PyTorch)
 
-        # 3. Generate image conditioning latents with MLX (compare with diffusers)
-        # The function uses vl_width/vl_height for encoding (ignores height/width params)
-        # So we pass calculated dimensions which will be used for both vision encoder AND VAE encoding
-        # This ensures consistency - both see the same resolution (calculated from 1024x1024 target)
-        # Convert Path to string if needed (function accepts list or str)
+        # 3. Generate image conditioning latents
         image_path = str(runtime_config.image_path) if runtime_config.image_path else None
         static_image_latents, qwen_image_ids, cond_h_patches, cond_w_patches, num_images = (
             QwenEditUtil.create_image_conditioning_latents(
                 vae=self.vae,
-                height=runtime_config.height,  # Ignored when vl_width/vl_height provided
-                width=runtime_config.width,  # Ignored when vl_width/vl_height provided
+                height=runtime_config.height,
+                width=runtime_config.width,
                 image_paths=image_path,
-                vl_width=int(vl_width),  # Calculated dimensions used for encoding (matches vision encoder)
-                vl_height=int(vl_height),  # This ensures vision encoder and VAE encoding match
+                vl_width=vl_width,
+                vl_height=vl_height,
             )
         )
-        # The function uses vl_width/vl_height to compute calc_h/calc_w, which determines patch counts
 
         # (Optional) Call subscribers for beginning of loop
         Callbacks.before_loop(
@@ -238,16 +192,13 @@ class QwenImageEdit(nn.Module):
         vl_width: int | None = None,
         vl_height: int | None = None,
     ) -> tuple[mx.array, mx.array, mx.array, mx.array]:
-        # 1. Use existing tokenizer and load image
-        tokenizer = self.qwen_vl_tokenizer  # Use the already initialized tokenizer
+        tokenizer = self.qwen_vl_tokenizer
         image = Image.open(image_path).convert("RGB")
 
-        # 2. Tokenize positive prompt (tokenizer will apply template)
         pos_input_ids, pos_attention_mask, pos_pixel_values, pos_image_grid_thw = tokenizer.tokenize_with_image(
             prompt, image, vl_width=vl_width, vl_height=vl_height
         )
 
-        # 3. Run text encoder on positive prompt
         pos_hidden_states = self.qwen_vl_encoder(
             input_ids=pos_input_ids,
             attention_mask=pos_attention_mask,
@@ -255,8 +206,6 @@ class QwenImageEdit(nn.Module):
             image_grid_thw=pos_image_grid_thw,
         )
 
-        # 4. Tokenize and encode negative prompt (tokenizer will apply template)
-        # Use empty string as default negative prompt if None is provided
         neg_prompt = negative_prompt if negative_prompt is not None else ""
         neg_input_ids, neg_attention_mask, neg_pixel_values, neg_image_grid_thw = tokenizer.tokenize_with_image(
             neg_prompt, image, vl_width=vl_width, vl_height=vl_height
@@ -269,10 +218,46 @@ class QwenImageEdit(nn.Module):
             image_grid_thw=neg_image_grid_thw,
         )
 
-        # Return the embeddings for use in the pipeline
         return (
             pos_hidden_states[0].astype(mx.float16),  # prompt_embeds
             pos_hidden_states[1].astype(mx.float16),  # prompt_mask
             neg_hidden_states[0].astype(mx.float16),  # negative_prompt_embeds
             neg_hidden_states[1].astype(mx.float16),  # negative_prompt_mask
         )
+
+    def _compute_dimensions(
+        self,
+        config: Config,
+    ) -> tuple[RuntimeConfig, int, int]:
+        image = ImageUtil.load_image(config.image_path).convert("RGB")
+        image_size = image.size
+
+        target_area = 1024 * 1024
+        ratio = image_size[0] / image_size[1]
+        calculated_width = math.sqrt(target_area * ratio)
+        calculated_height = calculated_width / ratio
+        calculated_width = round(calculated_width / 32) * 32
+        calculated_height = round(calculated_height / 32) * 32
+
+        use_height = config.height or calculated_height
+        use_width = config.width or calculated_width
+
+        vae_scale_factor = 8
+        multiple_of = vae_scale_factor * 2
+        use_width = use_width // multiple_of * multiple_of
+        use_height = use_height // multiple_of * multiple_of
+
+        final_config = Config(
+            height=use_height,
+            width=use_width,
+            image_path=config.image_path,
+            num_inference_steps=config.num_inference_steps,
+            guidance=config.guidance,
+            scheduler=config.scheduler_str,
+        )
+        runtime_config = RuntimeConfig(final_config, self.model_config)
+
+        vl_width = calculated_width
+        vl_height = calculated_height
+
+        return runtime_config, int(vl_width), int(vl_height)
