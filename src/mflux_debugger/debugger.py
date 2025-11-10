@@ -1,5 +1,5 @@
 """
-Lightweight debugger for ML workloads.
+Debugger for PyTorch and MLX.
 
 Minimal overhead tracing that only instruments user code,
 skipping heavy ML libraries entirely.
@@ -21,7 +21,7 @@ TRACE_DEBUG_PATTERN = os.environ.get("MFLUX_DEBUGGER_TRACE_PATTERN")
 TRACE_DEBUG_MAX_EVENTS = int(os.environ.get("MFLUX_DEBUGGER_TRACE_MAX", "200"))
 
 # Global registry for active debugger instance (for semantic checkpoints)
-_ACTIVE_DEBUGGER: Optional["LightweightDebugger"] = None
+_ACTIVE_DEBUGGER: Optional["Debugger"] = None
 
 
 class DebugState(Enum):
@@ -55,20 +55,20 @@ class StackFrame:
     globals: Dict[str, Any]
 
 
-def set_active_debugger(debugger: Optional["LightweightDebugger"]) -> None:
+def set_active_debugger(debugger: Optional["Debugger"]) -> None:
     """Set the global active debugger instance."""
     global _ACTIVE_DEBUGGER
     _ACTIVE_DEBUGGER = debugger
 
 
-def get_active_debugger() -> Optional["LightweightDebugger"]:
+def get_active_debugger() -> Optional["Debugger"]:
     """Get the global active debugger instance."""
     return _ACTIVE_DEBUGGER
 
 
-class LightweightDebugger:
+class Debugger:
     """
-    Lightweight debugger optimized for ML workloads.
+    Debugger optimized for ML workloads.
 
     Only traces user-specified files, completely skipping ML libraries
     to minimize overhead during heavy computations.
@@ -89,7 +89,7 @@ class LightweightDebugger:
     }
 
     def __init__(self):
-        """Initialize the lightweight debugger."""
+        """Initialize the debugger."""
         self.state = DebugState.NOT_STARTED
         self.breakpoints: Dict[Tuple[str, int], Breakpoint] = {}
         self.watch_files: Set[str] = set()
@@ -603,7 +603,7 @@ class LightweightDebugger:
         # Ensure any future threads inherit the tracer
         threading.settrace(self.trace_function)
 
-        logger.info(f"🚀 Starting script with lightweight tracer: {self.script_path}")
+        logger.info(f"🚀 Starting script with tracer: {self.script_path}")
         logger.info(f"   Breakpoints set: {len(self.breakpoints)}")
         logger.info(f"   Watch files: {len(self.watch_files)}")
 

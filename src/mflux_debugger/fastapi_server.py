@@ -1,5 +1,5 @@
 """
-FastAPI server adapter for lightweight ML debugger.
+FastAPI server adapter for debugger.
 
 Example showing how to expose the same debugger service via REST API.
 This demonstrates the transport-agnostic design - same service, different interface.

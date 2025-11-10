@@ -1,4 +1,4 @@
-# Lightweight ML Debugger for PyTorch and MLX
+# Debugger for PyTorch and MLX
 
 Interactive debugging system optimized for ML workloads. Designed for AI agents to step through code, inspect tensors, and verify model implementations in real-time.
 
@@ -629,7 +629,7 @@ mx.eval(latents)  # NOW it executes
 
 ### Solution: Debugger Auto-Handles This!
 
-**Good news:** The lightweight debugger **automatically handles MLX lazy evaluation**!
+**Good news:** The debugger **automatically handles MLX lazy evaluation**!
 
 - ✅ Selectively traces only user code
 - ✅ Skips ML library internals
@@ -1723,7 +1723,7 @@ The tutorial teaches all essential debugging commands. The tips below cover adva
 └──────────────┬──────────────────────┘
                │
 ┌──────────────┴──────────────────────┐
-│  LightweightDebugger (core)         │
+│  Debugger (core)                    │
 │  - Selective tracing (user code)    │
 │  - Library skipping (torch, mlx)    │
 │  - Thread-safe state caching        │

@@ -299,7 +299,7 @@ def debug_checkpoint(
 
     # Additionally, handle interactive debugger if active and not skipped
     if _DEBUGGER_ACTIVE and not skip:
-        from mflux_debugger.lightweight_debugger import get_active_debugger
+        from mflux_debugger.debugger import get_active_debugger
 
         debugger = get_active_debugger()
         if debugger is not None:

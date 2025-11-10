@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from mflux_debugger.lightweight_debugger import DebugState, LightweightDebugger
+from mflux_debugger.debugger import Debugger, DebugState
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class DebuggerService:
         Args:
             enable_rich_context: Enable rich context (code context, call stack, auto-preview)
         """
-        self.debugger = LightweightDebugger()
+        self.debugger = Debugger()
         self.enable_rich_context = enable_rich_context
         self._execution_thread: Optional[threading.Thread] = None
         self._thread_lock = threading.Lock()
@@ -220,7 +220,7 @@ class DebuggerService:
                     logger.warning(f"Failed to archive images: {e}")
 
             # Create a fresh debugger instance for this session
-            self.debugger = LightweightDebugger()
+            self.debugger = Debugger()
 
             # Enable coverage mode if requested
             if coverage_mode:
@@ -231,7 +231,7 @@ class DebuggerService:
                 logger.info("📊 Coverage tracking enabled (checkpoints will not pause execution)")
 
             # Register this debugger as the active instance for semantic checkpoints
-            from mflux_debugger.lightweight_debugger import set_active_debugger
+            from mflux_debugger.debugger import set_active_debugger
             from mflux_debugger.semantic_checkpoint import set_debugger_active
 
             set_active_debugger(self.debugger)
@@ -987,7 +987,7 @@ class DebuggerService:
             self.debugger.terminate()
 
             # Disable semantic checkpoints and clear active debugger
-            from mflux_debugger.lightweight_debugger import set_active_debugger
+            from mflux_debugger.debugger import set_active_debugger
             from mflux_debugger.semantic_checkpoint import set_debugger_active
 
             set_active_debugger(None)
