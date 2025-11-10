@@ -26,13 +26,9 @@ class VisionPatchEmbed(nn.Module):
 
     def __call__(self, hidden_states: mx.array) -> mx.array:
         batch_size = hidden_states.shape[0]
-
         hidden_states = hidden_states.reshape(
             batch_size, self.in_channels, self.temporal_patch_size, self.patch_size, self.patch_size
         )
-
         hidden_states = hidden_states.transpose(0, 2, 3, 4, 1)
-
         output = self.proj(hidden_states)
-
         return output.reshape(batch_size, self.embed_dim)

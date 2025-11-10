@@ -7,9 +7,7 @@ class PatchMerger(nn.Module):
         super().__init__()
         self.spatial_merge_size = spatial_merge_size
         self.hidden_size_merged = context_dim * (spatial_merge_size**2)
-
         self.ln_q = nn.RMSNorm(context_dim, eps=1e-6)
-
         self.mlp_0 = nn.Linear(self.hidden_size_merged, self.hidden_size_merged, bias=True)
         self.mlp_1 = nn.Linear(self.hidden_size_merged, hidden_size, bias=True)
 

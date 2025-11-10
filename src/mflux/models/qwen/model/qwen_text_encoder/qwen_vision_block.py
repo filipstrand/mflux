@@ -11,15 +11,13 @@ class VisionBlock(nn.Module):
         self.norm1 = nn.RMSNorm(embed_dim, eps=1e-6)
         self.norm2 = nn.RMSNorm(embed_dim, eps=1e-6)
         self.attn = VisionAttention(embed_dim, num_heads)
-        mlp_hidden_dim = int(embed_dim * mlp_ratio)  # 3420 for 1280 * 2.671875
+        mlp_hidden_dim = int(embed_dim * mlp_ratio)
         self.mlp = VisionMLP(embed_dim, mlp_hidden_dim)
 
     def __call__(self, x: mx.array, position_embeddings=None, cu_seqlens=None) -> mx.array:
-        # Pre-norm architecture
         normed1 = self.norm1(x)
         attn_out = self.attn(normed1, position_embeddings, cu_seqlens)
         x = x + attn_out
-
         normed2 = self.norm2(x)
         mlp_out = self.mlp(normed2)
         x = x + mlp_out
