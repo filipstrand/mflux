@@ -48,10 +48,6 @@ class QwenEncoder(nn.Module):
         if self.visual is None:
             raise RuntimeError("Vision transformer not initialized. Call load_visual_weights() first.")
 
-        if len(pixel_values.shape) == 5:
-            num_patches = pixel_values.shape[0]
-            pixel_values = pixel_values.reshape(num_patches, -1)
-
         pixel_values = pixel_values.astype(mx.float32)
         image_embeds = self.visual(pixel_values, image_grid_thw)
 
@@ -71,32 +67,6 @@ class QwenEncoder(nn.Module):
 
         return image_embeds_split
 
-    def get_placeholder_mask(
-        self,
-        input_ids: mx.array,
-        inputs_embeds: mx.array,
-        image_features: mx.array = None,
-    ) -> mx.array:
-        """
-        Obtains multimodal placeholder mask from input_ids and checks that the placeholder token count
-        is equal to the length of multimodal features. Matches the reference implementation.
-        """
-        # Find image token positions
-        special_image_mask = input_ids == self.image_token_id
-        n_image_tokens = mx.sum(special_image_mask).item()
-
-        special_image_mask = mx.expand_dims(special_image_mask, axis=-1)
-        special_image_mask = mx.broadcast_to(special_image_mask, inputs_embeds.shape)
-
-        if image_features is not None:
-            total_image_features = image_features.shape[0]
-            if n_image_tokens != total_image_features:
-                raise ValueError(
-                    f"Image features and image tokens do not match: tokens: {n_image_tokens}, features {total_image_features}"
-                )
-
-        return special_image_mask
-
     def __call__(
         self,
         input_ids: mx.array | None = None,
@@ -104,7 +74,6 @@ class QwenEncoder(nn.Module):
         inputs_embeds: mx.array | None = None,
         pixel_values: mx.array | None = None,
         image_grid_thw: mx.array | None = None,
-        precomputed_image_embeds: mx.array | None = None,
     ) -> mx.array:
         if inputs_embeds is None:
             if input_ids is None:
@@ -115,10 +84,7 @@ class QwenEncoder(nn.Module):
         else:
             batch_size, seq_len, _ = inputs_embeds.shape
 
-        if precomputed_image_embeds is not None and image_grid_thw is not None:
-            image_embeds = precomputed_image_embeds
-
-        elif pixel_values is not None and image_grid_thw is not None:
+        if pixel_values is not None and image_grid_thw is not None:
             if len(pixel_values.shape) == 5:
                 image_embeds = self.get_image_features(pixel_values, image_grid_thw)
                 image_embeds = mx.concatenate(image_embeds, axis=0)

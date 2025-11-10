@@ -16,39 +16,19 @@ class QwenVisionLanguageEncoder(nn.Module):
         attention_mask: mx.array | None = None,
         pixel_values: mx.array | None = None,
         image_grid_thw: mx.array | None = None,
-        precomputed_image_embeds: mx.array | None = None,
     ) -> tuple[mx.array, mx.array]:
-        # The integrated text encoder handles vision-language fusion internally
-        # Matches Diffusers: text_encoder(input_ids, attention_mask, pixel_values, image_grid_thw)
-        if precomputed_image_embeds is not None:
-            # Pass precomputed image embeddings to bypass vision processing
-            hidden_states = self.encoder(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                pixel_values=None,  # Skip vision processing
-                image_grid_thw=image_grid_thw,
-                precomputed_image_embeds=precomputed_image_embeds,
-            )
-        else:
-            # Normal path with vision processing
-            hidden_states = self.encoder(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                pixel_values=pixel_values,
-                image_grid_thw=image_grid_thw,
-            )
+        hidden_states = self.encoder(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            pixel_values=pixel_values,
+            image_grid_thw=image_grid_thw,
+        )
 
-        # Mask-based extraction, then drop template tokens, then pad to batch max length
-        # This mirrors the reference behavior used in Diffusers pipelines
-        if attention_mask is None:
-            # If mask is missing, fall back to full sequence
-            trimmed = [hidden_states[i] for i in range(hidden_states.shape[0])]
-        else:
-            trimmed = []
-            batch = hidden_states.shape[0]
-            for i in range(batch):
-                valid_len = int(mx.sum(attention_mask[i]).item())
-                trimmed.append(hidden_states[i, :valid_len, :])
+        trimmed = []
+        batch = hidden_states.shape[0]
+        for i in range(batch):
+            valid_len = int(mx.sum(attention_mask[i]).item())
+            trimmed.append(hidden_states[i, :valid_len, :])
 
         # Drop the first 64 tokens after masking
         drop_idx = self.edit_template_start_idx
