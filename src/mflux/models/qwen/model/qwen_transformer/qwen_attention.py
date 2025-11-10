@@ -11,24 +11,16 @@ class QwenAttention(nn.Module):
         self.dim = dim
         self.num_heads = num_heads
         self.head_dim = head_dim
-
-        # Attention projections for image stream
         self.to_q = nn.Linear(dim, dim)
         self.to_k = nn.Linear(dim, dim)
         self.to_v = nn.Linear(dim, dim)
-
-        # Attention projections for text stream
         self.add_q_proj = nn.Linear(dim, dim)
         self.add_k_proj = nn.Linear(dim, dim)
         self.add_v_proj = nn.Linear(dim, dim)
-
-        # Query/Key normalization
         self.norm_q = nn.RMSNorm(self.head_dim, eps=1e-6)
         self.norm_k = nn.RMSNorm(self.head_dim, eps=1e-6)
         self.norm_added_q = nn.RMSNorm(self.head_dim, eps=1e-6)
         self.norm_added_k = nn.RMSNorm(self.head_dim, eps=1e-6)
-
-        # Output projections
         self.attn_to_out = [nn.Linear(dim, dim)]
         self.to_add_out = nn.Linear(dim, dim)
 
@@ -38,7 +30,7 @@ class QwenAttention(nn.Module):
         txt_modulated: mx.array,
         encoder_hidden_states_mask: mx.array | None,
         image_rotary_emb: tuple[mx.array, mx.array],
-        block_idx: int | None = None,  # For debugging context
+        block_idx: int | None = None,
     ) -> tuple[mx.array, mx.array]:
         img_query = self.to_q(img_modulated)
         img_key = self.to_k(img_modulated)

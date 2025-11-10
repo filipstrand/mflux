@@ -57,27 +57,22 @@ class QwenTransformer(nn.Module):
         hidden_states: mx.array,
         encoder_hidden_states: mx.array,
         encoder_hidden_states_mask: mx.array,
-        qwen_image_ids: mx.array | None = None,  # Optional: for Edit model
-        cond_image_grid: tuple[int, int, int] | None = None,  # Optional: for Edit model
+        qwen_image_ids: mx.array | None = None,
+        cond_image_grid: tuple[int, int, int] | None = None,
     ) -> mx.array:
         hidden_states = self.img_in(hidden_states)
-
         batch_size = hidden_states.shape[0]
         timestep = QwenTransformer._compute_timestep(t, config)
         timestep = mx.broadcast_to(timestep, (batch_size,)).astype(hidden_states.dtype)
-
         encoder_hidden_states = self.txt_norm(encoder_hidden_states)
         encoder_hidden_states = self.txt_in(encoder_hidden_states)
-
         text_embeddings = self.time_text_embed(timestep, hidden_states)
-
         image_rotary_embeddings = QwenTransformer._compute_rotary_embeddings(
             encoder_hidden_states_mask=encoder_hidden_states_mask,
             pos_embed=self.pos_embed,
             config=config,
             cond_image_grid=cond_image_grid,
         )
-
         for idx, block in enumerate(self.transformer_blocks):
             encoder_hidden_states, hidden_states = QwenTransformer._apply_transformer_block(
                 idx=idx,
@@ -88,7 +83,6 @@ class QwenTransformer(nn.Module):
                 text_embeddings=text_embeddings,
                 image_rotary_embeddings=image_rotary_embeddings,
             )
-
         hidden_states = self.norm_out(hidden_states, text_embeddings)
         hidden_states = self.proj_out(hidden_states)
         return hidden_states
@@ -109,7 +103,7 @@ class QwenTransformer(nn.Module):
             encoder_hidden_states_mask=encoder_hidden_states_mask,
             text_embeddings=text_embeddings,
             image_rotary_emb=image_rotary_embeddings,
-            block_idx=idx,  # Pass block index for debugging context
+            block_idx=idx,
         )
 
     @staticmethod

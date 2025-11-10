@@ -17,9 +17,6 @@ class PatchMerger(nn.Module):
         if not hasattr(self, "_weights_logged"):
             self._weights_logged = True
         x = self.ln_q(x)
-
-        # After window reordering, patches are grouped into 2x2 spatial blocks
-        # Merging consecutive groups correctly merges spatially adjacent patches
         merged_patches = []
         offset = 0
         for t, h, w in grid_thw:

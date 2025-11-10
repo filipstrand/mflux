@@ -36,8 +36,6 @@ class VisionTransformer(nn.Module):
         self.rotary_pos_emb = VisionRotaryEmbedding(head_dim // 2)
 
         self.blocks = [VisionBlock(embed_dim, num_heads, mlp_ratio) for _ in range(depth)]
-
-        # Use proper patch merger to match HF
         self.merger = PatchMerger(embed_dim, hidden_size, spatial_merge_size)
 
     def get_window_index(self, grid_thw: mx.array):
@@ -51,16 +49,13 @@ class VisionTransformer(nn.Module):
             llm_grid_h = grid_h // self.spatial_merge_size
             llm_grid_w = grid_w // self.spatial_merge_size
 
-            # Create index array for this image
             index = mx.arange(t * llm_grid_h * llm_grid_w).reshape(t, llm_grid_h, llm_grid_w)
 
-            # Compute padding for windowing
             pad_h = vit_merger_window_size - llm_grid_h % vit_merger_window_size
             pad_w = vit_merger_window_size - llm_grid_w % vit_merger_window_size
             num_windows_h = (llm_grid_h + pad_h) // vit_merger_window_size
             num_windows_w = (llm_grid_w + pad_w) // vit_merger_window_size
 
-            # Pad the index
             index_padded = mx.pad(index, ((0, 0), (0, pad_h), (0, pad_w)), constant_values=-100)
 
             index_padded = index_padded.reshape(
@@ -90,53 +85,39 @@ class VisionTransformer(nn.Module):
         pos_ids = []
         for t, h, w in grid_thw:
             t, h, w = int(t), int(h), int(w)
-
             hpos_ids = mx.repeat(mx.arange(h)[..., None], w, axis=1)
             wpos_ids = mx.repeat(mx.arange(w)[None, ...], h, axis=0)
-
             merge_h = h // self.spatial_merge_size
             merge_w = w // self.spatial_merge_size
-
             hpos_ids = hpos_ids.reshape(merge_h, self.spatial_merge_size, merge_w, self.spatial_merge_size)
             wpos_ids = wpos_ids.reshape(merge_h, self.spatial_merge_size, merge_w, self.spatial_merge_size)
-
             hpos_ids = mx.transpose(hpos_ids, (0, 2, 1, 3))
             wpos_ids = mx.transpose(wpos_ids, (0, 2, 1, 3))
-
             hpos_ids = hpos_ids.reshape(-1)
             wpos_ids = wpos_ids.reshape(-1)
-
             pos_id_pair = mx.stack([hpos_ids, wpos_ids], axis=-1)
             pos_id_pair = mx.tile(pos_id_pair, (t, 1))
             pos_ids.append(pos_id_pair)
-
         pos_ids = mx.concatenate(pos_ids, axis=0)
-
         max_grid_size = int(mx.max(grid_thw[:, 1:]).item())
         rotary_pos_emb_full = self.rotary_pos_emb(max_grid_size)
-
         h_indices = pos_ids[:, 0].astype(mx.int32)
         w_indices = pos_ids[:, 1].astype(mx.int32)
         h_emb = rotary_pos_emb_full[h_indices]
         w_emb = rotary_pos_emb_full[w_indices]
-
         rotary_pos_emb = mx.stack([h_emb, w_emb], axis=1)
         rotary_pos_emb = rotary_pos_emb.reshape(rotary_pos_emb.shape[0], -1)
-
         return rotary_pos_emb
 
     def __call__(self, pixel_values: mx.array, grid_thw: mx.array) -> mx.array:
         hidden_states = self.patch_embed(pixel_values)
         rotary_pos_emb = self.rot_pos_emb(grid_thw)
-
         window_index, cu_window_seqlens = self.get_window_index(grid_thw)
-
         cu_window_seqlens_unique = [cu_window_seqlens[0].item()]
         for i in range(1, len(cu_window_seqlens)):
             if cu_window_seqlens[i].item() != cu_window_seqlens_unique[-1]:
                 cu_window_seqlens_unique.append(cu_window_seqlens[i].item())
         cu_window_seqlens = mx.array(cu_window_seqlens_unique, dtype=mx.int32)
-
         seq_len = hidden_states.shape[0]
         cu_seqlens = []
         offset = 0
@@ -146,33 +127,23 @@ class VisionTransformer(nn.Module):
             offset += length
             cu_seqlens.append(offset)
         cu_seqlens = mx.array([0] + cu_seqlens, dtype=mx.int32)
-
-        # window_index is for GROUPS (after grouping), not individual patches
-        # Groups are consecutive patches: [0,1,2,3], [4,5,6,7], [8,9,10,11], ...
         seq_len = hidden_states.shape[0]
         num_groups = seq_len // self.spatial_merge_unit
         hidden_states_grouped = hidden_states.reshape(num_groups, self.spatial_merge_unit, -1)
         hidden_states_grouped = hidden_states_grouped[window_index.astype(mx.int32), :, :]
         hidden_states = hidden_states_grouped.reshape(seq_len, -1)
-
         rotary_pos_emb_grouped = rotary_pos_emb.reshape(num_groups, self.spatial_merge_unit, -1)
         rotary_pos_emb_grouped = rotary_pos_emb_grouped[window_index.astype(mx.int32), :, :]
         rotary_pos_emb = rotary_pos_emb_grouped.reshape(seq_len, -1)
-
         emb = mx.concatenate([rotary_pos_emb, rotary_pos_emb], axis=-1)
         position_embeddings = (mx.cos(emb), mx.sin(emb))
-
         for layer_num, block in enumerate(self.blocks):
             if layer_num in self.fullatt_block_indexes:
                 cu_seqlens_now = cu_seqlens
             else:
                 cu_seqlens_now = cu_window_seqlens
-
             hidden_states = block(hidden_states, position_embeddings, cu_seqlens_now)
-
         hidden_states = self.merger(hidden_states, grid_thw)
-
         reverse_indices = mx.argsort(window_index.astype(mx.int32))
         hidden_states = hidden_states[reverse_indices.astype(mx.int32), :]
-
         return hidden_states

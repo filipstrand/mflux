@@ -19,14 +19,14 @@ class QwenEncoder(nn.Module):
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
         self.num_hidden_layers = num_hidden_layers
-        self.image_token_id = 151655  # <|image_pad|> token
+        self.image_token_id = 151655
 
         self.embed_tokens = nn.Embedding(vocab_size, hidden_size)
         self.layers = []
         for i in range(num_hidden_layers):
             layer = QwenEncoderLayer()
-            layer._layer_idx = i  # Set layer index for debugging
-            layer.self_attn._layer_idx = i  # Set layer index on attention module too
+            layer._layer_idx = i
+            layer.self_attn._layer_idx = i
             self.layers.append(layer)
         self.norm = QwenRMSNorm(hidden_size, eps=1e-6)
         self.rotary_emb = QwenRotaryEmbedding(
@@ -36,21 +36,14 @@ class QwenEncoder(nn.Module):
             rope_type="default",
         )
 
-        # Vision transformer for VL fusion (only for Edit model, not txt2img)
-        # Will be initialized when visual weights are loaded
         self.visual = None
 
     def get_image_features(self, pixel_values: mx.array, image_grid_thw: mx.array) -> mx.array:
-        """
-        Encodes images into continuous embeddings that can be forwarded to the language model.
-        Matches the reference implementation exactly.
-        """
         if self.visual is None:
             raise RuntimeError("Vision transformer not initialized. Call load_visual_weights() first.")
 
         pixel_values = pixel_values.astype(mx.float32)
         image_embeds = self.visual(pixel_values, image_grid_thw)
-
         original_split_sizes = image_grid_thw.prod(axis=-1).astype(mx.int32)
         split_sizes = (original_split_sizes // 4).astype(mx.int32)
         split_sizes = [int(s) for s in split_sizes.tolist()]
@@ -61,7 +54,6 @@ class QwenEncoder(nn.Module):
             end_idx = start_idx + split_size
             image_embeds_split.append(image_embeds[start_idx:end_idx])
             start_idx = end_idx
-
         return image_embeds_split
 
     def __call__(
@@ -73,7 +65,6 @@ class QwenEncoder(nn.Module):
     ) -> mx.array:
         batch_size, seq_len = input_ids.shape
         inputs_embeds = self.embed_tokens(input_ids)
-
         if pixel_values is not None and image_grid_thw is not None:
             image_embeds_split = self.get_image_features(pixel_values, image_grid_thw)
             image_embeds = mx.concatenate(image_embeds_split, axis=0)
@@ -101,7 +92,6 @@ class QwenEncoder(nn.Module):
 
                 new_embeds = mx.stack(new_embeds_list, axis=0)
                 inputs_embeds = new_embeds.reshape(inputs_embeds.shape)
-
         cache_position = mx.arange(seq_len, dtype=mx.int32)
         position_ids = mx.expand_dims(mx.expand_dims(cache_position, axis=0), axis=0)
         position_ids = mx.broadcast_to(position_ids, (3, batch_size, seq_len))
@@ -115,7 +105,6 @@ class QwenEncoder(nn.Module):
         else:
             padding_mask = None
 
-        # Create causal triangular mask
         idx = mx.arange(seq_len, dtype=mx.int32)
         j = mx.expand_dims(idx, axis=0)
         i = mx.expand_dims(idx, axis=1)
@@ -129,13 +118,9 @@ class QwenEncoder(nn.Module):
             attention_mask_4d = causal_tri_mask + padding_mask
         else:
             attention_mask_4d = causal_tri_mask
-
         hidden_states = inputs_embeds
         position_embeddings = self.rotary_emb(hidden_states, position_ids)
-
         for i, layer in enumerate(self.layers):
             hidden_states = layer(hidden_states, attention_mask_4d, position_embeddings)
-
         hidden_states = self.norm(hidden_states)
-
         return hidden_states

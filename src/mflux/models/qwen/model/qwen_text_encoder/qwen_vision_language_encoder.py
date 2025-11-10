@@ -8,7 +8,7 @@ class QwenVisionLanguageEncoder(nn.Module):
     def __init__(self, encoder=None):
         super().__init__()
         self.encoder = encoder or QwenEncoder()
-        self.edit_template_start_idx = 64  # Number of tokens before the actual prompt
+        self.edit_template_start_idx = 64
 
     def __call__(
         self,
@@ -23,19 +23,14 @@ class QwenVisionLanguageEncoder(nn.Module):
             pixel_values=pixel_values,
             image_grid_thw=image_grid_thw,
         )
-
         trimmed = []
         batch = hidden_states.shape[0]
         for i in range(batch):
             valid_len = int(mx.sum(attention_mask[i]).item())
             trimmed.append(hidden_states[i, :valid_len, :])
-
-        # Drop the first 64 tokens after masking
         drop_idx = self.edit_template_start_idx
         trimmed_after_drop = [t[drop_idx:] if t.shape[0] > drop_idx else t for t in trimmed]
         trimmed = trimmed_after_drop
-
-        # Pad sequences to max length across batch
         max_len = max(t.shape[0] for t in trimmed) if trimmed else 0
         hidden_dim = hidden_states.shape[2]
         padded_embeds = []
@@ -53,8 +48,6 @@ class QwenVisionLanguageEncoder(nn.Module):
                 pad_m = mx.ones(cur_len, dtype=mx.int32)
             padded_embeds.append(t_pad)
             padded_masks.append(pad_m)
-
         prompt_embeds = mx.stack(padded_embeds, axis=0) if padded_embeds else hidden_states
         encoder_attention_mask = mx.stack(padded_masks, axis=0) if padded_masks else attention_mask
-
         return prompt_embeds, encoder_attention_mask
