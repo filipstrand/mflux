@@ -12,46 +12,35 @@ class VisionAttention(nn.Module):
         self.qkv = nn.Linear(embed_dim, 3 * embed_dim, bias=True)
         self.proj = nn.Linear(embed_dim, embed_dim, bias=True)
 
+    def _rotate_half(self, x: mx.array) -> mx.array:
+        x1 = x[..., : x.shape[-1] // 2]
+        x2 = x[..., x.shape[-1] // 2 :]
+        return mx.concatenate([-x2, x1], axis=-1)
+
+    def _apply_rope(self, x: mx.array, cos: mx.array, sin: mx.array) -> mx.array:
+        cos_expanded = mx.expand_dims(cos, axis=0)
+        sin_expanded = mx.expand_dims(sin, axis=0)
+        rotated = (x * cos_expanded) + (self._rotate_half(x) * sin_expanded)
+        return rotated
+
     def __call__(self, x: mx.array, position_embeddings=None, cu_seqlens=None) -> mx.array:
-        # For vision attention, x is [seq_len, embed_dim] (no batch dimension)
         seq_len, embed_dim = x.shape
 
-        # Compute QKV
-        qkv = self.qkv(x)  # [seq_len, 3 * embed_dim]
+        qkv = self.qkv(x)
         qkv = qkv.reshape(seq_len, 3, self.num_heads, self.head_dim)
         q, k, v = mx.split(qkv, 3, axis=1)
-        q = q.squeeze(1).transpose(1, 0, 2)  # [heads, seq, head_dim]
+        q = q.squeeze(1).transpose(1, 0, 2)
         k = k.squeeze(1).transpose(1, 0, 2)
         v = v.squeeze(1).transpose(1, 0, 2)
 
-        # Apply rotary position embeddings if provided
         if position_embeddings is not None:
             cos_emb, sin_emb = position_embeddings
-            # Ensure embeddings match sequence length
             if cos_emb.shape[0] != seq_len:
                 cos_emb = cos_emb[:seq_len]
                 sin_emb = sin_emb[:seq_len]
 
-            # Apply RoPE to q and k (matching HF's rotate_half logic)
-            # Matching QwenAttention._apply_multimodal_rotary_pos_emb implementation
-            def apply_rope(x, cos, sin):
-                # x: [heads, seq, head_dim], cos/sin: [seq, head_dim]
-                # Expand cos/sin to match head dimension for broadcasting
-                cos_expanded = mx.expand_dims(cos, axis=0)  # [1, seq, head_dim]
-                sin_expanded = mx.expand_dims(sin, axis=0)  # [1, seq, head_dim]
-
-                # Standard RoPE formula: (q * cos) + (rotate_half(q) * sin)
-                # where rotate_half([x1, x2]) = [-x2, x1]
-                def rotate_half(x):
-                    x1 = x[..., : x.shape[-1] // 2]
-                    x2 = x[..., x.shape[-1] // 2 :]
-                    return mx.concatenate([-x2, x1], axis=-1)
-
-                rotated = (x * cos_expanded) + (rotate_half(x) * sin_expanded)
-                return rotated
-
-            q = apply_rope(q, cos_emb, sin_emb)
-            k = apply_rope(k, cos_emb, sin_emb)
+            q = self._apply_rope(q, cos_emb, sin_emb)
+            k = self._apply_rope(k, cos_emb, sin_emb)
 
         # Process attention chunks if cu_seqlens is provided (windowed attention)
         if cu_seqlens is not None and len(cu_seqlens) > 2:

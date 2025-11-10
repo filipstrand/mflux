@@ -50,12 +50,10 @@ class QwenEmbedRopeMLX(nn.Module):
         freqs_pos = np.split(self.pos_freqs, np.cumsum(axes_splits)[:-1], axis=1)
         freqs_neg = np.split(self.neg_freqs, np.cumsum(axes_splits)[:-1], axis=1)
 
-        # Frame frequencies
         freqs_frame_raw = freqs_pos[0][idx : idx + frame]
         freqs_frame = freqs_frame_raw.reshape(frame, 1, 1, -1, 2)
         freqs_frame = np.broadcast_to(freqs_frame, (frame, height, width, freqs_frame.shape[-2], 2))
 
-        # Height frequencies
         if self.scale_rope:
             freqs_height = np.concatenate(
                 [freqs_neg[1][-(height - height // 2) :], freqs_pos[1][: height // 2]], axis=0
@@ -65,7 +63,6 @@ class QwenEmbedRopeMLX(nn.Module):
         freqs_height = freqs_height.reshape(1, height, 1, -1, 2)
         freqs_height = np.broadcast_to(freqs_height, (frame, height, width, freqs_height.shape[-2], 2))
 
-        # Width frequencies
         if self.scale_rope:
             freqs_width = np.concatenate([freqs_neg[2][-(width - width // 2) :], freqs_pos[2][: width // 2]], axis=0)
         else:
@@ -73,7 +70,6 @@ class QwenEmbedRopeMLX(nn.Module):
         freqs_width = freqs_width.reshape(1, 1, width, -1, 2)
         freqs_width = np.broadcast_to(freqs_width, (frame, height, width, freqs_width.shape[-2], 2))
 
-        # Concatenate all frequencies
         freqs = np.concatenate([freqs_frame, freqs_height, freqs_width], axis=-2)
         freqs = freqs.reshape(seq_lens, -1, 2)
 

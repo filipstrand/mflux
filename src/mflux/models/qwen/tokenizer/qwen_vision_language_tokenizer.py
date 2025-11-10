@@ -128,7 +128,7 @@ class QwenVisionLanguageTokenizer:
         formatted_text = text_template.format(prompt)
         tokens = self.processor.tokenizer(
             formatted_text,
-            max_length=self.max_length + 34,  # Original template start idx
+            max_length=self.max_length + 34,
             padding=True,
             truncation=True,
             return_tensors="pt",

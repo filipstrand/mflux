@@ -36,8 +36,8 @@ class QwenImageEncoder3D(nn.Module):
         self.down_blocks = down_blocks
 
         self.mid_block = QwenImageMidBlock3D(dims[-1], num_layers=1)
-        self.norm_out = QwenImageRMSNorm(dims[-1], images=False)  # Encoder norm_out uses images=False
-        self.conv_out = QwenImageCausalConv3D(dims[-1], 32, 3, 1, 1)  # Changed z_dim to 32
+        self.norm_out = QwenImageRMSNorm(dims[-1], images=False)
+        self.conv_out = QwenImageCausalConv3D(dims[-1], 32, 3, 1, 1)
 
     def __call__(self, x: mx.array) -> mx.array:
         x = self.conv_in(x)

@@ -16,15 +16,12 @@ class QwenEditUtil:
         vl_width: int | None = None,
         vl_height: int | None = None,
     ) -> tuple[mx.array, mx.array, int, int, int]:
-        # Normalize to list format (handle str, Path, or list)
         if not isinstance(image_paths, list):
-            image_paths = [str(image_paths)]  # Convert Path to string if needed
+            image_paths = [str(image_paths)]
 
-        # 0) Use VL tokenizer's calculated dimensions if available, otherwise compute from last image
         if vl_width is not None and vl_height is not None:
             calc_w, calc_h = vl_width, vl_height
         else:
-            # Fallback: compute dimensions independently from last image (matching PyTorch)
             from mflux.post_processing.image_util import ImageUtil
 
             pil_image = ImageUtil.load_image(image_paths[-1]).convert("RGB")
@@ -35,7 +32,6 @@ class QwenEditUtil:
             calc_w = int(round(((target_area * ratio) ** 0.5) / 32) * 32)
             calc_h = int(round((calc_w / ratio) / 32) * 32)
 
-        # 1) Process each image and encode at resized conditioning resolution
         all_image_latents = []
         for image_path in image_paths:
             input_image = LatentCreator.encode_image(
@@ -45,12 +41,11 @@ class QwenEditUtil:
                 width=calc_w,
             )
 
-            # 2) Pack image latents for conditioning according to resized dims
             image_latents = ArrayUtil.pack_latents(
                 latents=input_image,
                 height=calc_h,
                 width=calc_w,
-                num_channels_latents=16,  # Qwen uses 16 channels like Flux
+                num_channels_latents=16,
             )
             all_image_latents.append(image_latents)
 

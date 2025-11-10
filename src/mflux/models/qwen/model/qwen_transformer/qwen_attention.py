@@ -101,22 +101,16 @@ class QwenAttention(nn.Module):
         query_bhsd = mx.transpose(query, (0, 2, 1, 3))
         key_bhsd = mx.transpose(key, (0, 2, 1, 3))
         value_bhsd = mx.transpose(value, (0, 2, 1, 3))
-
         head_dim = query.shape[-1]
         scale_value = 1.0 / (head_dim**0.5)
-
         hidden_states_bhsd = scaled_dot_product_attention(
             query_bhsd, key_bhsd, value_bhsd, scale=scale_value, mask=mask
         )
-
         hidden_states = mx.transpose(hidden_states_bhsd, (0, 2, 1, 3))
-
         batch_size = hidden_states.shape[0]
         seq_len = hidden_states.shape[1]
         hidden_states = mx.reshape(hidden_states, (batch_size, seq_len, self.num_heads * self.head_dim))
-
         hidden_states = hidden_states.astype(query.dtype)
-
         return hidden_states
 
     @staticmethod
