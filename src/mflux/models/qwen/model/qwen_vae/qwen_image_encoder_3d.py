@@ -42,8 +42,8 @@ class QwenImageEncoder3D(nn.Module):
     def __call__(self, x: mx.array) -> mx.array:
         x = self.conv_in(x)
         for stage_idx, down_block in enumerate(self.down_blocks):
-            for res_idx, resnet in enumerate(down_block.resnets):
-                if stage_idx == 3:
+            if stage_idx == 3:
+                for resnet in down_block.resnets:
                     residual = x
                     n1 = resnet.norm1(x)
                     a1 = nn.silu(n1)
@@ -51,12 +51,11 @@ class QwenImageEncoder3D(nn.Module):
                     n2 = resnet.norm2(c1)
                     a2 = nn.silu(n2)
                     c2 = resnet.conv2(a2)
-                    y = c2 + residual
-                    x = y
-                else:
-                    x = resnet(x)
-            if down_block.downsamplers is not None:
-                x = down_block.downsamplers[0](x)
+                    x = c2 + residual
+                if down_block.downsamplers is not None:
+                    x = down_block.downsamplers[0](x)
+            else:
+                x = down_block(x)
 
         x = self.mid_block(x)
         norm_in = x
