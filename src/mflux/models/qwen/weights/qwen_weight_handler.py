@@ -3,8 +3,10 @@ from collections.abc import Callable
 from pathlib import Path
 
 import mlx.core as mx
+import torch
 from mlx.utils import tree_unflatten
 from safetensors.mlx import load_file as mlx_load_file
+from safetensors.torch import load_file as torch_load_file
 
 from mflux.models.common.weights.mapping.weight_mapper import WeightMapper
 from mflux.models.common.weights.mapping.weight_mapping import WeightTarget
@@ -138,9 +140,6 @@ class QwenWeightHandler:
                     file_weights = mlx_load_file(str(file_path))
                 except Exception:  # noqa: BLE001
                     # If MLX can't load directly, try with torch and convert
-                    import torch
-                    from safetensors.torch import load_file as torch_load_file
-
                     torch_weights = torch_load_file(str(file_path))
                     file_weights = {}
                     for name, tensor in torch_weights.items():

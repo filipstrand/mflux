@@ -14,7 +14,7 @@ class TokenizerQwen:
         tokens = self.tokenizer(
             formatted_text,
             max_length=self.max_length + self.template_start_idx,
-            padding=False,  # FIX: Don't pad - let each prompt have its natural length
+            padding=False,
             truncation=True,
             return_tensors="np",
         )

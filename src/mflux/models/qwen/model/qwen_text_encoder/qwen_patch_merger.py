@@ -22,7 +22,7 @@ class PatchMerger(nn.Module):
             self._weights_logged = True
         x = self.ln_q(x)
 
-        # CRITICAL: Match PyTorch's simple approach - just reshape consecutive patches
+        # Match PyTorch's simple approach - just reshape consecutive patches
         # PyTorch does: x.view(-1, self.hidden_size) which merges consecutive groups of 4 patches
         # After window reordering, patches are already grouped into 2x2 spatial blocks,
         # so merging consecutive groups correctly merges spatially adjacent patches

@@ -87,8 +87,9 @@ class QwenImageEdit(nn.Module):
         )
         runtime_config = RuntimeConfig(final_config, self.model_config)
 
-        # CRITICAL: Use calculated dimensions for CONDITIONING image (like Diffusers lines 708-710)
         # NOT the output dimensions! This ensures conditioning matches PyTorch
+        # The regular edit model uses calculated dimensions (from 1024x1024 target) for both
+        # vision encoder and VAE encoding, unlike Edit Plus which uses 384x384 for vision encoder
         vl_width = calculated_width
         vl_height = calculated_height
 
@@ -103,7 +104,7 @@ class QwenImageEdit(nn.Module):
             width=runtime_config.width,
         )
 
-        # 2. Generate prompt embeddings with MLX encoder (using fixed text encoder!)
+        # 2. Generate prompt embeddings with MLX encoder
         prompt_embeds, prompt_mask, negative_prompt_embeds, negative_prompt_mask = (
             self._debug_encode_prompts_with_image(
                 prompt=prompt,
@@ -114,21 +115,25 @@ class QwenImageEdit(nn.Module):
                 vl_height=int(vl_height),
             )
         )
-        # Note: We're using MLX text encoder output (not loading from PyTorch) to test the fix!
+        # Note: We're using MLX text encoder output (not loading from PyTorch)
 
         # 3. Generate image conditioning latents with MLX (compare with diffusers)
+        # The function uses vl_width/vl_height for encoding (ignores height/width params)
+        # So we pass calculated dimensions which will be used for both vision encoder AND VAE encoding
+        # This ensures consistency - both see the same resolution (calculated from 1024x1024 target)
         # Convert Path to string if needed (function accepts list or str)
         image_path = str(runtime_config.image_path) if runtime_config.image_path else None
         static_image_latents, qwen_image_ids, cond_h_patches, cond_w_patches, num_images = (
             QwenEditUtil.create_image_conditioning_latents(
                 vae=self.vae,
-                height=runtime_config.height,
-                width=runtime_config.width,
+                height=runtime_config.height,  # Ignored when vl_width/vl_height provided
+                width=runtime_config.width,  # Ignored when vl_width/vl_height provided
                 image_paths=image_path,
-                vl_width=int(vl_width),
-                vl_height=int(vl_height),
+                vl_width=int(vl_width),  # Calculated dimensions used for encoding (matches vision encoder)
+                vl_height=int(vl_height),  # This ensures vision encoder and VAE encoding match
             )
         )
+        # The function uses vl_width/vl_height to compute calc_h/calc_w, which determines patch counts
 
         # (Optional) Call subscribers for beginning of loop
         Callbacks.before_loop(

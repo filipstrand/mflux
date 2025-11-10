@@ -1,9 +1,11 @@
 from typing import TYPE_CHECKING
 
+import mlx.core as mx
 import mlx.nn as nn
 from mlx.utils import tree_flatten  # noqa: F401
 
 from mflux.config.config import Config
+from mflux.models.qwen.model.qwen_text_encoder.qwen_vision_transformer import VisionTransformer
 from mflux.utils.quantization_util import QuantizationUtil
 
 if TYPE_CHECKING:
@@ -59,7 +61,6 @@ class QwenWeightUtil:
         Recursively convert all weight tensors to BF16.
         This matches PyTorch's behavior where the text encoder model is loaded in BF16.
         """
-        import mlx.core as mx
 
         def convert_recursive(obj):
             if isinstance(obj, mx.array):
@@ -90,8 +91,6 @@ class QwenWeightUtil:
             )
             if has_visual_weights and text_encoder.encoder.visual is None:
                 print("🔧 Initializing VisionTransformer for Edit model")
-                from mflux.models.qwen.model.qwen_text_encoder.qwen_vision_transformer import VisionTransformer
-
                 text_encoder.encoder.visual = VisionTransformer(
                     patch_size=14,
                     temporal_patch_size=2,

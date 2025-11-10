@@ -1,4 +1,5 @@
 import mlx.core as mx
+import numpy as np
 from mlx import nn
 
 from mflux.models.qwen.model.qwen_text_encoder.qwen_patch_merger import PatchMerger
@@ -78,8 +79,6 @@ class VisionTransformer(nn.Module):
             index_padded_flat = index_padded.reshape(-1)
 
             # MLX doesn't support boolean indexing, convert to numpy, filter, convert back
-            import numpy as np
-
             index_padded_np = np.array(index_padded_flat)
             index_new = mx.array(index_padded_np[index_padded_np != -100])
 
@@ -151,12 +150,9 @@ class VisionTransformer(nn.Module):
             grid_thw: [num_images, 3] - temporal, height, width dimensions
         """
 
-        # Checkpoint before vision transformer to compare inputs
         # Patch embedding (will reshape internally to match PyTorch's NCDHW format)
         hidden_states = self.patch_embed(pixel_values)  # [num_patches, embed_dim]
 
-        print(f"🔎 VisionTransformer: After patch_embed: {hidden_states.shape}")
-        # Checkpoint after patch_embed (verified - patch_embed matches)
         # Rotary position embeddings (with spatial merging order)
         rotary_pos_emb = self.rot_pos_emb(grid_thw)  # [num_patches, dim] where dim = head_dim
 
@@ -182,15 +178,10 @@ class VisionTransformer(nn.Module):
         cu_seqlens = mx.array([0] + cu_seqlens, dtype=mx.int32)
 
         # Reorder hidden_states according to window_index (matching PyTorch logic)
-        # CRITICAL: window_index is for GROUPS (after grouping), not individual patches
+        # window_index is for GROUPS (after grouping), not individual patches
         # PyTorch groups consecutive patches: reshape(seq_len // spatial_merge_unit, spatial_merge_unit, -1)
         # This means groups are: [0,1,2,3], [4,5,6,7], [8,9,10,11], ... (consecutive patches in row-major order)
         # NOT 2x2 spatial blocks! The window_index expects this consecutive grouping.
-
-        # CRITICAL FIX: Match PyTorch's simple consecutive grouping
-        # PyTorch does: reshape(seq_len // spatial_merge_unit, spatial_merge_unit, -1)
-        # This groups consecutive patches, NOT 2x2 spatial blocks!
-        # The window_index expects groups in this consecutive order
         seq_len = hidden_states.shape[0]
         num_groups = seq_len // self.spatial_merge_unit
         hidden_states_grouped = hidden_states.reshape(
@@ -203,8 +194,7 @@ class VisionTransformer(nn.Module):
         # Reshape back to individual patches: [total_groups, spatial_merge_unit, hidden_dim] -> [total_patches, hidden_dim]
         hidden_states = hidden_states_grouped.reshape(seq_len, -1)
 
-        # Checkpoint after window reorder (critical - check if reordering matches PyTorch)
-        # CRITICAL FIX: Match PyTorch's simple consecutive grouping for rotary embeddings too
+        # Match PyTorch's simple consecutive grouping for rotary embeddings too
         # Same as hidden_states - group consecutive patches
         rotary_pos_emb_grouped = rotary_pos_emb.reshape(
             num_groups, self.spatial_merge_unit, -1
@@ -230,26 +220,10 @@ class VisionTransformer(nn.Module):
 
             hidden_states = block(hidden_states, position_embeddings, cu_seqlens_now)
 
-        print(f"🔎 VisionTransformer: After transformer blocks: {hidden_states.shape}")
-        print(f"🔎 VisionTransformer: After transformer blocks std: {float(mx.std(hidden_states)):.4f}")
-        # CRITICAL: Match PyTorch order - patch merger BEFORE reverse window
-        # PyTorch does: merger(on window-reordered patches) -> reverse window -> return
-        # The merger operates on patches still in window-reordered order, then we reverse after merging
-        # Patches are already grouped into 2x2 spatial blocks from window reordering,
-        # so the merger can simply merge consecutive groups of 4 patches (matching PyTorch's view(-1, hidden_size))
-
-        # Checkpoint before merger to compare inputs
-        # Apply patch merger on patches in window-reordered order (matching PyTorch)
         hidden_states = self.merger(hidden_states, grid_thw)
 
-        print(f"🔎 VisionTransformer: After merger: {hidden_states.shape}")
-        # Checkpoint after patch merger (critical - check if patch merger matches PyTorch)
-        # Now reverse window reordering (matching PyTorch's simple approach)
-        # PyTorch: reverse_indices = torch.argsort(window_index); hidden_states = hidden_states[reverse_indices, :]
-        # window_index is for groups (196 groups), and after merger we have 196 merged patches
-        # So we can directly apply reverse_indices to the merged patches
+        # Reverse window reordering (matching PyTorch's simple approach)
         reverse_indices = mx.argsort(window_index.astype(mx.int32))
         hidden_states = hidden_states[reverse_indices.astype(mx.int32), :]
 
-        # Checkpoint after reverse window (critical - check if reverse reordering matches PyTorch)
         return hidden_states

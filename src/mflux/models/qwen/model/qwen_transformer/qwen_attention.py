@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import mlx.core as mx
 from mlx import nn
+from mlx.core.fast import scaled_dot_product_attention
 
 
 class QwenAttention(nn.Module):
@@ -101,29 +102,6 @@ class QwenAttention(nn.Module):
         txt_attn_output = hidden_states[:, :seq_txt, :]
         img_attn_output = hidden_states[:, seq_txt:, :]
 
-        # 🔧 LOAD: Load PyTorch's SPLIT SDPA outputs for timestep 0 (after split, before projection)
-        import os
-
-        LOAD_SDPA_TIMESTEP0 = os.environ.get("LOAD_SDPA_TIMESTEP0", "0") == "1"
-        if LOAD_SDPA_TIMESTEP0 and block_idx is not None:
-            import numpy as np
-
-            sdpa_dir = "/Users/filip/Desktop/pytorch_sdpa_timestep0"
-            prefix = os.environ.get("SDPA_LOAD_PREFIX", "pos")
-
-            img_path = f"{sdpa_dir}/block{block_idx:02d}_{prefix}_img_sdpa_output.npy"
-            txt_path = f"{sdpa_dir}/block{block_idx:02d}_{prefix}_txt_sdpa_output.npy"
-
-            if os.path.exists(img_path) and os.path.exists(txt_path):
-                loaded_img = mx.array(np.load(img_path))
-                loaded_txt = mx.array(np.load(txt_path))
-
-                batch_size, seq_len_img, num_heads, head_dim = loaded_img.shape
-                _, seq_len_txt, _, _ = loaded_txt.shape
-
-                img_attn_output = mx.reshape(loaded_img, (batch_size, seq_len_img, num_heads * head_dim))
-                txt_attn_output = mx.reshape(loaded_txt, (batch_size, seq_len_txt, num_heads * head_dim))
-
         # 8. Apply output projections
         img_attn_output = self.attn_to_out[0](img_attn_output)
         txt_attn_output = self.to_add_out(txt_attn_output)
@@ -138,8 +116,6 @@ class QwenAttention(nn.Module):
         mask: mx.array | None = None,
         block_idx: int | None = None,
     ) -> mx.array:
-        from mlx.core.fast import scaled_dot_product_attention
-
         # Transpose [B, S, H, D] -> [B, H, S, D] for MLX's attention function
         query_bhsd = mx.transpose(query, (0, 2, 1, 3))
         key_bhsd = mx.transpose(key, (0, 2, 1, 3))

@@ -55,28 +55,12 @@ class QwenEncoder(nn.Module):
         if len(pixel_values.shape) == 5:
             num_patches = pixel_values.shape[0]
             pixel_values = pixel_values.reshape(num_patches, -1)
-            print(f"🔎 Flattened 5D input to: {pixel_values.shape}")
-
-        print("\n🔎 MLX Vision Tower Input:")
-        print(f"   pixel_values shape: {pixel_values.shape}")
-        print(f"   pixel_values dtype: {pixel_values.dtype}")
-        print(f"   pixel_values mean: {float(mx.mean(pixel_values)):.6f}")
-        print(f"   pixel_values min: {float(mx.min(pixel_values)):.6f}")
-        print(f"   pixel_values max: {float(mx.max(pixel_values)):.6f}")
 
         pixel_values = pixel_values.astype(mx.float32)
         image_embeds = self.visual(pixel_values, image_grid_thw)
 
-        print("\n🔎 MLX Vision Tower Output:")
-        print(f"   Shape: {image_embeds.shape}")
-        print(f"   Dtype: {image_embeds.dtype}")
-        print(f"   Mean: {float(mx.mean(image_embeds)):.6f}")
-        print(f"   Min: {float(mx.min(image_embeds)):.6f}")
-        print(f"   Max: {float(mx.max(image_embeds)):.6f}")
-        print(f"   Std: {float(mx.std(image_embeds)):.6f}\n")
-
         # Split embeddings based on grid sizes
-        # CRITICAL: After patch merger, each image's embeddings are reduced by factor of 4
+        # After patch merger, each image's embeddings are reduced by factor of 4
         # Original grid: H*W patches per image
         # After merger: (H*W)/4 embeddings per image (spatial merge factor = 2x2 = 4)
         # So we need to divide the original grid size by 4 to get the actual split sizes
@@ -146,8 +130,6 @@ class QwenEncoder(nn.Module):
             batch_size, seq_len = input_ids.shape
             inputs_embeds = self.embed_tokens(input_ids)
 
-            # Checkpoint: After embedding lookup, before fusion
-
         else:
             batch_size, seq_len, _ = inputs_embeds.shape
 
@@ -157,48 +139,26 @@ class QwenEncoder(nn.Module):
             image_embeds = precomputed_image_embeds
 
         elif pixel_values is not None and image_grid_thw is not None:
-            print(
-                f"🔎 QwenEncoder: Processing VL fusion (pixel_values.shape={pixel_values.shape}, image_grid_thw={image_grid_thw})"
-            )
-
             # Detect format: if pixel_values has 5 dimensions, it's native patches [num_patches, C, T, H, W]
             # If it has 2 dimensions, it's processed embeddings from tokenizer that we need to reject
             if len(pixel_values.shape) == 5:
-                print("🔎 QwenEncoder: Native patch format detected - processing through vision transformer")
                 # Native format: process through vision transformer
                 image_embeds = self.get_image_features(pixel_values, image_grid_thw)
                 image_embeds = mx.concatenate(image_embeds, axis=0)
             elif len(pixel_values.shape) == 2:
-                print("🔎 QwenEncoder: HF processor 2D format detected - reshaping to 5D")
-                print(f"🔎 QwenEncoder: Input shape: {pixel_values.shape}")
-
                 # HF processor gives us (num_patches, 1176) where 1176 = C*T*H*W = 3*2*14*14
                 # Keep it flattened - patch_embed will reshape it (matching PyTorch's approach)
-                print(f"🔎 QwenEncoder: Keeping flattened format: {pixel_values.shape}")
-
-                # Checkpoint: Right before vision transformer to compare inputs (verified - inputs match)
-
                 # Process through vision transformer - patch_embed expects flattened input
                 image_embeds_split = self.get_image_features(pixel_values, image_grid_thw)
                 # Concatenate embeddings in order: [image1_embeds, image2_embeds, ...]
                 # This order must match the order of images in the prompt
                 image_embeds = mx.concatenate(image_embeds_split, axis=0)
-
-                print(f"🔎 QwenEncoder: Vision tower output: {image_embeds.shape}")
-                print(f"🔎 QwenEncoder: Number of image splits: {len(image_embeds_split)}")
-                if len(image_embeds_split) > 1:
-                    print(f"🔎 QwenEncoder: Split sizes: {[e.shape[0] for e in image_embeds_split]}")
             else:
-                print(f"🔎 QwenEncoder: Unknown pixel_values format with shape {pixel_values.shape}")
                 raise ValueError(f"Unsupported pixel_values format: {pixel_values.shape}")
 
             # Replace image placeholder tokens with actual image embeddings
             image_positions = input_ids == self.image_token_id
             n_image_tokens = mx.sum(image_positions).item()
-
-            # Checkpoint: Analyze token distribution for multiple images
-
-            print(f"🔎 QwenEncoder: Found {n_image_tokens} image tokens, have {image_embeds.shape[0]} image embeddings")
 
             if n_image_tokens > 0 and image_embeds.shape[0] >= n_image_tokens:
                 # Replace image tokens with image embeddings
@@ -212,7 +172,6 @@ class QwenEncoder(nn.Module):
                 # PyTorch's get_placeholder_mask validates that tokens == embeddings, so they must match
                 # For multi-image, PyTorch produces more tokens to match all embeddings
                 # We should use all available embeddings if we have enough tokens, otherwise truncate
-                # CRITICAL: For multi-image support, we need enough tokens to use all embeddings
                 if image_embeds.shape[0] <= n_image_tokens:
                     # We have enough tokens - use all embeddings (matches PyTorch)
                     image_embeds_to_use = image_embeds
@@ -239,8 +198,6 @@ class QwenEncoder(nn.Module):
                             f"🔎 QwenEncoder: Multi-image: Have {split_sizes} embeddings per image, using first {n_image_tokens} of {image_embeds.shape[0]} total"
                         )
 
-                    # Checkpoint: Analyze how embeddings are distributed
-
                     # Calculate which embeddings from which split are being used
                     # If we have [196, 196] splits and use 237 tokens:
                     # - First 196 come from split[0] (image1)
@@ -262,8 +219,6 @@ class QwenEncoder(nn.Module):
                         if remaining <= 0:
                             break
 
-                # Checkpoint: Capture vision embeddings before fusion
-
                 # Build new embeddings list
                 new_embeds_list = []
                 image_idx = 0
@@ -277,7 +232,6 @@ class QwenEncoder(nn.Module):
                 # Stack the new embeddings
                 new_embeds = mx.stack(new_embeds_list, axis=0)
                 inputs_embeds = new_embeds.reshape(inputs_embeds.shape)
-                print(f"🔎 QwenEncoder: Replaced {image_idx} image tokens with embeddings")
 
         cache_position = mx.arange(seq_len, dtype=mx.int32)
         position_ids = mx.expand_dims(mx.expand_dims(cache_position, axis=0), axis=0)
@@ -311,8 +265,6 @@ class QwenEncoder(nn.Module):
 
         hidden_states = inputs_embeds
         position_embeddings = self.rotary_emb(hidden_states, position_ids)
-
-        # Checkpoint before first layer to compare inputs
 
         # Transformer layers
         for i, layer in enumerate(self.layers):

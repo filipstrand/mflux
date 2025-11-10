@@ -23,7 +23,6 @@ class QwenEditUtil:
         # 0) Use VL tokenizer's calculated dimensions if available, otherwise compute from last image
         if vl_width is not None and vl_height is not None:
             calc_w, calc_h = vl_width, vl_height
-            print(f"🔎 MLX EditUtil: Using VL tokenizer dimensions {calc_w}x{calc_h}")
         else:
             # Fallback: compute dimensions independently from last image (matching PyTorch)
             from mflux.post_processing.image_util import ImageUtil
@@ -35,7 +34,6 @@ class QwenEditUtil:
             ratio = img_w / img_h
             calc_w = int(round(((target_area * ratio) ** 0.5) / 32) * 32)
             calc_h = int(round((calc_w / ratio) / 32) * 32)
-            print(f"🔎 MLX EditUtil: Computed fallback dimensions {calc_w}x{calc_h} (target_area={target_area})")
 
         # 1) Process each image and encode at resized conditioning resolution
         all_image_latents = []

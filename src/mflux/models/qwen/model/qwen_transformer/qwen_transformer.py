@@ -185,7 +185,7 @@ class QwenTransformer(nn.Module):
         config: RuntimeConfig,
         cond_image_grid: tuple[int, int, int] | list[tuple[int, int, int]] | None = None,
     ) -> tuple[mx.array, mx.array]:
-        # CRITICAL: Latents are packed (2x2), so patch counts are already divided by 4
+        # Latents are packed (2x2), so patch counts are already divided by 4
         # Generation latents: height//16, width//16 (already packed)
         # Conditioning latents: cond_h_patches, cond_w_patches (already packed)
         # RoPE frequencies need to match the actual sequence length of packed latents

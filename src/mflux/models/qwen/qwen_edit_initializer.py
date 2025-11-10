@@ -3,8 +3,7 @@ from pathlib import Path
 from transformers import Qwen2_5_VLProcessor
 
 from mflux.config.model_config import ModelConfig
-
-# Note: No longer need custom vision components - using integrated text encoder approach
+from mflux.models.qwen.model.qwen_text_encoder.qwen_vision_language_encoder import QwenVisionLanguageEncoder
 from mflux.models.qwen.qwen_initializer import QwenImageInitializer
 from mflux.models.qwen.tokenizer.qwen_vision_language_tokenizer import QwenVisionLanguageTokenizer
 from mflux.utils.download import snapshot_download
@@ -97,8 +96,6 @@ class QwenImageEditInitializer:
 
         # 4. Initialize vision-language encoder (integrated approach like Diffusers)
         # Create VL encoder that wraps the text encoder
-        from mflux.models.qwen.model.qwen_text_encoder.qwen_vision_language_encoder import QwenVisionLanguageEncoder
-
         qwen_model.qwen_vl_encoder = QwenVisionLanguageEncoder(encoder=qwen_model.text_encoder.encoder)
 
         # Note: Visual processing should be handled by the integrated text encoder model

@@ -144,7 +144,6 @@ class QwenImageEditPlus(nn.Module):
                 vl_height=int(vl_height),  # This ensures patch counts match the actual image size
             )
         )
-        # CRITICAL: cond_h_patches and cond_w_patches come from VL dimensions (384x384 → 24x24)
         # NOT from VAE dimensions (1024x1024 → 64x64), because the images are resized to VL size
         # The function uses vl_width/vl_height to compute calc_h/calc_w, which determines patch counts
 

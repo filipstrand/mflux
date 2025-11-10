@@ -5,6 +5,7 @@ This module provides vision-language tokenization for Qwen Image Edit,
 using Qwen2_5_VLProcessor to handle both text and image inputs.
 """
 
+import math
 from pathlib import Path
 from typing import Union
 
@@ -111,8 +112,6 @@ class QwenVisionLanguageTokenizer:
             formatted_text = self.edit_template.format(prompt)
 
         # Process images: convert to PIL Images and resize to CONDITION_IMAGE_SIZE
-        import math
-
         CONDITION_IMAGE_SIZE = 384 * 384  # Match PyTorch's CONDITION_IMAGE_SIZE
 
         processed_images = []
@@ -136,17 +135,6 @@ class QwenVisionLanguageTokenizer:
             img = img.resize((int(condition_width), int(condition_height)), Image.BICUBIC)
             processed_images.append(img)
 
-            if len(images) == 1:
-                print(
-                    f"🔎 VLTokenizer: Resized image from {img_w}x{img_h} to {condition_width}x{condition_height} (CONDITION_IMAGE_SIZE={CONDITION_IMAGE_SIZE})"
-                )
-            else:
-                print(
-                    f"🔎 VLTokenizer: Resized image {len(processed_images)}/{len(images)} from {img_w}x{img_h} to {condition_width}x{condition_height}"
-                )
-
-        print(f"🔎 VLTokenizer: Processing {len(processed_images)} image(s) with HF processor")
-
         # Use HF processor for both text and images to get exact same format as Diffusers
         # Processor accepts list of images and handles multiple images correctly
         model_inputs = self.processor(
@@ -156,24 +144,6 @@ class QwenVisionLanguageTokenizer:
             return_tensors="pt",
         )
 
-        # CRITICAL: For Edit Plus models with multiple images, DO NOT truncate
-        # PyTorch doesn't manually truncate - it lets the processor handle it based on max_length
-        # The processor has its own max_length (typically 1024 or higher), so multi-image prompts can be longer
-        # For single-image Edit Plus, we previously observed 314 tokens, but for multi-image it can be much longer
-        # We must match PyTorch exactly: no manual truncation, let processor handle it
-        # The processor will automatically truncate if needed based on its internal max_length setting
-        original_length = model_inputs.input_ids.shape[1]
-        if self.use_picture_prefix:
-            # For Edit Plus: Don't truncate - match PyTorch's behavior exactly
-            # PyTorch doesn't truncate manually, so we shouldn't either
-            print(
-                f"🔎 VLTokenizer: Edit Plus model - using full sequence length: {original_length} tokens (no truncation)"
-            )
-        else:
-            # For regular Edit model: Keep the truncation logic if needed
-            # But for now, also don't truncate to match PyTorch
-            print(f"🔎 VLTokenizer: Regular Edit model - using full sequence length: {original_length} tokens")
-
         # Store dimensions that HF processor used (for EditUtil consistency)
         # Calculate from grid_thw: each grid cell is patch_size × merge_size = 14 × 2 = 28 pixels
         grid_thw = model_inputs.image_grid_thw[0]  # [t, h, w]
@@ -181,22 +151,12 @@ class QwenVisionLanguageTokenizer:
         self._vl_image_width = int(grid_thw[2]) * factor
         self._vl_image_height = int(grid_thw[1]) * factor
 
-        print("🔎 VLTokenizer: HF processor output:")
-        print(f"🔎 VLTokenizer:   pixel_values: {model_inputs.pixel_values.shape}")
-        print(f"🔎 VLTokenizer:   image_grid_thw: {model_inputs.image_grid_thw}")
-
         # HF processor has already inserted image tokens correctly!
         # Just convert PyTorch tensors to MLX arrays
-
         input_ids = mx.array(model_inputs.input_ids.numpy())
         attention_mask = mx.array(model_inputs.attention_mask.numpy())
         pixel_values = mx.array(model_inputs.pixel_values.numpy())
         image_grid_thw = mx.array(model_inputs.image_grid_thw.numpy())
-
-        print("🔎 VLTokenizer: Converted to MLX:")
-        print(f"🔎 VLTokenizer:   input_ids.shape={input_ids.shape}, attention_mask.shape={attention_mask.shape}")
-        print(f"🔎 VLTokenizer:   pixel_values.shape={pixel_values.shape}")
-        print(f"🔎 VLTokenizer:   image_grid_thw={image_grid_thw}")
 
         return input_ids, attention_mask, pixel_values, image_grid_thw
 
