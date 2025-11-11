@@ -5,8 +5,7 @@ from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.models.flux.variants.concept_attention.flux_concept import Flux1Concept
 from mflux.models.flux.variants.concept_attention.flux_concept_from_image import Flux1ConceptFromImage
-
-from .image_compare import check_images_close_enough
+from mflux.utils.image_compare import ImageCompare
 
 
 class ImageGenerationConceptTestHelper:
@@ -56,7 +55,7 @@ class ImageGenerationConceptTestHelper:
             image.save_concept_heatmap(path=output_heatmap_path, overwrite=True)
 
             # then - verify the heatmap matches reference
-            check_images_close_enough(
+            ImageCompare.check_images_close_enough(
                 output_heatmap_path,
                 reference_heatmap_path,
                 "Generated concept heatmap doesn't match reference heatmap.",
@@ -117,7 +116,7 @@ class ImageGenerationConceptTestHelper:
             image.save_concept_heatmap(path=output_heatmap_path, overwrite=True)
 
             # then - verify the heatmap matches reference
-            check_images_close_enough(
+            ImageCompare.check_images_close_enough(
                 output_heatmap_path,
                 reference_heatmap_path,
                 "Generated concept from image heatmap doesn't match reference heatmap.",

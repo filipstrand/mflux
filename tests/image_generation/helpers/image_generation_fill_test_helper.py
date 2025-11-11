@@ -4,9 +4,8 @@ from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.models.flux.variants.fill.flux_fill import Flux1Fill
 from mflux.ui import defaults as ui_defaults
+from mflux.utils.image_compare import ImageCompare
 from tests.image_generation.helpers.image_generation_test_helper import ImageGeneratorTestHelper
-
-from .image_compare import check_images_close_enough
 
 
 class ImageGeneratorFillTestHelper:
@@ -56,7 +55,7 @@ class ImageGeneratorFillTestHelper:
             image.save(path=output_image_path, overwrite=True)
 
             # then
-            check_images_close_enough(
+            ImageCompare.check_images_close_enough(
                 output_image_path,
                 reference_image_path,
                 "Generated fill image doesn't match reference image.",

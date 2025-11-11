@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import mlx.core as mx
 from mlx import nn
-
-from mflux.models.flux.model.flux_transformer.common.attention_utils import AttentionUtils
+from mlx.core.fast import scaled_dot_product_attention
 
 
 class QwenAttention(nn.Module):
@@ -12,24 +11,16 @@ class QwenAttention(nn.Module):
         self.dim = dim
         self.num_heads = num_heads
         self.head_dim = head_dim
-
-        # Attention projections for image stream
         self.to_q = nn.Linear(dim, dim)
         self.to_k = nn.Linear(dim, dim)
         self.to_v = nn.Linear(dim, dim)
-
-        # Attention projections for text stream
         self.add_q_proj = nn.Linear(dim, dim)
         self.add_k_proj = nn.Linear(dim, dim)
         self.add_v_proj = nn.Linear(dim, dim)
-
-        # Query/Key normalization
         self.norm_q = nn.RMSNorm(self.head_dim, eps=1e-6)
         self.norm_k = nn.RMSNorm(self.head_dim, eps=1e-6)
         self.norm_added_q = nn.RMSNorm(self.head_dim, eps=1e-6)
         self.norm_added_k = nn.RMSNorm(self.head_dim, eps=1e-6)
-
-        # Output projections
         self.attn_to_out = [nn.Linear(dim, dim)]
         self.to_add_out = nn.Linear(dim, dim)
 
@@ -39,112 +30,129 @@ class QwenAttention(nn.Module):
         txt_modulated: mx.array,
         encoder_hidden_states_mask: mx.array | None,
         image_rotary_emb: tuple[mx.array, mx.array],
+        block_idx: int | None = None,
     ) -> tuple[mx.array, mx.array]:
-        # 1a. Compute Q,K,V for image stream (hidden_states)
-        img_q, img_k, img_v = AttentionUtils.process_qkv(
-            hidden_states=img_modulated,
-            to_q=self.to_q,
-            to_k=self.to_k,
-            to_v=self.to_v,
-            norm_q=self.norm_q,
-            norm_k=self.norm_k,
-            num_heads=self.num_heads,
-            head_dim=self.head_dim,
-        )
+        img_query = self.to_q(img_modulated)
+        img_key = self.to_k(img_modulated)
+        img_value = self.to_v(img_modulated)
 
-        # 1b. Compute Q,K,V for text stream (encoder_hidden_states)
-        txt_q, txt_k, txt_v = AttentionUtils.process_qkv(
-            hidden_states=txt_modulated,
-            to_q=self.add_q_proj,
-            to_k=self.add_k_proj,
-            to_v=self.add_v_proj,
-            norm_q=self.norm_added_q,
-            norm_k=self.norm_added_k,
-            num_heads=self.num_heads,
-            head_dim=self.head_dim,
-        )
+        txt_query = self.add_q_proj(txt_modulated)
+        txt_key = self.add_k_proj(txt_modulated)
+        txt_value = self.add_v_proj(txt_modulated)
 
-        # 1c. Concatenate results [text, image] like Flux
-        joint_q = mx.concatenate([txt_q, img_q], axis=2)
-        joint_k = mx.concatenate([txt_k, img_k], axis=2)
-        joint_v = mx.concatenate([txt_v, img_v], axis=2)
+        img_query = mx.reshape(img_query, (img_query.shape[0], img_query.shape[1], self.num_heads, self.head_dim))
+        img_key = mx.reshape(img_key, (img_key.shape[0], img_key.shape[1], self.num_heads, self.head_dim))
+        img_value = mx.reshape(img_value, (img_value.shape[0], img_value.shape[1], self.num_heads, self.head_dim))
 
-        # 1d. Apply RoPE to concatenated Q,K
-        joint_q, joint_k = QwenAttention._apply_rotary_embeddings_joint(
-            joint_q=joint_q,
-            joint_k=joint_k,
-            txt_seq_len=txt_q.shape[2],
-            image_rotary_emb=image_rotary_emb,
-        )
+        txt_query = mx.reshape(txt_query, (txt_query.shape[0], txt_query.shape[1], self.num_heads, self.head_dim))
+        txt_key = mx.reshape(txt_key, (txt_key.shape[0], txt_key.shape[1], self.num_heads, self.head_dim))
+        txt_value = mx.reshape(txt_value, (txt_value.shape[0], txt_value.shape[1], self.num_heads, self.head_dim))
 
-        # 2. Compute attention with optional masking
-        mask = AttentionUtils.convert_key_padding_mask_to_additive_mask(
+        if self.norm_q is not None:
+            img_query = self.norm_q(img_query)
+        if self.norm_k is not None:
+            img_key = self.norm_k(img_key)
+        if self.norm_added_q is not None:
+            txt_query = self.norm_added_q(txt_query)
+        if self.norm_added_k is not None:
+            txt_key = self.norm_added_k(txt_key)
+
+        if image_rotary_emb is not None:
+            (img_cos, img_sin), (txt_cos, txt_sin) = image_rotary_emb
+            img_query = QwenAttention._apply_rope_qwen(img_query, img_cos, img_sin)
+            img_key = QwenAttention._apply_rope_qwen(img_key, img_cos, img_sin)
+            txt_query = QwenAttention._apply_rope_qwen(txt_query, txt_cos, txt_sin)
+            txt_key = QwenAttention._apply_rope_qwen(txt_key, txt_cos, txt_sin)
+
+        joint_query = mx.concatenate([txt_query, img_query], axis=1)
+        joint_key = mx.concatenate([txt_key, img_key], axis=1)
+        joint_value = mx.concatenate([txt_value, img_value], axis=1)
+
+        seq_txt = txt_modulated.shape[1]
+        mask = self._convert_mask_for_qwen(
             mask=encoder_hidden_states_mask,
-            joint_seq_len=joint_q.shape[2],
-            txt_seq_len=txt_q.shape[2],
+            joint_seq_len=joint_query.shape[1],
+            txt_seq_len=seq_txt,
         )
 
-        # 3. Compute attention
-        hidden_states = AttentionUtils.compute_attention(
-            query=joint_q,
-            key=joint_k,
-            value=joint_v,
-            batch_size=1,
-            num_heads=self.num_heads,
-            head_dim=self.head_dim,
+        hidden_states = self._compute_attention_qwen(
+            query=joint_query,
+            key=joint_key,
+            value=joint_value,
             mask=mask,
+            block_idx=block_idx,
         )
 
-        # 4. Separate the results
-        txt_seq_len = txt_modulated.shape[1]
-        txt_attn_output = hidden_states[:, :txt_seq_len]
-        img_attn_output = hidden_states[:, txt_seq_len:]
-
-        # 5. Project the output (Flux-style)
-        img_attn_output = self.attn_to_out[0](img_attn_output.astype(mx.float32)).astype(img_modulated.dtype)
-        txt_attn_output = self.to_add_out(txt_attn_output.astype(mx.float32)).astype(txt_modulated.dtype)
+        txt_attn_output = hidden_states[:, :seq_txt, :]
+        img_attn_output = hidden_states[:, seq_txt:, :]
+        img_attn_output = self.attn_to_out[0](img_attn_output)
+        txt_attn_output = self.to_add_out(txt_attn_output)
 
         return img_attn_output, txt_attn_output
 
+    def _compute_attention_qwen(
+        self,
+        query: mx.array,
+        key: mx.array,
+        value: mx.array,
+        mask: mx.array | None = None,
+        block_idx: int | None = None,
+    ) -> mx.array:
+        query_bhsd = mx.transpose(query, (0, 2, 1, 3))
+        key_bhsd = mx.transpose(key, (0, 2, 1, 3))
+        value_bhsd = mx.transpose(value, (0, 2, 1, 3))
+        head_dim = query.shape[-1]
+        scale_value = 1.0 / (head_dim**0.5)
+        hidden_states_bhsd = scaled_dot_product_attention(
+            query_bhsd, key_bhsd, value_bhsd, scale=scale_value, mask=mask
+        )
+        hidden_states = mx.transpose(hidden_states_bhsd, (0, 2, 1, 3))
+        batch_size = hidden_states.shape[0]
+        seq_len = hidden_states.shape[1]
+        hidden_states = mx.reshape(hidden_states, (batch_size, seq_len, self.num_heads * self.head_dim))
+        hidden_states = hidden_states.astype(query.dtype)
+        return hidden_states
+
     @staticmethod
-    def _apply_rotary_embeddings_joint(
-        joint_q: mx.array,
-        joint_k: mx.array,
+    def _convert_mask_for_qwen(
+        mask: mx.array | None,
+        joint_seq_len: int,
         txt_seq_len: int,
-        image_rotary_emb: tuple[mx.array, mx.array],
-    ) -> tuple[mx.array, mx.array]:
-        img_rot, txt_rot = image_rotary_emb
+    ) -> mx.array | None:
+        if mask is None:
+            return None
 
-        # Extract separate parts
-        txt_q = joint_q[:, :, :txt_seq_len, :]
-        img_q = joint_q[:, :, txt_seq_len:, :]
-        txt_k = joint_k[:, :, :txt_seq_len, :]
-        img_k = joint_k[:, :, txt_seq_len:, :]
+        bsz = mask.shape[0]
+        img_seq_len = joint_seq_len - txt_seq_len
 
-        # Prepare cos/sin for text and image
-        img_cos = img_rot[..., 0, 0].reshape(img_rot.shape[2], img_rot.shape[3])
-        img_sin = img_rot[..., 1, 0].reshape(img_rot.shape[2], img_rot.shape[3])
-        txt_cos = txt_rot[..., 0, 0].reshape(txt_rot.shape[2], txt_rot.shape[3])
-        txt_sin = txt_rot[..., 1, 0].reshape(txt_rot.shape[2], txt_rot.shape[3])
+        ones_img = mx.ones((bsz, img_seq_len), dtype=mx.float32)
+        joint_mask = mx.concatenate([mask.astype(mx.float32), ones_img], axis=1)
 
-        # Transpose [B,H,S,D] -> [B,S,H,D] for RoPE application
-        img_q_bshd = mx.transpose(img_q, (0, 2, 1, 3))
-        img_k_bshd = mx.transpose(img_k, (0, 2, 1, 3))
-        txt_q_bshd = mx.transpose(txt_q, (0, 2, 1, 3))
-        txt_k_bshd = mx.transpose(txt_k, (0, 2, 1, 3))
+        if mx.all(joint_mask >= 0.999):
+            return None
 
-        # Apply RoPE
-        img_q_bshd, img_k_bshd = AttentionUtils.apply_rope_bshd(img_q_bshd, img_k_bshd, img_cos, img_sin)
-        txt_q_bshd, txt_k_bshd = AttentionUtils.apply_rope_bshd(txt_q_bshd, txt_k_bshd, txt_cos, txt_sin)
+        additive = (1.0 - joint_mask) * (-1e9)
+        return additive.reshape((additive.shape[0], 1, 1, additive.shape[1]))
 
-        # Back to [B,H,S,D]
-        img_q = mx.transpose(img_q_bshd, (0, 2, 1, 3))
-        img_k = mx.transpose(img_k_bshd, (0, 2, 1, 3))
-        txt_q = mx.transpose(txt_q_bshd, (0, 2, 1, 3))
-        txt_k = mx.transpose(txt_k_bshd, (0, 2, 1, 3))
+    @staticmethod
+    def _apply_rope_qwen(x: mx.array, cos_vals: mx.array, sin_vals: mx.array) -> mx.array:
+        x_float = x.astype(mx.float32)
+        x_reshaped = mx.reshape(x_float, (*x.shape[:-1], -1, 2))
 
-        # Concatenate back [text, image]
-        joint_q = mx.concatenate([txt_q, img_q], axis=2)
-        joint_k = mx.concatenate([txt_k, img_k], axis=2)
+        x_real = x_reshaped[..., 0]
+        x_imag = x_reshaped[..., 1]
 
-        return joint_q, joint_k
+        freqs_cos = cos_vals[None, :, None, :]
+        freqs_sin = sin_vals[None, :, None, :]
+
+        if freqs_cos.shape[-1] != x_real.shape[-1]:
+            freqs_cos = freqs_cos[..., : x_real.shape[-1]]
+            freqs_sin = freqs_sin[..., : x_real.shape[-1]]
+
+        out_real = x_real * freqs_cos - x_imag * freqs_sin
+        out_imag = x_real * freqs_sin + x_imag * freqs_cos
+
+        out_pairs = mx.stack([out_real, out_imag], axis=-1)
+        x_out = mx.reshape(out_pairs, (*x.shape[:-1], -1))
+
+        return x_out.astype(x.dtype)

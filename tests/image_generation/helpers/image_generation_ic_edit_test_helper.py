@@ -5,8 +5,7 @@ from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.models.flux.variants.in_context.flux_in_context_fill import Flux1InContextFill
 from mflux.models.flux.variants.in_context.utils.in_context_loras import prepare_ic_edit_loras
-
-from .image_compare import check_images_close_enough
+from mflux.utils.image_compare import ImageCompare
 
 
 class ImageGeneratorICEditTestHelper:
@@ -55,7 +54,7 @@ class ImageGeneratorICEditTestHelper:
             image.get_right_half().save(path=output_image_path, overwrite=True)
 
             # then
-            check_images_close_enough(
+            ImageCompare.check_images_close_enough(
                 output_image_path,
                 reference_image_path,
                 "Generated ic-edit image doesn't match reference image.",
