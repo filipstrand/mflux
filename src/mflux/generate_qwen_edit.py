@@ -3,7 +3,7 @@ from pathlib import Path
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.config.config import Config
 from mflux.error.exceptions import PromptFileReadError, StopImageGenerationException
-from mflux.models.qwen.variants.edit.qwen_image_edit_plus import QwenImageEditPlus
+from mflux.models.qwen.variants.edit.qwen_image_edit import QwenImageEdit
 from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_negative_prompt, get_effective_prompt
@@ -11,7 +11,7 @@ from mflux.ui.prompt_utils import get_effective_negative_prompt, get_effective_p
 
 def main():
     # 0. Parse command line arguments
-    parser = CommandLineParser(description="Generate an image using Qwen Image Edit Plus with image conditioning.")
+    parser = CommandLineParser(description="Generate an image using Qwen Image Edit with image conditioning.")
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
@@ -22,7 +22,7 @@ def main():
         type=Path,
         nargs="+",
         default=None,
-        help="Local paths to multiple init images (for plus model). If not provided, uses --image-path as single image.",
+        help="Local paths to multiple init images. If not provided, uses --image-path as single image.",
     )
     parser.add_output_arguments()
     args = parser.parse_args()
@@ -32,7 +32,7 @@ def main():
         args.guidance = ui_defaults.GUIDANCE_SCALE_KONTEXT
 
     # 1. Load the model
-    qwen = QwenImageEditPlus(
+    qwen = QwenImageEdit(
         quantize=args.quantize,
         local_path=args.path,
         lora_paths=args.lora_paths,

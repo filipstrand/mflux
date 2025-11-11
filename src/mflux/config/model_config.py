@@ -91,8 +91,8 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
-    def qwen_image_edit_plus() -> "ModelConfig":
-        return AVAILABLE_MODELS["qwen-image-edit-plus"]
+    def qwen_image_edit() -> "ModelConfig":
+        return AVAILABLE_MODELS["qwen-image-edit"]
 
     def x_embedder_input_dim(self) -> int:
         if "Fill" in self.model_name:
@@ -307,8 +307,8 @@ AVAILABLE_MODELS = {
         requires_sigma_shift=None,
         priority=11,
     ),
-    "qwen-image-edit-plus": ModelConfig(
-        aliases=["qwen-image-edit-plus", "qwen-edit-plus", "qwen-edit-2509"],
+    "qwen-image-edit": ModelConfig(
+        aliases=["qwen-image-edit", "qwen-edit", "qwen-edit-plus", "qwen-edit-2509"],
         model_name="Qwen/Qwen-Image-Edit-2509",
         base_model=None,
         controlnet_model=None,
@@ -317,6 +317,6 @@ AVAILABLE_MODELS = {
         max_sequence_length=None,
         supports_guidance=None,
         requires_sigma_shift=None,
-        priority=13,
+        priority=12,
     ),
 }
