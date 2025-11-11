@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 from mflux.models.depth_pro.depth_pro import DepthPro
-from tests.image_generation.helpers.image_compare import check_images_close_enough
+from mflux.utils.image_compare import ImageCompare
 
 
 class TestDepthPro:
@@ -24,7 +24,7 @@ class TestDepthPro:
             depth_result.depth_image.save(output_image_path)
 
             # Assert that the generated depth image matches the reference image
-            check_images_close_enough(
+            ImageCompare.check_images_close_enough(
                 output_image_path,
                 reference_image_path,
                 "Generated image doesn't match reference image.",

@@ -52,10 +52,6 @@ class QwenImage(nn.Module):
         prompt: str,
         config: Config,
         negative_prompt: str | None = None,
-        prompt_embeds: mx.array | None = None,
-        prompt_mask: mx.array | None = None,
-        negative_prompt_embeds: mx.array | None = None,
-        negative_prompt_mask: mx.array | None = None,
     ) -> GeneratedImage:
         # 0. Create a new runtime config based on the model type and input parameters
         runtime_config = RuntimeConfig(config, self.model_config)
@@ -74,7 +70,7 @@ class QwenImage(nn.Module):
             ),
         )
 
-        # 2. Encode the prompt
+        # 2. Encode the prompt (using native MLX encoding)
         prompt_embeds, prompt_mask, negative_prompt_embeds, negative_prompt_mask = QwenPromptEncoder.encode_prompt(
             prompt=prompt,
             negative_prompt=negative_prompt,
@@ -111,7 +107,7 @@ class QwenImage(nn.Module):
                     encoder_hidden_states=negative_prompt_embeds,
                     encoder_hidden_states_mask=negative_prompt_mask,
                 )
-                guided_noise = QwenImage._compute_guided_noise(noise, noise_negative, runtime_config.guidance)
+                guided_noise = QwenImage.compute_guided_noise(noise, noise_negative, runtime_config.guidance)
 
                 # 4.t Take one denoise step
                 latents = runtime_config.scheduler.step(
@@ -173,7 +169,7 @@ class QwenImage(nn.Module):
         QwenModelSaver.save_model(self, self.bits, base_path)
 
     @staticmethod
-    def _compute_guided_noise(
+    def compute_guided_noise(
         noise: mx.array,
         noise_negative: mx.array,
         guidance: float,

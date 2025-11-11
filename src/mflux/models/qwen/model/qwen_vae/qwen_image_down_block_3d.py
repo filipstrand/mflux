@@ -10,7 +10,7 @@ class QwenImageDownBlock3D(nn.Module):
         super().__init__()
         self.resnets = []
         current_dim = in_channels
-        for _ in range(num_res_blocks):  # FIXED: Use num_res_blocks, not num_res_blocks + 1
+        for _ in range(num_res_blocks):
             self.resnets.append(QwenImageResBlock3D(current_dim, out_channels))
             current_dim = out_channels
 

@@ -37,3 +37,7 @@ class CommandExecutionError(MFluxException):
         super().__init__(
             f"Command '{' '.join(cmd)}' exited with code {return_code}. See .stdout / .stderr for details."
         )
+
+
+class ReferenceVsOutputImageError(AssertionError):
+    """Raised when reference and output images don't match within the allowed threshold."""
