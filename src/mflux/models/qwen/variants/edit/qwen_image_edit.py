@@ -21,7 +21,7 @@ from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
 
 
-class QwenImageEditPlus(nn.Module):
+class QwenImageEdit(nn.Module):
     vae: QwenVAE
     transformer: QwenTransformer
     text_encoder: QwenTextEncoder
@@ -38,7 +38,7 @@ class QwenImageEditPlus(nn.Module):
         super().__init__()
         QwenImageEditInitializer.init(
             qwen_model=self,
-            model_config=ModelConfig.qwen_image_edit_plus(),
+            model_config=ModelConfig.qwen_image_edit(),
             quantize=quantize,
             local_path=local_path,
             lora_paths=lora_paths,
@@ -70,7 +70,7 @@ class QwenImageEditPlus(nn.Module):
         )
 
         # 2. Encode the prompt
-        prompt_embeds, prompt_mask, negative_prompt_embeds, negative_prompt_mask = self._encode_prompts_with_image_plus(
+        prompt_embeds, prompt_mask, negative_prompt_embeds, negative_prompt_mask = self._encode_prompts_with_images(
             prompt=prompt,
             negative_prompt=negative_prompt,
             image_paths=image_paths,
@@ -186,7 +186,7 @@ class QwenImageEditPlus(nn.Module):
             negative_prompt=negative_prompt,
         )
 
-    def _encode_prompts_with_image_plus(
+    def _encode_prompts_with_images(
         self,
         prompt: str,
         negative_prompt: str,

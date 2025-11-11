@@ -59,7 +59,7 @@ class QwenVisionLanguageTokenizer:
 
         # Format prompt based on tokenizer mode
         if self.use_picture_prefix:
-            # Edit Plus format: Add "Picture N:" prefix for each image
+            # Edit format: Add "Picture N:" prefix for each image
             # For multiple images: "Picture 1: ... Picture 2: ... Picture N: ..."
             img_prompt_template = "Picture {}: <|vision_start|><|image_pad|><|vision_end|>"
             base_img_prompt = ""

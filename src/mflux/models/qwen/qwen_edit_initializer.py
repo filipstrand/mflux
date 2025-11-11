@@ -53,41 +53,35 @@ class QwenImageEditInitializer:
         root_path = Path(local_path) if local_path else QwenImageEditInitializer._download_vl_processor(repo_id)
 
         # 2. Load only the tokenizer (we implement image processing ourselves)
-        tokenizer_path = root_path / "tokenizer"
-        if not tokenizer_path.exists():
-            tokenizer_path = root_path
-
-        try:
-            tokenizer = Qwen2TokenizerFast.from_pretrained(
-                pretrained_model_name_or_path=tokenizer_path,
-                local_files_only=True,
-            )
-        except OSError:
-            tokenizer = Qwen2TokenizerFast.from_pretrained(repo_id)
+        tokenizer = QwenImageEditInitializer._load_tokenizer(root_path, repo_id)
 
         # 3. Create our MLX processor with the tokenizer
         processor = QwenVisionLanguageProcessor(tokenizer=tokenizer)
 
         # 4. Initialize vision-language tokenizer wrapper
-        if model_config is not None:
-            model_name_lower = model_config.model_name.lower()
-            use_picture_prefix = (
-                "plus" in model_name_lower
-                or "2509" in model_config.model_name  # Check original case for "2509"
-                or (hasattr(model_config, "use_picture_prefix") and model_config.use_picture_prefix)
-            )
-        else:
-            # Fallback: check repo_id
-            use_picture_prefix = "plus" in repo_id.lower() or "2509" in repo_id
-
         qwen_model.qwen_vl_tokenizer = QwenVisionLanguageTokenizer(
             processor=processor,
             max_length=1024,
-            use_picture_prefix=use_picture_prefix,
+            use_picture_prefix=True,
         )
 
         # 5. Initialize vision-language encoder (integrated approach like Diffusers)
         qwen_model.qwen_vl_encoder = QwenVisionLanguageEncoder(encoder=qwen_model.text_encoder.encoder)
+
+    @staticmethod
+    def _load_tokenizer(root_path: Path, repo_id: str) -> Qwen2TokenizerFast:
+        """Load the tokenizer from local path or download from HuggingFace."""
+        tokenizer_path = root_path / "tokenizer"
+        if not tokenizer_path.exists():
+            tokenizer_path = root_path
+
+        try:
+            return Qwen2TokenizerFast.from_pretrained(
+                pretrained_model_name_or_path=tokenizer_path,
+                local_files_only=True,
+            )
+        except OSError:
+            return Qwen2TokenizerFast.from_pretrained(repo_id)
 
     @staticmethod
     def _download_vl_processor(repo_id: str) -> Path:

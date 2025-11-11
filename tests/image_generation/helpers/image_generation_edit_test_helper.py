@@ -31,9 +31,9 @@ class ImageGeneratorEditTestHelper:
         reference_image_path = ImageGeneratorEditTestHelper.resolve_path(reference_image_path)
         output_image_path = ImageGeneratorEditTestHelper.resolve_path(output_image_path)
 
-        # For Edit Plus, if image_paths is provided but image_path is not, use first element of image_paths
-        is_edit_plus = "Plus" in model_class.__name__
-        if is_edit_plus and image_paths and not image_path:
+        # For Qwen Edit, if image_paths is provided but image_path is not, use first element of image_paths
+        is_qwen_edit = "QwenImageEdit" in model_class.__name__
+        if is_qwen_edit and image_paths and not image_path:
             image_path = image_paths[0]
 
         if image_path:
@@ -64,9 +64,9 @@ class ImageGeneratorEditTestHelper:
                 "config": Config(**config_kwargs),
             }
 
-            # Edit Plus uses image_paths instead of image_path in config
-            # Check if it's Edit Plus by checking the class name
-            if "Plus" in model_class.__name__:
+            # Qwen Edit uses image_paths instead of image_path in config
+            # Check if it's Qwen Edit by checking the class name
+            if "QwenImageEdit" in model_class.__name__:
                 if image_paths:
                     generate_kwargs["image_paths"] = image_paths
                 else:
