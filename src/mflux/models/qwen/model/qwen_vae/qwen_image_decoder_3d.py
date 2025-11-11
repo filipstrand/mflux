@@ -16,8 +16,8 @@ class QwenImageDecoder3D(nn.Module):
         self.up_block1 = QwenImageUpBlock3D(192, 384, num_res_blocks=2, upsample_mode="upsample3d")
         self.up_block2 = QwenImageUpBlock3D(192, 192, num_res_blocks=2, upsample_mode="upsample2d")
         self.up_block3 = QwenImageUpBlock3D(96, 96, num_res_blocks=2, upsample_mode=None)
-        self.norm_out = QwenImageRMSNorm(96, images=False)  # Decoder norm_out uses images=False
-        self.conv_out = QwenImageCausalConv3D(96, 3, 3, 1, 1)  # RGB output
+        self.norm_out = QwenImageRMSNorm(96, images=False)
+        self.conv_out = QwenImageCausalConv3D(96, 3, 3, 1, 1)
 
     def __call__(self, x: mx.array) -> mx.array:
         x = self.conv_in(x)

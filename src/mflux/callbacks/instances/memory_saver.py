@@ -62,8 +62,12 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
             self.model.clip_image_encoder = None
         if hasattr(self.model, "t5_image_encoder"):
             self.model.t5_image_encoder = None
-        if hasattr(self.model, "text_encoder"):
+        if hasattr(self.model, "text_encoder") and self.model.text_encoder is not None:
             self.model.text_encoder = None
+        if hasattr(self.model, "qwen_vl_encoder") and self.model.qwen_vl_encoder is not None:
+            self.model.qwen_vl_encoder = None
+        if hasattr(self.model, "qwen_vl_tokenizer") and self.model.qwen_vl_tokenizer is not None:
+            self.model.qwen_vl_tokenizer = None
         gc.collect()
         mx.clear_cache()
 

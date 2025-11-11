@@ -1,7 +1,9 @@
+from .flow_match_euler_discrete_scheduler import FlowMatchEulerDiscreteScheduler
 from .linear_scheduler import LinearScheduler
 
 __all__ = [
     "LinearScheduler",
+    "FlowMatchEulerDiscreteScheduler",
 ]
 
 
@@ -17,6 +19,8 @@ class InvalidSchedulerType(TypeError): ...
 SCHEDULER_REGISTRY = {
     "linear": LinearScheduler,
     "LinearScheduler": LinearScheduler,
+    "flow_match_euler_discrete": FlowMatchEulerDiscreteScheduler,
+    "FlowMatchEulerDiscreteScheduler": FlowMatchEulerDiscreteScheduler,
 }
 
 
@@ -56,7 +60,7 @@ def try_import_external_scheduler(scheduler_object_path: str):
     # Step 3: Validate that it's a class and inherits from BaseScheduler
     if not inspect.isclass(SchedulerClass):
         raise InvalidSchedulerType(
-            f"{scheduler_object_path!r} is not a class. " f"Schedulers must be classes inheriting from BaseScheduler."
+            f"{scheduler_object_path!r} is not a class. Schedulers must be classes inheriting from BaseScheduler."
         )
 
     if not issubclass(SchedulerClass, BaseScheduler):

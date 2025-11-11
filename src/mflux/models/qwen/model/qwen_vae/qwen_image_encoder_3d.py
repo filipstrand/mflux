@@ -23,10 +23,7 @@ class QwenImageEncoder3D(nn.Module):
 
         down_blocks = []
         for i, (in_dim, out_dim) in enumerate(zip(dims[:-1], dims[1:])):
-            if i < len(self.temporal_downsample):
-                downsample_mode = "downsample3d" if self.temporal_downsample[i] else "downsample2d"
-            else:
-                downsample_mode = "downsample2d"
+            downsample_mode = "downsample3d" if self.temporal_downsample[i] else "downsample2d"
             # Do not downsample on the final stage only
             if i == len(dims) - 2:
                 downsample_mode = None
@@ -39,14 +36,14 @@ class QwenImageEncoder3D(nn.Module):
         self.down_blocks = down_blocks
 
         self.mid_block = QwenImageMidBlock3D(dims[-1], num_layers=1)
-        self.norm_out = QwenImageRMSNorm(dims[-1], images=False)  # Encoder norm_out uses images=False
-        self.conv_out = QwenImageCausalConv3D(dims[-1], 32, 3, 1, 1)  # Changed z_dim to 32
+        self.norm_out = QwenImageRMSNorm(dims[-1], images=False)
+        self.conv_out = QwenImageCausalConv3D(dims[-1], 32, 3, 1, 1)
 
     def __call__(self, x: mx.array) -> mx.array:
         x = self.conv_in(x)
         for stage_idx, down_block in enumerate(self.down_blocks):
-            for res_idx, resnet in enumerate(down_block.resnets):
-                if stage_idx == 3:
+            if stage_idx == 3:
+                for resnet in down_block.resnets:
                     residual = x
                     n1 = resnet.norm1(x)
                     a1 = nn.silu(n1)
@@ -54,14 +51,11 @@ class QwenImageEncoder3D(nn.Module):
                     n2 = resnet.norm2(c1)
                     a2 = nn.silu(n2)
                     c2 = resnet.conv2(a2)
-                    if resnet.skip_conv is not None:
-                        residual = resnet.skip_conv(residual)
-                    y = c2 + residual
-                    x = y
-                else:
-                    x = resnet(x)
-            if down_block.downsamplers is not None:
-                x = down_block.downsamplers[0](x)
+                    x = c2 + residual
+                if down_block.downsamplers is not None:
+                    x = down_block.downsamplers[0](x)
+            else:
+                x = down_block(x)
 
         x = self.mid_block(x)
         norm_in = x

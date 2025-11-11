@@ -89,6 +89,16 @@ class ModelConfig:
     def qwen_image() -> "ModelConfig":
         return AVAILABLE_MODELS["qwen-image"]
 
+    @staticmethod
+    @lru_cache
+    def qwen_image_edit() -> "ModelConfig":
+        return AVAILABLE_MODELS["qwen-image-edit"]
+
+    @staticmethod
+    @lru_cache
+    def qwen_image_edit_plus() -> "ModelConfig":
+        return AVAILABLE_MODELS["qwen-image-edit-plus"]
+
     def x_embedder_input_dim(self) -> int:
         if "Fill" in self.model_name:
             return 384
@@ -130,7 +140,9 @@ class ModelConfig:
             # Infer from model_name substring - prefer longer matches (more specific)
             # Use case-insensitive matching for better compatibility
             model_name_lower = model_name.lower()
-            matching_bases = [(b, alias) for b in base_models for alias in b.aliases if alias and alias.lower() in model_name_lower]
+            matching_bases = [
+                (b, alias) for b in base_models for alias in b.aliases if alias and alias.lower() in model_name_lower
+            ]
 
             if matching_bases:
                 # Sort by alias length descending, then by priority ascending
@@ -299,5 +311,29 @@ AVAILABLE_MODELS = {
         supports_guidance=None,
         requires_sigma_shift=None,
         priority=11,
+    ),
+    "qwen-image-edit": ModelConfig(
+        aliases=["qwen-image-edit", "qwen-edit"],
+        model_name="Qwen/Qwen-Image-Edit",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=None,
+        max_sequence_length=None,
+        supports_guidance=None,
+        requires_sigma_shift=None,
+        priority=12,
+    ),
+    "qwen-image-edit-plus": ModelConfig(
+        aliases=["qwen-image-edit-plus", "qwen-edit-plus", "qwen-edit-2509"],
+        model_name="Qwen/Qwen-Image-Edit-2509",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=None,
+        max_sequence_length=None,
+        supports_guidance=None,
+        requires_sigma_shift=None,
+        priority=13,
     ),
 }

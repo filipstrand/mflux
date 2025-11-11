@@ -5,18 +5,23 @@ from mlx import nn
 
 from mflux.models.qwen.model.qwen_transformer.qwen_attention import QwenAttention
 from mflux.models.qwen.model.qwen_transformer.qwen_feed_forward import QwenFeedForward
-from mflux.models.qwen.model.qwen_transformer.qwen_layer_norm import QwenLayerNorm
 
 
 class QwenTransformerBlock(nn.Module):
     def __init__(self, dim: int = 3072, num_heads: int = 24, head_dim: int = 128):
         super().__init__()
-        self.img_norm1 = QwenLayerNorm(dim=dim)
-        self.txt_norm1 = QwenLayerNorm(dim=dim)
+
+        self.img_mod_silu = nn.SiLU()
+        self.img_mod_linear = nn.Linear(dim, 6 * dim, bias=True)
+        self.img_norm1 = nn.LayerNorm(dims=dim, eps=1e-6, affine=False)
         self.attn = QwenAttention(dim=dim, num_heads=num_heads, head_dim=head_dim)
         self.img_norm2 = nn.LayerNorm(dims=dim, eps=1e-6, affine=False)
-        self.txt_norm2 = nn.LayerNorm(dims=dim, eps=1e-6, affine=False)
         self.img_ff = QwenFeedForward(dim=dim)
+
+        self.txt_mod_silu = nn.SiLU()
+        self.txt_mod_linear = nn.Linear(dim, 6 * dim, bias=True)
+        self.txt_norm1 = nn.LayerNorm(dims=dim, eps=1e-6, affine=False)
+        self.txt_norm2 = nn.LayerNorm(dims=dim, eps=1e-6, affine=False)
         self.txt_ff = QwenFeedForward(dim=dim)
 
     def __call__(
@@ -26,51 +31,46 @@ class QwenTransformerBlock(nn.Module):
         encoder_hidden_states_mask: mx.array | None,
         text_embeddings: mx.array,
         image_rotary_emb: tuple[mx.array, mx.array],
+        block_idx: int | None = None,
     ) -> tuple[mx.array, mx.array]:
-        # 1. Compute stage 1 normalization and modulation
-        img_modulated, img_gate1, img_mod2 = self.img_norm1(hidden_states, text_embeddings)
-        txt_modulated, txt_gate1, txt_mod2 = self.txt_norm1(encoder_hidden_states, text_embeddings)
+        img_mod_params = self.img_mod_linear(self.img_mod_silu(text_embeddings))
+        txt_mod_params = self.txt_mod_linear(self.txt_mod_silu(text_embeddings))
 
-        # 2. Compute attention
+        img_mod1, img_mod2 = mx.split(img_mod_params, 2, axis=-1)
+        txt_mod1, txt_mod2 = mx.split(txt_mod_params, 2, axis=-1)
+
+        img_normed = self.img_norm1(hidden_states)
+        img_modulated, img_gate1 = QwenTransformerBlock._modulate(img_normed, img_mod1)
+
+        txt_normed = self.txt_norm1(encoder_hidden_states)
+        txt_modulated, txt_gate1 = QwenTransformerBlock._modulate(txt_normed, txt_mod1)
+
         img_attn_output, txt_attn_output = self.attn(
             img_modulated=img_modulated,
             txt_modulated=txt_modulated,
             encoder_hidden_states_mask=encoder_hidden_states_mask,
             image_rotary_emb=image_rotary_emb,
+            block_idx=block_idx,
         )
 
-        # 3. Apply attention residual and feed forward
-        hidden_states = QwenTransformerBlock._apply_residual_and_feed_forward(
-            hidden_states=hidden_states,
-            output=img_attn_output,
-            gate_attn=img_gate1,
-            mod_params=img_mod2,
-            norm2=self.img_norm2,
-            ff_module=self.img_ff,
-        )
-        encoder_hidden_states = QwenTransformerBlock._apply_residual_and_feed_forward(
-            hidden_states=encoder_hidden_states,
-            output=txt_attn_output,
-            gate_attn=txt_gate1,
-            mod_params=txt_mod2,
-            norm2=self.txt_norm2,
-            ff_module=self.txt_ff,
-        )
+        hidden_states = hidden_states + img_gate1 * img_attn_output
+        encoder_hidden_states = encoder_hidden_states + txt_gate1 * txt_attn_output
+
+        img_normed2 = self.img_norm2(hidden_states)
+        img_modulated2, img_gate2 = QwenTransformerBlock._modulate(img_normed2, img_mod2)
+
+        img_mlp_output = self.img_ff(img_modulated2)
+
+        hidden_states = hidden_states + img_gate2 * img_mlp_output
+
+        txt_normed2 = self.txt_norm2(encoder_hidden_states)
+        txt_modulated2, txt_gate2 = QwenTransformerBlock._modulate(txt_normed2, txt_mod2)
+        txt_mlp_output = self.txt_ff(txt_modulated2)
+        encoder_hidden_states = encoder_hidden_states + txt_gate2 * txt_mlp_output
 
         return encoder_hidden_states, hidden_states
 
     @staticmethod
-    def _apply_residual_and_feed_forward(
-        hidden_states: mx.array,
-        output: mx.array,
-        gate_attn: mx.array,
-        mod_params: mx.array,
-        norm2: nn.LayerNorm,
-        ff_module: QwenFeedForward,
-    ) -> mx.array:
-        hidden_states = hidden_states + gate_attn[:, None, :] * output
-        shift2, scale2, gate_ff = mx.split(mod_params, 3, axis=-1)
-        normed = norm2(hidden_states)
-        modulated = normed * (1 + scale2[:, None, :]) + shift2[:, None, :]
-        ff_output = ff_module(modulated)
-        return hidden_states + gate_ff[:, None, :] * ff_output.astype(hidden_states.dtype)
+    def _modulate(x: mx.array, mod_params: mx.array) -> tuple[mx.array, mx.array]:
+        shift, scale, gate = mx.split(mod_params, 3, axis=-1)
+        return x * (1 + scale[:, None, :]) + shift[:, None, :], gate[:, None, :]

@@ -1,11 +1,34 @@
-from mflux.config.model_config import ModelConfig
-from mflux.models.flux.variants.txt2img.flux import Flux1
-from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
-from tests.image_generation.helpers.image_generation_test_helper import ImageGeneratorTestHelper
+import os
+
+# Set HF_HOME to use existing cache (only if not already set)
+# Check if model exists at default location first
+default_hf_home = os.path.expanduser("~/.cache/huggingface")
+shared_hf_home = "/Users/Shared/.cache/huggingface"
+
+# Use shared location if it exists and has the model, otherwise use default
+if os.path.exists(shared_hf_home) and os.path.exists(f"{shared_hf_home}/hub/models--Qwen--Qwen-Image"):
+    os.environ["HF_HOME"] = shared_hf_home
+elif not os.environ.get("HF_HOME"):
+    os.environ["HF_HOME"] = default_hf_home
+
+# Preserve test output images so they can be visually inspected
+os.environ["MFLUX_PRESERVE_TEST_OUTPUT"] = "1"
+
+from mflux.config.model_config import ModelConfig  # noqa: E402
+from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage  # noqa: E402
+from tests.image_generation.helpers.image_generation_test_helper import ImageGeneratorTestHelper  # noqa: E402
+
+
+# Lazy import Flux1 to avoid import errors when only running Qwen tests
+def _get_flux1():
+    from mflux.models.flux.variants.txt2img.flux import Flux1
+
+    return Flux1
 
 
 class TestImageGenerator:
     def test_image_generation_schnell(self):
+        Flux1 = _get_flux1()
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_schnell.png",
             output_image_path="output_schnell.png",
@@ -19,6 +42,7 @@ class TestImageGenerator:
         )
 
     def test_image_generation_dev(self):
+        Flux1 = _get_flux1()
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_dev.png",
             output_image_path="output_dev.png",
@@ -32,6 +56,7 @@ class TestImageGenerator:
         )
 
     def test_image_generation_dev_lora(self):
+        Flux1 = _get_flux1()
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_dev_lora.png",
             output_image_path="output_dev_lora.png",
@@ -47,6 +72,7 @@ class TestImageGenerator:
         )
 
     def test_image_generation_dev_multiple_loras(self):
+        Flux1 = _get_flux1()
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_dev_lora_multiple.png",
             output_image_path="output_dev_lora_multiple.png",
@@ -62,6 +88,7 @@ class TestImageGenerator:
         )
 
     def test_image_generation_dev_image_to_image(self):
+        Flux1 = _get_flux1()
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_dev_image_to_image.png",
             output_image_path="output_dev_image_to_image.png",

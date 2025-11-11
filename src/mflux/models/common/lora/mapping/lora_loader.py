@@ -11,7 +11,6 @@ from mflux.models.common.lora.mapping.lora_mapping import LoRATarget
 
 
 class LoRALoader:
-
     @staticmethod
     def load_and_apply_lora(
         lora_mapping: list[LoRATarget],
@@ -39,10 +38,7 @@ class LoRALoader:
 
     @staticmethod
     def _apply_single_lora(
-        transformer: nn.Module,
-        lora_file: str,
-        scale: float,
-        lora_mapping: list[LoRATarget]
+        transformer: nn.Module, lora_file: str, scale: float, lora_mapping: list[LoRATarget]
     ) -> None:
         # Load the LoRA weights
         if not Path(lora_file).exists():
@@ -58,8 +54,6 @@ class LoRALoader:
             print(f"❌ Failed to load LoRA file: {e}")
             return
 
-        print(f"🔍 DEBUG: Found {len(weights)} LoRA weights")
-
         # Apply LoRA using the provided mapping
         flat_mapping = LoRALoader._get_flat_mapping(lora_mapping)
         applied_count = LoRALoader._apply_lora_with_mapping(transformer, weights, scale, flat_mapping)
@@ -68,10 +62,7 @@ class LoRALoader:
 
     @staticmethod
     def _apply_lora_with_mapping(
-        transformer: nn.Module,
-        weights: dict,
-        scale: float,
-        lora_mappings: Dict[str, Tuple[str, str, bool]]
+        transformer: nn.Module, weights: dict, scale: float, lora_mappings: Dict[str, Tuple[str, str, bool]]
     ) -> int:
         applied_count = 0
         lora_data_by_target = {}
@@ -87,7 +78,7 @@ class LoRALoader:
                     # Extract block number from the weight key - try both . and _ separators
                     # This handles both standard LoRA formats (dot-separated) and other formats (underscore-separated)
                     # Find all numbers in the weight key
-                    numbers_in_key = re.findall(r'\d+', weight_key)
+                    numbers_in_key = re.findall(r"\d+", weight_key)
                     for num_str in numbers_in_key:
                         try:
                             test_block_idx = int(num_str)
@@ -119,8 +110,6 @@ class LoRALoader:
 
             lora_data_by_target[target_path][matrix_name] = (weight_value, transpose)
 
-        print(f"🔍 DEBUG: Found {len(lora_data_by_target)} LoRA target layers")
-
         # Apply LoRA to each target
         for target_path, lora_data in lora_data_by_target.items():
             if LoRALoader._apply_lora_matrices_to_target(transformer, target_path, lora_data, scale):
@@ -129,12 +118,7 @@ class LoRALoader:
         return applied_count
 
     @staticmethod
-    def _apply_lora_matrices_to_target(
-        transformer: nn.Module,
-        target_path: str,
-        lora_data: dict,
-        scale: float
-    ) -> bool:
+    def _apply_lora_matrices_to_target(transformer: nn.Module, target_path: str, lora_data: dict, scale: float) -> bool:
         # Navigate to the target layer
         current_module = transformer
         path_parts = target_path.split(".")
@@ -175,40 +159,31 @@ class LoRALoader:
 
         # Create new LoRA layer
         # Check if it's a linear layer (either nn.Linear, LoRALinear, or FusedLoRALinear)
-        is_linear = hasattr(current_module, 'weight')
+        is_linear = hasattr(current_module, "weight")
         is_lora_linear = isinstance(current_module, LoRALinear)
         is_fused_linear = isinstance(current_module, FusedLoRALinear)
-        
+
         if is_linear or is_lora_linear or is_fused_linear:
             # Handle fusion: if the current module is already a LoRA layer, fuse them
             if is_lora_linear:
                 print(f"   🔀 Fusing with existing LoRA at {target_path}")
                 # Create a temporary LoRA layer from the base linear of the existing LoRA
-                lora_layer = LoRALinear.from_linear(
-                    current_module.linear,
-                    r=lora_A.shape[1],
-                    scale=effective_scale
-                )
+                lora_layer = LoRALinear.from_linear(current_module.linear, r=lora_A.shape[1], scale=effective_scale)
                 # Set the LoRA matrices
                 lora_layer.lora_A = lora_A
                 lora_layer.lora_B = lora_B
                 # Apply alpha scaling to the matrices if present
                 if "alpha" in lora_data:
                     lora_layer.lora_B = lora_layer.lora_B * alpha_scale
-                
+
                 # Create fused layer with the existing LoRA and the new one
-                fused_layer = FusedLoRALinear(
-                    base_linear=current_module.linear,
-                    loras=[current_module, lora_layer]
-                )
+                fused_layer = FusedLoRALinear(base_linear=current_module.linear, loras=[current_module, lora_layer])
                 replacement_layer = fused_layer
             elif is_fused_linear:
                 print(f"   🔀 Adding to existing fusion at {target_path}")
                 # Create a temporary LoRA layer from the base linear
                 lora_layer = LoRALinear.from_linear(
-                    current_module.base_linear,
-                    r=lora_A.shape[1],
-                    scale=effective_scale
+                    current_module.base_linear, r=lora_A.shape[1], scale=effective_scale
                 )
                 # Set the LoRA matrices
                 lora_layer.lora_A = lora_A
@@ -216,28 +191,23 @@ class LoRALoader:
                 # Apply alpha scaling to the matrices if present
                 if "alpha" in lora_data:
                     lora_layer.lora_B = lora_layer.lora_B * alpha_scale
-                
+
                 # Add to existing fusion
                 fused_layer = FusedLoRALinear(
-                    base_linear=current_module.base_linear,
-                    loras=current_module.loras + [lora_layer]
+                    base_linear=current_module.base_linear, loras=current_module.loras + [lora_layer]
                 )
                 replacement_layer = fused_layer
             else:
                 # First LoRA on this layer
                 # Create LoRA layer
-                lora_layer = LoRALinear.from_linear(
-                    current_module,
-                    r=lora_A.shape[1],
-                    scale=effective_scale
-                )
+                lora_layer = LoRALinear.from_linear(current_module, r=lora_A.shape[1], scale=effective_scale)
                 # Set the LoRA matrices - use the correct dimensions from the LoRA file
                 lora_layer.lora_A = lora_A
                 lora_layer.lora_B = lora_B
                 # Apply alpha scaling to the matrices if present
                 if "alpha" in lora_data:
                     lora_layer.lora_B = lora_layer.lora_B * alpha_scale
-                
+
                 replacement_layer = lora_layer
 
             # Replace the layer in the parent module
