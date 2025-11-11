@@ -28,9 +28,6 @@ requires-python = ">=3.10"
 dependencies = [
     "accelerate>=0.31.0",
     "filelock>=3.18.0",
-    "psutil>=5.9.0",  # System and process monitoring for debugger
-    "fastapi>=0.115.0,<1.0",  # FastAPI server for debugger
-    "uvicorn>=0.34.0,<1.0",  # ASGI server for debugger
     "huggingface-hub>=0.24.5,<1.0",
     "matplotlib>=3.9.2,<4.0",
     "mlx>=0.27.0,<0.30.0",
@@ -98,12 +95,6 @@ mflux-upscale = "mflux.upscale:main"
 mflux-lora-library = "mflux.lora_library:main"
 mflux-info = "mflux.info:main"
 mflux-completions = "mflux.ui.cli.completions.install:main"
-mflux-debug-mlx = "mflux_debugger.cli_wrapper:main_mlx"
-mflux-debug-pytorch = "mflux_debugger.cli_wrapper:main_pytorch"
-mflux-debug-clean = "mflux_debugger.cleanup:main"
-mflux-debug-kill-all = "mflux_debugger.kill_all:main"
-mflux-debug-inspect-weights = "mflux_debugger.cli_inspect_weights:main"
-mflux-debug-prune = "mflux_debugger.cli_prune:main"
 
 
 [tool.ruff]

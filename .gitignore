@@ -14,7 +14,6 @@
 *.pyc
 *.safetensors
 *.json
-*.npy
 
 *.egg-info
 
@@ -25,9 +24,3 @@ build/
 .fls
 .aux
 .log
-
-# Debug session logs
-logs/
-
-# Debug resources (top-level mflux_debugger folder)
-mflux_debugger/
