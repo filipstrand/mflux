@@ -1,0 +1,45 @@
+\section{Introduction}
+\label{sec:intro}
+
+Text-to-image models have transformed the way visual assets are created \cite{rombach2022high, saharia2022photorealistic, ramesh2022hierarchical}. What began as casual tools for generating playful pictures has rapidly evolved into professional-grade systems delivering substantial creative and commercial value. Within only a few years, these models have achieved unprecedented levels of realism and visual fidelity \cite{cai2025hidream, flux2024, esser2024scaling, wu2025qwenimagetechnicalreport}.
+
+
+However, most existing models are trained to map short natural language prompts into highly detailed images. This asymmetric training creates a fundamental gap between the sparse representation of user input and the rich details required to produce a high-quality image. As a result, the model often fills in missing information arbitrarily, “guessing” the user’s intent ~\cite{orgad2023editing,wu2024stable,rassin2024grade, huberman2025image}. To mitigate this, many models are tuned toward “average” human preferences, optimizing for majority choices in user studies \cite{wallace2024diffusion, kirstain2023pick, liu2025improving}. While this yields pleasing results for casual users, it limits both precision and creativity for professionals who require fine-grained control over composition, lighting, depth of field, and other visual factors. Indeed, the adage “an image is worth a thousand words” highlights the mismatch: short prompts cannot fully specify an image.
+
+To address this limitation, we propose training text-to-image models with \textit{long structured captions}. These captions encode significantly more visual detail than any prior open-source dataset, and their structured form ensures that each training image is paired with a precise textual description. 
+Unlike existing approaches that bias toward human preference, our captions are designed to maximize expressive coverage, enabling the model to generate every plausible visual configuration. 
+We show that models trained with long structured captions exhibit not only improved prompt adherence but also superior controllability: their disentangled representations allow modification of specific visual factors while leaving others unchanged. Since users may struggle to author such lengthy prompts, we employ a vision–language model (VLM) to bridge natural human intent and structured prompts, making detailed prompting practical in real-world use.
+
+
+
+Yet, training with long captions introduces a new efficiency challenge. To address this, we propose \textit{DimFusion}, a more efficient text–image fusion mechanism. Like prior methods, DimFusion leverages intermediate tokens from an LLM and integrates them directly with image tokens. Unlike them, it combines LLM layers without increasing the number of tokens. Remarkably, we find that even a relatively small LLM suffices for encoding structured prompts.
+
+
+
+Beyond modeling, we propose a new evaluation paradigm, \emph{Text-as-a-Bottleneck Reconstruction (TaBR)}, specifically designed to assess alignment with extremely long captions. Since humans struggle to reliably evaluate prompts containing thousands of words, we anchor the evaluation in images. TaBR integrates an image captioner into the pipeline and measures expressive power via a reconstruction protocol: given a real image, we caption it, regenerate it from the caption using the text-to-image model, and evaluate similarity to the original. While similarity can be measured automatically, we find human judgments to perform better. This image-grounded evaluation is more objective than standard user-preference scoring, reflects the expressive power of the caption–generation loop, and enables systematic optimization toward controllability rather than preference-driven popularity.
+
+
+
+
+
+
+Finally, we introduce \emph{\modelname{}}, a large-scale text-to-image model capable of generating an image from structured long captions. \modelname{} demonstrates the effectiveness of our approach, achieving state-of-the-art prompt adherence even for captions exceeding 1,000 words. Beyond fidelity, \modelname{} exhibits novel disentanglement capabilities, enabling intuitive and fine-grained control over individual image factors such as color, expression, or composition without unintended changes elsewhere. To foster community progress, we release \modelname{}’s model weights, code, and full implementation details.
+Our contributions are as follows:
+\begin{itemize}
+    \item  We release \emph{\modelname{}}, the first open-source text-to-image model trained entirely on long structured captions.
+    \item We introduce \emph{DimFusion}, a novel mechanism to efficiently fuse intermediate LLM tokens into image generation models.
+    \item We propose \emph{TaBR}, a new evaluation protocol that measures expressive power via caption–generation–reconstruction, shifting focus from user preference optimization to controllability.
+\end{itemize}
+
+
+
+
+
+
+
+
+
+
+
+
+

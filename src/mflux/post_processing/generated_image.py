@@ -1,3 +1,5 @@
+import json
+import logging
 from datetime import datetime
 from pathlib import Path
 
@@ -7,6 +9,8 @@ import PIL.Image
 from mflux.config.model_config import ModelConfig
 from mflux.models.flux.variants.concept_attention.attention_data import ConceptHeatmap
 from mflux.utils.version_util import VersionUtil
+
+log = logging.getLogger(__name__)
 
 
 class GeneratedImage:
@@ -99,6 +103,10 @@ class GeneratedImage:
     ) -> None:
         from mflux.post_processing.image_util import ImageUtil
 
+        # Always save prompt file for FIBO models
+        if self._is_fibo_model():
+            self._save_prompt_file(path, overwrite)
+
         ImageUtil.save_image(self.image, path, self._get_metadata(), export_json_metadata, overwrite)
 
     def save_with_heatmap(
@@ -139,6 +147,38 @@ class GeneratedImage:
         if not self.redux_image_strengths:
             return None
         return [round(scale, 2) for scale in self.redux_image_strengths]
+
+    def _is_fibo_model(self) -> bool:
+        """Check if this is a FIBO model generation."""
+        return self.model_config.model_name == "briaai/FIBO" or str(self.model_config.base_model) == "fibo"
+
+    def _save_prompt_file(self, image_path: str | Path, overwrite: bool) -> None:
+        """Save the JSON prompt to a separate .prompt.json file for FIBO models."""
+        file_path = Path(image_path)
+        prompt_path = file_path.with_suffix(".prompt.json")
+
+        # Handle overwrite logic similar to image saving
+        if not overwrite:
+            counter = 1
+            while prompt_path.exists():
+                new_name = f"{file_path.stem}_{counter}.prompt.json"
+                prompt_path = file_path.parent / new_name
+                counter += 1
+
+        try:
+            # Parse and pretty-print the JSON prompt
+            try:
+                prompt_json = json.loads(self.prompt)
+                with open(prompt_path, "w") as f:
+                    json.dump(prompt_json, f, indent=2, ensure_ascii=False)
+            except (json.JSONDecodeError, ValueError):
+                # If prompt is not valid JSON, save as-is (shouldn't happen for FIBO)
+                with open(prompt_path, "w") as f:
+                    f.write(self.prompt)
+
+            log.info(f"Prompt file saved successfully at: {prompt_path}")
+        except Exception as e:  # noqa: BLE001
+            log.error(f"Error saving prompt file: {e}")
 
     def _get_metadata(self) -> dict:
         return {

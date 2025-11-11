@@ -5,7 +5,7 @@ from mflux.error.exceptions import PromptFileReadError, StopImageGenerationExcep
 from mflux.models.flux.variants.concept_attention.flux_concept import Flux1Concept
 from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
-from mflux.ui.prompt_utils import get_effective_prompt
+from mflux.ui.prompt_utils import PromptUtils
 
 
 def main():
@@ -41,7 +41,7 @@ def main():
             # 3. Generate an image for each seed value
             image = flux.generate_image(
                 seed=seed,
-                prompt=get_effective_prompt(args),
+                prompt=PromptUtils.get_effective_prompt(args),
                 concept=args.concept,
                 heatmap_timesteps=args.heatmap_timesteps,
                 heatmap_layer_indices=args.heatmap_layer_indices,

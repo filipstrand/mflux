@@ -1,0 +1,89 @@
+% Preamble: \usepackage{graphicx,array}
+\setlength{\tabcolsep}{0.5pt}
+\renewcommand{\arraystretch}{1.0}
+
+\begin{figure}[t]
+\centering
+\newcommand{\imgw}{0.24\linewidth} % 4 images × 0.24 = 0.96 (safe)
+\begin{tabular}{@{}cccc@{}}
+  % Header
+  % \multicolumn{4}{@{}l@{}}{{\scriptsize\textbf{Structured edits (disentanglement)}}} \\[-1pt]
+
+  % Images (row)
+  \includegraphics[width=\imgw]{Figures/disentanglement/images_table/1.jpg} &
+  \includegraphics[width=\imgw]{Figures/disentanglement/images_table/2.jpg} &
+  \includegraphics[width=\imgw]{Figures/disentanglement/images_table/3.jpg} &
+  \includegraphics[width=\imgw]{Figures/disentanglement/images_table/4.jpg}
+  \\[-2pt]
+
+  % Wrapped labels under each image (row)
+  \parbox{\imgw}{\scriptsize\centering \textbf{}} &
+  \parbox{\imgw}{\scriptsize\centering \textbf{black mug to white}} &
+  \parbox{\imgw}{\scriptsize\centering \textbf{apple to orange}} &
+  \parbox{\imgw}{\scriptsize\centering \textbf{add coffee to mug}}
+  \\[+2pt]
+
+  % Images (row)
+  \includegraphics[width=\imgw]{Figures/disentanglement/images_asian_family/1.jpg} &
+  \includegraphics[width=\imgw]{Figures/disentanglement/images_asian_family/2.jpg} &
+  \includegraphics[width=\imgw]{Figures/disentanglement/images_asian_family/3.jpg} &
+  \includegraphics[width=\imgw]{Figures/disentanglement/images_asian_family/4.jpg}
+  \\[-2pt]
+
+  % Wrapped labels under each image (row)
+  \parbox{\imgw}{\scriptsize\centering \textbf{}} &
+  \parbox{\imgw}{\scriptsize\centering \textbf{blue sign to red}} &
+  \parbox{\imgw}{\scriptsize\centering \textbf{make it evening}} &
+  \parbox{\imgw}{\scriptsize\centering \textbf{set camera from above}}
+  \\[+2pt]
+
+  % Images (row)
+  \includegraphics[width=\imgw]{Figures/disentanglement/images_water/1.jpg} &
+  \includegraphics[width=\imgw]{Figures/disentanglement/images_water/2.jpg} &
+  \includegraphics[width=\imgw]{Figures/disentanglement/images_water/3.jpg} &
+  \includegraphics[width=\imgw]{Figures/disentanglement/images_water/4.jpg}
+  \\[-2pt]
+
+  % Wrapped labels under each image (row)
+  \parbox{\imgw}{\scriptsize\centering \textbf{}} &
+  \parbox{\imgw}{\scriptsize\centering \textbf{change text to ``water''}} &
+  \parbox{\imgw}{\scriptsize\centering \textbf{season is autumn}} &
+  \parbox{\imgw}{\scriptsize\centering \textbf{add rain drops}}
+  \\[+2pt]
+
+
+  % % Images (row)
+  % \includegraphics[width=\imgw]{Figures/disentanglement/images_owl/1.jpg} &
+  % \includegraphics[width=\imgw]{Figures/disentanglement/images_owl/2.jpg} &
+  % \includegraphics[width=\imgw]{Figures/disentanglement/images_owl/3.jpg} &
+  % \includegraphics[width=\imgw]{Figures/disentanglement/images_owl/4.jpg}
+  % \\[-2pt]
+
+  % % Wrapped labels under each image (row)
+  % \parbox{\imgw}{\scriptsize\centering \textbf{}} &
+  % \parbox{\imgw}{\scriptsize\centering \textbf{make owl brown}} &
+  % \parbox{\imgw}{\scriptsize\centering \textbf{owl to lemur}} &
+  % \parbox{\imgw}{\scriptsize\centering \textbf{add jungle vegetation}}
+  % \\[+2pt]
+
+  % Images (row)
+  \includegraphics[width=\imgw]{Figures/disentanglement/images_knight/1.jpg} &
+  \includegraphics[width=\imgw]{Figures/disentanglement/images_knight/2.jpg} &
+  \includegraphics[width=\imgw]{Figures/disentanglement/images_knight/3.jpg} &
+  \includegraphics[width=\imgw]{Figures/disentanglement/images_knight/4.jpg}
+  \\[-2pt]
+
+  % Wrapped labels under each image (row)
+  \parbox{\imgw}{\scriptsize\centering \textbf{}} &
+  \parbox{\imgw}{\scriptsize\centering \textbf{remove helmet}} &
+  \parbox{\imgw}{\scriptsize\centering \textbf{make sunny}} &
+  \parbox{\imgw}{\scriptsize\centering \textbf{knight riding horse}}
+  \\[+2pt]
+
+  
+\end{tabular}
+
+\vspace{-3pt}
+\caption{\textbf{Structured captions encourage disentanglement.} Our model allows iterative refinement: altering one attribute in the JSON typically affects only the corresponding visual factor. Starting from the left images, we demonstrate iteratively editing, where the label below describes the requested change in the JSON.}
+\label{fig:disentanglement}
+\end{figure}

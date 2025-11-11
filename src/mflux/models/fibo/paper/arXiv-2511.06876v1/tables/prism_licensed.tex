@@ -1,0 +1,62 @@
+\begin{table*}[!t]\centering
+\renewcommand{\arraystretch}{1.7} 
+\setlength{\tabcolsep}{3pt}
+
+\centering
+\begin{adjustbox}{width=\textwidth}
+\begin{tabular}{l|ccc|ccc|ccc|ccc|ccc|ccc|ccc}
+\toprule
+\multirow{2}{*}{\textbf{Model}}
+  & \multicolumn{3}{c|}{\textbf{Imagination}}
+  & \multicolumn{3}{c|}{\textbf{Text rendering}}
+  & \multicolumn{3}{c|}{\textbf{Style}}
+  & \multicolumn{3}{c|}{\textbf{Affection}}
+  & \multicolumn{3}{c|}{\textbf{Composition}}
+  & \multicolumn{3}{c|}{\textbf{Long text}}
+  & \multicolumn{3}{c}{\textbf{Overall}} \\
+
+\cmidrule(lr){2-22}
+
+% ── 2nd header row ───────────────────────────────────────────────────────────
+  & Ali. & Aes.& Avg.
+  & Ali. & Aes.& Avg.   
+  & Ali. & Aes.& Avg.     
+  & Ali. & Aes.& Avg.        
+  & Ali. & Aes.& Avg.     
+  & Ali. & Aes.& Avg.     
+  & Ali. & Aes.& Avg.     
+  \\
+
+\midrule
+
+
+SD3.5-Large~\citep{SD35} & 75.4 & 75.2 & 75.3 & 56.1 & 68.3 & 62.2 & 78.3 & 81.0 & 79.7 & 87.7 & 86.4 & 87.0 & 86.6 & 83.1 & 84.9 & 67.8 & 59.2 & 63.5 & 78.8 & 77.6 & 78.2\\
+
+FLUX.1-dev~\citep{flux2024} & 65.4 & 71.8 & 68.6 & 57.4 & 63.5 & 60.4 & 71.4 & 80.4 & 75.9 & 88.5 & \underline{89.3} & 88.9 & 89.4 & 85.4 & 87.4 & 73.3 & 66.8 & 70.1 & 77.0 & 78.7 & 77.8\\
+
+FLUX.1-Krea-dev~\citep{fluxkrea} & 71.4 & 73.3 & 72.4 & 52.6 & 62.6 & 57.6 & 79.4 & 84.3 & 81.9 & 86.8 & \textbf{89.6} & 88.2 & 90.0 & 86.6 & 88.3 & 77.1 & 65.9 & 71.5 & 79.7 & 79.7 & 79.7\\
+
+HiDream-I1-Full~\citep{cai2025hidream} & 74.1 & 74.4 & 74.2 & 64.8 & 72.2 & 68.5 & 79.3 & \underline{88.8} & 84.1 & \underline{90.8} & 87.8 & 89.3 & 90.3 & \underline{86.7} & 88.5 & 64.0 & 53.7 & 58.8 & 80.0 & 79.1 & 79.5\\
+
+Qwen-Image~\citep{wu2025qwenimagetechnicalreport} & 79.4 & \underline{81.0} & 80.2 & \textbf{76.1} & \underline{76.5} & \textbf{76.3} & 79.9 & 86.4 & 83.1 & 85.8 & 87.2 & 86.5 & \textbf{94.2} & 84.4 & \underline{89.3} & 82.4 & 65.9 & 74.1 & 84.1 & 81.5 & 82.8\\
+
+% FireFly~\citep{} & \textbf{92.4} & \underline{84.8} & \textbf{88.6} & \underline{87.0} & \underline{81.3} & \underline{84.2} & \underline{65.2} & \underline{74.1} & \underline{69.7} & \underline{90.5} & \underline{90.8} & \underline{90.7} & \textbf{96.0} & 88.2 & \textbf{92.1} & 92.5 & \underline{88.5} & \underline{90.5} & \textbf{85.9} & \textbf{76.2} & \textbf{81.1} & \textbf{87.1} & \underline{83.4} & \underline{85.3} \\
+
+\midrule
+Gemini2.5-Flash-Image~\citep{comanici2025gemini} & \textbf{91.4} & \textbf{86.9} & \textbf{89.1} & \underline{71.3} & \textbf{78.7} & \underline{75.0} & \textbf{89.9} & \textbf{90.6} & \textbf{90.2} & \textbf{97.4} & 88.4 & \textbf{92.9} & \underline{92.6} & \textbf{90.3} & \textbf{91.5} & \textbf{88.1} & \textbf{81.4} & \textbf{84.8} & \textbf{91.2} & \textbf{87.3} & \textbf{89.3}\\
+
+% GPT-Image-1 [High]~\citep{gptimage} & \underline{86.2} & \textbf{86.6} & \underline{86.4} & \textbf{90.0} & \textbf{86.3} & \textbf{88.2} & \textbf{68.8} & \textbf{80.1} & \textbf{74.5} & \textbf{92.8} & \textbf{93.3} & \textbf{93.1} & 90.7 & \underline{90.9} & \underline{90.8} & \textbf{96.2} & \textbf{89.4} & \textbf{92.8} & \underline{83.8} & \underline{72.8} & \underline{78.3} & \underline{86.9} & \textbf{85.6} & \textbf{86.3} \\
+\midrule
+% GAIA (v1) & 87.9 & 74.2 & 81.1 & 59.1 & 64.3 & 61.7 & 78.9 & 83.3 & 81.1 & 91.6 & 73.7 & 82.7 & 87.6 & 74.3 & 81.0 & 75.2 & 52.9 & 64.0 & 83.3 & 70.6 & 77.0\\
+% GAIA-previous (Ours) & \textbf{93.2} & 78.1 & \underline{85.6} & 66.1 & 65.7 & 65.9 & \underline{85.4} & 87.8 & \underline{86.6} & \underline{94.2} & 83.8 & 89.0 & 91.2 & 80.1 & 85.7 & \underline{83.7} & 63.5 & 73.6 & \underline{89.0} & 78.6 & \underline{83.8}\\
+
+\modelname{} (Ours) & \underline{90.5} & 77.6 & \underline{84.0} & 66.5 & 72.2 & 69.3 & \underline{86.9} & 86.9 & \underline{86.9} & 90.3 & 88.4 & \underline{89.4} & 91.1 & 85.5 & 88.3 & \underline{83.2} & \underline{72.1} & \underline{77.7} & \underline{87.8} & \underline{82.1} & \underline{84.9}\\
+\modelname{} open-VLM & 88.5 & 76.2 & 82.3 & 65.2 & 68.7 & 67.0 & 85.1 & 88.5 & 86.8 & 89.5 & 87.3 & 88.4 & 90.1 & 85.1 & 87.6 & 82.1 & 67.5 & 74.8 & 86.4 & 80.9 & 83.6\\
+\bottomrule
+
+\end{tabular}
+\end{adjustbox}
+\caption{\textbf{Quantitative results on PRISM-Bench-licensed:} a licensed variant of PRISM~\cite{fang2025flux}. We report alignment (Ali.), aesthetics (Aes.), and average (Avg.)  across categories. Best results are in \textbf{bold}; second best are \underline{underlined}. \modelname{} outperforms all open-source baselines.}
+\label{tab:prism}
+
+\end{table*}

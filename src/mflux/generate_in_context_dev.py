@@ -8,7 +8,7 @@ from mflux.models.flux.variants.in_context.flux_in_context_dev import Flux1InCon
 from mflux.models.flux.variants.in_context.utils.in_context_loras import LORA_REPO_ID, get_lora_filename
 from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
-from mflux.ui.prompt_utils import get_effective_prompt
+from mflux.ui.prompt_utils import PromptUtils
 
 
 def main():
@@ -49,7 +49,7 @@ def main():
             # 3. Generate an image for each seed value
             image = flux.generate_image(
                 seed=seed,
-                prompt=get_effective_prompt(args),
+                prompt=PromptUtils.get_effective_prompt(args),
                 config=Config(
                     num_inference_steps=args.steps,
                     height=args.height,

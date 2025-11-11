@@ -1,0 +1,49 @@
+% \begin{figure}[h!]  % placement options: h, t, b, p
+%     \centering
+%     \resizebox{\linewidth}{!}{%
+%     \includegraphics[width=0.7\textwidth]{plots/dimFusionComparison.png}
+%     }
+%     \resizebox{\linewidth}{!}{\includegraphics[width=0.7\textwidth]{plots/dimFusionDiff.png}
+%     }
+% \caption{\textbf{Training loss comparison for different text encoding architectures.} We compare T5 (baseline), SmolLM3-3B + TokenFusion, and SmolLM3-3B + DimFusion. \emph{Top:} Both fusion strategies outperform the T5 baseline, with DimFusion closely matching TokenFusion. \emph{Bottom:} Loss difference relative to TokenFusion, showing that DimFusion converges to the same value while requiring significantly lower computational cost.}
+
+%     \label{fig:dimFusionComparison}
+% \end{figure}
+
+
+% Preamble (add if not already present):
+% \usepackage{graphicx,array,booktabs}
+
+\begin{figure}[t]
+\centering
+
+% ---------- TOP: FID table (inline, not a float) ----------
+{\setlength{\tabcolsep}{8pt}\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Architecture} & \textbf{FID} ↓ & \textbf{Avg. Time per Step (sec)} ↓\\
+\midrule
+T5 & 36.46  & 1.28\\
+TokenFusion & 15.90 & 0.8\\
+DimFusion & \textbf{15.58} & \textbf{0.5}\\
+\bottomrule
+\end{tabular}
+}
+
+\vspace{6pt}
+
+% ---------- BOTTOM: loss plots ----------
+\resizebox{\linewidth}{!}{%
+  \includegraphics[width=0.7\textwidth]{plots/dimFusionComparison.png}
+}
+\resizebox{\linewidth}{!}{%
+  \includegraphics[width=0.7\textwidth]{plots/dimFusionDiff.png}
+}
+
+\vspace{-2pt}
+\caption{\textbf{DimFusion vs. TokenFusion} \emph{Top:} FID on $30$K COCO-2014 val images~\cite{lin2014microsoft}: both fusion strategies (TokenFusion, DimFusion) substantially outperform T5, with \textbf{DimFusion} achieving the best FID while maintaining lower time per step. \emph{Middle:} Training loss comparison for T5 (baseline), SmolLM3-3B + TokenFusion, and SmolLM3-3B + DimFusion. Both fusion strategies outperform T5, with DimFusion closely matching TokenFusion. \emph{Bottom:} Loss difference relative to TokenFusion zoomed in, showing DimFusion converges to a similar value while requiring significantly lower computational cost.}
+\label{fig:dimfusion-merged}
+\end{figure}
+
+
+

@@ -1,0 +1,109 @@
+% CVPR 2025 Paper Template; see https://github.com/cvpr-org/author-kit
+
+\documentclass[10pt,twocolumn,letterpaper]{article}
+
+%%%%%%%%% PAPER TYPE  - PLEASE UPDATE FOR FINAL VERSION
+%\usepackage{cvpr}              % To produce the CAMERA-READY version
+%\usepackage[review]{cvpr}      % To produce the REVIEW version
+\usepackage[pagenumbers]{cvpr} % To force page numbers, e.g. for an arXiv version
+\usepackage{makecell}
+
+% Import additional packages in the preamble file, before hyperref
+\input{preamble}
+
+
+
+\newcommand*{\affaddr}[1]{#1} 
+\newcommand*{\affmark}[1][*]{\textsuperscript{#1}}
+\newcommand*{\email}[1]{\texttt{#1}}
+\newcommand*\samethanks[1][\value{footnote}]{\footnotemark[#1]}
+
+% It is strongly recommended to use hyperref, especially for the review version.
+% hyperref with option pagebackref eases the reviewers' job.
+% Please disable hyperref *only* if you encounter grave issues, 
+% e.g. with the file validation for the camera-ready version.
+%
+% If you comment hyperref and then uncomment it, you should delete *.aux before re-running LaTeX.
+% (Or just hit 'q' on the first LaTeX run, let it finish, and you should be clear).
+\definecolor{cvprblue}{rgb}{0.21,0.49,0.74}
+\usepackage[pagebackref,breaklinks,colorlinks,allcolors=cvprblue]{hyperref}
+
+%%%%%%%%% PAPER ID  - PLEASE UPDATE
+% \def\paperID{*****} % *** Enter the Paper ID here
+% \def\confName{CVPR}
+% \def\confYear{2025}
+
+%%%%%%%%% TITLE - PLEASE UPDATE
+\title{Generating an Image From 1,000 Words: Enhancing Text-to-Image With Structured Captions}
+
+
+%%%%%%%%% AUTHORS - PLEASE UPDATE
+\author{
+Eyal Gutflaish \footnote{}~ \ \ \
+Eliran Kachlon \samethanks~ \ \ \
+Hezi Zisman \ \ \
+Tal Hacham \ \ \
+Nimrod Sarid \ \ \
+Alexander Visheratin \\ 
+Saar Huberman \ \ \ 
+Gal Davidi \ \ \ 
+Guy Bukchin \ \ \ 
+Kfir Goldberg \ \ \
+Ron Mokady \footnote{}~~ \ \ \ 
+\\[2mm]
+\vspace{1em}
+BRIA AI 
+% \\[1mm]
+% {\tt\small \{hadarelor, jinsun, snavely\}@cornell.edu}
+\\[0.5mm]
+\vspace{-1mm}
+\centering
+%\small{\url{https://tau-vailab.github.io/BlendedPC/}}  
+}
+
+\begin{document}
+
+\twocolumn[{
+\renewcommand\twocolumn[1][]{#1}
+
+\vspace{-1.5cm}
+\maketitle
+\begin{center}
+  \centering
+  \vspace{-1.5cm}
+  \includegraphics[width=\textwidth]{Figures/teaser/teaser2.jpeg}
+  %\vspace{-0.7cm}
+\captionof{figure}{\textbf{Generating an image from a long structured caption.} Training with long structured captions substantially improves controllability and expressiveness. Unlike short prompts, each scene element is specified with rich attributes (e.g., position, size, texture, and relations), while global properties (e.g., background, lighting, composition, and photographic characteristics) are explicitly defined. The result is a complete, machine-readable description that enables faithful, controllable generation for professional use.}
+  \label{fig:teaser}
+\end{center}
+}]
+
+
+
+
+
+\input{sec/0_abstract}  
+
+\vspace{-1cm}
+
+{
+\renewcommand{\thefootnote}{\fnsymbol{footnote}}
+\footnotetext[1]{Equal contribution.}
+\footnotetext[2]{Project lead.}
+}
+
+\input{sec/1_intro}
+\input{sec/2_related}
+\input{sec/3_method}
+\input{sec/4_experiments}
+\input{sec/5_conclusion}
+{
+    \small
+    \bibliographystyle{ieeenat_fullname}
+    \bibliography{main}
+}
+
+% WARNING: do not forget to delete the supplementary pages from your submission 
+\input{sec/X_suppl}
+
+\end{document}

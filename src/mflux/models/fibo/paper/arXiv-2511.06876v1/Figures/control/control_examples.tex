@@ -1,0 +1,46 @@
+% Preamble: \usepackage{graphicx,array}
+\setlength{\tabcolsep}{0.5pt}
+\renewcommand{\arraystretch}{1.0}
+
+\begin{figure}[t]
+\centering
+\newcommand{\imgw}{0.24\linewidth} % 4 images × 0.24 = 0.96 (safe)
+\begin{tabular}{@{}cccc@{}}
+
+
+\multicolumn{2}{c}{\footnotesize\textit{``Shallow depth of field''}} &
+\multicolumn{2}{c}{\footnotesize\textit{``Deep depth of field''}} \\
+  \includegraphics[width=\imgw]{Figures/control/flux_shallow.jpg} &
+  \includegraphics[width=\imgw]{Figures/control/shallow.jpg} &
+  \includegraphics[width=\imgw]{Figures/control/flux_deep.jpg} &
+  \includegraphics[width=\imgw]{Figures/control/deep.jpg}
+
+  \\%[-2pt]
+
+
+  % Wrapped labels under each image (row)
+  \parbox{\imgw}{\scriptsize\centering \textbf{FLUX}} &
+  \parbox{\imgw}{\scriptsize\centering \textbf{\modelname{} (Ours)}} &
+  \parbox{\imgw}{\scriptsize\centering \textbf{Flux}} &
+  \parbox{\imgw}{\scriptsize\centering \textbf{\modelname{} (Ours)}}
+  \\
+\end{tabular}
+%\vspace{6pt}
+
+% ---------- Added two-column image table (mirrors style) ----------
+\newcommand{\imgwB}{0.48\linewidth} % 2 images × 0.48 = 0.96 (safe)
+\begin{tabular}{@{}cc@{}}
+\multicolumn{2}{>{\centering\arraybackslash}p{0.96\linewidth}}{%
+  \footnotesize\textit{``Three people: Left one holding a goose while screaming. Middle is deeply surprised. Third is crying while holding two piglets.''}%
+}\\
+\includegraphics[width=\imgwB]{Figures/control/ranch_flux.jpg} &
+\includegraphics[width=\imgwB]{Figures/control/ranch_ours.jpg} \\
+\parbox{\imgwB}{\scriptsize\centering \textbf{FLUX}} &
+\parbox{\imgwB}{\scriptsize\centering \textbf{\modelname{} (Ours)}}
+\end{tabular}
+
+
+\vspace{-3pt}
+\caption{\textbf{Controllability examples.} \emph{Top:} Our model (\modelname{}) enables precise depth-of-field control, from shallow to deep, whereas FLUX~\cite{flux2024} does not consistently produce deep depth of field. \emph{Bottom:} \modelname{} allows simultaneous control of facial expressions for multiple subjects within the same scene.}
+\label{fig:control}
+\end{figure}

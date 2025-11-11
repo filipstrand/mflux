@@ -1,0 +1,28 @@
+% Preamble: \usepackage{graphicx,array}
+\setlength{\tabcolsep}{0.5pt}
+\renewcommand{\arraystretch}{1.0}
+
+\begin{figure}[t]
+\centering
+\newcommand{\imgw}{0.24\linewidth} % 4 images × 0.24 = 0.96 (safe)
+\begin{tabular}{@{}cccc@{}}
+  % Header for row 1
+  \multicolumn{4}{@{}l@{}}{{\scriptsize\textbf{Long structured captions training}}} \\[-1pt]
+  % Row 1 images
+  \includegraphics[width=\imgw]{Figures/json_vs_short/images/json_1.jpg} &
+  \includegraphics[width=\imgw]{Figures/json_vs_short/images/json_2.jpg} &
+  \includegraphics[width=\imgw]{Figures/json_vs_short/images/json_3.jpg} &
+  \includegraphics[width=\imgw]{Figures/json_vs_short/images/json_4.jpg} \\[-2pt]
+  % Header for row 2
+  \multicolumn{4}{@{}l@{}}{{\scriptsize\textbf{Short captions training}}} \\[-1pt]
+  % Row 2 images
+  \includegraphics[width=\imgw]{Figures/json_vs_short/images/short_1.jpg} &
+  \includegraphics[width=\imgw]{Figures/json_vs_short/images/short_2.jpg} &
+  \includegraphics[width=\imgw]{Figures/json_vs_short/images/short_3.jpg} &
+  \includegraphics[width=\imgw]{Figures/json_vs_short/images/short_4.jpg} \\
+\end{tabular}
+
+\vspace{-3pt}
+\caption{\textbf{Qualitative comparison between models trained with long structured captions and short captions.} After $100$K training steps, the model trained with long captions produces more coherent and visually detailed images, demonstrating faster convergence and better alignment with the prompt.}
+\label{fig:caption-length-comparison}
+\end{figure}

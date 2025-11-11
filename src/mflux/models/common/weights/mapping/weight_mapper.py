@@ -133,8 +133,11 @@ class WeightMapper:
                             flat[concrete_hf] = (concrete_mlx, target.transform)
                 elif has_block:
                     # Expand {block} only (for transformer blocks or visual blocks)
+                    # Check if target has max_blocks override
+                    if target.max_blocks is not None:
+                        max_blocks = target.max_blocks
                     # Check if this is for visual blocks (32 blocks) or transformer blocks
-                    if "visual.blocks" in hf_pattern or "visual.blocks" in target.mlx_path:
+                    elif "visual.blocks" in hf_pattern or "visual.blocks" in target.mlx_path:
                         max_blocks = 32  # Visual blocks are always 32
                     else:
                         max_blocks = num_blocks if num_blocks > 0 else 4  # Default 4 for up_blocks

@@ -1,0 +1,61 @@
+\begin{table*}[t]
+\small
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.02}
+\centering
+\begin{tabularx}{\textwidth}{@{}p{3.9cm}p{2.4cm}X@{}}
+\toprule
+\textbf{Field} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{short\_description} & String & A short summary of the image content. \\
+
+\texttt{objects} & Array of Objects &
+List of prominent objects. For each object, we record the following fields:
+a detailed \texttt{description} of the object, the object's \texttt{location}, \texttt{relative\_size}, \texttt{shape\_and\_color}, \texttt{texture} (opt.), \texttt{appearance\_details} (opt.),
+\texttt{relationship} with other objects, and the object's \texttt{orientation} (opt.).
+When a human is described, the following fields are also included: the human's \texttt{pose} (opt.), \texttt{expression} (opt.), \texttt{clothing} (opt.), \texttt{action} (opt.), \texttt{gender} (opt.) and \texttt{skin\_tone\_and\_texture} (opt.).
+If the image is a cluster of objects then also includes the
+\texttt{number\_of\_objects} (opt.).\\
+
+\texttt{background\_setting} & String &
+Description of the environment/background. \\
+
+\texttt{lighting} & Object &
+Illumination details, including
+\texttt{conditions} (e.g., daylight, studio),
+\texttt{direction} (key-light orientation), and
+\texttt{shadows} (opt.). \\
+
+\texttt{aesthetics} & Object &
+Global visual properties, including
+\texttt{composition} (e.g., rule of third, symmetrical),
+\texttt{color\_scheme} (dominant palette) and
+\texttt{mood\_atmosphere} (emotional tone). \\
+
+\shortstack[l]{\texttt{photographic\_}\\\texttt{characteristics}} & Object (optional) &
+Camera/focus parameters:
+\texttt{depth\_of\_field},
+\texttt{focus},
+\texttt{camera\_angle}, and
+\texttt{lens\_focal\_length}. \\
+
+\texttt{style\_medium} & String &
+Artistic/rendering medium (e.g., photograph, oil painting, 3D render). \\
+
+\texttt{text\_render} & Array of Objects &
+A list of prominent text renders in the image. For each text render it includes the
+\texttt{text},
+\texttt{location},
+\texttt{size},
+\texttt{color},
+\texttt{font} and
+\texttt{appearance\_details} (opt.). \\
+
+\texttt{context} & String & Additional context that helps understand the image better. \\
+
+\texttt{artistic\_style} & String & High-level artistic/stylistic description (e.g., cinematic, minimalism). \\
+\bottomrule
+\end{tabularx}
+\caption{\textbf{Structure of the JSON-based captions.} Each field captures a distinct aspect of the image, ensuring semantic completeness and consistency.}
+\label{tab:JSON-structure}
+\end{table*}

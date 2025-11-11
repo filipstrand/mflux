@@ -10,7 +10,7 @@ from mflux.models.flux.variants.in_context.flux_in_context_fill import Flux1InCo
 from mflux.models.flux.variants.in_context.utils.in_context_loras import prepare_ic_edit_loras
 from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
-from mflux.ui.prompt_utils import get_effective_prompt
+from mflux.ui.prompt_utils import PromptUtils
 
 
 def main():
@@ -82,7 +82,7 @@ def _get_effective_ic_edit_prompt(args):
     if hasattr(args, "instruction") and args.instruction:
         return f"A diptych with two side-by-side images of the same scene. On the right, the scene is exactly the same as on the left but {args.instruction}"
     else:
-        return get_effective_prompt(args)
+        return PromptUtils.get_effective_prompt(args)
 
 
 def _resize_for_ic_edit_optimal_width(args):

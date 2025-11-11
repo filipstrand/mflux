@@ -83,3 +83,20 @@ class LatentCreator:
     @staticmethod
     def add_noise_by_interpolation(clean: mx.array, noise: mx.array, sigma: float) -> mx.array:
         return (1 - sigma) * clean + sigma * noise
+
+    @staticmethod
+    def create_for_fibo(
+        seed: int,
+        height: int,
+        width: int,
+        channels: int = 48,
+    ) -> mx.array:
+        vae_scale_factor = 16
+        latent_height = height // vae_scale_factor
+        latent_width = width // vae_scale_factor
+        batch_size = 1
+        key = mx.random.key(seed)
+        latents_4d = mx.random.normal(shape=(batch_size, channels, latent_height, latent_width), key=key)
+        latents = mx.transpose(latents_4d, (0, 2, 3, 1))
+        latents = mx.reshape(latents, (batch_size, latent_height * latent_width, channels))
+        return latents
