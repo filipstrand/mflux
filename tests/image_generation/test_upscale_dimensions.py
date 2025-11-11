@@ -57,7 +57,7 @@ def test_upscale_passes_correct_dimensions_to_generate_image(
                         mock_parser.parse_args.return_value = mock_args
                         mock_parser_class.return_value = mock_parser
 
-                        with patch("mflux.upscale.get_effective_prompt", return_value="test prompt"):
+                        with patch("mflux.upscale.PromptUtils.get_effective_prompt", return_value="test prompt"):
                             # Call the main function
                             main()
 

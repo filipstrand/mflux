@@ -7,7 +7,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-from mflux.utils.lora_library import _discover_lora_files
+from mflux.models.common.lora.download.lora_library import _discover_lora_files
 
 
 def list_loras(paths: list[str] | None = None) -> int:

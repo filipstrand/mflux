@@ -6,8 +6,8 @@ from unittest import mock
 
 import pytest
 
+from mflux.models.common.lora.download import lora_library
 from mflux.ui.cli.parsers import CommandLineParser
-from mflux.utils import lora_library
 
 
 @pytest.fixture

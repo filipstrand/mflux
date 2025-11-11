@@ -5,8 +5,8 @@ import mlx.nn as nn
 from mlx.utils import tree_flatten  # noqa: F401
 
 from mflux.config.config import Config
+from mflux.models.common.quantization.quantization_util import QuantizationUtil
 from mflux.models.qwen.model.qwen_text_encoder.qwen_vision_transformer import VisionTransformer
-from mflux.utils.quantization_util import QuantizationUtil
 
 if TYPE_CHECKING:
     from mflux.models.qwen.weights.qwen_weight_handler import QwenWeightHandler
@@ -82,7 +82,7 @@ class QwenWeightUtil:
         transformer.update(weights.transformer, strict=False)
 
         # Check if visual weights are present and create visual transformer if needed
-        if text_encoder is not None:
+        if text_encoder is not None and weights.qwen_text_encoder is not None:
             has_visual_weights = (
                 "encoder" in weights.qwen_text_encoder and "visual" in weights.qwen_text_encoder["encoder"]
             )

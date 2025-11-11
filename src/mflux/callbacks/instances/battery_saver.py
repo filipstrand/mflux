@@ -4,7 +4,7 @@ import re
 import subprocess
 
 from mflux.callbacks.callback import BeforeLoopCallback
-from mflux.error.exceptions import StopImageGenerationException
+from mflux.utils.exceptions import StopImageGenerationException
 
 PMSET_AC_POWER_STATUS = "Now drawing from 'AC Power'"
 PMSET_BATT_STATUS_PATTERN = r"InternalBattery-.+?(\d+)%"

@@ -8,8 +8,8 @@ import PIL.Image
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.depth_pro.depth_pro import DepthPro
 from mflux.models.flux.model.flux_vae.vae import VAE
-from mflux.post_processing.array_util import ArrayUtil
-from mflux.post_processing.image_util import ImageUtil
+from mflux.utils.array_util import ArrayUtil
+from mflux.utils.image_util import ImageUtil
 
 logger = logging.getLogger(__name__)
 

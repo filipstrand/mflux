@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 import mlx.nn as nn
 
 from mflux.config.config import Config
-from mflux.utils.quantization_util import QuantizationUtil
+from mflux.models.common.quantization.quantization_util import QuantizationUtil
 
 if TYPE_CHECKING:
     from mflux.models.flux.variants.controlnet.weight_handler_controlnet import WeightHandlerControlnet

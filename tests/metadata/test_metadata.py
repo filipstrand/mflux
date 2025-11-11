@@ -14,7 +14,7 @@ from pathlib import Path
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.models.flux.variants.txt2img.flux import Flux1
-from mflux.post_processing.metadata_reader import MetadataReader
+from mflux.utils.metadata_reader import MetadataReader
 
 
 class TestMetadata:

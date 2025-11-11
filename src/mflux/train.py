@@ -1,7 +1,7 @@
-from mflux.error.exceptions import StopTrainingException
 from mflux.models.flux.variants.dreambooth.dreambooth import DreamBooth
 from mflux.models.flux.variants.dreambooth.dreambooth_initializer import DreamBoothInitializer
 from mflux.ui.cli.parsers import CommandLineParser
+from mflux.utils.exceptions import StopTrainingException
 
 
 def main():

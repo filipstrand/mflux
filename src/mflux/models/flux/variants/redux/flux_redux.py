@@ -8,9 +8,8 @@ from mflux.callbacks.callbacks import Callbacks
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.error.exceptions import StopImageGenerationException
-from mflux.latent_creator.latent_creator import LatentCreator
 from mflux.models.flux.flux_initializer import FluxInitializer
+from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 from mflux.models.flux.model.flux_text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.flux.model.flux_text_encoder.prompt_encoder import PromptEncoder
 from mflux.models.flux.model.flux_text_encoder.t5_encoder.t5_encoder import T5Encoder
@@ -21,9 +20,10 @@ from mflux.models.flux.model.siglip_vision_transformer.siglip_vision_transformer
 from mflux.models.flux.tokenizer.clip_tokenizer import TokenizerCLIP
 from mflux.models.flux.tokenizer.t5_tokenizer import TokenizerT5
 from mflux.models.flux.variants.redux.redux_util import ReduxUtil
-from mflux.post_processing.array_util import ArrayUtil
-from mflux.post_processing.generated_image import GeneratedImage
-from mflux.post_processing.image_util import ImageUtil
+from mflux.utils.array_util import ArrayUtil
+from mflux.utils.exceptions import StopImageGenerationException
+from mflux.utils.generated_image import GeneratedImage
+from mflux.utils.image_util import ImageUtil
 
 
 class Flux1Redux(nn.Module):
@@ -62,7 +62,7 @@ class Flux1Redux(nn.Module):
         time_steps = tqdm(range(runtime_config.init_time_step, runtime_config.num_inference_steps))
 
         # 1. Create the initial latents
-        latents = LatentCreator.create(
+        latents = FluxLatentCreator.create_noise(
             seed=seed,
             height=runtime_config.height,
             width=runtime_config.width,

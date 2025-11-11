@@ -6,8 +6,8 @@ import tqdm
 
 from mflux.callbacks.callback import BeforeLoopCallback, InLoopCallback, InterruptCallback
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.post_processing.array_util import ArrayUtil
-from mflux.post_processing.image_util import ImageUtil
+from mflux.utils.array_util import ArrayUtil
+from mflux.utils.image_util import ImageUtil
 
 
 class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):

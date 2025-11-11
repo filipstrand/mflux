@@ -7,12 +7,15 @@ import pytest
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.schedulers import try_import_external_scheduler
-from mflux.schedulers.linear_scheduler import LinearScheduler
+from mflux.models.common.schedulers import try_import_external_scheduler
+from mflux.models.common.schedulers.linear_scheduler import LinearScheduler
 
 
 def test_linear_scheduler_import_by_name():
-    assert try_import_external_scheduler("mflux.schedulers.linear_scheduler.LinearScheduler") == LinearScheduler
+    assert (
+        try_import_external_scheduler("mflux.models.common.schedulers.linear_scheduler.LinearScheduler")
+        == LinearScheduler
+    )
 
 
 @pytest.fixture

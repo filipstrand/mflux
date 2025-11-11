@@ -6,19 +6,19 @@ from mflux.callbacks.callbacks import Callbacks
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.error.exceptions import StopImageGenerationException
-from mflux.latent_creator.latent_creator import LatentCreator
 from mflux.models.depth_pro.depth_pro import DepthPro
 from mflux.models.flux.flux_initializer import FluxInitializer
+from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 from mflux.models.flux.model.flux_text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.flux.model.flux_text_encoder.prompt_encoder import PromptEncoder
 from mflux.models.flux.model.flux_text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.flux.model.flux_transformer.transformer import Transformer
 from mflux.models.flux.model.flux_vae.vae import VAE
 from mflux.models.flux.variants.depth.depth_util import DepthUtil
-from mflux.post_processing.array_util import ArrayUtil
-from mflux.post_processing.generated_image import GeneratedImage
-from mflux.post_processing.image_util import ImageUtil
+from mflux.utils.array_util import ArrayUtil
+from mflux.utils.exceptions import StopImageGenerationException
+from mflux.utils.generated_image import GeneratedImage
+from mflux.utils.image_util import ImageUtil
 
 
 class Flux1Depth(nn.Module):
@@ -56,7 +56,7 @@ class Flux1Depth(nn.Module):
         time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
 
         # 1. Create the initial latents
-        latents = LatentCreator.create(
+        latents = FluxLatentCreator.create_noise(
             seed=seed,
             height=config.height,
             width=config.width,

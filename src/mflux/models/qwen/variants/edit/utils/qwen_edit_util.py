@@ -2,8 +2,8 @@ import os
 
 import mlx.core as mx
 
-from mflux.latent_creator.latent_creator import LatentCreator
-from mflux.post_processing.array_util import ArrayUtil
+from mflux.models.common.latent_creator.latent_creator import LatentCreator
+from mflux.utils.array_util import ArrayUtil
 
 
 class QwenEditUtil:
@@ -22,7 +22,7 @@ class QwenEditUtil:
         if vl_width is not None and vl_height is not None:
             calc_w, calc_h = vl_width, vl_height
         else:
-            from mflux.post_processing.image_util import ImageUtil
+            from mflux.utils.image_util import ImageUtil
 
             pil_image = ImageUtil.load_image(image_paths[-1]).convert("RGB")
             img_w, img_h = pil_image.size

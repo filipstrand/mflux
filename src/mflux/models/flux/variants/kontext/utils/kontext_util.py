@@ -1,7 +1,7 @@
 import mlx.core as mx
 
-from mflux.latent_creator.latent_creator import LatentCreator
-from mflux.post_processing.array_util import ArrayUtil
+from mflux.models.common.latent_creator.latent_creator import LatentCreator
+from mflux.utils.array_util import ArrayUtil
 
 
 class KontextUtil:
