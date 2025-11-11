@@ -91,11 +91,6 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
-    def qwen_image_edit() -> "ModelConfig":
-        return AVAILABLE_MODELS["qwen-image-edit"]
-
-    @staticmethod
-    @lru_cache
     def qwen_image_edit_plus() -> "ModelConfig":
         return AVAILABLE_MODELS["qwen-image-edit-plus"]
 
@@ -311,18 +306,6 @@ AVAILABLE_MODELS = {
         supports_guidance=None,
         requires_sigma_shift=None,
         priority=11,
-    ),
-    "qwen-image-edit": ModelConfig(
-        aliases=["qwen-image-edit", "qwen-edit"],
-        model_name="Qwen/Qwen-Image-Edit",
-        base_model=None,
-        controlnet_model=None,
-        custom_transformer_model=None,
-        num_train_steps=None,
-        max_sequence_length=None,
-        supports_guidance=None,
-        requires_sigma_shift=None,
-        priority=12,
     ),
     "qwen-image-edit-plus": ModelConfig(
         aliases=["qwen-image-edit-plus", "qwen-edit-plus", "qwen-edit-2509"],
