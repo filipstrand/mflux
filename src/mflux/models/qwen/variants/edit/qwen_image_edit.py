@@ -182,6 +182,7 @@ class QwenImageEdit(nn.Module):
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
             image_path=runtime_config.image_path,
+            image_paths=image_paths,
             generation_time=time_steps.format_dict["elapsed"],
             negative_prompt=negative_prompt,
         )

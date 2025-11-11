@@ -4,7 +4,7 @@
 
 ### About
 
-Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black Forest Labs](https://blackforestlabs.ai) locally on your Mac!
+Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) and [Qwen Image](https://github.com/QwenLM/Qwen-Image) models locally on your Mac!
 
 ### Table of contents
 
@@ -20,6 +20,9 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 - [💽 Running a non-quantized model directly from disk](#-running-a-non-quantized-model-directly-from-disk)
 - [🌐 Third-Party HuggingFace Model Support](#-third-party-huggingface-model-support)
 - [🎨 Image-to-Image](#-image-to-image)
+- [🦙 Qwen Models](#-qwen-models)
+  * [🖼️ Qwen Image](#%EF%B8%8F-qwen-image)
+  * [✏️ Qwen Image Edit](#%EF%B8%8F-qwen-image-edit)
 - [🔌 LoRA](#-lora)
 - [🎭 In-Context Generation](#-in-context-generation)
   * [📸 Kontext](#-kontext)
@@ -47,16 +50,13 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) models from [Black
 
 ### Philosophy
 
-MFLUX is a line-by-line port of the FLUX implementation in the [Huggingface Diffusers](https://github.com/huggingface/diffusers) library to [Apple MLX](https://github.com/ml-explore/mlx).
+MFLUX is a line-by-line port of the FLUX and Qwen implementations in the [Huggingface Diffusers](https://github.com/huggingface/diffusers) and [Huggingface Transformers](https://github.com/huggingface/transformers) libraries to [Apple MLX](https://github.com/ml-explore/mlx).
 MFLUX is purposefully kept minimal and explicit - Network architectures are hardcoded and no config files are used
 except for the tokenizers. The aim is to have a tiny codebase with the single purpose of expressing these models
 (thereby avoiding too many abstractions). While MFLUX priorities readability over generality and performance, [it can still be quite fast](#%EF%B8%8F-image-generation-speed-updated), [and even faster quantized](#%EF%B8%8F-quantization).
 
-All models are implemented from scratch in MLX and only the tokenizers are used via the
-[Huggingface Transformers](https://github.com/huggingface/transformers) library. Other than that, there are only minimal dependencies
-like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) for simple image post-processing.
+All models are implemented from scratch in MLX and only the tokenizers are used via the [Huggingface Transformers](https://github.com/huggingface/transformers) library. Other than that, there are only minimal dependencies like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) for simple image post-processing.
 
-As of v.0.11.0, MFLUX now supports the Qwen Image model.
 ---
 
 ### 💿 Installation
@@ -156,7 +156,7 @@ mflux-generate --model dev --prompt "Luxury food photograph" --steps 25 --seed 2
 This example uses the `qwen` model with 20 time steps:
 
 ```sh
-mflux-generate --model qwen --prompt "Luxury food photograph" --steps 20 --seed 2 -q 6
+mflux-generate-qwen --prompt "Luxury food photograph" --steps 20 --seed 2 -q 6
 ```
 
 You can also pipe prompts from other commands using stdin:
@@ -175,7 +175,7 @@ from mflux.config.config import Config
 
 # Load the model
 flux = Flux1.from_name(
-   model_name="schnell",  # "schnell", "dev", "krea-dev", or "qwen"
+   model_name="schnell",  # "schnell", "dev", or "krea-dev"
    quantize=8,            # 3, 4, 5, 6, or 8
 )
 
@@ -184,7 +184,7 @@ image = flux.generate_image(
    seed=2,
    prompt="Luxury food photograph",
    config=Config(
-      num_inference_steps=2,  # "schnell" works well with 2-4 steps, "dev", "krea-dev", and "qwen" work well with 20-25 steps
+      num_inference_steps=2,  # "schnell" works well with 2-4 steps, "dev" and "krea-dev" work well with 20-25 steps
       height=1024,
       width=1024,
    )
@@ -235,9 +235,9 @@ mflux-generate \
 
 - **`--prompt`** (required, `str`): Text description of the image to generate. Use `-` to read the prompt from stdin (e.g., `echo "A beautiful sunset" | mflux-generate --prompt -`).
 
-- **`--model`** or **`-m`** (required, `str`): Model to use for generation. Can be one of the official models (`"schnell"`, `"dev"`, `"krea-dev"`, or `"qwen"`) or a HuggingFace repository ID for a compatible third-party model (e.g., `"Freepik/flux.1-lite-8B-alpha"`).
+- **`--model`** or **`-m`** (required, `str`): Model to use for generation. Can be one of the official Flux models (`"schnell"`, `"dev"`, or `"krea-dev"`) or a HuggingFace repository ID for a compatible third-party model (e.g., `"Freepik/flux.1-lite-8B-alpha"`). For Qwen models, use `mflux-generate-qwen` instead.
 
-- **`--base-model`** (optional, `str`, default: `None`): Specifies which base architecture a third-party model is derived from (`"schnell"`, `"dev"`, `"krea-dev"`, or `"qwen"`). Required when using third-party models from HuggingFace.
+- **`--base-model`** (optional, `str`, default: `None`): Specifies which base architecture a third-party model is derived from (`"schnell"`, `"dev"`, or `"krea-dev"`). Required when using third-party models from HuggingFace.
 
 - **`--output`** (optional, `str`, default: `"image.png"`): Output image filename. If `--seed` or `--auto-seeds` establishes multiple seed values, the output filename will automatically be modified to include the seed value (e.g., `image_seed_42.png`).
 
@@ -251,7 +251,7 @@ mflux-generate \
 
 - **`--steps`** (optional, `int`, default: `4`): Number of inference steps.
 
-- **`--guidance`** (optional, `float`, default: `3.5`): Guidance scale (only used for `"dev"`, `"krea-dev"` and `qwen` models).
+- **`--guidance`** (optional, `float`, default: `3.5`): Guidance scale (only used for `"dev"` and `"krea-dev"` models).
 
 - **`--path`** (optional, `str`, default: `None`): Path to a local model on disk.
 
@@ -352,6 +352,40 @@ The `mflux-generate-in-context-edit` command supports most of the same arguments
 **Note**: The IC-Edit tool automatically downloads and applies the required LoRA, and optimizes the resolution to 512px width for best results.
 
 See the [IC-Edit (In-Context Editing)](#-ic-edit-in-context-editing) section for more details on this feature.
+
+</details>
+
+#### Qwen Image Command-Line Arguments
+
+<details>
+<summary>Click to expand Qwen Image arguments</summary>
+
+The `mflux-generate-qwen` command supports most of the same arguments as `mflux-generate`, with these specific parameters:
+
+- **`--model`** (optional, `str`, default: `"qwen-image"`): Model to use for generation. Defaults to `"qwen-image"` if not specified.
+
+- **`--guidance`** (optional, `float`, default: `3.5`): Guidance scale for the generation. Qwen Image typically works well with values around 3.5.
+
+**Note**: The Qwen Image tool automatically uses the Qwen Image model, so you typically don't need to specify `--model`.
+
+See the [Qwen Image](#-qwen-image) section for more details on this feature.
+
+</details>
+
+#### Qwen Image Edit Command-Line Arguments
+
+<details>
+<summary>Click to expand Qwen Image Edit arguments</summary>
+
+The `mflux-generate-qwen-edit` command supports most of the same arguments as `mflux-generate`, with these specific parameters:
+
+- **`--image-paths`** (required, `[str]`): Paths to one or more reference images. For single image editing, provide one path. For multiple image editing (e.g., combining elements from multiple images), provide multiple paths.
+
+- **`--guidance`** (optional, `float`, default: `2.5`): Guidance scale for the generation. Qwen Image Edit typically works well with values around 2.5.
+
+**Note**: The Qwen Image Edit tool automatically uses the appropriate model (`qwen-image-edit`), so you don't need to specify `--model`.
+
+See the [Qwen Image Edit](#-qwen-image-edit) section for more details on this feature.
 
 </details>
 
@@ -925,6 +959,131 @@ Like with [Controlnet](#-controlnet), this technique combines well with [LoRA](#
 ![image](src/mflux/assets/img2img.jpg)
 
 In the examples above the following LoRAs are used [Sketching](https://civitai.com/models/803456/sketching?modelVersionId=898364), [Animation Shot](https://civitai.com/models/883914/animation-shot-flux-xl-ponyrealism) and [flux-film-camera](https://civitai.com/models/874708?modelVersionId=979175) are used.
+
+---
+
+### 🦙 Qwen Models
+
+MFLUX supports the [Qwen Image](https://github.com/QwenLM/Qwen-Image) family of vision-language models, providing both text-to-image generation and natural language image editing capabilities. Released approximately a year after FLUX, Qwen models achieve state-of-the-art performance in most areas, though they are comparatively heavier to run.
+
+#### 🖼️ Qwen Image
+
+**Qwen Image** is a powerful 20B parameter text-to-image model ([technical report](https://arxiv.org/abs/2508.02324)) that enables high-quality image generation from text prompts. It uses a vision-language architecture with a 7B text encoder (Qwen2.5-VL) to understand and generate images based on natural language descriptions.
+
+The Qwen Image model has its own dedicated command `mflux-generate-qwen`. Qwen Image excels at multilingual prompts, including Chinese characters, and can render Chinese text as part of the image content (like signs, menus, and calligraphy).
+
+![Qwen Image Examples](src/mflux/assets/qwen_image_example.jpg)
+
+**Example: Wildlife Portrait**
+
+```sh
+mflux-generate-qwen \
+  --prompt "Close-up portrait of a majestic tiger in its natural habitat, detailed fur texture, piercing eyes, natural forest background, soft natural lighting, wildlife photography, photorealistic, high detail, professional wildlife shot" \
+  --negative-prompt "blurry, low quality, distorted, deformed, ugly, bad anatomy, bad proportions, extra limbs, duplicate, watermark, signature, text, letters, cartoon, anime, painting, drawing, illustration, 3d render, cgi, zoo, cage, artificial" \
+  --width 1920 \
+  --height 816 \
+  --steps 30 \
+  --seed 42 \
+  -q 8
+```
+
+<details>
+<summary><strong>Click to expand additional example commands - These are the exact commands used to generate the images shown above</strong></summary>
+
+**Chinese Calligraphy:**
+
+```sh
+mflux-generate-qwen \
+  --prompt "Traditional Chinese calligraphy studio, ancient scrolls with beautiful Chinese characters, ink brushes, inkstone, traditional paper, warm natural lighting, peaceful atmosphere, photorealistic, high detail, cultural heritage" \
+  --negative-prompt "blurry, low quality, distorted, deformed, ugly, bad anatomy, bad proportions, extra limbs, duplicate, watermark, signature, text, letters, cartoon, anime, painting, drawing, illustration, 3d render, cgi, modern, digital" \
+  --width 1920 \
+  --height 816 \
+  --steps 30 \
+  --seed 42 \
+  -q 8
+```
+
+**Chinese Street Signs:**
+
+```sh
+mflux-generate-qwen \
+  --prompt "Traditional Chinese street scene, old neighborhood with shop signs displaying Chinese characters (店铺, 餐厅, 书店), red lanterns, narrow alleys, traditional architecture, bustling street life, natural lighting, photorealistic, high detail, street photography" \
+  --negative-prompt "blurry, low quality, distorted, deformed, ugly, bad anatomy, bad proportions, extra limbs, duplicate, watermark, signature, cartoon, anime, painting, drawing, illustration, 3d render, cgi, modern signs, English text only" \
+  --width 1920 \
+  --height 816 \
+  --steps 30 \
+  --seed 42 \
+  -q 8
+```
+
+**Food Photography:**
+
+```sh
+mflux-generate-qwen \
+  --prompt "Professional food photography, gourmet Chinese cuisine, steamed dumplings, colorful vegetables, traditional table setting, restaurant lighting, shallow depth of field, photorealistic, high detail, magazine quality" \
+  --negative-prompt "blurry, low quality, distorted, deformed, ugly, bad anatomy, bad proportions, extra limbs, duplicate, watermark, signature, text, letters, cartoon, anime, painting, drawing, illustration, 3d render, cgi, fast food, unappetizing" \
+  --width 1920 \
+  --height 816 \
+  --steps 30 \
+  --seed 42 \
+  -q 8
+```
+
+</details>
+
+⚠️ *Note: The Qwen Image model requires downloading the `Qwen/Qwen-Image` model weights (~58GB for the full model, or use quantization for smaller sizes).*
+
+#### ✏️ Qwen Image Edit
+
+**Qwen Image Edit** enables precise natural language image editing, allowing you to modify images using text instructions while maintaining their original structure and context. The model uses a vision-language encoder to understand both the input image and your editing instructions, making it ideal for tasks like changing specific elements, adjusting poses, modifying clothing, or altering backgrounds while preserving the overall composition.
+
+Qwen Image Edit supports natural language editing with descriptive text instructions, maintains original poses and body positions when requested, supports multiple images for complex compositions, and works seamlessly with LoRA adapters for specialized transformations like camera angles and styles. The model uses `Qwen/Qwen-Image-Edit-2509`.
+
+![Qwen Image Edit Examples](src/mflux/assets/qwen_edit_example.jpg)
+*Examples showing dog replacement with two-image input and monkey camera angle transformations with LoRAs. Source images: [Golden Retriever](https://images.unsplash.com/photo-1552053831-71594a27632d), [Grey Dog](https://images.unsplash.com/photo-1566710582818-d673dc761201), and [Monkey](https://images.unsplash.com/photo-1578948610588-ffe24448f5ed).*
+
+**Example 1: Two-Image Transformation (Dog Replacement)**
+
+Qwen Image Edit excels at complex transformations using multiple reference images. This example replaces a golden retriever with a grey dog and changes the rose color from white to red:
+
+```sh
+mflux-generate-qwen-edit \
+  --image-paths "dog1.png" "dog2.png" \
+  --prompt "Replace the golden retriever (standing outside, holding white rose) in Image 1 with the grey dog from Image 2 (which is standing inside in a studio). The grey dog should hold a red rose in its mouth and stand outside in the same position as the golden retriever. Maintain the outside environment, background, lighting, and all surroundings completely unchanged." \
+  --steps 30 \
+  --guidance 2.5 \
+  --width 624 \
+  --height 1024
+```
+
+**Example 2: Single Image with LoRAs (Camera Angle Transformations)**
+
+Qwen Image Edit works seamlessly with LoRA adapters for specialized transformations. This example uses two LoRAs to transform camera angles on a single image:
+
+```sh
+mflux-generate-qwen-edit \
+  --image-paths "monkey.png" \
+  --prompt "将镜头极度拉近，使用超长焦镜头进行极端特写拍摄，主体占据画面的大部分空间，背景完全虚化，营造出强烈的视觉冲击力和亲密感。Extreme zoom in with a super telephoto lens, creating an intense close-up where the subject dominates most of the frame, with the background completely blurred, creating a strong visual impact and sense of intimacy." \
+  --steps 8 \
+  --guidance 2.5 \
+  --width 1024 \
+  --height 1024 \
+  --lora-paths "/path/to/Qwen-Image-Lightning-4steps-V2.0.safetensors" "/path/to/镜头转换.safetensors" \
+  --lora-scales 0.5 1.0
+```
+
+*Uses [Qwen Image Lightning LoRA](https://huggingface.co/lightx2v/Qwen-Image-Lightning) for fast generation and [Camera Angle LoRA](https://huggingface.co/dx8152/Qwen-Edit-2509-Multiple-angles) for precise camera control.*
+
+**Tips for Qwen Image Edit:**
+1. **Detailed Prompts**: The model works best with detailed, specific editing instructions
+2. **Pose Maintenance**: Explicitly mention maintaining poses, body positions, or overall stance when you want to preserve the original structure
+3. **Single Focus**: Focus on one or a few related edits at a time for more predictable results
+4. **LoRA Combinations**: Combine multiple LoRAs for complex effects (e.g., fast generation + camera control)
+5. **Quantization**: 6-bit or below can degrade the image a lot more compared to Flux, use with caution
+6. **Seed Variation**: Qwen models typically do not vary much with seed changes. If you want more variation, vary the prompt instead
+7. **Image Quality**: Qwen images come out quite soft compared to Flux models
+
+⚠️ *Note: The Qwen Image Edit model requires downloading the `Qwen/Qwen-Image-Edit-2509` model weights (~58GB for the full model, or use quantization for smaller sizes).*
 
 ---
 
@@ -1873,7 +2032,7 @@ See `uv run tools/rename_images.py --help` for full CLI usage help.
 - Set up shell aliases for required args examples:
   - shortcut for dev model: `alias mflux-dev='mflux-generate --model dev'`
   - shortcut for schnell model *and* always save metadata: `alias mflux-schnell='mflux-generate --model schnell --metadata'`
-  - shortcut for qwen model: `alias mflux-qwen='mflux-generate --model qwen'`
+  - shortcut for qwen model: `alias mflux-qwen='mflux-generate-qwen'`
 - For systems with limited memory, use the `--low-ram` flag to reduce memory usage by constraining the MLX cache size and releasing components after use
 - On battery-powered Macs, use `--battery-percentage-stop-limit` (or `-B`) to prevent your laptop from shutting down during long generation sessions
 - When generating multiple images with different seeds, use `--seed` with multiple values or `--auto-seeds` to automatically generate a series of random seeds

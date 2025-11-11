@@ -26,6 +26,9 @@ class ImageGeneratorEditTestHelper:
         negative_prompt: str | None = None,
         quantize: int = 8,
         image_paths: list[str] | None = None,
+        lora_names: list[str] | None = None,
+        lora_repo_id: str | None = None,
+        mismatch_threshold: float | None = None,
     ):
         # resolve paths
         reference_image_path = ImageGeneratorEditTestHelper.resolve_path(reference_image_path)
@@ -46,6 +49,13 @@ class ImageGeneratorEditTestHelper:
             model_kwargs = {
                 "quantize": quantize,
             }
+
+            # Add HuggingFace LoRA parameters if provided
+            if lora_names is not None:
+                model_kwargs["lora_names"] = lora_names
+            if lora_repo_id is not None:
+                model_kwargs["lora_repo_id"] = lora_repo_id
+
             model = model_class(**model_kwargs)
 
             # when
@@ -90,6 +100,7 @@ class ImageGeneratorEditTestHelper:
                 output_image_path,
                 reference_image_path,
                 f"Generated {model_name} image doesn't match reference image.",
+                mismatch_threshold=mismatch_threshold,
             )
         finally:
             # cleanup

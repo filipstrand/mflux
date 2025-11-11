@@ -217,9 +217,13 @@ class WeightHandler:
                 repo_id=repo_id,
                 allow_patterns=[
                     "text_encoder/*.safetensors",
+                    "text_encoder/*.json",
                     "text_encoder_2/*.safetensors",
+                    "text_encoder_2/*.json",
                     "transformer/*.safetensors",
+                    "transformer/*.json",
                     "vae/*.safetensors",
+                    "vae/*.json",
                 ],
             )
         )

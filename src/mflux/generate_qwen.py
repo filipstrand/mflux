@@ -1,9 +1,8 @@
-from pathlib import Path
-
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.config.config import Config
+from mflux.config.model_config import ModelConfig
 from mflux.error.exceptions import PromptFileReadError, StopImageGenerationException
-from mflux.models.qwen.variants.edit.qwen_image_edit import QwenImageEdit
+from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
 from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_negative_prompt, get_effective_prompt
@@ -11,27 +10,22 @@ from mflux.ui.prompt_utils import get_effective_negative_prompt, get_effective_p
 
 def main():
     # 0. Parse command line arguments
-    parser = CommandLineParser(description="Generate an image using Qwen Image Edit with image conditioning.")
+    parser = CommandLineParser(description="Generate an image using Qwen Image model.")
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
     parser.add_image_generator_arguments(supports_metadata_config=True)
-    parser.add_argument(
-        "--image-paths",
-        type=Path,
-        nargs="+",
-        required=True,
-        help="Local paths to one or more init images. For single image editing, provide one path. For multiple image editing, provide multiple paths.",
-    )
+    parser.add_image_to_image_arguments(required=False)
     parser.add_output_arguments()
     args = parser.parse_args()
 
     # 0. Set default guidance value if not provided by user
     if args.guidance is None:
-        args.guidance = ui_defaults.GUIDANCE_SCALE_KONTEXT
+        args.guidance = ui_defaults.GUIDANCE_SCALE
 
     # 1. Load the model
-    qwen = QwenImageEdit(
+    qwen = QwenImage(
+        model_config=ModelConfig.from_name(model_name=args.model or "qwen-image", base_model=args.base_model),
         quantize=args.quantize,
         local_path=args.path,
         lora_paths=args.lora_paths,
@@ -43,32 +37,23 @@ def main():
 
     try:
         for seed in args.seed:
-            # 3. Prepare image paths
-            image_paths = [str(p) for p in args.image_paths]
-
-            # Use first image path for config.image_path (for backward compatibility with Config)
-            # All image paths are passed to generate_image and stored in metadata
-            config_image_path = image_paths[0]
-
-            # 4. Generate an image for each seed value
+            # 3. Generate an image for each seed value
             image = qwen.generate_image(
                 seed=seed,
                 prompt=get_effective_prompt(args),
+                negative_prompt=get_effective_negative_prompt(args),
                 config=Config(
                     num_inference_steps=args.steps,
                     height=args.height,
                     width=args.width,
                     guidance=args.guidance,
-                    image_path=config_image_path,
+                    image_path=args.image_path,
+                    image_strength=args.image_strength,
+                    scheduler=args.scheduler,
                 ),
-                negative_prompt=get_effective_negative_prompt(args),
-                image_paths=image_paths,
             )
-
-            # 5. Save the image
-            output_path = Path(args.output.format(seed=seed))
-            image.save(path=output_path, export_json_metadata=args.metadata)
-
+            # 4. Save the image
+            image.save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)
     except (StopImageGenerationException, PromptFileReadError) as exc:
         print(exc)
     finally:
