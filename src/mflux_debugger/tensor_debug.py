@@ -29,7 +29,12 @@ import numpy as np
 try:
     import torch
 except ImportError:
-    torch = None  # PyTorch not available (MLX-only environment)
+    torch = None
+
+try:
+    import mlx.core as mx
+except ImportError:
+    mx = None  # MLX not available (PyTorch-only environment)
 
 from mflux_debugger.image_tensor_paths import (
     get_tensors_archive_dir,
@@ -213,21 +218,38 @@ def debug_save(tensor: Any, name: str, exit_after: bool = False, skip: bool = Fa
         # Check directory size before saving
         _check_directory_size(operation="save")
 
-        # Validate tensor
-        if not hasattr(tensor, "detach") or not hasattr(tensor, "cpu"):
-            raise TypeError(f"Expected PyTorch tensor, got {type(tensor).__name__}")
+        # Handle MLX arrays
+        if mx is not None and isinstance(tensor, mx.array):
+            # Convert MLX array to numpy, then to PyTorch tensor for consistent handling
+            tensor_np = np.array(tensor)
+            tensor_cpu = torch.from_numpy(tensor_np) if torch is not None else tensor_np
+        # Handle PyTorch tensors
+        elif torch is not None and isinstance(tensor, torch.Tensor):
+            # Detach and move to CPU
+            tensor_cpu = tensor.detach().cpu()
+        # Handle numpy arrays
+        elif isinstance(tensor, np.ndarray):
+            tensor_cpu = torch.from_numpy(tensor) if torch is not None else tensor
+        else:
+            raise TypeError(f"Expected PyTorch tensor, MLX array, or numpy array, got {type(tensor).__name__}")
 
-        # Detach and move to CPU
-        tensor_cpu = tensor.detach().cpu()
-
-        # Check if tensor is complex
-        is_complex = tensor_cpu.is_complex()
+        # Check if tensor is complex (PyTorch tensors only)
+        if torch is not None and isinstance(tensor_cpu, torch.Tensor):
+            is_complex = tensor_cpu.is_complex()
+        else:
+            # For numpy arrays, check dtype
+            is_complex = np.iscomplexobj(tensor_cpu)
 
         if is_complex:
             # For complex tensors, save as structured array with 'real' and 'imag' fields
             # This preserves both components for proper RoPE embedding reconstruction
-            real_part = tensor_cpu.real.float().numpy()
-            imag_part = tensor_cpu.imag.float().numpy()
+            if torch is not None and isinstance(tensor_cpu, torch.Tensor):
+                real_part = tensor_cpu.real.float().numpy()
+                imag_part = tensor_cpu.imag.float().numpy()
+            else:
+                # Numpy array
+                real_part = np.real(tensor_cpu).astype(np.float32)
+                imag_part = np.imag(tensor_cpu).astype(np.float32)
 
             # Create structured array with named fields
             tensor_np = np.empty(real_part.shape, dtype=[("real", "f4"), ("imag", "f4")])
@@ -238,20 +260,27 @@ def debug_save(tensor: Any, name: str, exit_after: bool = False, skip: bool = Fa
         else:
             # For real tensors, preserve dtype (int32/int64 for indices, float32 for values)
             # Only convert to float if it's already a floating-point type
-            original_dtype = tensor_cpu.dtype
-            if torch is not None and original_dtype in (
-                torch.int32,
-                torch.int64,
-                torch.long,
-                torch.int16,
-                torch.int8,
-                torch.uint8,
-            ):
-                # Preserve integral types (important for input_ids, attention_mask, etc.)
-                tensor_np = tensor_cpu.numpy()
+            if torch is not None and isinstance(tensor_cpu, torch.Tensor):
+                original_dtype = tensor_cpu.dtype
+                if original_dtype in (
+                    torch.int32,
+                    torch.int64,
+                    torch.long,
+                    torch.int16,
+                    torch.int8,
+                    torch.uint8,
+                ):
+                    # Preserve integral types (important for input_ids, attention_mask, etc.)
+                    tensor_np = tensor_cpu.numpy()
+                else:
+                    # Convert floating-point types to float32
+                    tensor_np = tensor_cpu.float().numpy()
             else:
-                # Convert floating-point types to float32
-                tensor_np = tensor_cpu.float().numpy()
+                # Numpy array - preserve dtype for integers, convert floats to float32
+                if np.issubdtype(tensor_cpu.dtype, np.integer):
+                    tensor_np = tensor_cpu
+                else:
+                    tensor_np = tensor_cpu.astype(np.float32)
             info_str = "real"
 
         # Ensure directory exists (always create if needed - transparent to user)

@@ -10,6 +10,8 @@ from mlx import nn
 
 from mflux.models.fibo.model.fibo_vae.decoder.wan_causal_conv_3d import WanCausalConv3d
 from mflux.models.fibo.model.fibo_vae.decoder.wan_decoder_3d import WanDecoder3d
+from mflux_debugger.semantic_checkpoint import debug_checkpoint
+from mflux_debugger.tensor_debug import debug_save
 
 
 class VAE(nn.Module):
@@ -175,18 +177,80 @@ class VAE(nn.Module):
             Decoded image tensor of shape (batch, 12, height, width)
             Note: FIBO outputs 12 channels, not 3 (likely for post-processing/decoding)
         """
+        # Debug checkpoint: VAE decode input
+        debug_checkpoint("mlx_vae_decode_input", metadata={"shape": list(latents.shape), "dtype": str(latents.dtype)})
+        debug_save(latents, "mlx_vae_decode_input")
+
         # Ensure latents are 5D: (batch, channels, 1, height, width)
         if latents.ndim == 4:
             latents = latents.reshape(latents.shape[0], latents.shape[1], 1, latents.shape[2], latents.shape[3])
 
         # Apply post-quantization convolution
         latents = self.post_quant_conv(latents)
+        debug_checkpoint(
+            "mlx_vae_after_post_quant_conv", metadata={"shape": list(latents.shape), "dtype": str(latents.dtype)}
+        )
+        debug_save(latents, "mlx_vae_after_post_quant_conv")
 
         # Decode
         decoded = self.decoder(latents)
+        debug_checkpoint("mlx_vae_after_decoder", metadata={"shape": list(decoded.shape), "dtype": str(decoded.dtype)})
+        debug_save(decoded, "mlx_vae_after_decoder")
+
+        # Apply unpatchify if patch_size is set (FIBO uses patch_size=2)
+        # unpatchify upscales spatial dimensions and reduces channels
+        # Input: (batch, channels * patch_size^2, frames, height, width)
+        # Output: (batch, channels, frames, height * patch_size, width * patch_size)
+        patch_size = 2  # FIBO VAE uses patch_size=2
+        decoded = self._unpatchify(decoded, patch_size=patch_size)
+
+        debug_checkpoint(
+            "mlx_vae_after_unpatchify",
+            metadata={"shape": list(decoded.shape), "dtype": str(decoded.dtype), "patch_size": patch_size},
+        )
+        debug_save(decoded, "mlx_vae_after_unpatchify")
 
         # Remove temporal dimension: (batch, channels, 1, height, width) -> (batch, channels, height, width)
         if decoded.shape[2] == 1:
             decoded = decoded[:, :, 0, :, :]
 
+        debug_checkpoint("mlx_vae_decode_output", metadata={"shape": list(decoded.shape), "dtype": str(decoded.dtype)})
+        debug_save(decoded, "mlx_vae_decode_output")
+
         return decoded
+
+    @staticmethod
+    def _unpatchify(x: mx.array, patch_size: int) -> mx.array:
+        """Unpatchify tensor - reverse of patchify.
+
+        Args:
+            x: Input tensor of shape (batch, channels * patch_size^2, frames, height, width)
+            patch_size: Patch size (typically 2)
+
+        Returns:
+            Unpatchified tensor of shape (batch, channels, frames, height * patch_size, width * patch_size)
+        """
+        if patch_size == 1:
+            return x
+
+        if x.ndim != 5:
+            raise ValueError(f"Invalid input shape: {x.shape}")
+
+        batch_size, c_patches, frames, height, width = x.shape
+        channels = c_patches // (patch_size * patch_size)
+
+        if c_patches % (patch_size * patch_size) != 0:
+            raise ValueError(
+                f"Input channels ({c_patches}) must be divisible by patch_size^2 ({patch_size * patch_size})"
+            )
+
+        # Reshape to [b, c, patch_size, patch_size, f, h, w]
+        x = mx.reshape(x, (batch_size, channels, patch_size, patch_size, frames, height, width))
+
+        # Rearrange to [b, c, f, h * patch_size, w * patch_size]
+        # Permute: (0, 1, 4, 5, 3, 6, 2) -> (b, c, f, h, patch_size, w, patch_size)
+        # Then reshape to (b, c, f, h * patch_size, w * patch_size)
+        x = mx.transpose(x, (0, 1, 4, 5, 3, 6, 2))  # (b, c, f, h, patch_size, w, patch_size)
+        x = mx.reshape(x, (batch_size, channels, frames, height * patch_size, width * patch_size))
+
+        return x

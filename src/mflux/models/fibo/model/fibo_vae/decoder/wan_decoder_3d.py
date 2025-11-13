@@ -11,6 +11,8 @@ from mflux.models.fibo.model.fibo_vae.decoder.wan_causal_conv_3d import WanCausa
 from mflux.models.fibo.model.fibo_vae.decoder.wan_mid_block import WanMidBlock
 from mflux.models.fibo.model.fibo_vae.decoder.wan_rms_norm import WanRMSNorm
 from mflux.models.fibo.model.fibo_vae.decoder.wan_up_block import WanUpBlock
+from mflux_debugger.semantic_checkpoint import debug_checkpoint
+from mflux_debugger.tensor_debug import debug_save
 
 
 class WanDecoder3d(nn.Module):
@@ -69,7 +71,12 @@ class WanDecoder3d(nn.Module):
         self.up_blocks = []
         for i, (in_dim, out_dim) in enumerate(zip(dims[:-1], dims[1:])):
             # Determine upsampling mode
-            up_flag = i != len(dim_mult) - 1  # Don't upsample on last block
+            # ISSUE: With dim_mult = [1, 2, 4, 4], we have 4 up_blocks but only upsample on 3 of them
+            # This gives us 256x256 output, but FIBO needs 512x512 (16x upsampling from 32x32)
+            # The diffusers implementation uses `i != len(dim_mult) - 1` which skips the last block
+            # TODO: Investigate - maybe FIBO VAE has different config, or last block should upsample?
+            # For now, keeping the diffusers logic to match their implementation
+            up_flag = i != len(dim_mult) - 1  # Don't upsample on last block (matches diffusers)
             upsample_mode = None
             if up_flag:
                 # If temporal_upsample is None or empty, use 2D upsampling only
@@ -103,11 +110,36 @@ class WanDecoder3d(nn.Module):
             Decoded image of shape (batch, out_channels, time, height, width)
             For FIBO: (batch, 12, 1, height, width)
         """
+        # Debug checkpoint: decoder input
+        debug_checkpoint("mlx_decoder_input", metadata={"shape": list(x.shape), "dtype": str(x.dtype)})
+        debug_save(x, "mlx_decoder_input")
+
         x = self.conv_in(x)
+        debug_checkpoint("mlx_decoder_after_conv_in", metadata={"shape": list(x.shape), "dtype": str(x.dtype)})
+        debug_save(x, "mlx_decoder_after_conv_in")
+
         x = self.mid_block(x)
-        for up_block in self.up_blocks:
+        debug_checkpoint("mlx_decoder_after_mid_block", metadata={"shape": list(x.shape), "dtype": str(x.dtype)})
+        debug_save(x, "mlx_decoder_after_mid_block")
+
+        for i, up_block in enumerate(self.up_blocks):
             x = up_block(x)
+            debug_checkpoint(
+                f"mlx_decoder_after_up_block_{i}",
+                metadata={"shape": list(x.shape), "dtype": str(x.dtype), "block_idx": i},
+            )
+            debug_save(x, f"mlx_decoder_after_up_block_{i}")
+
         x = self.norm_out(x)
+        debug_checkpoint("mlx_decoder_after_norm_out", metadata={"shape": list(x.shape), "dtype": str(x.dtype)})
+        debug_save(x, "mlx_decoder_after_norm_out")
+
         x = nn.silu(x)
+        debug_checkpoint("mlx_decoder_after_silu", metadata={"shape": list(x.shape), "dtype": str(x.dtype)})
+        debug_save(x, "mlx_decoder_after_silu")
+
         x = self.conv_out(x)
+        debug_checkpoint("mlx_decoder_output", metadata={"shape": list(x.shape), "dtype": str(x.dtype)})
+        debug_save(x, "mlx_decoder_output")
+
         return x

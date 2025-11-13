@@ -1,6 +1,8 @@
 from datetime import datetime
 
 from mflux.config.config import Config
+from mflux.config.model_config import ModelConfig
+from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
 from mflux_debugger._scripts.debug_txt2img_config import TXT2IMG_DEBUG_CONFIG
 from mflux_debugger.image_archive import archive_images
@@ -16,11 +18,22 @@ def main():
         local_path=None,
     )
 
-    # Generate image (will load latents from PyTorch and decode with VAE)
-    image = model.generate_image(
-        seed=config.seed,
-        prompt=config.prompt,
-        negative_prompt=config.negative_prompt,
+    # Create a minimal ModelConfig for FIBO (VAE-only for now)
+    fibo_model_config = ModelConfig(
+        aliases=["fibo"],
+        model_name="FIBO",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,  # Placeholder
+        max_sequence_length=512,  # Placeholder
+        supports_guidance=True,
+        requires_sigma_shift=False,
+        priority=1,
+    )
+
+    # Create RuntimeConfig
+    runtime_config = RuntimeConfig(
         config=Config(
             num_inference_steps=config.num_inference_steps,
             height=config.height,
@@ -30,6 +43,15 @@ def main():
             image_strength=None,
             scheduler=None,  # Not used yet (no denoising loop)
         ),
+        model_config=fibo_model_config,
+    )
+
+    # Generate image (will load latents from PyTorch and decode with VAE)
+    image = model.generate_image(
+        seed=config.seed,
+        prompt=config.prompt,
+        negative_prompt=config.negative_prompt,
+        config=runtime_config,
     )
 
     # Archive old images before saving new one (keep only latest)

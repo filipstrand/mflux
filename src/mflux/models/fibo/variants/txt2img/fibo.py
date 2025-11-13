@@ -6,7 +6,7 @@ We skip text encoding and transformer for now.
 
 from mlx import nn
 
-from mflux.config.config import Config
+from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.fibo.fibo_initializer import FIBOInitializer
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
@@ -54,7 +54,7 @@ class FIBO(nn.Module):
         self,
         seed: int,
         prompt: str,
-        config: Config,
+        config: RuntimeConfig,
         negative_prompt: str | None = None,
     ) -> GeneratedImage:
         """Generate image from latents (VAE decode only for now).
@@ -94,9 +94,12 @@ class FIBO(nn.Module):
         # Decode using VAE with the exact tensor from diffusers
         decoded = self.vae.decode(latents_for_vae)
 
+        # Debug: Print output shape
+        print(f"DEBUG: VAE decoded shape: {decoded.shape}")
+        print("DEBUG: Expected shape: (1, 3, 512, 512) - unpatchify already reduced channels from 12 to 3")
+
+        # Note: unpatchify already reduced channels from 12 to 3, so decoded is already RGB
         # Convert to image and return
-        # Note: decoded is (batch, 12, height, width) - FIBO outputs 12 channels
-        # ImageUtil.to_image expects (batch, channels, height, width)
         return ImageUtil.to_image(
             decoded_latents=decoded,
             config=config,
