@@ -11,15 +11,54 @@ from pathlib import Path
 
 
 def get_debugger_root() -> Path:
-    """Get the root debugger directory (mflux_debugger/)."""
-    # Find the repo root by looking for pyproject.toml
-    current = Path(__file__).resolve()
-    for parent in [current] + list(current.parents):
-        if (parent / "pyproject.toml").exists():
-            return parent / "mflux_debugger"
+    """
+    Get the root debugger directory (mflux_debugger/).
 
-    # Fallback: use current working directory
-    return Path.cwd() / "mflux_debugger"
+    This function is designed to work from anywhere - it finds the mflux repository
+    root by looking for pyproject.toml, then returns mflux_debugger/ directory.
+
+    The function is robust and will work whether called from:
+    - Within mflux repository code
+    - From external repositories (like diffusers) that import mflux_debugger
+    - From scripts in any location
+
+    Returns:
+        Path to mflux_debugger/ directory (always relative to mflux repo root)
+    """
+    # Strategy: Find mflux_debugger by locating this file, then find repo root
+    # This file is at: src/mflux_debugger/log_paths.py
+    # So we go up 2 levels to get to repo root
+    current_file = Path(__file__).resolve()
+
+    # Method 1: Go up from this file to find repo root (most reliable)
+    # log_paths.py -> mflux_debugger -> src -> mflux (repo root)
+    repo_root = current_file.parent.parent.parent
+    if (repo_root / "pyproject.toml").exists():
+        debugger_dir = repo_root / "mflux_debugger"
+        debugger_dir.mkdir(parents=True, exist_ok=True)
+        return debugger_dir
+
+    # Method 2: Walk up from current file looking for pyproject.toml
+    for parent in [current_file] + list(current_file.parents):
+        if (parent / "pyproject.toml").exists():
+            debugger_dir = parent / "mflux_debugger"
+            debugger_dir.mkdir(parents=True, exist_ok=True)
+            return debugger_dir
+
+    # Method 3: Try to find mflux_debugger relative to common locations
+    # Check if we're in a known location (e.g., diffusers repo)
+    # Look for mflux_debugger in common parent directories
+    for parent in current_file.parents:
+        # Check if there's a sibling directory called "mflux" with mflux_debugger
+        potential_mflux = parent.parent / "mflux" / "mflux_debugger"
+        if potential_mflux.exists():
+            return potential_mflux
+
+    # Fallback: use current working directory (last resort)
+    # This handles edge cases but should rarely be needed
+    fallback_dir = Path.cwd() / "mflux_debugger"
+    fallback_dir.mkdir(parents=True, exist_ok=True)
+    return fallback_dir
 
 
 def get_logs_root() -> Path:
