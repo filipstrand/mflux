@@ -36,21 +36,10 @@ class FIBOInitializer:
 
         # 3. Apply weights to VAE
         # The weights from FIBOWeightHandler are already in the correct nested MLX structure
-        # MLX's model.update() accepts nested dictionaries directly
+        # (including resample Conv2d weights via FIBOWeightMapping). MLX's model.update()
+        # accepts nested dictionaries directly.
         if weights.vae:
             fibo_model.vae.update(weights.vae, strict=False)
-
-            # EXTRA SAFETY: For the critical upsample resample Conv2d layers in the decoder,
-            # force their weights/biases to match the PyTorch BriaFiboPipeline exactly.
-            #
-            # We've verified via the debugger that when we override the MLX resample_conv
-            # weights with the live PyTorch decoder.up_blocks.{block}.upsampler.resample.1.weight
-            # (after transpose) and bias, the MLX Conv2d output matches PyTorch exactly.
-            #
-            # To make that behavior deterministic without relying on a running debugger,
-            # we reload those specific conv weights directly from the diffusers pipeline
-            # and overwrite the MLX decoder upsampler convs.
-            _force_resample_conv_from_diffusers(fibo_model, local_path)
 
         # 4. Store quantization level (not implemented yet)
         fibo_model.bits = quantize
