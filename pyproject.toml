@@ -15,9 +15,9 @@ source-exclude = [
     "**/optimization/_loss_derivation/**",
 ]
 
-# [tool.uv.sources]
-# transformers = { path = "/Users/filipstrand/Desktop/transformers", editable = true }
-# diffusers = { path = "/Users/filipstrand/Desktop/diffusers", editable = true }
+[tool.uv.sources]
+transformers = { path = "/Users/filipstrand/Desktop/transformers", editable = true }
+diffusers = { path = "/Users/filipstrand/Desktop/diffusers", editable = true }
 
 [project]
 name = "mflux"
