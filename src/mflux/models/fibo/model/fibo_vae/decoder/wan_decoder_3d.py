@@ -141,7 +141,7 @@ class WanDecoder3d(nn.Module):
         debug_save(x, "mlx_decoder_after_mid_block")
 
         for i, up_block in enumerate(self.up_blocks):
-            x = up_block(x)
+            x = up_block(x, block_idx=i)
             debug_checkpoint(
                 f"mlx_decoder_after_up_block_{i}",
                 metadata={"shape": list(x.shape), "dtype": str(x.dtype), "block_idx": i},

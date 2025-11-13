@@ -43,25 +43,74 @@ class WanResidualBlock(nn.Module):
         else:
             self.conv_shortcut = None
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def __call__(self, x: mx.array, resnet_idx: int | None = None, block_idx: int | None = None) -> mx.array:
         """Apply residual block.
 
         Args:
             x: Input tensor of shape (batch, channels, time, height, width)
+            resnet_idx: Optional resnet index for debugging
+            block_idx: Optional block index for debugging
 
         Returns:
             Output tensor
         """
+        # Debug: input
+        if block_idx == 0 and resnet_idx is not None:
+            from mflux_debugger.tensor_debug import debug_save
+
+            debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_input")
+
         # Shortcut path
         h = self.conv_shortcut(x) if self.conv_shortcut is not None else x
 
+        # Debug: shortcut path
+        if block_idx == 0 and resnet_idx is not None:
+            from mflux_debugger.tensor_debug import debug_save
+
+            debug_save(h, f"mlx_up_block_0_resnet_{resnet_idx}_shortcut")
+
         # Main path
         x = self.norm1(x)
+        if block_idx == 0 and resnet_idx is not None:
+            from mflux_debugger.tensor_debug import debug_save
+
+            debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_after_norm1")
+
         x = nn.silu(x)
+        if block_idx == 0 and resnet_idx is not None:
+            from mflux_debugger.tensor_debug import debug_save
+
+            debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_after_silu1")
+
         x = self.conv1(x)
+        if block_idx == 0 and resnet_idx is not None:
+            from mflux_debugger.tensor_debug import debug_save
+
+            debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_after_conv1")
+
         x = self.norm2(x)
+        if block_idx == 0 and resnet_idx is not None:
+            from mflux_debugger.tensor_debug import debug_save
+
+            debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_after_norm2")
+
         x = nn.silu(x)
+        if block_idx == 0 and resnet_idx is not None:
+            from mflux_debugger.tensor_debug import debug_save
+
+            debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_after_silu2")
+
         x = self.conv2(x)
+        if block_idx == 0 and resnet_idx is not None:
+            from mflux_debugger.tensor_debug import debug_save
+
+            debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_after_conv2")
 
         # Residual connection
-        return x + h
+        result = x + h
+        if block_idx == 0 and resnet_idx is not None:
+            from mflux_debugger.tensor_debug import debug_save
+
+            debug_save(result, f"mlx_up_block_0_resnet_{resnet_idx}_after_residual")
+
+        return result

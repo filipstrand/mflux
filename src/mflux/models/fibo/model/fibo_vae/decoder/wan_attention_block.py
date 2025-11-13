@@ -45,7 +45,8 @@ class WanAttentionBlock(nn.Module):
         x = self.norm(x)
 
         # Transpose to channels-last for Conv2d: (b*t, c, h, w) -> (b*t, h, w, c)
-        x = mx.transpose(x, (0, 2, 3, 1))
+        # MLX Conv2d expects (batch, height, width, channels) for channels-last
+        x = mx.transpose(x, (0, 2, 3, 1))  # (b*t, h, w, c)
 
         # Compute query, key, value
         qkv = self.to_qkv(x)  # (b*t, h, w, c*3)

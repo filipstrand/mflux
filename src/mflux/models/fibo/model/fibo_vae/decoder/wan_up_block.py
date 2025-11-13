@@ -48,21 +48,40 @@ class WanUpBlock(nn.Module):
         if upsample_mode is not None:
             self.upsampler = WanResample(out_dim, mode=upsample_mode)
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def __call__(self, x: mx.array, block_idx: int | None = None) -> mx.array:
         """Apply up block.
 
         Args:
             x: Input tensor
+            block_idx: Optional block index for debugging
 
         Returns:
             Output tensor
         """
         # Apply residual blocks
-        for resnet in self.resnets:
-            x = resnet(x)
+        if block_idx == 0:
+            from mflux_debugger.tensor_debug import debug_save
+
+            debug_save(x, "mlx_up_block_0_input")
+
+        for i, resnet in enumerate(self.resnets):
+            x = resnet(x, resnet_idx=i, block_idx=block_idx)
+            # Debug checkpoint after each residual block (only for up_block_0 for now)
+            if block_idx == 0:
+                from mflux_debugger.tensor_debug import debug_save
+
+                debug_save(x, f"mlx_up_block_0_resnet_{i}_after")
 
         # Apply upsampling if present
         if self.upsampler is not None:
-            x = self.upsampler(x)
+            if block_idx == 0:
+                from mflux_debugger.tensor_debug import debug_save
+
+                debug_save(x, "mlx_up_block_0_before_upsample")
+            x = self.upsampler(x, block_idx=block_idx)
+            if block_idx == 0:
+                from mflux_debugger.tensor_debug import debug_save
+
+                debug_save(x, "mlx_up_block_0_after_upsample")
 
         return x

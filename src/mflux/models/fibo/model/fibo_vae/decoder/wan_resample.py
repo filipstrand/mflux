@@ -41,15 +41,22 @@ class WanResample(nn.Module):
         else:
             raise ValueError(f"Unsupported resample mode: {mode}")
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def __call__(self, x: mx.array, block_idx: int | None = None) -> mx.array:
         """Apply resampling.
 
         Args:
             x: Input tensor of shape (batch, channels, time, height, width)
+            block_idx: Optional block index for debugging
 
         Returns:
             Resampled tensor
         """
+        # Debug: input
+        if block_idx == 0:
+            from mflux_debugger.tensor_debug import debug_save
+
+            debug_save(x, "mlx_resample_input")
+
         b, c, t, h, w = x.shape
 
         # Handle temporal upsampling for 3D mode
@@ -67,12 +74,31 @@ class WanResample(nn.Module):
         x = mx.reshape(x, (b * t, c, h, w))
         x = mx.transpose(x, (0, 2, 3, 1))  # (b*t, h, w, c) for Conv2d
 
+        # Debug: before upsampling (after reshape)
+        if block_idx == 0:
+            from mflux_debugger.tensor_debug import debug_save
+
+            debug_save(x, "mlx_resample_before_upsample_conv")
+
         # Spatial upsampling: nearest neighbor 2x
         x = mx.repeat(x, 2, axis=1)  # Repeat height
         x = mx.repeat(x, 2, axis=2)  # Repeat width
 
+        # Debug: after repeat (before conv)
+        if block_idx == 0:
+            from mflux_debugger.tensor_debug import debug_save
+
+            debug_save(x, "mlx_resample_after_repeat")
+
         # Apply 2D convolution
         x = self.resample_conv(x)  # (b*t, h*2, w*2, out_c)
+
+        # Debug: after conv2d
+        if block_idx == 0:
+            from mflux_debugger.tensor_debug import debug_save
+
+            debug_save(x, "mlx_resample_after_conv2d")
+
         x = mx.transpose(x, (0, 3, 1, 2))  # (b*t, out_c, h*2, w*2)
 
         # Reshape back: (b*t, out_c, h*2, w*2) -> (b, out_c, t, h*2, w*2)
@@ -80,5 +106,11 @@ class WanResample(nn.Module):
         new_h, new_w = x.shape[2], x.shape[3]
         x = mx.reshape(x, (b, t, new_c, new_h, new_w))
         x = mx.transpose(x, (0, 2, 1, 3, 4))  # (b, out_c, t, new_h, new_w)
+
+        # Debug: output
+        if block_idx == 0:
+            from mflux_debugger.tensor_debug import debug_save
+
+            debug_save(x, "mlx_resample_output")
 
         return x
