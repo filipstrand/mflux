@@ -66,7 +66,7 @@ class WanDecoder3d(nn.Module):
         self.mid_block = WanMidBlock(dims[0], dropout, non_linearity, num_layers=1)
 
         # Upsample blocks
-        self.up_blocks = nn.ModuleList()
+        self.up_blocks = []
         for i, (in_dim, out_dim) in enumerate(zip(dims[:-1], dims[1:])):
             # Determine upsampling mode
             up_flag = i != len(dim_mult) - 1  # Don't upsample on last block

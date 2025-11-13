@@ -8,7 +8,7 @@ import mlx.core as mx
 from mlx import nn
 
 from mflux.config.config import Config
-from mflux.models.fibo.model.fibo_vae.vae import VAE
+from mflux.models.fibo.fibo_initializer import FIBOInitializer
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
 from mflux_debugger.tensor_debug import debug_load
@@ -25,7 +25,7 @@ class FIBO(nn.Module):
     - VAE decoder (to decode latents from PyTorch)
     """
 
-    vae: VAE
+    vae: nn.Module
 
     def __init__(
         self,
@@ -36,14 +36,20 @@ class FIBO(nn.Module):
 
         Args:
             quantize: Quantization bits (not implemented yet)
-            local_path: Local model path (not implemented yet)
+            local_path: Local model path (optional)
         """
         super().__init__()
-        # For now, just initialize VAE
-        self.vae = VAE()
+        # Initialize model structure (VAE will be created by initializer)
+        self.vae = None
         self.bits = quantize
         self.local_path = local_path
-        # TODO: Load weights once we implement weight loading
+
+        # Load weights and initialize model components
+        FIBOInitializer.init(
+            fibo_model=self,
+            quantize=quantize,
+            local_path=local_path,
+        )
 
     def generate_image(
         self,
@@ -80,8 +86,10 @@ class FIBO(nn.Module):
         # Scale latents: (latents / latents_std) + latents_mean
         # latents_mean and latents_std are per-channel (48 channels)
         # We need to reshape them to broadcast correctly: (1, 48, 1, 1, 1) for 5D latents
-        latents_mean_mlx = mx.array(VAE.LATENTS_MEAN)
-        latents_std_mlx = mx.array(VAE.LATENTS_STD)
+        from mflux.models.fibo.model.fibo_vae.vae import VAE as VAE_CLASS
+
+        latents_mean_mlx = mx.array(VAE_CLASS.LATENTS_MEAN)
+        latents_std_mlx = mx.array(VAE_CLASS.LATENTS_STD)
 
         # Ensure latents are 5D: (batch, channels, 1, height, width)
         if latents_mlx.ndim == 4:

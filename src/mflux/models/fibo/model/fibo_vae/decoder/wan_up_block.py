@@ -37,7 +37,7 @@ class WanUpBlock(nn.Module):
         """
         super().__init__()
         # Create residual blocks
-        self.resnets = nn.ModuleList()
+        self.resnets = []
         current_dim = in_dim
         for _ in range(num_res_blocks + 1):
             self.resnets.append(WanResidualBlock(current_dim, out_dim, dropout, non_linearity))
