@@ -1,5 +1,4 @@
 import json
-import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -31,11 +30,11 @@ def main():
     # -------------------------------
     # Load the VLM pipeline
     # -------------------------------
+    # Using local VLM
+    vlm_pipe = ModularPipeline.from_pretrained("briaai/FIBO-VLM-prompt-to-JSON", trust_remote_code=True)
     # Using Gemini API, requires GOOGLE_API_KEY environment variable
-    assert os.getenv("GOOGLE_API_KEY") is not None, "GOOGLE_API_KEY environment variable is not set"
-    vlm_pipe = ModularPipeline.from_pretrained("briaai/FIBO-gemini-prompt-to-JSON", trust_remote_code=True)
-    # Using local VLM, uncomment to run
-    # vlm_pipe = ModularPipeline.from_pretrained("briaai/FIBO-VLM-prompt-to-JSON", trust_remote_code=True)
+    # assert os.getenv("GOOGLE_API_KEY") is not None, "GOOGLE_API_KEY environment variable is not set"
+    # vlm_pipe = ModularPipeline.from_pretrained("briaai/FIBO-gemini-prompt-to-JSON", trust_remote_code=True)
 
     # -------------------------------
     # Load the FIBO pipeline
