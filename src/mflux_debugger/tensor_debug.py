@@ -95,11 +95,12 @@ def _check_directory_size(operation: str = "save") -> None:
 
 def debug_full_cleanup() -> None:
     """
-    Delete the entire mflux_debugger folder to start fresh.
+    Archive the entire mflux_debugger folder to start fresh.
 
-    This function removes all debug logs, checkpoints, tensors, and images
-    from the mflux_debugger/ directory. Use this at the beginning of scripts
-    to ensure a clean debugging session.
+    This function archives all debug logs, checkpoints, tensors, and images
+    from the mflux_debugger/ directory to mflux_debugger_deleted/ with a timestamp.
+    Use this at the beginning of scripts to ensure a clean debugging session
+    while preserving previous debug data.
 
     Examples:
         ```python
@@ -120,21 +121,35 @@ def debug_full_cleanup() -> None:
         logger.debug(f"mflux_debugger/ directory doesn't exist at {debugger_dir} - nothing to clean")
         return
 
-    # Count files before deletion for logging
+    # Count files before archiving for logging
     files = list(debugger_dir.rglob("*"))
     file_count = sum(1 for f in files if f.is_file())
     total_bytes = sum(f.stat().st_size for f in files if f.is_file())
     size_mb = total_bytes / (1024 * 1024)
 
-    # Remove all contents but keep the directory itself
-    for item in debugger_dir.iterdir():
-        if item.is_file():
-            item.unlink()
-        elif item.is_dir():
-            shutil.rmtree(item)
+    # Create archive directory at the same level as mflux_debugger
+    archive_base_dir = repo_root / "mflux_debugger_deleted"
+    archive_base_dir.mkdir(exist_ok=True)
 
-    logger.info(f"🧹 Cleaned up mflux_debugger/ directory: {file_count} files, {size_mb:.2f} MB removed")
-    print(f"🧹 Cleaned up mflux_debugger/ directory: {file_count} files, {size_mb:.2f} MB removed", flush=True)
+    # Create timestamped archive directory
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    archive_dir = archive_base_dir / f"mflux_debugger_{timestamp}"
+
+    # Move the entire mflux_debugger directory to the archive
+    # We need to move the contents, not the directory itself (to preserve the mflux_debugger name)
+    archive_dir.mkdir(parents=True, exist_ok=True)
+
+    # Move all contents to the archive
+    for item in debugger_dir.iterdir():
+        dest = archive_dir / item.name
+        if item.is_file():
+            shutil.move(str(item), str(dest))
+        elif item.is_dir():
+            shutil.move(str(item), str(dest))
+
+    logger.info(f"📦 Archived mflux_debugger/ directory: {file_count} files, {size_mb:.2f} MB → {archive_dir.name}")
+    print(f"📦 Archived mflux_debugger/ directory: {file_count} files, {size_mb:.2f} MB", flush=True)
+    print(f"   Archive: {archive_dir}", flush=True)
 
 
 def debug_save(tensor: Any, name: str, exit_after: bool = False, skip: bool = False) -> None:

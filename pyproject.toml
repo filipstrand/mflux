@@ -196,6 +196,7 @@ disable_error_code = [
     "var-annotated",
 ]
 error_summary = true
+explicit_package_bases = true
 ignore_missing_imports = true
 implicit_optional = true
 # we should feel free to use new hinting features even if we back support to earlier versions

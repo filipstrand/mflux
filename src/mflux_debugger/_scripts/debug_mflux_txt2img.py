@@ -1,25 +1,22 @@
 from datetime import datetime
 
 from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
-from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
+from mflux.models.fibo.variants.txt2img.fibo import FIBO
 from mflux_debugger._scripts.debug_txt2img_config import TXT2IMG_DEBUG_CONFIG
 from mflux_debugger.image_archive import archive_images
 from mflux_debugger.image_tensor_paths import get_images_latest_framework_dir
 
 
 def main():
-    model_name = "qwen"
     config = TXT2IMG_DEBUG_CONFIG
 
-    model = QwenImage(
-        model_config=ModelConfig.from_name(model_name=model_name),
+    # Initialize FIBO model (minimal - VAE decoder only for now)
+    model = FIBO(
         quantize=None,  # Turn off quantization for debugging
         local_path=None,
-        lora_paths=None,
-        lora_scales=None,
     )
 
+    # Generate image (will load latents from PyTorch and decode with VAE)
     image = model.generate_image(
         seed=config.seed,
         prompt=config.prompt,
@@ -31,7 +28,7 @@ def main():
             guidance=config.guidance,
             image_path=None,
             image_strength=None,
-            scheduler="flow_match_euler_discrete",  # Use FlowMatchEulerDiscreteScheduler
+            scheduler=None,  # Not used yet (no denoising loop)
         ),
     )
 
