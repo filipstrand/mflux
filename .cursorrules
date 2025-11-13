@@ -58,6 +58,7 @@ uv tool install --editable .
 mflux-debug-mlx tutorial      # For MLX debugging
 mflux-debug-pytorch tutorial  # For PyTorch debugging
 mflux-debug-prune tutorial    # For pruning workflow
+mflux-debug-inspect-weights tutorial  # For weight inspection
 ```
 
 **Critical reminders:**
