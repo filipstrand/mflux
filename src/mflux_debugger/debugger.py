@@ -1186,10 +1186,12 @@ class Debugger:
         # CRITICAL: In coverage mode, never break at checkpoints (we want full execution)
         if self.coverage_mode:
             should_break = False
+            logger.debug(f"Checkpoint '{checkpoint_name}' not breaking: coverage_mode=True")
 
         # Override: Don't break if there's an explicit matching breakpoint that's disabled
         if matching_breakpoint is not None and not matching_breakpoint.enabled:
             should_break = False
+            logger.debug(f"Checkpoint '{checkpoint_name}' not breaking: explicit breakpoint disabled")
 
         # Legacy support: break_all_checkpoints flag (for backward compatibility)
         if self.break_all_checkpoints:
@@ -1208,7 +1210,17 @@ class Debugger:
 
         if not should_record:
             # Not monitoring this checkpoint at all
+            logger.debug(f"Checkpoint '{checkpoint_name}' not recorded: should_record=False")
             return
+
+        # Log if checkpoint should break but won't (for debugging)
+        if not should_break:
+            logger.warning(
+                f"⚠️ Checkpoint '{checkpoint_name}' hit but will NOT break "
+                f"(coverage_mode={self.coverage_mode}, "
+                f"break_all_checkpoints={self.break_all_checkpoints}, "
+                f"matching_breakpoint={'disabled' if matching_breakpoint and not matching_breakpoint.enabled else 'none'})"
+            )
 
         # Update hit counter
         self.checkpoint_hit_counts[checkpoint_name] = self.checkpoint_hit_counts.get(checkpoint_name, 0) + 1

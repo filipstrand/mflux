@@ -120,6 +120,7 @@ class WanDecoder3d(nn.Module):
                 "max": float(x.max()),
                 "mean": float(x.mean()),
             },
+            skip=True,  # Verified correct - skip to speed up debugging
         )
         debug_save(x, "mlx_decoder_input")
 
@@ -133,31 +134,57 @@ class WanDecoder3d(nn.Module):
                 "max": float(x.max()),
                 "mean": float(x.mean()),
             },
+            skip=True,  # Verified correct - matches PyTorch (max diff 0.008437)
         )
         debug_save(x, "mlx_decoder_after_conv_in")
 
         x = self.mid_block(x)
-        debug_checkpoint("mlx_decoder_after_mid_block", metadata={"shape": list(x.shape), "dtype": str(x.dtype)})
+        debug_checkpoint(
+            "mlx_decoder_after_mid_block",
+            metadata={"shape": list(x.shape), "dtype": str(x.dtype)},
+            skip=True,  # Verified correct - matches PyTorch (max diff 0.035532)
+        )
         debug_save(x, "mlx_decoder_after_mid_block")
 
         for i, up_block in enumerate(self.up_blocks):
             x = up_block(x, block_idx=i)
-            debug_checkpoint(
-                f"mlx_decoder_after_up_block_{i}",
-                metadata={"shape": list(x.shape), "dtype": str(x.dtype), "block_idx": i},
-            )
-            debug_save(x, f"mlx_decoder_after_up_block_{i}")
+            # Skip checkpoints for blocks after 0 - we only care about up_block_0 resample
+            if i == 0:
+                debug_checkpoint(
+                    f"mlx_decoder_after_up_block_{i}",
+                    metadata={"shape": list(x.shape), "dtype": str(x.dtype), "block_idx": i},
+                )
+                debug_save(x, f"mlx_decoder_after_up_block_{i}")
+            # Skip other blocks to speed up
+            # else:
+            #     debug_checkpoint(
+            #         f"mlx_decoder_after_up_block_{i}",
+            #         metadata={"shape": list(x.shape), "dtype": str(x.dtype), "block_idx": i},
+            #         skip=True,
+            #     )
 
         x = self.norm_out(x)
-        debug_checkpoint("mlx_decoder_after_norm_out", metadata={"shape": list(x.shape), "dtype": str(x.dtype)})
+        debug_checkpoint(
+            "mlx_decoder_after_norm_out",
+            metadata={"shape": list(x.shape), "dtype": str(x.dtype)},
+            skip=True,  # After up_blocks - skip to focus on resample issue
+        )
         debug_save(x, "mlx_decoder_after_norm_out")
 
         x = nn.silu(x)
-        debug_checkpoint("mlx_decoder_after_silu", metadata={"shape": list(x.shape), "dtype": str(x.dtype)})
+        debug_checkpoint(
+            "mlx_decoder_after_silu",
+            metadata={"shape": list(x.shape), "dtype": str(x.dtype)},
+            skip=True,  # After up_blocks - skip to focus on resample issue
+        )
         debug_save(x, "mlx_decoder_after_silu")
 
         x = self.conv_out(x)
-        debug_checkpoint("mlx_decoder_output", metadata={"shape": list(x.shape), "dtype": str(x.dtype)})
+        debug_checkpoint(
+            "mlx_decoder_output",
+            metadata={"shape": list(x.shape), "dtype": str(x.dtype)},
+            skip=True,  # After up_blocks - skip to focus on resample issue
+        )
         debug_save(x, "mlx_decoder_output")
 
         return x

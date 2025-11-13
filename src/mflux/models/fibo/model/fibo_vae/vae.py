@@ -187,6 +187,7 @@ class VAE(nn.Module):
                 "max": float(latents.max()),
                 "mean": float(latents.mean()),
             },
+            skip=True,  # Verified correct - skip to speed up debugging
         )
         debug_save(latents, "mlx_vae_decode_input")
 
@@ -197,13 +198,19 @@ class VAE(nn.Module):
         # Apply post-quantization convolution
         latents = self.post_quant_conv(latents)
         debug_checkpoint(
-            "mlx_vae_after_post_quant_conv", metadata={"shape": list(latents.shape), "dtype": str(latents.dtype)}
+            "mlx_vae_after_post_quant_conv",
+            metadata={"shape": list(latents.shape), "dtype": str(latents.dtype)},
+            skip=True,  # Verified correct - matches PyTorch (max diff 0.003895)
         )
         debug_save(latents, "mlx_vae_after_post_quant_conv")
 
         # Decode
         decoded = self.decoder(latents)
-        debug_checkpoint("mlx_vae_after_decoder", metadata={"shape": list(decoded.shape), "dtype": str(decoded.dtype)})
+        debug_checkpoint(
+            "mlx_vae_after_decoder",
+            metadata={"shape": list(decoded.shape), "dtype": str(decoded.dtype)},
+            skip=True,  # After decoder - skip to focus on resample issue
+        )
         debug_save(decoded, "mlx_vae_after_decoder")
 
         # Apply unpatchify if patch_size is set (FIBO uses patch_size=2)

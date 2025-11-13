@@ -15,7 +15,7 @@ from mflux_debugger._scripts.debug_txt2img_config import TXT2IMG_DEBUG_CONFIG
 from mflux_debugger.image_archive import archive_images
 from mflux_debugger.image_tensor_paths import get_images_latest_framework_dir
 from mflux_debugger.semantic_checkpoint import debug_checkpoint
-from mflux_debugger.tensor_debug import debug_full_cleanup, debug_save
+from mflux_debugger.tensor_debug import debug_save
 
 
 def get_default_negative_prompt(existing_json: dict) -> str:
@@ -29,7 +29,8 @@ def get_default_negative_prompt(existing_json: dict) -> str:
 
 def main():
     # Clean up all debug files from previous runs
-    debug_full_cleanup()
+    # DISABLED during debugging - we need to preserve tensors for comparison
+    # debug_full_cleanup()
 
     config = TXT2IMG_DEBUG_CONFIG
     torch.set_grad_enabled(False)
@@ -65,7 +66,7 @@ def main():
     # -------------------------------
     # Run Prompt to JSON
     # -------------------------------
-    debug_checkpoint("before_vlm_prompt_to_json", metadata={"prompt": config.prompt})
+    debug_checkpoint("before_vlm_prompt_to_json", metadata={"prompt": config.prompt}, skip=True)
 
     # Create a prompt to generate an initial image
     output = vlm_pipe(prompt=config.prompt)
@@ -74,6 +75,7 @@ def main():
     debug_checkpoint(
         "after_vlm_prompt_to_json",
         metadata={"json_prompt": json_prompt_generate, "original_prompt": config.prompt},
+        skip=True,
     )
 
     # Get negative prompt based on JSON style, fallback to config if empty
@@ -92,6 +94,7 @@ def main():
             "guidance_scale": config.guidance,
             "seed": config.seed,
         },
+        skip=True,
     )
 
     # -------------------------------

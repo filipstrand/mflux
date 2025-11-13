@@ -50,11 +50,28 @@ from mflux_debugger.image_tensor_paths import (
 
 logger = logging.getLogger(__name__)
 
-# Storage directory for debug tensors (uses latest/ subdirectory)
-DEBUG_TENSORS_DIR = get_tensors_latest_dir()
 
-# Archive directory for old tensors
-DEBUG_TENSORS_ARCHIVE_DIR = get_tensors_archive_dir()
+def _get_debug_tensors_dir() -> Path:
+    """
+    Get the debug tensors directory (latest/ subdirectory).
+
+    This function is called dynamically to ensure path resolution works correctly
+    regardless of where the code is imported from or when it's called.
+    """
+    return get_tensors_latest_dir()
+
+
+def _get_debug_tensors_archive_dir() -> Path:
+    """
+    Get the debug tensors archive directory.
+
+    This function is called dynamically to ensure path resolution works correctly.
+    """
+    return get_tensors_archive_dir()
+
+
+# Note: All code should use _get_debug_tensors_dir() and _get_debug_tensors_archive_dir()
+# instead of these constants to ensure dynamic path resolution
 
 # Size limits (in GB)
 SIZE_WARNING_GB = 1.0  # Warn when directory exceeds this size
@@ -63,7 +80,7 @@ SIZE_LIMIT_GB = 10.0  # Block saves when directory exceeds this size
 
 def _get_directory_size_gb() -> float:
     """Get the total size of the debug tensors directory in GB."""
-    total_bytes = sum(f.stat().st_size for f in DEBUG_TENSORS_DIR.glob("*.npy"))
+    total_bytes = sum(f.stat().st_size for f in _get_debug_tensors_dir().glob("*.npy"))
     return total_bytes / (1024**3)
 
 
@@ -80,24 +97,26 @@ def _check_directory_size(operation: str = "save") -> None:
     size_gb = _get_directory_size_gb()
 
     if size_gb >= SIZE_LIMIT_GB:
+        tensors_dir = _get_debug_tensors_dir()
         error_msg = (
             f"🚫 ERROR: Debug tensors directory is {size_gb:.2f} GB "
             f"(limit: {SIZE_LIMIT_GB} GB)\n"
-            f"   Directory: {DEBUG_TENSORS_DIR}\n"
+            f"   Directory: {tensors_dir}\n"
             f"   Please clean up old tensors using:\n"
             f"     from mflux_debugger.tensor_debug import debug_clear\n"
             f"     debug_clear()  # Clear all tensors\n"
-            f"   Or manually delete files in: {DEBUG_TENSORS_DIR}"
+            f"   Or manually delete files in: {tensors_dir}"
         )
         logger.error(error_msg)
         print(error_msg, flush=True)
         raise RuntimeError(f"Debug tensors directory exceeds {SIZE_LIMIT_GB} GB limit")
 
     elif size_gb >= SIZE_WARNING_GB:
+        tensors_dir = _get_debug_tensors_dir()
         warning_msg = (
             f"⚠️  WARNING: Debug tensors directory is {size_gb:.2f} GB "
             f"(warning threshold: {SIZE_WARNING_GB} GB)\n"
-            f"   Directory: {DEBUG_TENSORS_DIR}\n"
+            f"   Directory: {tensors_dir}\n"
             f"   Consider cleaning up old tensors to free disk space.\n"
             f"   Use: debug_clear() to remove all tensors"
         )
@@ -300,12 +319,13 @@ def debug_save(tensor: Any, name: str, exit_after: bool = False, skip: bool = Fa
             info_str = "real"
 
         # Ensure directory exists (always create if needed - transparent to user)
-        # This is necessary because DEBUG_TENSORS_DIR is cached at import time,
-        # so if debug_full_cleanup() deletes the directory, we need to recreate it
-        DEBUG_TENSORS_DIR.mkdir(parents=True, exist_ok=True)
+        # This is necessary because the directory might be deleted by debug_full_cleanup(),
+        # so we need to recreate it dynamically
+        tensors_dir = _get_debug_tensors_dir()
+        tensors_dir.mkdir(parents=True, exist_ok=True)
 
         # Save tensor (no versioning - sessions are isolated via archiving)
-        save_path = DEBUG_TENSORS_DIR / f"{name}.npy"
+        save_path = tensors_dir / f"{name}.npy"
 
         # Save tensor
         np.save(save_path, tensor_np)
@@ -403,12 +423,13 @@ def debug_load(name: str, exact_version: bool = False) -> Any:
         _check_directory_size(operation="load")
 
         # Load tensor file (no versioning - sessions are isolated)
-        load_path = DEBUG_TENSORS_DIR / f"{name}.npy"
+        tensors_dir = _get_debug_tensors_dir()
+        load_path = tensors_dir / f"{name}.npy"
 
         # Check if file exists - fail fast if not found
         if not load_path.exists():
-            available_files = sorted([f.stem for f in DEBUG_TENSORS_DIR.glob("*.npy")])
-            error_msg = f"Tensor '{name}' not found in {DEBUG_TENSORS_DIR}"
+            available_files = sorted([f.stem for f in tensors_dir.glob("*.npy")])
+            error_msg = f"Tensor '{name}' not found in {tensors_dir}"
             if available_files:
                 error_msg += f"\n   Available tensors: {', '.join(available_files[:10])}"
                 if len(available_files) > 10:
@@ -501,7 +522,7 @@ def debug_list(pattern: Optional[str] = None) -> list[str]:
         ```
     """
     search_pattern = f"{pattern}.npy" if pattern else "*.npy"
-    return [file.stem for file in sorted(DEBUG_TENSORS_DIR.glob(search_pattern))]
+    return [file.stem for file in sorted(_get_debug_tensors_dir().glob(search_pattern))]
 
 
 def debug_info(name: str) -> dict[str, Any]:
@@ -525,10 +546,11 @@ def debug_info(name: str) -> dict[str, Any]:
         ```
     """
     # Get tensor path
-    tensor_path = DEBUG_TENSORS_DIR / f"{name}.npy"
+    tensors_dir = _get_debug_tensors_dir()
+    tensor_path = tensors_dir / f"{name}.npy"
 
     if not tensor_path.exists():
-        raise FileNotFoundError(f"Tensor '{name}' not found in {DEBUG_TENSORS_DIR}")
+        raise FileNotFoundError(f"Tensor '{name}' not found in {tensors_dir}")
 
     # Load just the header to get metadata (efficient)
     try:
@@ -584,12 +606,13 @@ def debug_clear(name: Optional[str] = None, confirm: bool = True) -> int:
         ```
     """
     # Find files to delete
+    tensors_dir = _get_debug_tensors_dir()
     if name:
         # Clear specific tensor and its versions
-        files_to_delete = list(DEBUG_TENSORS_DIR.glob(f"{name}*.npy"))
+        files_to_delete = list(tensors_dir.glob(f"{name}*.npy"))
     else:
         # Clear all tensors
-        files_to_delete = list(DEBUG_TENSORS_DIR.glob("*.npy"))
+        files_to_delete = list(tensors_dir.glob("*.npy"))
 
     if not files_to_delete:
         logger.info("No tensors found to clear")
@@ -646,7 +669,7 @@ def archive_tensors(script_name: Optional[str] = None) -> int:
         ```
     """
     # Find all tensor files
-    tensor_files = list(DEBUG_TENSORS_DIR.glob("*.npy"))
+    tensor_files = list(_get_debug_tensors_dir().glob("*.npy"))
 
     if not tensor_files:
         logger.debug("No tensors to archive")
@@ -654,10 +677,11 @@ def archive_tensors(script_name: Optional[str] = None) -> int:
 
     # Create timestamped archive directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    archive_base = _get_debug_tensors_archive_dir()
     if script_name:
-        archive_dir = DEBUG_TENSORS_ARCHIVE_DIR / f"{script_name}_{timestamp}"
+        archive_dir = archive_base / f"{script_name}_{timestamp}"
     else:
-        archive_dir = DEBUG_TENSORS_ARCHIVE_DIR / f"tensors_{timestamp}"
+        archive_dir = archive_base / f"tensors_{timestamp}"
 
     archive_dir.mkdir(parents=True, exist_ok=True)
 
@@ -693,13 +717,14 @@ def debug_show_all() -> None:
     tensors = debug_list()
     size_gb = _get_directory_size_gb()
 
+    tensors_dir = _get_debug_tensors_dir()
     if not tensors:
         print("📋 No debug tensors found")
-        print(f"   Storage: {DEBUG_TENSORS_DIR}")
+        print(f"   Storage: {tensors_dir}")
         return
 
     print(f"📋 Debug tensors ({len(tensors)}):")
-    print(f"   Storage: {DEBUG_TENSORS_DIR}")
+    print(f"   Storage: {tensors_dir}")
     print(f"   Total size: {size_gb:.3f} GB")
 
     # Show warning if size is concerning
@@ -730,37 +755,40 @@ def check_debug_directory_on_startup() -> None:
     size_gb = _get_directory_size_gb()
 
     if size_gb >= SIZE_LIMIT_GB:
+        tensors_dir = _get_debug_tensors_dir()
         error_msg = (
             f"\n{'=' * 70}\n"
             f"🚫 DEBUGGER STARTUP BLOCKED\n"
             f"{'=' * 70}\n"
             f"Debug tensors directory is {size_gb:.2f} GB (limit: {SIZE_LIMIT_GB} GB)\n"
-            f"Directory: {DEBUG_TENSORS_DIR}\n\n"
+            f"Directory: {tensors_dir}\n\n"
             f"Please clean up before starting the debugger:\n"
             f"  1. From Python:\n"
             f"     >>> from mflux_debugger.tensor_debug import debug_clear\n"
             f"     >>> debug_clear()\n\n"
             f"  2. From command line:\n"
-            f"     rm -rf {DEBUG_TENSORS_DIR}/*.npy\n"
+            f"     rm -rf {tensors_dir}/*.npy\n"
             f"{'=' * 70}\n"
         )
         print(error_msg, flush=True)
         raise RuntimeError(f"Debug tensors directory exceeds {SIZE_LIMIT_GB} GB limit")
 
     elif size_gb >= SIZE_WARNING_GB:
+        tensors_dir = _get_debug_tensors_dir()
         warning_msg = (
             f"\n{'=' * 70}\n"
             f"⚠️  DEBUGGER STARTUP WARNING\n"
             f"{'=' * 70}\n"
             f"Debug tensors directory is {size_gb:.2f} GB (warning: {SIZE_WARNING_GB} GB)\n"
-            f"Directory: {DEBUG_TENSORS_DIR}\n"
+            f"Directory: {tensors_dir}\n"
             f"Consider cleaning up to free disk space: debug_clear()\n"
             f"{'=' * 70}\n"
         )
         print(warning_msg, flush=True)
     elif size_gb > 0:
         # Just informational if under warning threshold
-        print(f"ℹ️  Debug tensors directory: {size_gb:.3f} GB ({DEBUG_TENSORS_DIR})")
+        tensors_dir = _get_debug_tensors_dir()
+        print(f"ℹ️  Debug tensors directory: {size_gb:.3f} GB ({tensors_dir})")
 
     return None
 

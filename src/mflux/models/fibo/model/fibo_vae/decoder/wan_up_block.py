@@ -46,7 +46,10 @@ class WanUpBlock(nn.Module):
         # Add upsampling if needed
         self.upsampler = None
         if upsample_mode is not None:
-            self.upsampler = WanResample(out_dim, mode=upsample_mode)
+            # CRITICAL: Pass upsample_out_dim=out_dim to match PyTorch behavior
+            # PyTorch: WanResample(out_dim, mode=upsample_mode, upsample_out_dim=out_dim)
+            # Without this, MLX defaults to dim // 2, causing channel mismatch
+            self.upsampler = WanResample(out_dim, mode=upsample_mode, upsample_out_dim=out_dim)
 
     def __call__(self, x: mx.array, block_idx: int | None = None) -> mx.array:
         """Apply up block.
@@ -58,30 +61,28 @@ class WanUpBlock(nn.Module):
         Returns:
             Output tensor
         """
-        # Apply residual blocks
-        if block_idx == 0:
-            from mflux_debugger.tensor_debug import debug_save
-
-            debug_save(x, "mlx_up_block_0_input")
+        # Apply residual blocks (skip input checkpoint - we know it matches)
+        # if block_idx == 0:
+        #     from mflux_debugger.tensor_debug import debug_save
+        #     debug_save(x, "mlx_up_block_0_input")
 
         for i, resnet in enumerate(self.resnets):
             x = resnet(x, resnet_idx=i, block_idx=block_idx)
-            # Debug checkpoint after each residual block (only for up_block_0 for now)
-            if block_idx == 0:
-                from mflux_debugger.tensor_debug import debug_save
-
-                debug_save(x, f"mlx_up_block_0_resnet_{i}_after")
+            # Debug checkpoint after each residual block (keep main ones, skip detailed)
+            # if block_idx == 0:
+            #     from mflux_debugger.tensor_debug import debug_save
+            #     debug_save(x, f"mlx_up_block_0_resnet_{i}_after")
 
         # Apply upsampling if present
         if self.upsampler is not None:
-            if block_idx == 0:
-                from mflux_debugger.tensor_debug import debug_save
-
-                debug_save(x, "mlx_up_block_0_before_upsample")
+            # Skip before_upsample - we know resnets are working
+            # if block_idx == 0:
+            #     from mflux_debugger.tensor_debug import debug_save
+            #     debug_save(x, "mlx_up_block_0_before_upsample")
             x = self.upsampler(x, block_idx=block_idx)
-            if block_idx == 0:
-                from mflux_debugger.tensor_debug import debug_save
-
-                debug_save(x, "mlx_up_block_0_after_upsample")
+            # Skip after_upsample - same as resample output
+            # if block_idx == 0:
+            #     from mflux_debugger.tensor_debug import debug_save
+            #     debug_save(x, "mlx_up_block_0_after_upsample")
 
         return x

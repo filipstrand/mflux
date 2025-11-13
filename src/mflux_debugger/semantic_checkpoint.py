@@ -310,6 +310,22 @@ def debug_checkpoint(
                 frame=caller_frame,
                 verified=verified,
             )
+        else:
+            # Log warning if debugger should be active but isn't available
+            import logging
+
+            logging.getLogger(__name__).warning(
+                f"Checkpoint '{full_checkpoint_name}' hit but no active debugger found "
+                f"(DEBUGGER_ACTIVE={_DEBUGGER_ACTIVE}, skip={skip})"
+            )
+    elif not skip:
+        # Log warning if checkpoint should break but debugger isn't active
+        import logging
+
+        logging.getLogger(__name__).warning(
+            f"Checkpoint '{full_checkpoint_name}' hit but debugger not active "
+            f"(DEBUGGER_ACTIVE={_DEBUGGER_ACTIVE}, skip={skip})"
+        )
 
 
 def _log_checkpoint_to_json(

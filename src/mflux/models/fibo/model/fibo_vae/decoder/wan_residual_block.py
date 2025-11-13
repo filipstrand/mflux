@@ -54,57 +54,57 @@ class WanResidualBlock(nn.Module):
         Returns:
             Output tensor
         """
-        # Debug: input
+        # Debug: input (skip detailed internal checkpoints - keep main ones)
         if block_idx == 0 and resnet_idx is not None:
             from mflux_debugger.tensor_debug import debug_save
 
-            debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_input")
+            # Skip detailed internal checkpoints - resnets are working correctly
+            # debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_input")
 
         # Shortcut path
         h = self.conv_shortcut(x) if self.conv_shortcut is not None else x
 
-        # Debug: shortcut path
-        if block_idx == 0 and resnet_idx is not None:
-            from mflux_debugger.tensor_debug import debug_save
-
-            debug_save(h, f"mlx_up_block_0_resnet_{resnet_idx}_shortcut")
+        # Debug: shortcut path (skip)
+        # if block_idx == 0 and resnet_idx is not None:
+        #     from mflux_debugger.tensor_debug import debug_save
+        #     debug_save(h, f"mlx_up_block_0_resnet_{resnet_idx}_shortcut")
 
         # Main path
         x = self.norm1(x)
-        if block_idx == 0 and resnet_idx is not None:
-            from mflux_debugger.tensor_debug import debug_save
-
-            debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_after_norm1")
+        # Skip detailed checkpoints
+        # if block_idx == 0 and resnet_idx is not None:
+        #     from mflux_debugger.tensor_debug import debug_save
+        #     debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_after_norm1")
 
         x = nn.silu(x)
-        if block_idx == 0 and resnet_idx is not None:
-            from mflux_debugger.tensor_debug import debug_save
-
-            debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_after_silu1")
+        # Skip detailed checkpoints
+        # if block_idx == 0 and resnet_idx is not None:
+        #     from mflux_debugger.tensor_debug import debug_save
+        #     debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_after_silu1")
 
         x = self.conv1(x)
-        if block_idx == 0 and resnet_idx is not None:
-            from mflux_debugger.tensor_debug import debug_save
-
-            debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_after_conv1")
+        # Skip detailed checkpoints
+        # if block_idx == 0 and resnet_idx is not None:
+        #     from mflux_debugger.tensor_debug import debug_save
+        #     debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_after_conv1")
 
         x = self.norm2(x)
-        if block_idx == 0 and resnet_idx is not None:
-            from mflux_debugger.tensor_debug import debug_save
-
-            debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_after_norm2")
+        # Skip detailed checkpoints
+        # if block_idx == 0 and resnet_idx is not None:
+        #     from mflux_debugger.tensor_debug import debug_save
+        #     debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_after_norm2")
 
         x = nn.silu(x)
-        if block_idx == 0 and resnet_idx is not None:
-            from mflux_debugger.tensor_debug import debug_save
-
-            debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_after_silu2")
+        # Skip detailed checkpoints
+        # if block_idx == 0 and resnet_idx is not None:
+        #     from mflux_debugger.tensor_debug import debug_save
+        #     debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_after_silu2")
 
         x = self.conv2(x)
-        if block_idx == 0 and resnet_idx is not None:
-            from mflux_debugger.tensor_debug import debug_save
-
-            debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_after_conv2")
+        # Skip detailed checkpoints
+        # if block_idx == 0 and resnet_idx is not None:
+        #     from mflux_debugger.tensor_debug import debug_save
+        #     debug_save(x, f"mlx_up_block_0_resnet_{resnet_idx}_after_conv2")
 
         # Residual connection
         result = x + h

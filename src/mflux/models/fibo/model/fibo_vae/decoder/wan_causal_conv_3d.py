@@ -58,6 +58,7 @@ class WanCausalConv3d(nn.Module):
                 "max": float(x.max()),
                 "mean": float(x.mean()),
             },
+            skip=True,  # Verified correct - skip to speed up debugging
         )
         debug_save(x, f"mlx_{self.name}_before_padding")
 
@@ -84,6 +85,7 @@ class WanCausalConv3d(nn.Module):
                 "max": float(x.max()),
                 "mean": float(x.mean()),
             },
+            skip=True,  # Verified correct - skip to speed up debugging
         )
         debug_save(x, f"mlx_{self.name}_after_padding")
 
@@ -101,6 +103,7 @@ class WanCausalConv3d(nn.Module):
                 "max": float(x.max()),
                 "mean": float(x.mean()),
             },
+            skip=True,  # Verified correct - skip to speed up debugging
         )
         debug_save(x, f"mlx_{self.name}_after_transpose_before_conv")
 
@@ -116,6 +119,7 @@ class WanCausalConv3d(nn.Module):
                 "max": float(x.max()),
                 "mean": float(x.mean()),
             },
+            skip=True,  # Verified correct - skip to speed up debugging
         )
         debug_save(x, f"mlx_{self.name}_after_conv_before_transpose_back")
 
@@ -131,6 +135,7 @@ class WanCausalConv3d(nn.Module):
                 "max": float(x.max()),
                 "mean": float(x.mean()),
             },
+            skip=True,  # Verified correct - skip to speed up debugging
         )
         debug_save(x, f"mlx_{self.name}_after_transpose_back")
 
