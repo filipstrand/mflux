@@ -12,6 +12,17 @@
 
 **NEVER use bare `python`, `python3`, `pip`, `uvicorn`, etc.**
 
+## 🚨 CRITICAL: Always Set HF_HOME Environment Variable
+
+**ALWAYS prepend commands with HF_HOME when running scripts that use Hugging Face models:**
+
+```bash
+HF_HOME=/Volumes/T7_blue/.cache/huggingface uv run python <script>
+HF_HOME=/Volumes/T7_blue/.cache/huggingface mflux-debug-prune prune <script>
+```
+
+**This ensures all Hugging Face cache and model downloads go to the external drive.**
+
 ## 🚨 CRITICAL: Use the Native CLI Commands for Debugging
 
 **ALWAYS use the native CLI commands: `mflux-debug-mlx` or `mflux-debug-pytorch`**
