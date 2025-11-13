@@ -27,7 +27,7 @@ class WanMidBlock(nn.Module):
         """
         super().__init__()
         # First residual block
-        self.resnets = [WanResidualBlock(dim, dim, dropout, non_linearity)]
+        self.resnets = nn.ModuleList([WanResidualBlock(dim, dim, dropout, non_linearity)])
         # Additional residual blocks if num_layers > 1
         for _ in range(num_layers):
             self.resnets.append(WanResidualBlock(dim, dim, dropout, non_linearity))
