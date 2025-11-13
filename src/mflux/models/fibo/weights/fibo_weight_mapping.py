@@ -31,8 +31,9 @@ def transpose_conv2d_weight(tensor: mx.array) -> mx.array:
     """Transpose 2D convolution weights from PyTorch to MLX format."""
     if len(tensor.shape) == 4:
         # PyTorch: (out_channels, in_channels, height, width)
-        # MLX: (height, width, in_channels, out_channels)
-        return tensor.transpose(0, 2, 3, 1)
+        # MLX Conv2d (channels-last): (height, width, in_channels, out_channels)
+        # Transpose: (2, 3, 1, 0) maps (out_c, in_c, h, w) -> (h, w, in_c, out_c)
+        return tensor.transpose(2, 3, 1, 0)
     return tensor
 
 
@@ -83,8 +84,30 @@ class FIBOWeightMapping(WeightMapping):
                 mlx_path="decoder.mid_block.resnets.{i}.conv2.conv3d.bias",
                 hf_patterns=["decoder.mid_block.resnets.{i}.conv2.bias"],
             ),
-            # Mid block attention (not implemented yet, but weights exist)
-            # We'll skip these for now since we don't have attention in MLX yet
+            # Mid block attention
+            WeightTarget(
+                mlx_path="decoder.mid_block.attentions.{i}.norm.weight",
+                hf_patterns=["decoder.mid_block.attentions.{i}.norm.gamma"],
+                transform=reshape_gamma_to_1d,
+            ),
+            WeightTarget(
+                mlx_path="decoder.mid_block.attentions.{i}.to_qkv.weight",
+                hf_patterns=["decoder.mid_block.attentions.{i}.to_qkv.weight"],
+                transform=transpose_conv2d_weight,
+            ),
+            WeightTarget(
+                mlx_path="decoder.mid_block.attentions.{i}.to_qkv.bias",
+                hf_patterns=["decoder.mid_block.attentions.{i}.to_qkv.bias"],
+            ),
+            WeightTarget(
+                mlx_path="decoder.mid_block.attentions.{i}.proj.weight",
+                hf_patterns=["decoder.mid_block.attentions.{i}.proj.weight"],
+                transform=transpose_conv2d_weight,
+            ),
+            WeightTarget(
+                mlx_path="decoder.mid_block.attentions.{i}.proj.bias",
+                hf_patterns=["decoder.mid_block.attentions.{i}.proj.bias"],
+            ),
             # ========== Decoder up_blocks ==========
             # Up blocks resnets
             WeightTarget(
