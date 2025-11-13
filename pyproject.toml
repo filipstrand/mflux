@@ -16,8 +16,8 @@ source-exclude = [
 ]
 
 [tool.uv.sources]
-transformers = { path = "/Users/filip/Desktop/transformers", editable = true }
-diffusers = { path = "/Users/filip/Desktop/diffusers", editable = true }
+transformers = { path = "/Users/filipstrand/Desktop/transformers", editable = true }
+diffusers = { path = "/Users/filipstrand/Desktop/diffusers", editable = true }
 
 [project]
 name = "mflux"
