@@ -1,4 +1,5 @@
 import json
+import random
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -32,6 +33,16 @@ def main():
 
     config = TXT2IMG_DEBUG_CONFIG
     torch.set_grad_enabled(False)
+
+    # Lock all randomness sources for reproducibility
+    torch.manual_seed(config.seed)
+    np.random.seed(config.seed)
+    random.seed(config.seed)
+    # Set deterministic mode for CUDA operations (if available)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(config.seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
     # -------------------------------
     # Load the VLM pipeline
