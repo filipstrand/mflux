@@ -1,3 +1,5 @@
+import json
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -5,51 +7,75 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 import torch
-from diffusers.pipelines.qwenimage import QwenImagePipeline
+from diffusers import BriaFiboPipeline
+from diffusers.modular_pipelines import ModularPipeline
 
 from mflux_debugger._scripts.debug_txt2img_config import TXT2IMG_DEBUG_CONFIG
 from mflux_debugger.image_archive import archive_images
 from mflux_debugger.image_tensor_paths import get_images_latest_framework_dir
 
 
+def get_default_negative_prompt(existing_json: dict) -> str:
+    """Generate default negative prompt based on JSON style."""
+    negative_prompt = ""
+    style_medium = existing_json.get("style_medium", "").lower()
+    if style_medium in ["photograph", "photography", "photo"]:
+        negative_prompt = """{'style_medium':'digital illustration','artistic_style':'non-realistic'}"""
+    return negative_prompt
+
+
 def main():
-    model_name = "Qwen/Qwen-Image"
     config = TXT2IMG_DEBUG_CONFIG
+    torch.set_grad_enabled(False)
 
-    pipe = QwenImagePipeline.from_pretrained(model_name, torch_dtype=torch.bfloat16)
+    # -------------------------------
+    # Load the VLM pipeline
+    # -------------------------------
+    # Using Gemini API, requires GOOGLE_API_KEY environment variable
+    assert os.getenv("GOOGLE_API_KEY") is not None, "GOOGLE_API_KEY environment variable is not set"
+    vlm_pipe = ModularPipeline.from_pretrained("briaai/FIBO-gemini-prompt-to-JSON", trust_remote_code=True)
+    # Using local VLM, uncomment to run
+    # vlm_pipe = ModularPipeline.from_pretrained("briaai/FIBO-VLM-prompt-to-JSON", trust_remote_code=True)
 
+    # -------------------------------
+    # Load the FIBO pipeline
+    # -------------------------------
+    pipe = BriaFiboPipeline.from_pretrained("briaai/FIBO", torch_dtype=torch.bfloat16)
+
+    # Try to use MPS (Mac), fallback to CPU
     try:
         pipe = pipe.to("mps")
         device = "mps"
     except RuntimeError:
         pipe = pipe.to("cpu")
         device = "cpu"
+    # Uncomment if you're getting CUDA OOM errors
+    # pipe.enable_model_cpu_offload()
 
-    # Generate initial latents with seed
+    # -------------------------------
+    # Run Prompt to JSON
+    # -------------------------------
+    # Create a prompt to generate an initial image
+    output = vlm_pipe(prompt=config.prompt)
+    json_prompt_generate = output.values["json_prompt"]
+
+    # Get negative prompt based on JSON style
+    negative_prompt = get_default_negative_prompt(json.loads(json_prompt_generate))
+
+    # -------------------------------
+    # Run Image Generation
+    # -------------------------------
+    # Generate the image from the structured json prompt
     generator = torch.Generator(device=device).manual_seed(config.seed)
-
-    # Create latents shape for txt2img: [batch, seq_len, channels]
-    # For 512x512 image: 512/16 = 32, 32*32 = 1024 tokens
-    latent_height = config.height // 16
-    latent_width = config.width // 16
-    seq_len = latent_height * latent_width
-    latents = torch.randn(
-        (1, seq_len, 64),  # [batch, seq_len, channels]
+    results_generate = pipe(
+        prompt=json_prompt_generate,
+        num_inference_steps=config.num_inference_steps,
+        guidance_scale=config.guidance,
+        negative_prompt=negative_prompt,
         generator=generator,
-        device=device,
-        dtype=torch.bfloat16,
     )
 
-    image = pipe(
-        prompt=config.prompt,
-        negative_prompt=config.negative_prompt,
-        height=config.height,
-        width=config.width,
-        num_inference_steps=config.num_inference_steps,
-        true_cfg_scale=config.guidance,
-        generator=generator,
-        latents=latents,  # Pass pre-computed latents
-    ).images[0]
+    image = results_generate.images[0]
 
     # Archive old images before saving new one (keep only latest)
     archive_images("pytorch")
@@ -57,9 +83,15 @@ def main():
     # Save to images/latest/pytorch/ directory
     images_dir = get_images_latest_framework_dir("pytorch")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_path = images_dir / f"debug_diffusers_txt2img_{timestamp}.png"
+    output_path = images_dir / f"debug_diffusers_fibo_{timestamp}.png"
     image.save(str(output_path))
     print(f"Saved: {output_path}")
+
+    # Save JSON prompt
+    json_path = images_dir / f"debug_diffusers_fibo_{timestamp}_json_prompt.json"
+    with open(json_path, "w") as f:
+        f.write(json_prompt_generate)
+    print(f"Saved JSON prompt: {json_path}")
 
 
 if __name__ == "__main__":

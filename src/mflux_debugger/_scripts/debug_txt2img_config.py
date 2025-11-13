@@ -6,8 +6,8 @@ class DebugTxt2ImgConfig:
     prompt: str = "A futuristic cityscape at sunset with flying cars and neon lights"
     negative_prompt: str = "ugly, blurry, low quality"
     seed: int = 42
-    height: int = 341
-    width: int = 768
+    height: int = 170
+    width: int = 384
     num_inference_steps: int = 20
     guidance: float = 4.0
 
