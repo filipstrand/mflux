@@ -21,6 +21,7 @@ import logging
 import shutil
 import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Optional
 
 import numpy as np
@@ -90,6 +91,50 @@ def _check_directory_size(operation: str = "save") -> None:
         )
         logger.warning(warning_msg)
         print(warning_msg, flush=True)
+
+
+def debug_full_cleanup() -> None:
+    """
+    Delete the entire mflux_debugger folder to start fresh.
+
+    This function removes all debug logs, checkpoints, tensors, and images
+    from the mflux_debugger/ directory. Use this at the beginning of scripts
+    to ensure a clean debugging session.
+
+    Examples:
+        ```python
+        from mflux_debugger.tensor_debug import debug_full_cleanup
+
+        # At the beginning of your script
+        debug_full_cleanup()
+
+        # Then proceed with your debugging code
+        ```
+    """
+    # Get the mflux_debugger directory path (top-level, not in src)
+    src_dir = Path(__file__).parent  # src/mflux_debugger
+    repo_root = src_dir.parent.parent  # /Users/filipstrand/Desktop/mflux
+    debugger_dir = repo_root / "mflux_debugger"
+
+    if not debugger_dir.exists():
+        logger.debug(f"mflux_debugger/ directory doesn't exist at {debugger_dir} - nothing to clean")
+        return
+
+    # Count files before deletion for logging
+    files = list(debugger_dir.rglob("*"))
+    file_count = sum(1 for f in files if f.is_file())
+    total_bytes = sum(f.stat().st_size for f in files if f.is_file())
+    size_mb = total_bytes / (1024 * 1024)
+
+    # Remove all contents but keep the directory itself
+    for item in debugger_dir.iterdir():
+        if item.is_file():
+            item.unlink()
+        elif item.is_dir():
+            shutil.rmtree(item)
+
+    logger.info(f"🧹 Cleaned up mflux_debugger/ directory: {file_count} files, {size_mb:.2f} MB removed")
+    print(f"🧹 Cleaned up mflux_debugger/ directory: {file_count} files, {size_mb:.2f} MB removed", flush=True)
 
 
 def debug_save(tensor: Any, name: str, exit_after: bool = False, skip: bool = False) -> None:
@@ -193,6 +238,11 @@ def debug_save(tensor: Any, name: str, exit_after: bool = False, skip: bool = Fa
                 # Convert floating-point types to float32
                 tensor_np = tensor_cpu.float().numpy()
             info_str = "real"
+
+        # Ensure directory exists (always create if needed - transparent to user)
+        # This is necessary because DEBUG_TENSORS_DIR is cached at import time,
+        # so if debug_full_cleanup() deletes the directory, we need to recreate it
+        DEBUG_TENSORS_DIR.mkdir(parents=True, exist_ok=True)
 
         # Save tensor (no versioning - sessions are isolated via archiving)
         save_path = DEBUG_TENSORS_DIR / f"{name}.npy"

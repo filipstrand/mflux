@@ -5,6 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
+import numpy as np
 import torch
 from diffusers import BriaFiboPipeline
 from diffusers.modular_pipelines import ModularPipeline
@@ -12,6 +13,8 @@ from diffusers.modular_pipelines import ModularPipeline
 from mflux_debugger._scripts.debug_txt2img_config import TXT2IMG_DEBUG_CONFIG
 from mflux_debugger.image_archive import archive_images
 from mflux_debugger.image_tensor_paths import get_images_latest_framework_dir
+from mflux_debugger.semantic_checkpoint import debug_checkpoint
+from mflux_debugger.tensor_debug import debug_full_cleanup, debug_save
 
 
 def get_default_negative_prompt(existing_json: dict) -> str:
@@ -24,6 +27,9 @@ def get_default_negative_prompt(existing_json: dict) -> str:
 
 
 def main():
+    # Clean up all debug files from previous runs
+    debug_full_cleanup()
+
     config = TXT2IMG_DEBUG_CONFIG
     torch.set_grad_enabled(False)
 
@@ -41,27 +47,41 @@ def main():
     # -------------------------------
     pipe = BriaFiboPipeline.from_pretrained("briaai/FIBO", torch_dtype=torch.bfloat16)
 
-    # Try to use MPS (Mac), fallback to CPU
-    try:
-        pipe = pipe.to("mps")
-        device = "mps"
-    except RuntimeError:
-        pipe = pipe.to("cpu")
-        device = "cpu"
-    # Uncomment if you're getting CUDA OOM errors
-    # pipe.enable_model_cpu_offload()
+    # Use CPU offload to manage MPS memory constraints (like the working example)
+    pipe.enable_model_cpu_offload()
+    device = "mps"  # CPU offload still uses MPS for computation, just manages memory better
 
     # -------------------------------
     # Run Prompt to JSON
     # -------------------------------
+    debug_checkpoint("before_vlm_prompt_to_json", metadata={"prompt": config.prompt})
+
     # Create a prompt to generate an initial image
     output = vlm_pipe(prompt=config.prompt)
     json_prompt_generate = output.values["json_prompt"]
+
+    debug_checkpoint(
+        "after_vlm_prompt_to_json",
+        metadata={"json_prompt": json_prompt_generate, "original_prompt": config.prompt},
+    )
 
     # Get negative prompt based on JSON style, fallback to config if empty
     json_negative_prompt = get_default_negative_prompt(json.loads(json_prompt_generate))
     # Use config negative_prompt if JSON-based one is empty, otherwise use JSON-based one
     negative_prompt = json_negative_prompt if json_negative_prompt else config.negative_prompt
+
+    debug_checkpoint(
+        "before_pipeline_call",
+        metadata={
+            "json_prompt": json_prompt_generate,
+            "negative_prompt": negative_prompt,
+            "height": config.height,
+            "width": config.width,
+            "num_inference_steps": config.num_inference_steps,
+            "guidance_scale": config.guidance,
+            "seed": config.seed,
+        },
+    )
 
     # -------------------------------
     # Run Image Generation
@@ -78,7 +98,35 @@ def main():
         generator=generator,
     )
 
+    # Save VAE input latents (final latents before VAE decoding)
+    # Note: BriaFiboPipelineOutput should contain latents
+    if hasattr(results_generate, "latents") and results_generate.latents is not None:
+        vae_input_latents = results_generate.latents
+        debug_save(vae_input_latents, "vae_input_latents")
+        debug_checkpoint(
+            "after_pipeline_before_vae",
+            metadata={
+                "vae_input_shape": list(vae_input_latents.shape),
+                "vae_input_dtype": str(vae_input_latents.dtype),
+            },
+        )
+    else:
+        debug_checkpoint("after_pipeline_before_vae", metadata={"note": "latents not available in output"})
+
     image = results_generate.images[0]
+
+    # Save final image as tensor for comparison
+    # Convert PIL image to tensor
+    image_tensor = torch.from_numpy(np.array(image)).permute(2, 0, 1).float() / 255.0  # HWC -> CHW, normalize
+    debug_save(image_tensor, "final_image_tensor")
+
+    debug_checkpoint(
+        "after_vae_decoding",
+        metadata={
+            "image_shape": list(image_tensor.shape),
+            "image_dtype": str(image_tensor.dtype),
+        },
+    )
 
     # Archive old images before saving new one (keep only latest)
     archive_images("pytorch")
