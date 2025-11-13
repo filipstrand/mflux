@@ -45,12 +45,15 @@ def is_mlx_process(proc):
         except (psutil.AccessDenied, psutil.NoSuchProcess):
             pass
 
-        # Check memory maps for MLX libraries (more reliable)
+        # Check memory maps for MLX libraries (additional check)
+        # Note: memory_maps() is not available on macOS (removed in psutil 5.6.0+)
+        # For debugger processes, cmdline check above is most reliable
         try:
-            for mmap in proc.memory_maps():
-                if "mlx" in mmap.path.lower():
-                    return True
-        except (psutil.AccessDenied, psutil.NoSuchProcess):
+            if hasattr(proc, "memory_maps"):
+                for mmap in proc.memory_maps():
+                    if "mlx" in mmap.path.lower():
+                        return True
+        except (psutil.AccessDenied, psutil.NoSuchProcess, AttributeError):
             pass
 
     except (psutil.AccessDenied, psutil.NoSuchProcess, psutil.ZombieProcess):
@@ -84,13 +87,16 @@ def is_pytorch_process(proc):
         except (psutil.AccessDenied, psutil.NoSuchProcess):
             pass
 
-        # Check memory maps for PyTorch libraries (more reliable)
+        # Check memory maps for PyTorch libraries (additional check)
+        # Note: memory_maps() is not available on macOS (removed in psutil 5.6.0+)
+        # For debugger processes, cmdline check above is most reliable
         try:
-            for mmap in proc.memory_maps():
-                path_lower = mmap.path.lower()
-                if "torch" in path_lower or "pytorch" in path_lower:
-                    return True
-        except (psutil.AccessDenied, psutil.NoSuchProcess):
+            if hasattr(proc, "memory_maps"):
+                for mmap in proc.memory_maps():
+                    path_lower = mmap.path.lower()
+                    if "torch" in path_lower or "pytorch" in path_lower:
+                        return True
+        except (psutil.AccessDenied, psutil.NoSuchProcess, AttributeError):
             pass
 
     except (psutil.AccessDenied, psutil.NoSuchProcess, psutil.ZombieProcess):
