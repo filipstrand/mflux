@@ -162,7 +162,7 @@ class VAE(nn.Module):
             out_channels=self.OUT_CHANNELS,
         )
         # Post-quantization convolution (applied before decoder)
-        self.post_quant_conv = WanCausalConv3d(self.Z_DIM, self.Z_DIM, 1, padding=0)
+        self.post_quant_conv = WanCausalConv3d(self.Z_DIM, self.Z_DIM, 1, padding=0, name="post_quant_conv")
 
     def decode(self, latents: mx.array) -> mx.array:
         """Decode latents to image.
@@ -178,7 +178,16 @@ class VAE(nn.Module):
             Note: FIBO outputs 12 channels, not 3 (likely for post-processing/decoding)
         """
         # Debug checkpoint: VAE decode input
-        debug_checkpoint("mlx_vae_decode_input", metadata={"shape": list(latents.shape), "dtype": str(latents.dtype)})
+        debug_checkpoint(
+            "mlx_vae_decode_input",
+            metadata={
+                "shape": list(latents.shape),
+                "dtype": str(latents.dtype),
+                "min": float(latents.min()),
+                "max": float(latents.max()),
+                "mean": float(latents.mean()),
+            },
+        )
         debug_save(latents, "mlx_vae_decode_input")
 
         # Ensure latents are 5D: (batch, channels, 1, height, width)

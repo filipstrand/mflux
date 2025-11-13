@@ -21,7 +21,8 @@ def transpose_conv3d_weight(tensor: mx.array) -> mx.array:
     """Transpose 3D convolution weights from PyTorch to MLX format."""
     if len(tensor.shape) == 5:
         # PyTorch: (out_channels, in_channels, depth, height, width)
-        # MLX: (depth, height, width, in_channels, out_channels)
+        # MLX Conv3d (with channels-last input): (out_channels, depth, height, width, in_channels)
+        # Transpose: (0, 2, 3, 4, 1) keeps out_channels first, moves depth/height/width, then in_channels
         return tensor.transpose(0, 2, 3, 4, 1)
     return tensor
 

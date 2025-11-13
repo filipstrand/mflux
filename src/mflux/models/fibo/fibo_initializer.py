@@ -3,8 +3,11 @@
 Loads weights and initializes the FIBO model components.
 """
 
+import mlx.core as mx
+
 from mflux.models.fibo.model.fibo_vae.vae import VAE
 from mflux.models.fibo.weights.fibo_weight_handler import FIBOWeightHandler
+from mflux_debugger.semantic_checkpoint import debug_checkpoint
 
 
 class FIBOInitializer:
@@ -29,6 +32,28 @@ class FIBOInitializer:
             local_path=local_path,
         )
 
+        # CHECKPOINT: Verify weights loaded
+        if weights.vae:
+            # Count total weights
+            def count_weights(w):
+                if isinstance(w, dict):
+                    return sum(count_weights(v) for v in w.values())
+                elif isinstance(w, mx.array):
+                    return w.size
+                return 0
+
+            total_weights = count_weights(weights.vae)
+            debug_checkpoint(
+                "mlx_fibo_weights_loaded",
+                metadata={
+                    "has_vae_weights": True,
+                    "total_weight_elements": total_weights,
+                    "weight_keys": list(weights.vae.keys()) if isinstance(weights.vae, dict) else "nested",
+                },
+            )
+        else:
+            debug_checkpoint("mlx_fibo_weights_loaded", metadata={"has_vae_weights": False})
+
         # 2. Initialize VAE model
         fibo_model.vae = VAE()
 
@@ -37,6 +62,9 @@ class FIBOInitializer:
         # MLX's model.update() accepts nested dictionaries directly
         if weights.vae:
             fibo_model.vae.update(weights.vae, strict=False)
+            debug_checkpoint("mlx_fibo_weights_applied", metadata={"weights_applied": True})
+        else:
+            debug_checkpoint("mlx_fibo_weights_applied", metadata={"weights_applied": False})
 
         # 4. Store quantization level (not implemented yet)
         fibo_model.bits = quantize

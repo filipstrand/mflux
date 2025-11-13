@@ -62,7 +62,7 @@ class WanDecoder3d(nn.Module):
         dims = [dim * u for u in [dim_mult[-1]] + dim_mult[::-1]]
 
         # Input convolution
-        self.conv_in = WanCausalConv3d(z_dim, dims[0], 3, padding=1)
+        self.conv_in = WanCausalConv3d(z_dim, dims[0], 3, padding=1, name="decoder_conv_in")
 
         # Middle block
         self.mid_block = WanMidBlock(dims[0], dropout, non_linearity, num_layers=1)
@@ -97,7 +97,7 @@ class WanDecoder3d(nn.Module):
 
         # Output layers
         self.norm_out = WanRMSNorm(out_dim, images=False)
-        self.conv_out = WanCausalConv3d(out_dim, out_channels, 3, padding=1)
+        self.conv_out = WanCausalConv3d(out_dim, out_channels, 3, padding=1, name="decoder_conv_out")
 
     def __call__(self, x: mx.array) -> mx.array:
         """Decode latents to image.
@@ -111,11 +111,29 @@ class WanDecoder3d(nn.Module):
             For FIBO: (batch, 12, 1, height, width)
         """
         # Debug checkpoint: decoder input
-        debug_checkpoint("mlx_decoder_input", metadata={"shape": list(x.shape), "dtype": str(x.dtype)})
+        debug_checkpoint(
+            "mlx_decoder_input",
+            metadata={
+                "shape": list(x.shape),
+                "dtype": str(x.dtype),
+                "min": float(x.min()),
+                "max": float(x.max()),
+                "mean": float(x.mean()),
+            },
+        )
         debug_save(x, "mlx_decoder_input")
 
         x = self.conv_in(x)
-        debug_checkpoint("mlx_decoder_after_conv_in", metadata={"shape": list(x.shape), "dtype": str(x.dtype)})
+        debug_checkpoint(
+            "mlx_decoder_after_conv_in",
+            metadata={
+                "shape": list(x.shape),
+                "dtype": str(x.dtype),
+                "min": float(x.min()),
+                "max": float(x.max()),
+                "mean": float(x.mean()),
+            },
+        )
         debug_save(x, "mlx_decoder_after_conv_in")
 
         x = self.mid_block(x)
