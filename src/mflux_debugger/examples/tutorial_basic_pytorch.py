@@ -9,6 +9,11 @@ Run this first, then run tutorial_basic_mlx.py to load and compare.
 
 To start the tutorial:
     mflux-debug-pytorch tutorial
+
+IMPORTANT: debug_save() and debug_load() work from ANYWHERE!
+- You can call them from mflux code, diffusers code, transformers code, or any script
+- They automatically find the correct mflux_debugger directory
+- No path manipulation or configuration needed - just import and use!
 """
 
 # Import at the top of file (best practice)

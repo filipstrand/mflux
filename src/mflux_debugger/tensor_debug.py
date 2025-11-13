@@ -159,30 +159,38 @@ def debug_full_cleanup() -> None:
 
 def debug_save(tensor: Any, name: str, exit_after: bool = False, skip: bool = False) -> None:
     """
-    Save a tensor from PyTorch for later loading in MLX.
+    Save a tensor for later loading with debug_load().
 
-    This function is designed to be called inline in PyTorch code, typically
-    to capture intermediate tensor values for debugging. The tensor is automatically
-    converted to a format compatible with MLX.
+    This function works from ANYWHERE - you don't need to worry about paths or locations.
+    It automatically finds the correct mflux_debugger directory regardless of where it's called from.
+
+    Key Features:
+    - Works from mflux repository code
+    - Works from external repositories (like diffusers, transformers, etc.)
+    - Works from scripts in any location
+    - Automatically handles path resolution - you just call it!
+
+    The tensor is saved to mflux_debugger/tensors/latest/{name}.npy and can be loaded
+    later using debug_load(name) from anywhere.
 
     Args:
-        tensor: PyTorch tensor to save (real or complex)
-        name: Name for the saved tensor (alphanumeric + underscores recommended)
+        tensor: Tensor to save (PyTorch tensor, MLX array, or numpy array)
+        name: Unique name for the saved tensor (alphanumeric + underscores recommended)
               Can use f-strings for loop indices: f"hidden_states_{block}_{timestep}"
         exit_after: If True, exit the program after saving (useful to capture early tensors)
         skip: If True, skip saving entirely (useful for conditional saving)
 
     Examples:
         ```python
-        # At the top of your file, with other imports:
+        # Import once at the top of your file
         from mflux_debugger.tensor_debug import debug_save
 
-        # Then use it anywhere in your code:
+        # Then use it ANYWHERE - no path manipulation needed!
         class MyModel:
             def forward(self, x):
                 # Simple case - save one tensor
                 latents = self.prepare_latents(...)
-                debug_save(latents, "initial_latents", exit_after=True)
+                debug_save(latents, "initial_latents")
 
                 # Conditional saving
                 debug_save(latents, "debug_latents", skip=not DEBUG_MODE)
@@ -195,11 +203,12 @@ def debug_save(tensor: Any, name: str, exit_after: bool = False, skip: bool = Fa
         ```
 
     Note:
-        - The tensor is saved as a NumPy .npy file in PyTorch float32 format
+        - The tensor is automatically converted to a format compatible with both PyTorch and MLX
         - For complex tensors, saves both real and imaginary parts in a structured array
-        - Previous session tensors are automatically archived when starting a new session
+        - All tensors are saved to the same location (mflux_debugger/tensors/latest/)
         - Multiple saves with the same name in one session will overwrite
         - For loops: use f-strings with indices to create unique names per iteration
+        - The function handles all path resolution automatically - you don't need to configure anything!
     """
     # Get caller information for logging
     import inspect
@@ -318,38 +327,46 @@ def debug_save(tensor: Any, name: str, exit_after: bool = False, skip: bool = Fa
 
 def debug_load(name: str, exact_version: bool = False) -> Any:
     """
-    Load a tensor saved from PyTorch, returning it as an MLX array.
+    Load a tensor saved with debug_save().
 
-    This function is designed to be called inline in MLX code to replace computed
-    values with saved PyTorch tensors for comparison debugging.
+    This function works from ANYWHERE - you don't need to worry about paths or locations.
+    It automatically finds the correct mflux_debugger directory and loads the tensor
+    that was saved with debug_save(name).
+
+    Key Features:
+    - Works from mflux repository code
+    - Works from external repositories (like diffusers, transformers, etc.)
+    - Works from scripts in any location
+    - Automatically handles path resolution - you just call it!
 
     Args:
         name: Name of the saved tensor (without .npy extension)
+              Must match the name used in debug_save(name)
               Can use f-strings for loop indices: f"hidden_states_{block}_{timestep}"
         exact_version: If True, load the exact name without auto-versioning (default: False)
 
     Returns:
-        MLX array with the loaded tensor data
-        For complex tensors, returns a tuple (real, imag) of MLX arrays
+        MLX array with the loaded tensor data (if called from MLX context)
+        PyTorch tensor or numpy array (if called from PyTorch context)
+        For complex tensors, returns a tuple (real, imag)
 
     Raises:
         FileNotFoundError: If the tensor file is not found
 
     Examples:
         ```python
-        # At the top of your file, with other imports:
+        # Import once at the top of your file
         from mflux_debugger.tensor_debug import debug_load
 
-        # Then use it anywhere in your code:
+        # Then use it ANYWHERE - no path manipulation needed!
         class MyModel:
             def forward(self, x):
                 # Simple case - load one tensor
-                latents = debug_load("initial_latents")  # Override with saved tensor
+                latents = debug_load("initial_latents")
 
                 # Loop case - load tensor at each iteration
                 for block in range(num_blocks):
                     for timestep in range(num_timesteps):
-                        # Override with saved PyTorch value
                         hidden_states = debug_load(f"hidden_states_{block}_{timestep}")
 
                 # Complex tensor case (e.g., RoPE embeddings)
@@ -357,11 +374,12 @@ def debug_load(name: str, exact_version: bool = False) -> Any:
         ```
 
     Note:
-        - Automatically converts NumPy array to MLX array
+        - Automatically converts to the appropriate format (MLX array, PyTorch tensor, or numpy)
         - For complex tensors (saved from PyTorch complex tensors), returns tuple (real, imag)
         - Preserves the original tensor shape and dtype
         - Raises FileNotFoundError if tensor not found (fail-fast behavior)
         - For loops: use f-strings with indices matching those used in debug_save()
+        - The function handles all path resolution automatically - you don't need to configure anything!
     """
     # Get caller information for logging
     import inspect
