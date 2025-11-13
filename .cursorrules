@@ -23,6 +23,10 @@ HF_HOME=/Volumes/T7_blue/.cache/huggingface mflux-debug-prune prune <script>
 
 **This ensures all Hugging Face cache and model downloads go to the external drive.**
 
+**IMPORTANT: When running scripts, do NOT pipe output to `head` or other commands that truncate output. Run commands directly so logs are visible in real-time:**
+- ✅ `HF_HOME=/Volumes/T7_blue/.cache/huggingface uv run python <script>`
+- ❌ `HF_HOME=/Volumes/T7_blue/.cache/huggingface uv run python <script> 2>&1 | head -100`
+
 ## 🚨 CRITICAL: Use the Native CLI Commands for Debugging
 
 **ALWAYS use the native CLI commands: `mflux-debug-mlx` or `mflux-debug-pytorch`**
