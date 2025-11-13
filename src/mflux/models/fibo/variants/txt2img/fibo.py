@@ -61,10 +61,9 @@ class FIBO(nn.Module):
         """Generate image from latents (VAE decode only for now).
 
         This is a minimal implementation that:
-        1. Loads latents from PyTorch debug output (saved by debug_diffusers_txt2img.py)
-        2. Scales latents: (latents / latents_std) + latents_mean
-        3. Decodes them using VAE
-        4. Returns the image
+        1. Loads the exact scaled latents from PyTorch debug output (saved by debug_diffusers_txt2img.py)
+        2. Decodes them using VAE
+        3. Returns the image
 
         Args:
             seed: Random seed (not used yet, latents come from PyTorch)
@@ -75,37 +74,26 @@ class FIBO(nn.Module):
         Returns:
             Generated image
         """
-        # Load latents from PyTorch debug output
-        # The latents from PyTorch are saved as "vae_input_latents"
-        # Shape should be (batch, 48, 1, height, width) for FIBO
-        latents_pytorch = debug_load("vae_input_latents")
+        # CRITICAL: Load the exact tensor saved by diffusers pipeline right before VAE decode
+        # This ensures we're using the exact same input, making debugging much easier
+        # The diffusers pipeline saves "vae_input_latents" after scaling: (latents / latents_std) + latents_mean
+        # So we use that directly - no need to scale again
+        latents_for_vae = debug_load("vae_input_latents")
+        latents_for_vae_mlx = mx.array(latents_for_vae)
 
-        # Convert to MLX array
-        latents_mlx = mx.array(latents_pytorch)
-
-        # Scale latents: (latents / latents_std) + latents_mean
-        # latents_mean and latents_std are per-channel (48 channels)
-        # We need to reshape them to broadcast correctly: (1, 48, 1, 1, 1) for 5D latents
-        from mflux.models.fibo.model.fibo_vae.vae import VAE as VAE_CLASS
-
-        latents_mean_mlx = mx.array(VAE_CLASS.LATENTS_MEAN)
-        latents_std_mlx = mx.array(VAE_CLASS.LATENTS_STD)
-
-        # Ensure latents are 5D: (batch, channels, 1, height, width)
-        if latents_mlx.ndim == 4:
-            latents_mlx = latents_mlx.reshape(
-                latents_mlx.shape[0], latents_mlx.shape[1], 1, latents_mlx.shape[2], latents_mlx.shape[3]
+        # Ensure 5D shape for VAE: (batch, channels, 1, height, width)
+        # The diffusers pipeline saves it as 5D, but check just in case
+        if latents_for_vae_mlx.ndim == 4:
+            latents_for_vae_mlx = latents_for_vae_mlx.reshape(
+                latents_for_vae_mlx.shape[0],
+                latents_for_vae_mlx.shape[1],
+                1,
+                latents_for_vae_mlx.shape[2],
+                latents_for_vae_mlx.shape[3],
             )
 
-        # Reshape mean/std for broadcasting: (1, 48, 1, 1, 1)
-        latents_mean_mlx = latents_mean_mlx.reshape(1, -1, 1, 1, 1)
-        latents_std_mlx = latents_std_mlx.reshape(1, -1, 1, 1, 1)
-
-        # Scale: (latents / latents_std) + latents_mean
-        latents_scaled = (latents_mlx / latents_std_mlx) + latents_mean_mlx
-
-        # Decode using VAE
-        decoded = self.vae.decode(latents_scaled)
+        # Decode using VAE with the exact tensor from diffusers
+        decoded = self.vae.decode(latents_for_vae_mlx)
 
         # Convert to image and return
         # Note: decoded is (batch, 12, height, width) - FIBO outputs 12 channels
