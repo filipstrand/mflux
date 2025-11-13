@@ -3,7 +3,6 @@ from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.error.exceptions import PromptFileReadError, StopImageGenerationException
 from mflux.models.flux.variants.txt2img.flux import Flux1
-from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
 from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import get_effective_negative_prompt, get_effective_prompt
@@ -25,8 +24,7 @@ def main():
         args.guidance = ui_defaults.GUIDANCE_SCALE
 
     # 1. Load the model
-    model_class = QwenImage if "qwen" in args.model.lower() else Flux1
-    model = model_class(
+    model = Flux1(
         model_config=ModelConfig.from_name(model_name=args.model, base_model=args.base_model),
         quantize=args.quantize,
         local_path=args.path,

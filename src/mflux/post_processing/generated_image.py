@@ -28,6 +28,7 @@ class GeneratedImage:
         controlnet_image_path: str | Path | None = None,
         controlnet_strength: float | None = None,
         image_path: str | Path | None = None,
+        image_paths: list[str] | list[Path] | None = None,
         image_strength: float | None = None,
         masked_image_path: str | Path | None = None,
         depth_image_path: str | Path | None = None,
@@ -52,6 +53,7 @@ class GeneratedImage:
         self.controlnet_image_path = controlnet_image_path
         self.controlnet_strength = controlnet_strength
         self.image_path = image_path
+        self.image_paths = image_paths
         self.image_strength = image_strength
         self.masked_image_path = masked_image_path
         self.depth_image_path = depth_image_path
@@ -155,7 +157,8 @@ class GeneratedImage:
             "lora_paths": [str(p) for p in self.lora_paths] if self.lora_paths else None,
             "lora_scales": [round(scale, 2) for scale in self.lora_scales] if self.lora_scales else None,
             "image_path": str(self.image_path) if self.image_path else None,
-            "image_strength": self.image_strength if self.image_path else None,
+            "image_paths": [str(p) for p in self.image_paths] if self.image_paths else None,
+            "image_strength": self.image_strength if (self.image_path or self.image_paths) else None,
             "controlnet_image_path": str(self.controlnet_image_path) if self.controlnet_image_path else None,
             "controlnet_strength": round(self.controlnet_strength, 2) if self.controlnet_strength else None,
             "masked_image_path": str(self.masked_image_path) if self.masked_image_path else None,

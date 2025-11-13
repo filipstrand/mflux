@@ -30,6 +30,7 @@ class ImageGeneratorTestHelper:
         lora_repo_id: str | None = None,
         negative_prompt: str | None = None,
         guidance: float | None = None,
+        mismatch_threshold: float | None = None,
     ):
         # resolve paths
         reference_image_path = ImageGeneratorTestHelper.resolve_path(reference_image_path)
@@ -83,6 +84,7 @@ class ImageGeneratorTestHelper:
                 output_image_path,
                 reference_image_path,
                 "Generated image doesn't match reference image.",
+                mismatch_threshold=mismatch_threshold,
             )
         finally:
             # cleanup

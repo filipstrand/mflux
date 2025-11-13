@@ -110,7 +110,7 @@ class QwenWeightHandler:
 
         if loading_mode == "single":
             # VAE style: Single file loading
-            safetensors_files = list(path.glob("*.safetensors"))
+            safetensors_files = [f for f in path.glob("*.safetensors") if not f.name.startswith("._")]
             if not safetensors_files:
                 raise FileNotFoundError(f"No safetensors files found in {path}")
 
@@ -180,7 +180,7 @@ class QwenWeightHandler:
 
     @staticmethod
     def _detect_metadata(path: Path) -> tuple[int | None, str | None]:
-        file_glob = sorted(path.glob("*.safetensors"))
+        file_glob = sorted([f for f in path.glob("*.safetensors") if not f.name.startswith("._")])
         if file_glob:
             data = mx.load(str(file_glob[0]), return_metadata=True)
             if len(data) > 1:
