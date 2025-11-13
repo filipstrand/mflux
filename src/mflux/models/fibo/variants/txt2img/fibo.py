@@ -4,7 +4,6 @@ This is a minimal implementation that starts with just the VAE decoder.
 We skip text encoding and transformer for now.
 """
 
-import mlx.core as mx
 from mlx import nn
 
 from mflux.config.config import Config
@@ -78,22 +77,22 @@ class FIBO(nn.Module):
         # This ensures we're using the exact same input, making debugging much easier
         # The diffusers pipeline saves "vae_input_latents" after scaling: (latents / latents_std) + latents_mean
         # So we use that directly - no need to scale again
+        # debug_load() already returns an MLX array, so no conversion needed
         latents_for_vae = debug_load("vae_input_latents")
-        latents_for_vae_mlx = mx.array(latents_for_vae)
 
         # Ensure 5D shape for VAE: (batch, channels, 1, height, width)
         # The diffusers pipeline saves it as 5D, but check just in case
-        if latents_for_vae_mlx.ndim == 4:
-            latents_for_vae_mlx = latents_for_vae_mlx.reshape(
-                latents_for_vae_mlx.shape[0],
-                latents_for_vae_mlx.shape[1],
+        if latents_for_vae.ndim == 4:
+            latents_for_vae = latents_for_vae.reshape(
+                latents_for_vae.shape[0],
+                latents_for_vae.shape[1],
                 1,
-                latents_for_vae_mlx.shape[2],
-                latents_for_vae_mlx.shape[3],
+                latents_for_vae.shape[2],
+                latents_for_vae.shape[3],
             )
 
         # Decode using VAE with the exact tensor from diffusers
-        decoded = self.vae.decode(latents_for_vae_mlx)
+        decoded = self.vae.decode(latents_for_vae)
 
         # Convert to image and return
         # Note: decoded is (batch, 12, height, width) - FIBO outputs 12 channels
