@@ -58,8 +58,10 @@ def main():
     output = vlm_pipe(prompt=config.prompt)
     json_prompt_generate = output.values["json_prompt"]
 
-    # Get negative prompt based on JSON style
-    negative_prompt = get_default_negative_prompt(json.loads(json_prompt_generate))
+    # Get negative prompt based on JSON style, fallback to config if empty
+    json_negative_prompt = get_default_negative_prompt(json.loads(json_prompt_generate))
+    # Use config negative_prompt if JSON-based one is empty, otherwise use JSON-based one
+    negative_prompt = json_negative_prompt if json_negative_prompt else config.negative_prompt
 
     # -------------------------------
     # Run Image Generation
@@ -68,6 +70,8 @@ def main():
     generator = torch.Generator(device=device).manual_seed(config.seed)
     results_generate = pipe(
         prompt=json_prompt_generate,
+        height=config.height,
+        width=config.width,
         num_inference_steps=config.num_inference_steps,
         guidance_scale=config.guidance,
         negative_prompt=negative_prompt,
