@@ -10,8 +10,7 @@ from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.fibo.fibo_initializer import FIBOInitializer
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
-from mflux_debugger.semantic_checkpoint import debug_checkpoint
-from mflux_debugger.tensor_debug import debug_load, debug_save
+from mflux_debugger.tensor_debug import debug_load
 
 
 class FIBO(nn.Module):
@@ -81,19 +80,6 @@ class FIBO(nn.Module):
         # debug_load() already returns an MLX array, so no conversion needed
         latents_for_vae = debug_load("vae_input_latents")
 
-        # EARLY CHECKPOINT: Verify input matches PyTorch exactly
-        debug_checkpoint(
-            "mlx_fibo_input_latents_loaded",
-            metadata={
-                "shape": list(latents_for_vae.shape),
-                "dtype": str(latents_for_vae.dtype),
-                "min": float(latents_for_vae.min()),
-                "max": float(latents_for_vae.max()),
-                "mean": float(latents_for_vae.mean()),
-            },
-        )
-        debug_save(latents_for_vae, "mlx_fibo_input_latents_loaded")
-
         # Ensure 5D shape for VAE: (batch, channels, 1, height, width)
         # The diffusers pipeline saves it as 5D, but check just in case
         if latents_for_vae.ndim == 4:
@@ -105,23 +91,8 @@ class FIBO(nn.Module):
                 latents_for_vae.shape[3],
             )
 
-        # CHECKPOINT: After shape adjustment, before VAE decode
-        debug_checkpoint(
-            "mlx_fibo_input_before_vae",
-            metadata={
-                "shape": list(latents_for_vae.shape),
-                "dtype": str(latents_for_vae.dtype),
-                "ndim": latents_for_vae.ndim,
-            },
-        )
-        debug_save(latents_for_vae, "mlx_fibo_input_before_vae")
-
         # Decode using VAE with the exact tensor from diffusers
         decoded = self.vae.decode(latents_for_vae)
-
-        # Debug: Print output shape
-        print(f"DEBUG: VAE decoded shape: {decoded.shape}")
-        print("DEBUG: Expected shape: (1, 3, 512, 512) - unpatchify already reduced channels from 12 to 3")
 
         # Note: unpatchify already reduced channels from 12 to 3, so decoded is already RGB
         # Convert to image and return

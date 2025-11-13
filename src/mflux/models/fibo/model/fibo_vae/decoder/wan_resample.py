@@ -51,20 +51,6 @@ class WanResample(nn.Module):
         Returns:
             Resampled tensor
         """
-        # DEBUG: Always checkpoint at entry to verify resample is called
-        from mflux_debugger.semantic_checkpoint import debug_checkpoint
-
-        debug_checkpoint(
-            "mlx_resample_entry",
-            x=x,
-            metadata={"block_idx": block_idx, "input_shape": list(x.shape), "mode": self.mode},
-            skip=True,  # Log but don't pause - just verify it's called
-        )
-        # Debug: input (skip - we know input matches)
-        # if block_idx == 0:
-        #     from mflux_debugger.tensor_debug import debug_save
-        #     debug_save(x, "mlx_resample_input")
-
         b, c, t, h, w = x.shape
 
         # Handle temporal upsampling for 3D mode
@@ -133,21 +119,7 @@ class WanResample(nn.Module):
             )
             print("DEBUG: After debug_checkpoint call", file=sys.stderr, flush=True)
         x = self.resample_conv(x)  # (b*t, h*2, w*2, out_c)
-        # DEBUG: Inspect after conv2d - CRITICAL CHECKPOINT for comparison
-        if block_idx == 0:
-            from mflux_debugger.semantic_checkpoint import debug_checkpoint
-
-            debug_checkpoint(
-                "mlx_resample_after_conv2d_compute",
-                metadata={
-                    "output_shape": list(x.shape),
-                    "output_mean": float(mx.mean(x)),
-                    "output_std": float(mx.std(x)),
-                    "output_at_20_42_13": float(x[0, 20, 42, 13]),
-                },
-            )
-
-        # Debug: after conv2d - keep this for final comparison
+        # Debug: after conv2d - keep this for final comparison tensor
         if block_idx == 0:
             from mflux_debugger.tensor_debug import debug_save
 

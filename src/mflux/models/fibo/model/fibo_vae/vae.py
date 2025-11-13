@@ -10,8 +10,6 @@ from mlx import nn
 
 from mflux.models.fibo.model.fibo_vae.decoder.wan_causal_conv_3d import WanCausalConv3d
 from mflux.models.fibo.model.fibo_vae.decoder.wan_decoder_3d import WanDecoder3d
-from mflux_debugger.semantic_checkpoint import debug_checkpoint
-from mflux_debugger.tensor_debug import debug_save
 
 
 class VAE(nn.Module):
@@ -177,41 +175,15 @@ class VAE(nn.Module):
             Decoded image tensor of shape (batch, 12, height, width)
             Note: FIBO outputs 12 channels, not 3 (likely for post-processing/decoding)
         """
-        # Debug checkpoint: VAE decode input
-        debug_checkpoint(
-            "mlx_vae_decode_input",
-            metadata={
-                "shape": list(latents.shape),
-                "dtype": str(latents.dtype),
-                "min": float(latents.min()),
-                "max": float(latents.max()),
-                "mean": float(latents.mean()),
-            },
-            skip=True,  # Verified correct - skip to speed up debugging
-        )
-        debug_save(latents, "mlx_vae_decode_input")
-
         # Ensure latents are 5D: (batch, channels, 1, height, width)
         if latents.ndim == 4:
             latents = latents.reshape(latents.shape[0], latents.shape[1], 1, latents.shape[2], latents.shape[3])
 
         # Apply post-quantization convolution
         latents = self.post_quant_conv(latents)
-        debug_checkpoint(
-            "mlx_vae_after_post_quant_conv",
-            metadata={"shape": list(latents.shape), "dtype": str(latents.dtype)},
-            skip=True,  # Verified correct - matches PyTorch (max diff 0.003895)
-        )
-        debug_save(latents, "mlx_vae_after_post_quant_conv")
 
         # Decode
         decoded = self.decoder(latents)
-        debug_checkpoint(
-            "mlx_vae_after_decoder",
-            metadata={"shape": list(decoded.shape), "dtype": str(decoded.dtype)},
-            skip=True,  # After decoder - skip to focus on resample issue
-        )
-        debug_save(decoded, "mlx_vae_after_decoder")
 
         # Apply unpatchify if patch_size is set (FIBO uses patch_size=2)
         # unpatchify upscales spatial dimensions and reduces channels
@@ -220,18 +192,9 @@ class VAE(nn.Module):
         patch_size = 2  # FIBO VAE uses patch_size=2
         decoded = self._unpatchify(decoded, patch_size=patch_size)
 
-        debug_checkpoint(
-            "mlx_vae_after_unpatchify",
-            metadata={"shape": list(decoded.shape), "dtype": str(decoded.dtype), "patch_size": patch_size},
-        )
-        debug_save(decoded, "mlx_vae_after_unpatchify")
-
         # Remove temporal dimension: (batch, channels, 1, height, width) -> (batch, channels, height, width)
         if decoded.shape[2] == 1:
             decoded = decoded[:, :, 0, :, :]
-
-        debug_checkpoint("mlx_vae_decode_output", metadata={"shape": list(decoded.shape), "dtype": str(decoded.dtype)})
-        debug_save(decoded, "mlx_vae_decode_output")
 
         return decoded
 

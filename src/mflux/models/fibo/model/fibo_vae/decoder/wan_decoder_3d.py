@@ -10,7 +10,7 @@ from mlx import nn
 from mflux.models.fibo.model.fibo_vae.decoder.wan_causal_conv_3d import WanCausalConv3d
 from mflux.models.fibo.model.fibo_vae.decoder.wan_mid_block import WanMidBlock
 from mflux.models.fibo.model.fibo_vae.decoder.wan_rms_norm import WanRMSNorm
-from mflux.models.fibo.model.fibo_vae.decoder.wan_up_block import WanUpBlock
+from mflux.models.fibo.model.fibo_vae.decoder.wan_up_block import WanResidualUpBlock
 from mflux_debugger.semantic_checkpoint import debug_checkpoint
 from mflux_debugger.tensor_debug import debug_save
 
@@ -67,30 +67,25 @@ class WanDecoder3d(nn.Module):
         # Middle block
         self.mid_block = WanMidBlock(dims[0], dropout, non_linearity, num_layers=1)
 
-        # Upsample blocks
-        self.up_blocks = []
+        # Upsample blocks (use residual up blocks to match diffusers WanResidualUpBlock)
+        self.up_blocks: list[WanResidualUpBlock] = []
         for i, (in_dim, out_dim) in enumerate(zip(dims[:-1], dims[1:])):
-            # Determine upsampling mode
-            # ISSUE: With dim_mult = [1, 2, 4, 4], we have 4 up_blocks but only upsample on 3 of them
-            # This gives us 256x256 output, but FIBO needs 512x512 (16x upsampling from 32x32)
-            # The diffusers implementation uses `i != len(dim_mult) - 1` which skips the last block
-            # TODO: Investigate - maybe FIBO VAE has different config, or last block should upsample?
-            # For now, keeping the diffusers logic to match their implementation
-            up_flag = i != len(dim_mult) - 1  # Don't upsample on last block (matches diffusers)
-            upsample_mode = None
-            if up_flag:
-                # If temporal_upsample is None or empty, use 2D upsampling only
-                if self.temporal_upsample and i < len(self.temporal_upsample) and self.temporal_upsample[i]:
-                    upsample_mode = "upsample3d"
-                else:
-                    upsample_mode = "upsample2d"
+            # Determine whether this block upsamples (all but last block)
+            up_flag = i != len(dim_mult) - 1
+            # Determine temporal upsample flag (FIBO uses no temporal upsample, but keep generic)
+            temporal_flag = (
+                bool(self.temporal_upsample and i < len(self.temporal_upsample) and self.temporal_upsample[i])
+                if up_flag
+                else False
+            )
 
-            up_block = WanUpBlock(
+            up_block = WanResidualUpBlock(
                 in_dim=in_dim,
                 out_dim=out_dim,
                 num_res_blocks=num_res_blocks,
                 dropout=dropout,
-                upsample_mode=upsample_mode,
+                temporal_upsample=temporal_flag,
+                up_flag=up_flag,
                 non_linearity=non_linearity,
             )
             self.up_blocks.append(up_block)
@@ -110,44 +105,18 @@ class WanDecoder3d(nn.Module):
             Decoded image of shape (batch, out_channels, time, height, width)
             For FIBO: (batch, 12, 1, height, width)
         """
-        # Debug checkpoint: decoder input
-        debug_checkpoint(
-            "mlx_decoder_input",
-            metadata={
-                "shape": list(x.shape),
-                "dtype": str(x.dtype),
-                "min": float(x.min()),
-                "max": float(x.max()),
-                "mean": float(x.mean()),
-            },
-            skip=True,  # Verified correct - skip to speed up debugging
-        )
-        debug_save(x, "mlx_decoder_input")
-
         x = self.conv_in(x)
-        debug_checkpoint(
-            "mlx_decoder_after_conv_in",
-            metadata={
-                "shape": list(x.shape),
-                "dtype": str(x.dtype),
-                "min": float(x.min()),
-                "max": float(x.max()),
-                "mean": float(x.mean()),
-            },
-            skip=True,  # Verified correct - matches PyTorch (max diff 0.008437)
-        )
-        debug_save(x, "mlx_decoder_after_conv_in")
 
         x = self.mid_block(x)
         debug_checkpoint(
             "mlx_decoder_after_mid_block",
             metadata={"shape": list(x.shape), "dtype": str(x.dtype)},
-            skip=True,  # Verified correct - matches PyTorch (max diff 0.035532)
         )
         debug_save(x, "mlx_decoder_after_mid_block")
 
         for i, up_block in enumerate(self.up_blocks):
-            x = up_block(x, block_idx=i)
+            # first_chunk is always True in our current single-chunk decode
+            x = up_block(x, block_idx=i, first_chunk=True)
             # Skip checkpoints for blocks after 0 - we only care about up_block_0 resample
             if i == 0:
                 debug_checkpoint(
@@ -164,27 +133,6 @@ class WanDecoder3d(nn.Module):
             #     )
 
         x = self.norm_out(x)
-        debug_checkpoint(
-            "mlx_decoder_after_norm_out",
-            metadata={"shape": list(x.shape), "dtype": str(x.dtype)},
-            skip=True,  # After up_blocks - skip to focus on resample issue
-        )
-        debug_save(x, "mlx_decoder_after_norm_out")
-
         x = nn.silu(x)
-        debug_checkpoint(
-            "mlx_decoder_after_silu",
-            metadata={"shape": list(x.shape), "dtype": str(x.dtype)},
-            skip=True,  # After up_blocks - skip to focus on resample issue
-        )
-        debug_save(x, "mlx_decoder_after_silu")
-
         x = self.conv_out(x)
-        debug_checkpoint(
-            "mlx_decoder_output",
-            metadata={"shape": list(x.shape), "dtype": str(x.dtype)},
-            skip=True,  # After up_blocks - skip to focus on resample issue
-        )
-        debug_save(x, "mlx_decoder_output")
-
         return x

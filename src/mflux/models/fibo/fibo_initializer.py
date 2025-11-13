@@ -7,7 +7,6 @@ import mlx.core as mx
 
 from mflux.models.fibo.model.fibo_vae.vae import VAE
 from mflux.models.fibo.weights.fibo_weight_handler import FIBOWeightHandler
-from mflux_debugger.semantic_checkpoint import debug_checkpoint
 
 
 class FIBOInitializer:
@@ -32,28 +31,6 @@ class FIBOInitializer:
             local_path=local_path,
         )
 
-        # CHECKPOINT: Verify weights loaded
-        if weights.vae:
-            # Count total weights
-            def count_weights(w):
-                if isinstance(w, dict):
-                    return sum(count_weights(v) for v in w.values())
-                elif isinstance(w, mx.array):
-                    return w.size
-                return 0
-
-            total_weights = count_weights(weights.vae)
-            debug_checkpoint(
-                "mlx_fibo_weights_loaded",
-                metadata={
-                    "has_vae_weights": True,
-                    "total_weight_elements": total_weights,
-                    "weight_keys": list(weights.vae.keys()) if isinstance(weights.vae, dict) else "nested",
-                },
-            )
-        else:
-            debug_checkpoint("mlx_fibo_weights_loaded", metadata={"has_vae_weights": False})
-
         # 2. Initialize VAE model
         fibo_model.vae = VAE()
 
@@ -73,20 +50,7 @@ class FIBOInitializer:
             # To make that behavior deterministic without relying on a running debugger,
             # we reload those specific conv weights directly from the diffusers pipeline
             # and overwrite the MLX decoder upsampler convs.
-            try:
-                _force_resample_conv_from_diffusers(fibo_model, local_path)
-            except Exception as e:  # noqa: BLE001
-                # Best-effort fix – if anything goes wrong (e.g. diffusers/torch not available),
-                # keep the mapped weights and just log via checkpoint.
-                debug_checkpoint(
-                    "mlx_fibo_resample_conv_override_failed",
-                    metadata={"error": str(e)},
-                    skip=True,
-                )
-
-            debug_checkpoint("mlx_fibo_weights_applied", metadata={"weights_applied": True})
-        else:
-            debug_checkpoint("mlx_fibo_weights_applied", metadata={"weights_applied": False})
+            _force_resample_conv_from_diffusers(fibo_model, local_path)
 
         # 4. Store quantization level (not implemented yet)
         fibo_model.bits = quantize
@@ -126,19 +90,35 @@ def _force_resample_conv_from_diffusers(fibo_model, local_path: str | None) -> N
         if upsampler_mlx is None:
             continue
 
-        # PyTorch side: Sequential[WanUpsample, Conv2d]
+        # PyTorch side: historically this was a Sequential[WanUpsample, Conv2d].
+        # Newer diffusers code may expose a WanResample module directly.
         up_block_pt = pipe.vae.decoder.up_blocks[block_idx]
-        resample_seq = getattr(up_block_pt, "upsampler", None)
-        if resample_seq is None or len(resample_seq) < 2:
+        resample_mod = getattr(up_block_pt, "upsampler", None)
+        if resample_mod is None:
             continue
 
-        conv2d_pt = resample_seq[1]
+        # Try to locate the Conv2d inside the PyTorch upsampler in a robust way.
+        # 1) Sequential case: index 1.
+        conv2d_pt = None
+        if hasattr(resample_mod, "__len__") and len(resample_mod) >= 2:
+            conv2d_pt = resample_mod[1]
+        else:
+            # 2) Monolithic module (e.g. WanResample) – look for a Conv2d attribute.
+            import torch.nn as nn  # type: ignore
+
+            for attr_name in dir(resample_mod):
+                maybe = getattr(resample_mod, attr_name, None)
+                if isinstance(maybe, nn.Conv2d):
+                    conv2d_pt = maybe
+                    break
+
+        if conv2d_pt is None:
+            # If we can't confidently find the Conv2d, skip overriding for this block.
+            continue
 
         # Extract weights/bias from PyTorch, convert to MLX layout.
         w_pt = conv2d_pt.weight.to(torch.float32).detach().cpu().numpy()
         b_pt = conv2d_pt.bias.to(torch.float32).detach().cpu().numpy()
-
-        import mlx.core as mx
 
         w_mlx = transpose_conv2d_weight(mx.array(w_pt))
         b_mlx = mx.array(b_pt)
