@@ -4,6 +4,12 @@ Tensor Debug - Convenient API for saving/loading tensors between PyTorch and MLX
 This module provides utilities for saving tensors from PyTorch and loading them in MLX,
 enabling easy comparison and debugging of model implementations.
 
+KEY FEATURE: debug_save() and debug_load() work from ANYWHERE!
+- Works from mflux repository code
+- Works from external repositories (diffusers, transformers, etc.)
+- Works from scripts in any location
+- Automatically handles path resolution - no configuration needed!
+
 Typical workflows:
 
 1. Simple case (single tensor):
@@ -15,6 +21,7 @@ Typical workflows:
    MLX:     hidden_states = debug_load(f"hidden_states_{block}_{timestep}")
 
 The debug functions are designed to be called inline with minimal code changes.
+You don't need to worry about paths - just import and use!
 """
 
 import logging
