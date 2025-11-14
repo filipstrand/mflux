@@ -1,3 +1,4 @@
+from mflux.models.fibo.model.fibo_transformer import FiboTransformer
 from mflux.models.fibo.model.fibo_vae.vae import VAE
 from mflux.models.fibo.weights.fibo_weight_handler import FIBOWeightHandler
 
@@ -22,10 +23,17 @@ class FIBOInitializer:
         if weights.vae:
             fibo_model.vae.update(weights.vae, strict=False)
 
-        # 4. Store quantization level (not implemented yet)
+        # 4. Initialize transformer model
+        fibo_model.transformer = FiboTransformer()
+
+        # 5. Apply weights to transformer
+        if getattr(weights, "transformer", None):
+            fibo_model.transformer.update(weights.transformer, strict=False)
+
+        # 6. Store quantization level (not implemented yet)
         fibo_model.bits = quantize
         fibo_model.local_path = local_path
 
-        # 5. Optionally quantize the model (not implemented yet)
+        # 7. Optionally quantize the model (not implemented yet)
         if quantize:
             pass
