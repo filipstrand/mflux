@@ -1,8 +1,3 @@
-"""Declarative weight mapping for FIBO VAE decoder.
-
-Maps HuggingFace weight names to MLX module structure.
-"""
-
 from typing import List
 
 import mlx.core as mx
@@ -11,38 +6,26 @@ from mflux.models.common.weights.mapping.weight_mapping import WeightMapping, We
 
 
 def reshape_gamma_to_1d(tensor: mx.array) -> mx.array:
-    """Reshape gamma (norm) weights from multi-dimensional to 1D."""
     if len(tensor.shape) > 1:
         return mx.reshape(tensor, (tensor.shape[0],))
     return tensor
 
 
 def transpose_conv3d_weight(tensor: mx.array) -> mx.array:
-    """Transpose 3D convolution weights from PyTorch to MLX format."""
     if len(tensor.shape) == 5:
-        # PyTorch: (out_channels, in_channels, depth, height, width)
-        # MLX Conv3d (with channels-last input): (out_channels, depth, height, width, in_channels)
-        # Transpose: (0, 2, 3, 4, 1) keeps out_channels first, moves depth/height/width, then in_channels
         return tensor.transpose(0, 2, 3, 4, 1)
     return tensor
 
 
 def transpose_conv2d_weight(tensor: mx.array) -> mx.array:
-    """Transpose 2D convolution weights from PyTorch to MLX format."""
     if len(tensor.shape) == 4:
-        # PyTorch: (out_channels, in_channels, height, width)
-        # MLX Conv2d (channels-last input): (out_channels, height, width, in_channels)
-        # Transpose: (0, 2, 3, 1) maps (out_c, in_c, h, w) -> (out_c, h, w, in_c)
         return tensor.transpose(0, 2, 3, 1)
     return tensor
 
 
 class FIBOWeightMapping(WeightMapping):
-    """Declarative weight mapping for FIBO VAE decoder."""
-
     @staticmethod
     def get_vae_mapping() -> List[WeightTarget]:
-        """Get weight mapping for FIBO VAE decoder."""
         return [
             # ========== Decoder conv_in ==========
             WeightTarget(

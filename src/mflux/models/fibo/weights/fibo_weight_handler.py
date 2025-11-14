@@ -1,10 +1,6 @@
-"""Weight handler for FIBO model.
-
-Loads and maps weights from HuggingFace PyTorch model to MLX structure.
-"""
-
 import mlx.core as mx
 import torch
+from diffusers import BriaFiboPipeline
 
 from mflux.models.common.weights.mapping.weight_mapper import WeightMapper
 from mflux.models.fibo.weights.fibo_weight_mapping import FIBOWeightMapping
@@ -12,8 +8,6 @@ from mflux.models.flux.weights.weight_handler import MetaData
 
 
 class FIBOWeightHandler:
-    """Weight handler for FIBO VAE decoder."""
-
     def __init__(
         self,
         meta_data: MetaData,
@@ -27,15 +21,6 @@ class FIBOWeightHandler:
         repo_id: str | None = None,
         local_path: str | None = None,
     ) -> "FIBOWeightHandler":
-        """Load FIBO weights from HuggingFace or local path.
-
-        Args:
-            repo_id: HuggingFace model ID (e.g., "briaai/FIBO")
-            local_path: Local path to model weights
-
-        Returns:
-            FIBOWeightHandler with loaded weights
-        """
         # Load weights from PyTorch model
         vae_weights = FIBOWeightHandler._load_vae_weights(repo_id, local_path)
 
@@ -54,23 +39,10 @@ class FIBOWeightHandler:
         repo_id: str | None = None,
         local_path: str | None = None,
     ) -> dict:
-        """Load VAE decoder weights from PyTorch model.
-
-        Args:
-            repo_id: HuggingFace model ID
-            local_path: Local path to model
-
-        Returns:
-            Mapped MLX weights dictionary
-        """
         # Load PyTorch model
-        from diffusers import BriaFiboPipeline
-
         if local_path:
-            # Load from local path
             pipe = BriaFiboPipeline.from_pretrained(local_path, torch_dtype=torch.bfloat16)
         else:
-            # Load from HuggingFace
             pipe = BriaFiboPipeline.from_pretrained(repo_id or "briaai/FIBO", torch_dtype=torch.bfloat16)
 
         # Extract decoder weights
