@@ -4,10 +4,12 @@ from mlx import nn
 
 from mflux.models.fibo.model.fibo_vae.decoder.wan_causal_conv_3d import WanCausalConv3d
 from mflux.models.fibo.model.fibo_vae.decoder.wan_decoder_3d import WanDecoder3d
+from mflux.models.fibo.model.fibo_vae.decoder.wan_encoder_3d import WanEncoder3d
 
 
 class VAE(nn.Module):
     Z_DIM = 48
+    ENCODER_BASE_DIM = 160
     DECODER_BASE_DIM = 256
     DIM_MULT = [1, 2, 4, 4]
     NUM_RES_BLOCKS = 2
@@ -19,6 +21,19 @@ class VAE(nn.Module):
 
     def __init__(self):
         super().__init__()
+
+        self.encoder = WanEncoder3d(
+            in_channels=3,
+            dim=self.ENCODER_BASE_DIM,
+            z_dim=self.Z_DIM * 2,
+            dim_mult=self.DIM_MULT,
+            num_res_blocks=self.NUM_RES_BLOCKS,
+            attn_scales=[],
+            temporal_downsample=[False, True, True],
+            dropout=self.DROPOUT,
+        )
+        self.quant_conv = WanCausalConv3d(self.Z_DIM * 2, self.Z_DIM * 2, 1, padding=0, name="quant_conv")
+
         self.decoder = WanDecoder3d(
             dim=self.DECODER_BASE_DIM,
             z_dim=self.Z_DIM,
@@ -30,6 +45,23 @@ class VAE(nn.Module):
         )
         self.post_quant_conv = WanCausalConv3d(self.Z_DIM, self.Z_DIM, 1, padding=0, name="post_quant_conv")
 
+    def encode(self, images: mx.array) -> mx.array:
+        if images.ndim == 4:
+            x = images.reshape(images.shape[0], images.shape[1], 1, images.shape[2], images.shape[3])
+        elif images.ndim == 5:
+            x = images
+        else:
+            raise ValueError(f"Expected 4D or 5D input for VAE.encode, got shape {images.shape}")
+
+        patch_size = 2
+        x = self._patchify(x, patch_size=patch_size)
+
+        h = self.encoder(x)
+        h = self.quant_conv(h)
+
+        mean = h[:, : self.Z_DIM, :, :, :]
+        return mean
+
     def decode(self, latents: mx.array) -> mx.array:
         if latents.ndim == 4:
             latents = latents.reshape(latents.shape[0], latents.shape[1], 1, latents.shape[2], latents.shape[3])
@@ -40,6 +72,37 @@ class VAE(nn.Module):
         if decoded.shape[2] == 1:
             decoded = decoded[:, :, 0, :, :]
         return decoded
+
+    @staticmethod
+    def _patchify(x: mx.array, patch_size: int) -> mx.array:
+        if patch_size == 1:
+            return x
+        if x.ndim != 5:
+            raise ValueError(f"Invalid input shape: {x.shape}")
+
+        batch_size, channels, frames, height, width = x.shape
+
+        if height % patch_size != 0 or width % patch_size != 0:
+            raise ValueError(f"Height ({height}) and width ({width}) must be divisible by patch_size ({patch_size})")
+
+        x = mx.reshape(
+            x,
+            (
+                batch_size,
+                channels,
+                frames,
+                height // patch_size,
+                patch_size,
+                width // patch_size,
+                patch_size,
+            ),
+        )
+        x = mx.transpose(x, (0, 1, 6, 4, 2, 3, 5))
+        x = mx.reshape(
+            x,
+            (batch_size, channels * patch_size * patch_size, frames, height // patch_size, width // patch_size),
+        )
+        return x
 
     @staticmethod
     def _unpatchify(x: mx.array, patch_size: int) -> mx.array:

@@ -45,17 +45,29 @@ class FIBOWeightHandler:
         else:
             pipe = BriaFiboPipeline.from_pretrained(repo_id or "briaai/FIBO", torch_dtype=torch.bfloat16)
 
-        # Extract decoder weights
+        # Extract encoder / decoder / quant / post-quant weights
+        encoder_state_dict = pipe.vae.encoder.state_dict()
         decoder_state_dict = pipe.vae.decoder.state_dict()
+        quant_state_dict = pipe.vae.quant_conv.state_dict()
         post_quant_state_dict = pipe.vae.post_quant_conv.state_dict()
 
         # Convert PyTorch tensors to MLX arrays
         raw_weights = {}
+        for key, tensor in encoder_state_dict.items():
+            if tensor.dtype == torch.bfloat16:
+                tensor = tensor.to(torch.float32)
+            raw_weights[f"encoder.{key}"] = mx.array(tensor.detach().cpu().numpy())
+
         for key, tensor in decoder_state_dict.items():
             # Convert bfloat16 to float32, then to MLX
             if tensor.dtype == torch.bfloat16:
                 tensor = tensor.to(torch.float32)
             raw_weights[f"decoder.{key}"] = mx.array(tensor.detach().cpu().numpy())
+
+        for key, tensor in quant_state_dict.items():
+            if tensor.dtype == torch.bfloat16:
+                tensor = tensor.to(torch.float32)
+            raw_weights[f"quant_conv.{key}"] = mx.array(tensor.detach().cpu().numpy())
 
         for key, tensor in post_quant_state_dict.items():
             if tensor.dtype == torch.bfloat16:

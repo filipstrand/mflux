@@ -27,6 +27,145 @@ class FIBOWeightMapping(WeightMapping):
     @staticmethod
     def get_vae_mapping() -> List[WeightTarget]:
         return [
+            # ========== Encoder conv_in ==========
+            WeightTarget(
+                mlx_path="encoder.conv_in.conv3d.weight",
+                hf_patterns=["encoder.conv_in.weight"],
+                transform=transpose_conv3d_weight,
+            ),
+            WeightTarget(
+                mlx_path="encoder.conv_in.conv3d.bias",
+                hf_patterns=["encoder.conv_in.bias"],
+            ),
+            # ========== Encoder down_blocks ==========
+            WeightTarget(
+                mlx_path="encoder.down_blocks.{block}.resnets.{res}.norm1.weight",
+                hf_patterns=["encoder.down_blocks.{block}.resnets.{res}.norm1.gamma"],
+                transform=reshape_gamma_to_1d,
+            ),
+            WeightTarget(
+                mlx_path="encoder.down_blocks.{block}.resnets.{res}.conv1.conv3d.weight",
+                hf_patterns=["encoder.down_blocks.{block}.resnets.{res}.conv1.weight"],
+                transform=transpose_conv3d_weight,
+            ),
+            WeightTarget(
+                mlx_path="encoder.down_blocks.{block}.resnets.{res}.conv1.conv3d.bias",
+                hf_patterns=["encoder.down_blocks.{block}.resnets.{res}.conv1.bias"],
+            ),
+            WeightTarget(
+                mlx_path="encoder.down_blocks.{block}.resnets.{res}.norm2.weight",
+                hf_patterns=["encoder.down_blocks.{block}.resnets.{res}.norm2.gamma"],
+                transform=reshape_gamma_to_1d,
+            ),
+            WeightTarget(
+                mlx_path="encoder.down_blocks.{block}.resnets.{res}.conv2.conv3d.weight",
+                hf_patterns=["encoder.down_blocks.{block}.resnets.{res}.conv2.weight"],
+                transform=transpose_conv3d_weight,
+            ),
+            WeightTarget(
+                mlx_path="encoder.down_blocks.{block}.resnets.{res}.conv2.conv3d.bias",
+                hf_patterns=["encoder.down_blocks.{block}.resnets.{res}.conv2.bias"],
+            ),
+            WeightTarget(
+                mlx_path="encoder.down_blocks.{block}.resnets.{res}.conv_shortcut.conv3d.weight",
+                hf_patterns=["encoder.down_blocks.{block}.resnets.{res}.conv_shortcut.weight"],
+                transform=transpose_conv3d_weight,
+                required=False,
+            ),
+            WeightTarget(
+                mlx_path="encoder.down_blocks.{block}.resnets.{res}.conv_shortcut.conv3d.bias",
+                hf_patterns=["encoder.down_blocks.{block}.resnets.{res}.conv_shortcut.bias"],
+                required=False,
+            ),
+            WeightTarget(
+                mlx_path="encoder.down_blocks.{block}.downsampler.resample_conv.weight",
+                hf_patterns=["encoder.down_blocks.{block}.downsampler.resample.1.weight"],
+                transform=transpose_conv2d_weight,
+                required=False,
+            ),
+            WeightTarget(
+                mlx_path="encoder.down_blocks.{block}.downsampler.resample_conv.bias",
+                hf_patterns=["encoder.down_blocks.{block}.downsampler.resample.1.bias"],
+                required=False,
+            ),
+            WeightTarget(
+                mlx_path="encoder.down_blocks.{block}.downsampler.time_conv.conv3d.weight",
+                hf_patterns=["encoder.down_blocks.{block}.downsampler.time_conv.weight"],
+                transform=transpose_conv3d_weight,
+                required=False,
+            ),
+            WeightTarget(
+                mlx_path="encoder.down_blocks.{block}.downsampler.time_conv.conv3d.bias",
+                hf_patterns=["encoder.down_blocks.{block}.downsampler.time_conv.bias"],
+                required=False,
+            ),
+            # ========== Encoder mid_block ==========
+            WeightTarget(
+                mlx_path="encoder.mid_block.resnets.{i}.norm1.weight",
+                hf_patterns=["encoder.mid_block.resnets.{i}.norm1.gamma"],
+                transform=reshape_gamma_to_1d,
+            ),
+            WeightTarget(
+                mlx_path="encoder.mid_block.resnets.{i}.conv1.conv3d.weight",
+                hf_patterns=["encoder.mid_block.resnets.{i}.conv1.weight"],
+                transform=transpose_conv3d_weight,
+            ),
+            WeightTarget(
+                mlx_path="encoder.mid_block.resnets.{i}.conv1.conv3d.bias",
+                hf_patterns=["encoder.mid_block.resnets.{i}.conv1.bias"],
+            ),
+            WeightTarget(
+                mlx_path="encoder.mid_block.resnets.{i}.norm2.weight",
+                hf_patterns=["encoder.mid_block.resnets.{i}.norm2.gamma"],
+                transform=reshape_gamma_to_1d,
+            ),
+            WeightTarget(
+                mlx_path="encoder.mid_block.resnets.{i}.conv2.conv3d.weight",
+                hf_patterns=["encoder.mid_block.resnets.{i}.conv2.weight"],
+                transform=transpose_conv3d_weight,
+            ),
+            WeightTarget(
+                mlx_path="encoder.mid_block.resnets.{i}.conv2.conv3d.bias",
+                hf_patterns=["encoder.mid_block.resnets.{i}.conv2.bias"],
+            ),
+            WeightTarget(
+                mlx_path="encoder.mid_block.attentions.{i}.norm.weight",
+                hf_patterns=["encoder.mid_block.attentions.{i}.norm.gamma"],
+                transform=reshape_gamma_to_1d,
+            ),
+            WeightTarget(
+                mlx_path="encoder.mid_block.attentions.{i}.to_qkv.weight",
+                hf_patterns=["encoder.mid_block.attentions.{i}.to_qkv.weight"],
+                transform=transpose_conv2d_weight,
+            ),
+            WeightTarget(
+                mlx_path="encoder.mid_block.attentions.{i}.to_qkv.bias",
+                hf_patterns=["encoder.mid_block.attentions.{i}.to_qkv.bias"],
+            ),
+            WeightTarget(
+                mlx_path="encoder.mid_block.attentions.{i}.proj.weight",
+                hf_patterns=["encoder.mid_block.attentions.{i}.proj.weight"],
+                transform=transpose_conv2d_weight,
+            ),
+            WeightTarget(
+                mlx_path="encoder.mid_block.attentions.{i}.proj.bias",
+                hf_patterns=["encoder.mid_block.attentions.{i}.proj.bias"],
+            ),
+            # ========== Encoder output ==========
+            WeightTarget(
+                mlx_path="encoder.norm_out.weight",
+                hf_patterns=["encoder.norm_out.gamma"],
+                transform=reshape_gamma_to_1d,
+            ),
+            WeightTarget(
+                mlx_path="encoder.conv_out.conv3d.weight",
+                hf_patterns=["encoder.conv_out.weight"],
+                transform=transpose_conv3d_weight,
+            ),
+            WeightTarget(
+                mlx_path="encoder.conv_out.conv3d.bias",
+                hf_patterns=["encoder.conv_out.bias"],
+            ),
             # ========== Decoder conv_in ==========
             WeightTarget(
                 mlx_path="decoder.conv_in.conv3d.weight",
@@ -171,6 +310,16 @@ class FIBOWeightMapping(WeightMapping):
             WeightTarget(
                 mlx_path="decoder.conv_out.conv3d.bias",
                 hf_patterns=["decoder.conv_out.bias"],
+            ),
+            # ========== Quant conv ==========
+            WeightTarget(
+                mlx_path="quant_conv.conv3d.weight",
+                hf_patterns=["quant_conv.weight"],
+                transform=transpose_conv3d_weight,
+            ),
+            WeightTarget(
+                mlx_path="quant_conv.conv3d.bias",
+                hf_patterns=["quant_conv.bias"],
             ),
             # ========== Post quant conv ==========
             WeightTarget(

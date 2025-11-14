@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
@@ -8,7 +9,8 @@ from mflux.post_processing.image_util import ImageUtil
 from mflux_debugger._scripts.debug_txt2img_config import TXT2IMG_DEBUG_CONFIG
 from mflux_debugger.image_archive import archive_images
 from mflux_debugger.image_tensor_paths import get_images_latest_framework_dir
-from mflux_debugger.tensor_debug import debug_load
+
+OWL_PATH = Path("/Users/filipstrand/Desktop/owl.png")
 
 
 def main():
@@ -45,8 +47,13 @@ def main():
         model_config=fibo_model_config,
     )
 
-    latents = debug_load("vae_roundtrip_latents")
+    if not OWL_PATH.exists():
+        raise FileNotFoundError(f"Input image not found at {OWL_PATH}")
 
+    owl_image = ImageUtil.load_image(str(OWL_PATH))
+    owl_array = ImageUtil.to_array(owl_image, is_mask=False)
+
+    latents = model.vae.encode(owl_array)
     decoded = model.vae.decode(latents)
 
     image = ImageUtil.to_image(
