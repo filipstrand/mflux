@@ -3,8 +3,8 @@ from mlx import nn
 
 from mflux.models.fibo.model.fibo_vae.decoder.wan_causal_conv_3d import WanCausalConv3d
 from mflux.models.fibo.model.fibo_vae.decoder.wan_mid_block import WanMidBlock
+from mflux.models.fibo.model.fibo_vae.decoder.wan_residual_up_block import WanResidualUpBlock
 from mflux.models.fibo.model.fibo_vae.decoder.wan_rms_norm import WanRMSNorm
-from mflux.models.fibo.model.fibo_vae.decoder.wan_up_block import WanResidualUpBlock
 
 
 class WanDecoder3d(nn.Module):
