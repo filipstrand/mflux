@@ -20,11 +20,14 @@ class WanResample(nn.Module):
             self.resample_conv = nn.Conv2d(dim, upsample_out_dim, kernel_size=3, stride=1, padding=1)
             self.time_conv = None
         elif mode == "downsample2d":
-            self.resample_conv = nn.Conv2d(dim, dim, kernel_size=3, stride=2, padding=1)
+            # Matches ZeroPad2d((0,1,0,1)) + Conv2d(dim, dim, 3, stride=2, padding=0)
+            self.resample_conv = nn.Conv2d(dim, dim, kernel_size=3, stride=2, padding=0)
             self.time_conv = None
         elif mode == "downsample3d":
-            self.resample_conv = nn.Conv2d(dim, dim, kernel_size=3, stride=2, padding=1)
-            self.time_conv = WanCausalConv3d(dim, dim, kernel_size=(3, 1, 1), stride=2, padding=0)
+            # For feature_cache=None, PyTorch also only applies the spatial downsample here.
+            # We mirror the same conv; the temporal time_conv path is only used with caching.
+            self.resample_conv = nn.Conv2d(dim, dim, kernel_size=3, stride=2, padding=0)
+            self.time_conv = None
         else:
             raise ValueError(f"Unsupported resample mode: {mode}")
 
@@ -54,6 +57,8 @@ class WanResample(nn.Module):
         x = mx.transpose(x, (0, 2, 1, 3, 4))
         x = mx.reshape(x, (b * t, c, h, w))
         x = mx.transpose(x, (0, 2, 3, 1))
+        # ZeroPad2d((0,1,0,1)): pad right=1, bottom=1
+        x = mx.pad(x, [(0, 0), (0, 1), (0, 1), (0, 0)])
         x = self.resample_conv(x)
         x = mx.transpose(x, (0, 3, 1, 2))
         new_c = x.shape[1]

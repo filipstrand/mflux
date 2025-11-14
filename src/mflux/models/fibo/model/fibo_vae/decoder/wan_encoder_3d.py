@@ -1,11 +1,19 @@
 import mlx.core as mx
 from mlx import nn
 
+from mflux.models.fibo.model.fibo_vae.decoder.avg_down_3d import AvgDown3D
 from mflux.models.fibo.model.fibo_vae.decoder.wan_attention_block import WanAttentionBlock
 from mflux.models.fibo.model.fibo_vae.decoder.wan_causal_conv_3d import WanCausalConv3d
 from mflux.models.fibo.model.fibo_vae.decoder.wan_mid_block import WanMidBlock
 from mflux.models.fibo.model.fibo_vae.decoder.wan_residual_block import WanResidualBlock
 from mflux.models.fibo.model.fibo_vae.decoder.wan_rms_norm import WanRMSNorm
+
+try:
+    from mflux_debugger.tensor_debug import debug_save
+except ImportError:  # pragma: no cover
+
+    def debug_save(*args, **kwargs):
+        return None
 
 
 class WanDownBlock(nn.Module):
@@ -35,6 +43,15 @@ class WanDownBlock(nn.Module):
 
         self.resnets = resnets
 
+        # Shortcut path with downsample (mirrors AvgDown3D in diffusers)
+        self.avg_shortcut = AvgDown3D(
+            in_dim,
+            out_dim,
+            factor_t=2 if temporal_downsample else 1,
+            factor_s=2 if not is_last else 1,
+        )
+
+        # Main path downsampler
         if not is_last:
             mode = "downsample3d" if temporal_downsample else "downsample2d"
             # WanResample is imported lazily to avoid circular import at module load time
@@ -45,11 +62,12 @@ class WanDownBlock(nn.Module):
             self.downsampler = None
 
     def __call__(self, x: mx.array) -> mx.array:
+        x_copy = x
         for layer in self.resnets:
             x = layer(x)
         if self.downsampler is not None:
             x = self.downsampler(x)
-        return x
+        return x + self.avg_shortcut(x_copy)
 
 
 class WanEncoder3d(nn.Module):
@@ -113,8 +131,10 @@ class WanEncoder3d(nn.Module):
 
     def __call__(self, x: mx.array) -> mx.array:
         x = self.conv_in(x)
+        debug_save(x, "mlx_encoder_after_conv_in")
         for block in self.down_blocks:
             x = block(x)
+        debug_save(x, "mlx_encoder_after_down_blocks")
         x = self.mid_block(x)
         x = self.norm_out(x)
         x = nn.silu(x)

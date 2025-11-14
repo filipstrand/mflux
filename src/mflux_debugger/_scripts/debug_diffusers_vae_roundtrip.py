@@ -50,12 +50,14 @@ def main():
 
     x = load_image_as_tensor().to(device)
     x = x.to(next(vae.parameters()).dtype)
+    debug_save(x.cpu(), "vae_encoder_input")
 
     with torch.no_grad():
         enc_out = vae.encode(x, return_dict=True)
         posterior = enc_out.latent_dist
         z = posterior.mean
 
+        debug_save(z.cpu(), "vae_encoder_output_mean")
         debug_save(z, "vae_roundtrip_latents")
 
         dec_out = vae.decode(z, return_dict=True)

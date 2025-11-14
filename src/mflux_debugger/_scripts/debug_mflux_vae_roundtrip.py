@@ -9,6 +9,7 @@ from mflux.post_processing.image_util import ImageUtil
 from mflux_debugger._scripts.debug_txt2img_config import TXT2IMG_DEBUG_CONFIG
 from mflux_debugger.image_archive import archive_images
 from mflux_debugger.image_tensor_paths import get_images_latest_framework_dir
+from mflux_debugger.tensor_debug import debug_load, debug_save
 
 OWL_PATH = Path("/Users/filipstrand/Desktop/owl.png")
 
@@ -47,13 +48,11 @@ def main():
         model_config=fibo_model_config,
     )
 
-    if not OWL_PATH.exists():
-        raise FileNotFoundError(f"Input image not found at {OWL_PATH}")
+    # Use the exact encoder input tensor saved from the PyTorch roundtrip
+    encoder_input = debug_load("vae_encoder_input")
 
-    owl_image = ImageUtil.load_image(str(OWL_PATH))
-    owl_array = ImageUtil.to_array(owl_image, is_mask=False)
-
-    latents = model.vae.encode(owl_array)
+    latents = model.vae.encode(encoder_input)
+    debug_save(latents, "mlx_encoder_output_mean")
     decoded = model.vae.decode(latents)
 
     image = ImageUtil.to_image(

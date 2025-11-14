@@ -1,8 +1,20 @@
-### FIBO VAE Decoder Debugging Strategy
+### FIBO VAE Debugging Strategy (Decoder + Encoder)
 
 This document captures the strategy that worked well to make the MLX FIBO VAE decoder numerically match the PyTorch `AutoencoderKLWan` decoder (as used in `BriaFiboPipeline`).
 
 The goal: **treat PyTorch as ground truth, then systematically narrow down where MLX diverges, using the debugger instead of ad‑hoc scripts.**
+
+Core tools in this workflow are:
+
+- **`debug_save` (PyTorch or MLX side)** – snapshot any tensor at a semantic point in the model (e.g. `vae_encoder_input`, `vae_encoder_after_down_blocks`, `vae_decoder_after_mid_block`).
+- **`debug_load` (MLX side)** – reload those tensors inside small comparison snippets or during MLX forward passes so both frameworks see **identical inputs**.
+
+Everything else in this document more or less builds on the pattern:
+
+1. Use `debug_save` in the reference implementation to capture “before” / “after” tensors.
+2. Use `debug_load` in MLX to:
+   - Drive the MLX model with the exact same tensor (`debug_load("vae_encoder_input")`, `debug_load("vae_input_latents")`, etc.).
+   - Compare the saved PyTorch tensor (`debug_load("vae_encoder_pre_quant")`) against the MLX tensor (`debug_load("mlx_encoder_pre_quant")`) in one place.
 
 ---
 
@@ -152,4 +164,100 @@ When porting or debugging another model:
 
 Following this pattern is what allowed us to turn a huge misalignment at `decoder_after_up_block_0` into a small (~1e‑1) numerical difference by identifying and porting the missing residual up‑block + shortcut structure.
 
+---
 
+### 9. Extra playbook for encoder porting (what we learned later)
+
+When we later ported the **encoder** and did a full VAE roundtrip (owl.png), a few extra tactics proved useful:
+
+- **Mirror structure before debugging weights**
+  - Don’t just “recreate the math”; first make sure the **class and block structure matches** the reference:
+    - In the encoder we mirrored `WanResidualDownBlock` exactly: `resnet0 → resnet1 → downsample` plus the `AvgDown3D` shortcut.
+    - Only after the structure was identical did we start worrying about small numerical diffs.
+  - Rule of thumb: if an abstraction in MLX (e.g. `WanDownBlock`) doesn’t map 1‑to‑1 to a reference block, prefer **deleting the abstraction and mirroring the reference**.
+
+- **Isolate encoder vs decoder with one‑sided tests**
+  - Use the decoder as a “known good” component:
+    - Decode PyTorch latents in MLX (decode‑only) to verify the decoder + weight mapping is correct.
+    - Then debug encoder‑only by comparing:
+      - Encoder input,
+      - Encoder output mean (`posterior.mean`),
+      - And intermediate encoder checkpoints.
+  - This halves the problem and keeps you from chasing decoder issues while the encoder is still wrong.
+
+- **Axis‑by‑axis invariants**
+  - Before touching internal encoder code:
+    - Confirm the **exact encoder input** matches (`vae_encoder_input`).
+    - Confirm **patchify** matches bit‑for‑bit between PyTorch and MLX.
+    - Confirm shapes at key checkpoints:
+      - `after_conv_in`, `after_down_blocks`, `pre_quant`, `encoder_mean`.
+  - Only when those invariants hold is it worth tweaking deeper logic.
+
+- **Progressive narrowing with one new checkpoint at a time**
+  - Add at most **one new semantic checkpoint per iteration**:
+    - First `encoder_output_mean`,
+    - Then `encoder_pre_quant`,
+    - Then `encoder_after_down_blocks`,
+    - Then `encoder_after_conv_in`, etc.
+  - This makes it obvious which new breakpoint flipped from “bad” to “good” after a change, so you know exactly where your fix took effect.
+
+- **Ground everything in a real image**
+  - Use a fixed, realistic test input (e.g. `owl.png`) as a visual oracle:
+    - All tensor comparisons ultimately answer: “does this produce the same owl?”
+    - Once encoder+decoder latents are aligned numerically, always re‑run the full roundtrip to verify there are no hidden nonlinear issues.
+
+These extra patterns, combined with the original decoder strategy, are general enough to hand to another agent and should work for most cross‑framework VAE or U‑Net ports.
+
+
+---
+
+### 10. Quickstart for new debuggers (TL;DR)
+
+If you’re a “fresh” agent dropped into this repo and need to debug *anything* (not just the FIBO VAE), follow this:
+
+1. **Do one tutorial and skim the docs**
+   - Run: `mflux-debug-mlx tutorial` (or `mflux-debug-pytorch tutorial`) to learn `start`, `continue`, `break`, `eval`, etc.
+   - Skim:
+     - `DEBUGGING_STRATEGY_README.md` (this file – strategy & patterns),
+     - `DEBUGGER_TOOL_IMPROVEMENTS_README.md` (quirks and UX notes).
+
+2. **Know the key scripts**
+   - Diffusers / PyTorch reference:
+     - `src/mflux_debugger/_scripts/debug_diffusers_txt2img.py`
+     - Any specialized scripts like `debug_diffusers_vae_roundtrip.py`.
+   - MLX implementation:
+     - `src/mflux_debugger/_scripts/debug_mflux_txt2img.py`
+     - Any specialized scripts like `debug_mflux_vae_roundtrip.py`.
+
+3. **Use `debug_save` / `debug_load` as your backbone**
+   - In the reference implementation (usually PyTorch):
+     - Use `debug_save(tensor, "semantic_name")` at a few key points (before/after the suspected region).
+   - In MLX:
+     - Use `debug_load("semantic_name")` to:
+       - Drive the MLX model with the exact same inputs,
+       - Reload both reference and MLX tensors for numerical comparison.
+
+4. **Standard comparison snippet**
+   - Copy‑paste this into a `uv run python - << 'EOF'` block and just change the tensor names:
+
+```python
+import mlx.core as mx
+from mflux_debugger.tensor_debug import debug_load
+
+pt = debug_load("pytorch_tensor_name")
+ml = debug_load("mlx_tensor_name")
+
+print("PT/ML shape:", pt.shape, ml.shape)
+print("max abs diff:", float(mx.max(mx.abs(pt - ml))))
+print("PT first10:", [float(v) for v in pt.reshape(-1)[:10]])
+print("ML first10:", [float(v) for v in ml.reshape(-1)[:10]])
+```
+
+5. **Follow the main strategy**
+   - Once you have the tools above:
+     - Pick a small region (e.g. a block, a layer).
+     - Add one “before” + one “after” checkpoint per region, symmetrically.
+     - Compare, then move the “before” breakpoint forward only when it matches.
+     - Mirror structure, then refine weights/shapes.
+
+If you do steps 1–4 and then follow the numbered sections above, you’ll be able to debug most model ports in this repo without re‑inventing the workflow.
