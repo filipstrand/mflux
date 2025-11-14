@@ -6,13 +6,6 @@ from mflux.models.fibo.model.fibo_vae.decoder.wan_causal_conv_3d import WanCausa
 from mflux.models.fibo.model.fibo_vae.decoder.wan_decoder_3d import WanDecoder3d
 from mflux.models.fibo.model.fibo_vae.decoder.wan_encoder_3d import WanEncoder3d
 
-try:
-    from mflux_debugger.tensor_debug import debug_save
-except ImportError:  # pragma: no cover
-
-    def debug_save(*args, **kwargs):
-        return None
-
 
 class VAE(nn.Module):
     Z_DIM = 48
@@ -64,7 +57,6 @@ class VAE(nn.Module):
         x = self._patchify(x, patch_size=patch_size)
 
         h = self.encoder(x)
-        debug_save(h, "mlx_encoder_pre_quant")
         h = self.quant_conv(h)
 
         mean = h[:, : self.Z_DIM, :, :, :]

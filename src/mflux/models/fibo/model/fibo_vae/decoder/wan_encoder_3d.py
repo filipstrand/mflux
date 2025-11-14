@@ -8,13 +8,6 @@ from mflux.models.fibo.model.fibo_vae.decoder.wan_mid_block import WanMidBlock
 from mflux.models.fibo.model.fibo_vae.decoder.wan_residual_block import WanResidualBlock
 from mflux.models.fibo.model.fibo_vae.decoder.wan_rms_norm import WanRMSNorm
 
-try:
-    from mflux_debugger.tensor_debug import debug_save
-except ImportError:  # pragma: no cover
-
-    def debug_save(*args, **kwargs):
-        return None
-
 
 class WanDownBlock(nn.Module):
     def __init__(
@@ -131,10 +124,8 @@ class WanEncoder3d(nn.Module):
 
     def __call__(self, x: mx.array) -> mx.array:
         x = self.conv_in(x)
-        debug_save(x, "mlx_encoder_after_conv_in")
         for block in self.down_blocks:
             x = block(x)
-        debug_save(x, "mlx_encoder_after_down_blocks")
         x = self.mid_block(x)
         x = self.norm_out(x)
         x = nn.silu(x)
