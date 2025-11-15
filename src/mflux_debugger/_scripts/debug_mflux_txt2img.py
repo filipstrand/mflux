@@ -41,7 +41,8 @@ def main():
             guidance=config.guidance,
             image_path=None,
             image_strength=None,
-            scheduler=None,  # Not used yet (no denoising loop)
+            # Use the FlowMatch Euler scheduler, matching the PyTorch BriaFiboPipeline.
+            scheduler="flow_match_euler_discrete",
         ),
         model_config=fibo_model_config,
     )

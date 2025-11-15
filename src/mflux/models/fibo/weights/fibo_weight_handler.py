@@ -55,23 +55,23 @@ class FIBOWeightHandler:
         raw_weights = {}
         for key, tensor in encoder_state_dict.items():
             if tensor.dtype == torch.bfloat16:
-                tensor = tensor.to(torch.float32)
+                tensor = tensor.to(torch.float16)
             raw_weights[f"encoder.{key}"] = mx.array(tensor.detach().cpu().numpy())
 
         for key, tensor in decoder_state_dict.items():
-            # Convert bfloat16 to float32, then to MLX
+            # Convert bfloat16 to float16, then to MLX
             if tensor.dtype == torch.bfloat16:
-                tensor = tensor.to(torch.float32)
+                tensor = tensor.to(torch.float16)
             raw_weights[f"decoder.{key}"] = mx.array(tensor.detach().cpu().numpy())
 
         for key, tensor in quant_state_dict.items():
             if tensor.dtype == torch.bfloat16:
-                tensor = tensor.to(torch.float32)
+                tensor = tensor.to(torch.float16)
             raw_weights[f"quant_conv.{key}"] = mx.array(tensor.detach().cpu().numpy())
 
         for key, tensor in post_quant_state_dict.items():
             if tensor.dtype == torch.bfloat16:
-                tensor = tensor.to(torch.float32)
+                tensor = tensor.to(torch.float16)
             raw_weights[f"post_quant_conv.{key}"] = mx.array(tensor.detach().cpu().numpy())
 
         # Apply mapping
@@ -99,7 +99,7 @@ class FIBOWeightHandler:
         raw_weights: dict[str, mx.array] = {}
         for key, tensor in transformer_state_dict.items():
             if tensor.dtype == torch.bfloat16:
-                tensor = tensor.to(torch.float32)
+                tensor = tensor.to(torch.float16)
             raw_weights[key] = mx.array(tensor.detach().cpu().numpy())
 
         # Apply declarative transformer mapping.

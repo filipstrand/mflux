@@ -2,10 +2,6 @@ import mlx.core as mx
 from mlx import nn
 from mlx.core.fast import scaled_dot_product_attention
 
-from mflux_debugger.semantic_checkpoint import (
-    debug_checkpoint_mlx_A,
-)
-
 
 def apply_rotary_emb_mlx(
     x: mx.array,
@@ -149,22 +145,6 @@ class FiboJointAttention(nn.Module):
         # Apply RoPE to Q,K (layout [B, S_total, H, D])
         query = apply_rotary_emb_mlx(query, cos, sin)
         key = apply_rotary_emb_mlx(key, cos, sin)
-
-        # ----- MLX checkpoint A: Q/K/V after RMSNorm (+ RoPE) -----
-        debug_checkpoint_mlx_A(
-            ab_run_id="runa3_20251115",
-            skip=True,
-            metadata={
-                "stage": "A",
-                "description": "Q/K/V after RMSNorm + RoPE (before attention core)",
-            },
-            query=query,
-            key=key,
-            value=value,
-            enc_query=enc_query,
-            enc_key=enc_key,
-            enc_value=enc_value,
-        )
 
         # ===== Manual attention core (BriaFibo-style) =====
         # Convert to [B, H, S, D]
