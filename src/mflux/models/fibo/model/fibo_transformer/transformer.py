@@ -194,7 +194,7 @@ class FiboTransformer(nn.Module):
         from mflux_debugger.semantic_checkpoint import debug_checkpoint_mlx_B
 
         debug_checkpoint_mlx_B(
-            ab_run_id="7g28hs9k1zq",
+            ab_run_id="runa3_20251115",
             skip=False,
             metadata={
                 "stage": "B",
