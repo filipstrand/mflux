@@ -152,7 +152,19 @@ class FiboJointAttention(nn.Module):
         key = apply_rotary_emb_mlx(key, cos, sin)
 
         # ----- MLX checkpoint A: Q/K/V after RMSNorm (+ RoPE) -----
-        debug_checkpoint_mlx_A(skip=False)
+        debug_checkpoint_mlx_A(
+            skip=False,
+            metadata={
+                "stage": "A",
+                "description": "Q/K/V after RMSNorm + RoPE (before attention core)",
+            },
+            query=query,
+            key=key,
+            value=value,
+            enc_query=enc_query,
+            enc_key=enc_key,
+            enc_value=enc_value,
+        )
 
         # ===== Manual attention core (BriaFibo-style) =====
         # Convert to [B, H, S, D]
@@ -183,7 +195,14 @@ class FiboJointAttention(nn.Module):
         attn_output = mx.reshape(attn_output, (batch_size, seq_total, self.inner_dim))
 
         # ----- MLX checkpoint B: raw SDPA output (before to_out / splits) -----
-        debug_checkpoint_mlx_B(skip=False)
+        debug_checkpoint_mlx_B(
+            skip=False,
+            metadata={
+                "stage": "B",
+                "description": "raw SDPA output (before to_out / splits)",
+            },
+            attn_output=attn_output,
+        )
 
         # Split back into context and image streams
         context_attn_output = attn_output[:, :seq_ctx, :]
