@@ -7,7 +7,6 @@ from mflux.models.fibo.model.fibo_transformer.single_transformer_block import Fi
 from mflux.models.fibo.model.fibo_transformer.text_projection import BriaFiboTextProjection
 from mflux.models.fibo.model.fibo_transformer.time_embed import BriaFiboTimestepProjEmbeddings
 from mflux.models.flux.model.flux_transformer.ada_layer_norm_continuous import AdaLayerNormContinuous
-from mflux_debugger.tensor_debug import debug_save
 
 
 class FiboTransformer(nn.Module):
@@ -114,11 +113,6 @@ class FiboTransformer(nn.Module):
         # 1. Project latents and context
         # (B, seq, C_in) -> (B, seq, inner_dim)
         hidden_states = self.x_embedder(hidden_states)
-        try:
-            debug_save(hidden_states, "mlx_after_x_embedder")
-        except Exception:  # noqa: BLE001
-            pass
-
         encoder_hidden_states = self.context_embedder(encoder_hidden_states)
 
         # 2. Time embeddings (guidance branch reserved for future use)
@@ -158,16 +152,6 @@ class FiboTransformer(nn.Module):
             )
             block_id += 1
 
-            # Debug: inputs to first joint transformer block
-            if index_block == 0:
-                try:
-                    debug_save(hidden_states, "mlx_before_joint_block0_hidden")
-                    debug_save(encoder_hidden_states, "mlx_before_joint_block0_context")
-                    debug_save(ctx_half, "mlx_joint_block0_ctx_first_half")
-                    debug_save(txt_half, "mlx_joint_block0_ctx_second_half")
-                except Exception:  # noqa: BLE001
-                    pass
-
             encoder_hidden_states, hidden_states = block(
                 hidden_states=hidden_states,
                 encoder_hidden_states=encoder_hidden_states,
@@ -175,19 +159,6 @@ class FiboTransformer(nn.Module):
                 image_rotary_emb=image_rotary_emb,
                 attention_mask=attention_mask,
             )
-
-            # Debug: outputs of first joint transformer block
-            if index_block == 0:
-                try:
-                    debug_save(hidden_states, "mlx_after_joint_block0_hidden")
-                    debug_save(encoder_hidden_states, "mlx_after_joint_block0_context")
-                except Exception:  # noqa: BLE001
-                    pass
-
-        try:
-            debug_save(hidden_states, "mlx_after_joint_blocks")
-        except Exception:  # noqa: BLE001
-            pass
 
         # 6. Single transformer blocks
         for block in self.single_transformer_blocks:
@@ -214,11 +185,6 @@ class FiboTransformer(nn.Module):
             encoder_len = encoder_hidden_states.shape[1]
             encoder_hidden_states = combined[:, :encoder_len, ...]
             hidden_states = combined[:, encoder_len:, ...]
-
-        try:
-            debug_save(hidden_states, "mlx_after_single_blocks")
-        except Exception:  # noqa: BLE001
-            pass
 
         # 7. Output projection back to latent channels
         hidden_states = self.norm_out(hidden_states, temb)

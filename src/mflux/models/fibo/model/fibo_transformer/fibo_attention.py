@@ -2,8 +2,6 @@ import mlx.core as mx
 from mlx import nn
 from mlx.core.fast import scaled_dot_product_attention
 
-from mflux_debugger.tensor_debug import debug_save
-
 
 def apply_rotary_emb_mlx(
     x: mx.array,
@@ -85,10 +83,6 @@ class FiboJointAttention(nn.Module):
         self.to_out = [nn.Linear(self.inner_dim, dim)]
         self.to_add_out = nn.Linear(self.inner_dim, dim)
 
-        # Debug flags so we only dump heavy tensors once (first joint block).
-        self._debug_weights_logged = False
-        self._debug_attn_math_logged = False
-
     def __call__(
         self,
         hidden_states: mx.array,
@@ -111,6 +105,7 @@ class FiboJointAttention(nn.Module):
         _, seq_ctx, _ = encoder_hidden_states.shape
 
         cos, sin = image_rotary_emb
+
         # QKV for image stream: [B, S_img, inner_dim]
         query = self.to_q(hidden_states)
         key = self.to_k(hidden_states)
@@ -133,52 +128,12 @@ class FiboJointAttention(nn.Module):
         enc_key = _reshape_bshd(enc_key, seq_ctx)
         enc_value = _reshape_bshd(enc_value, seq_ctx)
 
-        # One-time save of attention inputs / weights / linear Q,K,V (first joint block only)
-        if not self._debug_weights_logged:
-            try:
-                # Inputs to the attention module (after AdaLayerNormZero / x_embedder)
-                debug_save(hidden_states, "mlx_joint_block0_hidden_in_attn")
-                debug_save(encoder_hidden_states, "mlx_joint_block0_context_in_attn")
-
-                # Dense Q/K/V projections in [B, S, inner_dim] layout (before head reshape/RMSNorm)
-                debug_save(query, "mlx_joint_block0_query_linear")
-                debug_save(key, "mlx_joint_block0_key_linear")
-                debug_save(value, "mlx_joint_block0_value_linear")
-                debug_save(enc_query, "mlx_joint_block0_encoder_query_linear")
-                debug_save(enc_key, "mlx_joint_block0_encoder_key_linear")
-                debug_save(enc_value, "mlx_joint_block0_encoder_value_linear")
-
-                debug_save(self.to_q.weight, "mlx_joint_block0_to_q_weight")
-                debug_save(self.to_k.weight, "mlx_joint_block0_to_k_weight")
-                debug_save(self.add_q_proj.weight, "mlx_joint_block0_add_q_weight")
-                debug_save(self.add_k_proj.weight, "mlx_joint_block0_add_k_weight")
-
-                # Q/K/V reshaped to [B, S, H, D] but before RMSNorm.
-                debug_save(query, "mlx_joint_block0_query_pre_norm")
-                debug_save(key, "mlx_joint_block0_key_pre_norm")
-                debug_save(enc_query, "mlx_joint_block0_encoder_query_pre_norm")
-                debug_save(enc_key, "mlx_joint_block0_encoder_key_pre_norm")
-                debug_save(value, "mlx_joint_block0_value_pre_norm")
-                debug_save(enc_value, "mlx_joint_block0_encoder_value_pre_norm")
-            except Exception:  # noqa: BLE001
-                pass
-            self._debug_weights_logged = True
-
         # RMSNorm over last dim: produce normalized Q/K matching BriaFiboAttention semantics.
         query = self.norm_q(query.astype(mx.float32)).astype(query.dtype)
         key = self.norm_k(key.astype(mx.float32)).astype(key.dtype)
 
         enc_query = self.norm_added_q(enc_query.astype(mx.float32)).astype(enc_query.dtype)
         enc_key = self.norm_added_k(enc_key.astype(mx.float32)).astype(enc_key.dtype)
-
-        # Debug: normalized Q/K before concatenation/RoPE (truthfully post-RMSNorm).
-        try:
-            debug_save(query, "mlx_joint_block0_query_norm")
-            debug_save(key, "mlx_joint_block0_key_norm")
-            debug_save(enc_query, "mlx_joint_block0_encoder_query_norm")
-            debug_save(enc_key, "mlx_joint_block0_encoder_key_norm")
-        except Exception:  # noqa: BLE001
-            pass
 
         # Concatenate encoder + image along sequence dim (matches BriaFiboAttnProcessor)
         query = mx.concatenate([enc_query, query], axis=1)
@@ -190,13 +145,6 @@ class FiboJointAttention(nn.Module):
         # Apply RoPE to Q,K (layout [B, S_total, H, D])
         query = apply_rotary_emb_mlx(query, cos, sin)
         key = apply_rotary_emb_mlx(key, cos, sin)
-
-        # Debug: Q/K after RoPE
-        try:
-            debug_save(query, "mlx_joint_block0_query_rope")
-            debug_save(key, "mlx_joint_block0_key_rope")
-        except Exception:  # noqa: BLE001
-            pass
 
         # ===== Manual attention core (BriaFibo-style) =====
         # Convert to [B, H, S, D]
@@ -214,40 +162,13 @@ class FiboJointAttention(nn.Module):
             * scale
         )
 
-        # Optional: save detailed attention math for first joint block only.
-        if not self._debug_attn_math_logged:
-            try:
-                debug_save(query_bhsd, "mlx_joint_block0_query_bhsd")
-                debug_save(key_bhsd, "mlx_joint_block0_key_bhsd")
-                debug_save(value_bhsd, "mlx_joint_block0_value_bhsd")
-                debug_save(scale, "mlx_joint_block0_attn_scale")
-                debug_save(attn_scores, "mlx_joint_block0_attn_scores_unmasked")
-                if attention_mask is not None:
-                    debug_save(attention_mask, "mlx_joint_block0_attention_mask")
-            except Exception:  # noqa: BLE001
-                pass
-
         if attention_mask is not None:
             # attention_mask saved from PyTorch as [B, 1, S_total, S_total] with 0 or large negative values.
             mask = attention_mask.astype(attn_scores.dtype)
             attn_scores = attn_scores + mask
 
-        if not self._debug_attn_math_logged:
-            try:
-                debug_save(attn_scores, "mlx_joint_block0_attn_scores_masked")
-            except Exception:  # noqa: BLE001
-                pass
-
         attn_weights = mx.softmax(attn_scores, axis=-1)
         attn_output_bhsd = mx.matmul(attn_weights, value_bhsd)
-
-        if not self._debug_attn_math_logged:
-            try:
-                debug_save(attn_weights, "mlx_joint_block0_attn_weights")
-                debug_save(attn_output_bhsd, "mlx_joint_block0_attn_output_bhsd")
-            except Exception:  # noqa: BLE001
-                pass
-            self._debug_attn_math_logged = True
 
         # Back to [B, S_total, H, D] then flatten to [B, S_total, inner_dim]
         attn_output = mx.transpose(attn_output_bhsd, (0, 2, 1, 3))
