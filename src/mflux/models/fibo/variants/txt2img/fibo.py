@@ -156,27 +156,25 @@ class FIBO(nn.Module):
         # ---------------------------------------------------------------------
 
         # LOAD HERE!
-        # For cross-framework validation, override MLX latents with the PyTorch
-        # final latents saved via debug_save() in the BriaFiboPipeline.
-        # This ensures that all reshape/share logic matches before VAE decode.
-        # If the tensor file is missing, debug_load will raise; for now we let
-        # that propagate so misconfigurations are obvious.
-        latents = debug_load("fibo_final_latents")
+        # For cross-framework validation, load the exact VAE input latents from PyTorch.
+        # This ensures the VAE decode path matches exactly.
+        latents_for_vae = debug_load("vae_input_latents")
 
-        # latents: (B, seq, C) where seq = latent_height * latent_width
-        latents_unpacked = mx.reshape(
-            latents,
-            (batch_size, latent_height, latent_width, channels),
-        )
-        latents_unpacked = mx.transpose(latents_unpacked, (0, 3, 1, 2))  # (B, C, H', W')
+        # PyTorch VAE expects (B, C, 1, H, W) - add temporal dimension if needed
+        if latents_for_vae.ndim == 4:
+            latents_for_vae = mx.reshape(
+                latents_for_vae,
+                (
+                    latents_for_vae.shape[0],
+                    latents_for_vae.shape[1],
+                    1,
+                    latents_for_vae.shape[2],
+                    latents_for_vae.shape[3],
+                ),
+            )
 
-        # Rescale using VAE latent statistics (mean/std) before decode
-        latents_mean = mx.array(self.vae.LATENTS_MEAN).reshape(1, self.vae.Z_DIM, 1, 1)
-        latents_std = mx.array(self.vae.LATENTS_STD).reshape(1, self.vae.Z_DIM, 1, 1)
-
-        latents_scaled = latents_unpacked / latents_std + latents_mean
-
-        decoded = self.vae.decode(latents_scaled)
+        # Decode using VAE with the exact tensor from diffusers
+        decoded = self.vae.decode(latents_for_vae)
 
         # ---------------------------------------------------------------------
         # 5. Convert decoded latents to a GeneratedImage (same helper as Flux)
