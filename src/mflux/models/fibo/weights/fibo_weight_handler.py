@@ -103,13 +103,13 @@ class FIBOWeightHandler:
             raw_weights[key] = mx.array(tensor.detach().cpu().numpy())
 
         # Apply declarative transformer mapping.
-        # FIBO has 19 joint + 38 single blocks = 57 caption_projection layers.
+        # FIBO has 8 joint + 38 single blocks = 46 transformer layers.
         mapping = FIBOWeightMapping.get_transformer_mapping()
         mapped_weights = WeightMapper.apply_mapping(
             raw_weights,
             mapping,
-            num_blocks=38,  # cover both transformer_blocks (0-18) and single_transformer_blocks (0-37)
-            num_layers=57,  # caption_projection layers
+            num_blocks=38,  # cover transformer_blocks (0-7) and single_transformer_blocks (0-37)
+            num_layers=46,  # caption_projection layers
         )
 
         return mapped_weights

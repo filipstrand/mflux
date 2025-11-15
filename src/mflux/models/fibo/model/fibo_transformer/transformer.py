@@ -1,12 +1,13 @@
 import mlx.core as mx
 from mlx import nn
 
+from mflux.models.fibo.model.fibo_transformer.fibo_embed_nd import FiboEmbedND
 from mflux.models.fibo.model.fibo_transformer.joint_transformer_block import FiboJointTransformerBlock
 from mflux.models.fibo.model.fibo_transformer.single_transformer_block import FiboSingleTransformerBlock
 from mflux.models.fibo.model.fibo_transformer.text_projection import BriaFiboTextProjection
 from mflux.models.fibo.model.fibo_transformer.time_embed import BriaFiboTimestepProjEmbeddings
 from mflux.models.flux.model.flux_transformer.ada_layer_norm_continuous import AdaLayerNormContinuous
-from mflux.models.flux.model.flux_transformer.embed_nd import EmbedND
+from mflux_debugger.tensor_debug import debug_save
 
 
 class FiboTransformer(nn.Module):
@@ -24,7 +25,7 @@ class FiboTransformer(nn.Module):
     def __init__(
         self,
         in_channels: int = 48,
-        num_layers: int = 19,
+        num_layers: int = 8,
         num_single_layers: int = 38,
         attention_head_dim: int = 128,
         num_attention_heads: int = 24,
@@ -46,8 +47,8 @@ class FiboTransformer(nn.Module):
 
         self.inner_dim = num_attention_heads * attention_head_dim
 
-        # Positional + time embeddings
-        self.pos_embed = EmbedND()
+        # Positional + time embeddings (BriaFibo-style RoPE)
+        self.pos_embed = FiboEmbedND(theta=rope_theta)
         self.time_embed = BriaFiboTimestepProjEmbeddings(embedding_dim=self.inner_dim, time_theta=time_theta)
 
         # Context and latent projections
@@ -93,6 +94,7 @@ class FiboTransformer(nn.Module):
         img_ids: mx.array,
         txt_ids: mx.array,
         guidance: mx.array | None = None,
+        attention_mask: mx.array | None = None,
     ) -> mx.array:
         """
         Args:
@@ -106,13 +108,16 @@ class FiboTransformer(nn.Module):
         Returns:
             Sample tensor with same spatial shape and channel count as input hidden_states.
         """
-        batch_size, channels, height, width = hidden_states.shape
+        # PyTorch FIBO transformer expects hidden_states with shape (B, seq_len, in_channels)
+        batch_size, seq_len, channels = hidden_states.shape
 
         # 1. Project latents and context
-        # (B, C, H, W) -> (B, H*W, C) -> (B, H*W, inner_dim)
-        hidden_states = mx.reshape(hidden_states, (batch_size, channels, height * width))
-        hidden_states = mx.moveaxis(hidden_states, 1, 2)
+        # (B, seq, C_in) -> (B, seq, inner_dim)
         hidden_states = self.x_embedder(hidden_states)
+        try:
+            debug_save(hidden_states, "mlx_after_x_embedder")
+        except Exception:  # noqa: BLE001
+            pass
 
         encoder_hidden_states = self.context_embedder(encoder_hidden_states)
 
@@ -127,7 +132,7 @@ class FiboTransformer(nn.Module):
             img_ids = img_ids[0]
 
         ids = mx.concatenate((txt_ids, img_ids), axis=0)
-        ids = mx.expand_dims(ids, axis=0)  # (1, txt+img, 3) to match EmbedND expectation
+        ids = mx.expand_dims(ids, axis=0)  # (1, txt+img, 3)
         image_rotary_emb = self.pos_embed(ids)
 
         # 4. Project text encoder layers
@@ -139,23 +144,50 @@ class FiboTransformer(nn.Module):
 
         # 5. Joint transformer blocks
         block_id = 0
-        for block in self.transformer_blocks:
+        for index_block, block in enumerate(self.transformer_blocks):
             current_text_layer = text_encoder_layers[block_id]
+            # Split encoder_hidden_states into context and text halves for clarity
+            ctx_half = encoder_hidden_states[:, :, : self.inner_dim // 2]
+            txt_half = current_text_layer
             encoder_hidden_states = mx.concatenate(
                 [
-                    encoder_hidden_states[:, :, : self.inner_dim // 2],
-                    current_text_layer,
+                    ctx_half,
+                    txt_half,
                 ],
                 axis=-1,
             )
             block_id += 1
+
+            # Debug: inputs to first joint transformer block
+            if index_block == 0:
+                try:
+                    debug_save(hidden_states, "mlx_before_joint_block0_hidden")
+                    debug_save(encoder_hidden_states, "mlx_before_joint_block0_context")
+                    debug_save(ctx_half, "mlx_joint_block0_ctx_first_half")
+                    debug_save(txt_half, "mlx_joint_block0_ctx_second_half")
+                except Exception:  # noqa: BLE001
+                    pass
 
             encoder_hidden_states, hidden_states = block(
                 hidden_states=hidden_states,
                 encoder_hidden_states=encoder_hidden_states,
                 temb=temb,
                 image_rotary_emb=image_rotary_emb,
+                attention_mask=attention_mask,
             )
+
+            # Debug: outputs of first joint transformer block
+            if index_block == 0:
+                try:
+                    debug_save(hidden_states, "mlx_after_joint_block0_hidden")
+                    debug_save(encoder_hidden_states, "mlx_after_joint_block0_context")
+                except Exception:  # noqa: BLE001
+                    pass
+
+        try:
+            debug_save(hidden_states, "mlx_after_joint_blocks")
+        except Exception:  # noqa: BLE001
+            pass
 
         # 6. Single transformer blocks
         for block in self.single_transformer_blocks:
@@ -175,6 +207,7 @@ class FiboTransformer(nn.Module):
                 hidden_states=combined,
                 temb=temb,
                 image_rotary_emb=image_rotary_emb,
+                attention_mask=attention_mask,
             )
 
             # Split back into encoder and hidden streams
@@ -182,11 +215,12 @@ class FiboTransformer(nn.Module):
             encoder_hidden_states = combined[:, :encoder_len, ...]
             hidden_states = combined[:, encoder_len:, ...]
 
+        try:
+            debug_save(hidden_states, "mlx_after_single_blocks")
+        except Exception:  # noqa: BLE001
+            pass
+
         # 7. Output projection back to latent channels
         hidden_states = self.norm_out(hidden_states, temb)
-        output = self.proj_out(hidden_states)
-
-        # (B, H*W, C_out) -> (B, C_out, H, W)
-        output = mx.moveaxis(output, 1, 2)
-        output = mx.reshape(output, (batch_size, self.out_channels, height, width))
+        output = self.proj_out(hidden_states)  # (B, seq, out_channels)
         return output

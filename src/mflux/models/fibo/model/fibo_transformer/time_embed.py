@@ -82,7 +82,7 @@ class BriaFiboTimestepProjEmbeddings(nn.Module):
         )
         self.timestep_embedder = TimestepEmbedder()
 
-    def __call__(self, timestep: mx.array, dtype: mx.DType) -> mx.array:
+    def __call__(self, timestep: mx.array, dtype) -> mx.array:
         """
         Args:
             timestep: 1D array of shape (N,) with scalar timesteps.

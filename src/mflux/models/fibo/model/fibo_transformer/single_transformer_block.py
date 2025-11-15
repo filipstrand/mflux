@@ -1,8 +1,8 @@
 import mlx.core as mx
 from mlx import nn
 
+from mflux.models.fibo.model.fibo_transformer.fibo_attention import FiboSingleAttention
 from mflux.models.flux.model.flux_transformer.ada_layer_norm_zero_single import AdaLayerNormZeroSingle
-from mflux.models.flux.model.flux_transformer.single_block_attention import SingleBlockAttention
 
 
 class FiboSingleTransformerBlock(nn.Module):
@@ -19,13 +19,16 @@ class FiboSingleTransformerBlock(nn.Module):
         self.act_mlp = nn.gelu_approx
         self.proj_out = nn.Linear(dim + self.mlp_hidden_dim, dim)
 
-        self.attn = SingleBlockAttention()
+        self.attn = FiboSingleAttention(
+            dim=dim, num_attention_heads=num_attention_heads, attention_head_dim=attention_head_dim
+        )
 
     def __call__(
         self,
         hidden_states: mx.array,
         temb: mx.array,
-        image_rotary_emb: mx.array,
+        image_rotary_emb: tuple[mx.array, mx.array],
+        attention_mask: mx.array | None = None,
     ) -> mx.array:
         # 0. Residual connection
         residual = hidden_states
@@ -40,6 +43,7 @@ class FiboSingleTransformerBlock(nn.Module):
         attn_output = self.attn(
             hidden_states=norm_hidden_states,
             image_rotary_emb=image_rotary_emb,
+            attention_mask=attention_mask,
         )
 
         # 3. MLP + projection (mirrors BriaFiboSingleTransformerBlock)

@@ -23,8 +23,12 @@ class FIBOInitializer:
         if weights.vae:
             fibo_model.vae.update(weights.vae, strict=False)
 
-        # 4. Initialize transformer model
-        fibo_model.transformer = FiboTransformer()
+        # 4. Initialize transformer model (mirror diffusers BriaFiboTransformer2DModel config)
+        fibo_model.transformer = FiboTransformer(
+            in_channels=48,
+            num_layers=8,
+            num_single_layers=38,
+        )
 
         # 5. Apply weights to transformer
         if getattr(weights, "transformer", None):
