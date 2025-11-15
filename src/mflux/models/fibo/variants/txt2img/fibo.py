@@ -3,13 +3,16 @@ from mlx import nn
 
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.fibo.fibo_initializer import FIBOInitializer
+from mflux.models.fibo.model.fibo_transformer import FiboTransformer
 from mflux.models.fibo.model.fibo_vae.vae import VAE
 from mflux.post_processing.generated_image import GeneratedImage
 from mflux.post_processing.image_util import ImageUtil
+from mflux_debugger.tensor_debug import debug_load
 
 
 class FIBO(nn.Module):
     vae: VAE
+    transformer: FiboTransformer
 
     def __init__(
         self,
@@ -34,15 +37,30 @@ class FIBO(nn.Module):
         config: RuntimeConfig,
         negative_prompt: str | None = None,
     ) -> GeneratedImage:
-        # NOTE: The original implementation of this method was a
-        # debugger-only path that drove the transformer from tensors
-        # saved via `debug_save` / `debug_load`. That instrumentation
-        # has been removed to reset the FIBO pipeline to a clean state.
-        #
-        # A full text-to-image pipeline (text encoder + diffusion loop)
-        # will be reintroduced here later.
-        decoded = mx.zeros((1, 3, config.height, config.width), dtype=mx.float32)
+        # Run transformer with PyTorch-saved inputs (for debugging)
+        # 1 st timestep only is fine to check!
 
+        hidden_states = debug_load("pt_hidden_states")
+        timestep = debug_load("pt_timestep")
+        encoder_hidden_states = debug_load("pt_encoder_hidden_states")
+        stacked_prompt_layers = debug_load("pt_prompt_layers")
+        text_ids = debug_load("pt_text_ids")
+        latent_image_ids = debug_load("pt_latent_image_ids")
+        attention_mask = debug_load("pt_attention_mask")
+        prompt_layers = [stacked_prompt_layers[i] for i in range(stacked_prompt_layers.shape[0])]
+
+        transformer_output = self.transformer(
+            hidden_states=hidden_states,
+            encoder_hidden_states=encoder_hidden_states,
+            text_encoder_layers=prompt_layers,
+            timestep=timestep,
+            img_ids=latent_image_ids,
+            txt_ids=text_ids,
+            attention_mask=attention_mask,
+        )
+
+        # We don't really care about the generation just now!
+        decoded = mx.zeros((1, 3, config.height, config.width), dtype=mx.float32)
         return ImageUtil.to_image(
             decoded_latents=decoded,
             config=config,
