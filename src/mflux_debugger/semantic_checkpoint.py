@@ -416,3 +416,44 @@ def _extract_context_from_variables(frame, variables: dict) -> Dict:
             depth += 1
 
     return context
+
+
+# === Convenience wrappers for A/B-style attention comparison ==================
+
+
+def debug_checkpoint_mlx_A(*args, **kwargs):
+    """
+    Specialized checkpoint for MLX attention input (checkpoint A).
+
+    This is a thin wrapper around debug_checkpoint that always uses the
+    semantic name \"mlx_A\". It exists so that A/B-style debugging has a
+    consistent, discoverable entry point in user code.
+    """
+    return debug_checkpoint("mlx_A", *args, **kwargs)
+
+
+def debug_checkpoint_mlx_B(*args, **kwargs):
+    """
+    Specialized checkpoint for MLX attention output (checkpoint B).
+
+    Uses the semantic name \"mlx_B\".
+    """
+    return debug_checkpoint("mlx_B", *args, **kwargs)
+
+
+def debug_checkpoint_pytorch_A(*args, **kwargs):
+    """
+    Specialized checkpoint for PyTorch attention input (checkpoint A).
+
+    Uses the semantic name \"pytorch_A\".
+    """
+    return debug_checkpoint("pytorch_A", *args, **kwargs)
+
+
+def debug_checkpoint_pytorch_B(*args, **kwargs):
+    """
+    Specialized checkpoint for PyTorch attention output (checkpoint B).
+
+    Uses the semantic name \"pytorch_B\".
+    """
+    return debug_checkpoint("pytorch_B", *args, **kwargs)

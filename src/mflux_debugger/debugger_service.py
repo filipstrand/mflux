@@ -44,6 +44,8 @@ class DebuggerService:
         """
         self.debugger = Debugger()
         self.enable_rich_context = enable_rich_context
+        # Track framework hint ('pytorch', 'mlx', or 'unknown') for framework-specific safeguards
+        self.framework: str | None = None
         self._execution_thread: Optional[threading.Thread] = None
         self._thread_lock = threading.Lock()
         self._execution_start_time: Optional[float] = None
@@ -137,6 +139,238 @@ class DebuggerService:
         except Exception:  # noqa: BLE001
             return 0
 
+    def _validate_unique_checkpoint_names(self, script_path: str) -> None:
+        """
+        Validate that each semantic checkpoint name is bound to exactly one location.
+
+        Rule:
+            A given checkpoint name (the first string argument to debug_checkpoint)
+            must correspond to exactly one (file, line) location across the scanned
+            codebase. Multiple *hits* at that location are fine; multiple locations
+            for the same name are not.
+
+        If duplicates are found, this raises a ValueError so that the debugger
+        session fails to start. This prevents confusing situations where a single
+        semantic name (e.g. 'pytorch_A') actually refers to multiple places.
+        """
+
+        # Pattern that captures: debug_checkpoint("name" ... ) or debug_checkpoint('name' ... )
+        name_pattern = r'debug_checkpoint\s*\(\s*["\']([^"\']+)["\']'
+
+        # Map from checkpoint name -> (abs_path, line_number)
+        name_locations: Dict[str, tuple[str, int]] = {}
+        duplicate_messages: list[str] = []
+
+        def scan_file(file_path: str) -> None:
+            """Scan a single file for checkpoint name definitions with line numbers."""
+            try:
+                abs_path = str(Path(file_path).resolve())
+                with open(abs_path, encoding="utf-8") as f:
+                    for lineno, line in enumerate(f, start=1):
+                        if "debug_checkpoint" not in line:
+                            continue
+                        match = re.search(name_pattern, line)
+                        if not match:
+                            continue
+                        name = match.group(1)
+                        loc = (abs_path, lineno)
+                        if name in name_locations and name_locations[name] != loc:
+                            prev_file, prev_line = name_locations[name]
+                            duplicate_messages.append(
+                                f"Checkpoint '{name}' is defined in multiple locations:\n"
+                                f"  - {prev_file}:{prev_line}\n"
+                                f"  - {abs_path}:{lineno}"
+                            )
+                        else:
+                            name_locations[name] = loc
+            except Exception as e:  # noqa: BLE001
+                logger.debug(f"Skipping file during checkpoint validation: {file_path}: {e}")
+
+        try:
+            script_path_obj = Path(script_path)
+            # Scan main script
+            scan_file(str(script_path_obj))
+
+            # Scan sibling .py files in the same directory (often where checkpoints live)
+            if script_path_obj.parent.exists():
+                for py_file in script_path_obj.parent.glob("*.py"):
+                    if py_file == script_path_obj:
+                        continue
+                    scan_file(str(py_file))
+                    if duplicate_messages:
+                        break
+
+            # Scan key editable packages for shared checkpoint names
+            if not duplicate_messages:
+                for package_name in ["mflux", "transformers", "diffusers"]:
+                    try:
+                        import importlib.util
+
+                        spec = importlib.util.find_spec(package_name)
+                        if spec is None or spec.origin is None:
+                            continue
+
+                        package_path = Path(spec.origin).parent
+
+                        # Skip non-editable installs in site-packages
+                        if "site-packages" in str(package_path):
+                            continue
+
+                        for py_file in package_path.rglob("*.py"):
+                            # Skip caches and obvious tests for performance
+                            if "__pycache__" in str(py_file) or "test" in str(py_file):
+                                continue
+                            scan_file(str(py_file))
+                            # Stop early once we know there is a violation
+                            if duplicate_messages:
+                                break
+
+                        if duplicate_messages:
+                            break
+                    except Exception as e:  # noqa: BLE001
+                        logger.debug(f"Skipping package during checkpoint validation: {package_name}: {e}")
+
+            if duplicate_messages:
+                details = "\n\n".join(duplicate_messages)
+                raise ValueError(
+                    "Duplicate semantic checkpoint names detected.\n"
+                    "Each checkpoint name must correspond to exactly one code location.\n\n"
+                    f"{details}"
+                )
+        except Exception:
+            # Let the caller decide how to surface the error; any ValueError raised
+            # here will be caught in start_session and surfaced to the user.
+            raise
+
+    def _validate_ab_testing_constraints(self, script_path: str) -> None:
+        """
+        Validate constraints for A/B-style attention debugging.
+
+        Rules:
+          1. If any of the special A/B checkpoints are present:
+             - \"mlx_A\", \"mlx_B\", \"pytorch_A\", \"pytorch_B\" (either via
+               debug_checkpoint(\"name\", ...) or via the dedicated helper
+               functions like debug_checkpoint_mlx_A()),
+             then *all four* must be present somewhere in the scanned code.
+
+          2. When A/B checkpoints are present and complete, there must be
+             no other generic debug_checkpoint(...) calls with different names.
+             This prevents the agent from being confused by extra checkpoints
+             when running in strict A/B-debugging mode.
+        """
+
+        # Names that participate in the A/B invariant
+        ab_names = {"mlx_A", "mlx_B", "pytorch_A", "pytorch_B"}
+
+        # Track which A/B names we see and where
+        ab_locations: Dict[str, tuple[str, int]] = {}
+
+        # Track generic checkpoint uses (non A/B names)
+        generic_locations: list[tuple[str, str, int]] = []
+
+        # Regex to capture debug_checkpoint(\"name\", ...) first argument
+        name_pattern = r'debug_checkpoint\s*\(\s*["\']([^"\']+)["\']'
+
+        def scan_file(file_path: str) -> None:
+            try:
+                abs_path = str(Path(file_path).resolve())
+                with open(abs_path, encoding="utf-8") as f:
+                    for lineno, line in enumerate(f, start=1):
+                        # Helper wrappers for A/B checkpoints
+                        if "debug_checkpoint_mlx_A" in line:
+                            ab_locations.setdefault("mlx_A", (abs_path, lineno))
+                        if "debug_checkpoint_mlx_B" in line:
+                            ab_locations.setdefault("mlx_B", (abs_path, lineno))
+                        if "debug_checkpoint_pytorch_A" in line:
+                            ab_locations.setdefault("pytorch_A", (abs_path, lineno))
+                        if "debug_checkpoint_pytorch_B" in line:
+                            ab_locations.setdefault("pytorch_B", (abs_path, lineno))
+
+                        # Direct debug_checkpoint(\"name\", ...) usage
+                        if "debug_checkpoint" not in line:
+                            continue
+                        match = re.search(name_pattern, line)
+                        if not match:
+                            continue
+                        name = match.group(1)
+                        if name in ab_names:
+                            # Treat this as an A/B checkpoint definition
+                            ab_locations.setdefault(name, (abs_path, lineno))
+                        else:
+                            # This is a generic checkpoint that will interfere with A/B mode
+                            generic_locations.append((name, abs_path, lineno))
+            except Exception as e:  # noqa: BLE001
+                logger.debug(f"Skipping file during A/B checkpoint validation: {file_path}: {e}")
+
+        try:
+            script_path_obj = Path(script_path)
+
+            # Scan main script
+            scan_file(str(script_path_obj))
+
+            # Scan sibling .py files in the same directory
+            if script_path_obj.parent.exists():
+                for py_file in script_path_obj.parent.glob("*.py"):
+                    if py_file == script_path_obj:
+                        continue
+                    scan_file(str(py_file))
+
+            # Scan key editable packages (mflux, transformers, diffusers)
+            for package_name in ["mflux", "transformers", "diffusers"]:
+                try:
+                    import importlib.util
+
+                    spec = importlib.util.find_spec(package_name)
+                    if spec is None or spec.origin is None:
+                        continue
+
+                    package_path = Path(spec.origin).parent
+
+                    # Skip non-editable installs in site-packages
+                    if "site-packages" in str(package_path):
+                        continue
+
+                    for py_file in package_path.rglob("*.py"):
+                        # Skip caches and tests for performance
+                        if "__pycache__" in str(py_file) or "test" in str(py_file):
+                            continue
+                        scan_file(str(py_file))
+                except Exception as e:  # noqa: BLE001
+                    logger.debug(f"Skipping package during A/B checkpoint validation: {package_name}: {e}")
+
+            # If no A/B checkpoints are present anywhere, we are not in strict A/B mode
+            if not ab_locations:
+                return
+
+            # Ensure all four A/B checkpoints are present
+            missing = [name for name in sorted(ab_names) if name not in ab_locations]
+            if missing:
+                details = []
+                for name, (fpath, line) in sorted(ab_locations.items()):
+                    details.append(f"  - {name} defined at {fpath}:{line}")
+                missing_str = ", ".join(missing)
+                raise ValueError(
+                    "Incomplete A/B checkpoint configuration detected.\n"
+                    "When any of mlx_A/mlx_B/pytorch_A/pytorch_B are present, all four must exist.\n\n"
+                    f"Missing: {missing_str}\n\n"
+                    "Present definitions:\n" + "\n".join(details)
+                )
+
+            # If we are in A/B mode and any other checkpoint names exist, fail fast
+            if generic_locations:
+                examples = []
+                for name, fpath, line in generic_locations[:5]:
+                    examples.append(f"  - '{name}' at {fpath}:{line}")
+                raise ValueError(
+                    "Generic debug_checkpoint() calls detected alongside A/B checkpoints.\n"
+                    "For strict A/B attention debugging, only the dedicated A/B checkpoints\n"
+                    "(mlx_A, mlx_B, pytorch_A, pytorch_B) may be used.\n\n"
+                    "Please remove or rename the following generic checkpoints and restart:\n" + "\n".join(examples)
+                )
+        except Exception:
+            # Propagate to start_session where it will be surfaced to the user
+            raise
+
     def start_session(
         self,
         script_path: str,
@@ -186,6 +420,9 @@ class DebuggerService:
                 else:
                     # Default to not archiving if we can't determine
                     framework = "unknown"
+
+            # Persist framework hint for later (e.g. MLX-specific safeguards)
+            self.framework = framework
 
             # Clear existing debug tensors - default is False (keep tensors for cross-framework comparison)
             # Users can explicitly clear with clear_tensors=True if needed
@@ -251,6 +488,16 @@ class DebuggerService:
             # Validate script exists
             if not Path(resolved_path).exists():
                 raise FileNotFoundError(f"❌ Script not found: {script_path}\nResolved to: {resolved_path}")
+
+            # Validate semantic checkpoint uniqueness before starting the session.
+            # This enforces the rule that each checkpoint name is bound to exactly
+            # one location (file + line), avoiding confusing duplicates.
+            self._validate_unique_checkpoint_names(resolved_path)
+
+            # Validate A/B-style checkpoint constraints (if applicable). If any
+            # of the special A/B checkpoints are present, enforce that all four
+            # exist and that no other generic debug_checkpoint() calls are used.
+            self._validate_ab_testing_constraints(resolved_path)
 
             self.debugger.script_path = resolved_path
             self.debugger.add_watch_file(resolved_path)
@@ -456,6 +703,12 @@ class DebuggerService:
             if self.debugger.state == DebugState.PAUSED:
                 # Get current state
                 location_tuple = self.debugger.get_location()
+
+                # For MLX, always synchronize GPU before variable inspection to avoid
+                # Metal command buffer assertion failures on lazy tensors.
+                if self.framework == "mlx":
+                    self._sync_mlx_if_available()
+
                 variables = self.debugger.list_variables()
 
                 if location_tuple:
@@ -1283,55 +1536,20 @@ class DebuggerService:
 
             # Special handling for ML arrays
             try:
-                # Check for MLX array
+                # Check for MLX/PyTorch/NumPy array-like (has shape + dtype)
                 if hasattr(value, "shape") and hasattr(value, "dtype"):
                     var_info["shape"] = list(value.shape) if hasattr(value.shape, "__iter__") else [value.shape]
                     var_info["dtype"] = str(value.dtype)
 
-                    # Try to get basic stats and sample values (will trigger MLX eval if needed)
+                    # For MLX arrays, avoid aggressive sampling here to reduce the risk
+                    # of triggering Metal command buffer assertions on lazy tensors.
+                    # Users can still get full samples via explicit `evaluate` calls.
                     try:
                         import mlx.core as mx  # noqa: PLC0415
 
                         if isinstance(value, mx.array):
-                            # Already evaluated by auto_eval_mlx
-                            var_info["device"] = "mps"  # MLX always uses Metal
-
-                            # Add sample values: first 10 values along each dimension
-                            try:
-                                shape = value.shape
-                                if len(shape) > 0:
-                                    # Get first 10 values along first dimension
-                                    sample_size = min(10, shape[0])
-                                    if len(shape) == 1:
-                                        # 1D: first 10 values - slice first, then evaluate
-                                        sample_slice = value[:sample_size]
-                                        var_info["sample"] = mx.eval(sample_slice.astype(mx.float32)).tolist()
-                                    elif len(shape) == 2:
-                                        # 2D: first 10 rows, first 10 values of each
-                                        sample_rows = min(10, shape[0])
-                                        sample_cols = min(10, shape[1])
-                                        sample_slice = value[:sample_rows, :sample_cols]
-                                        var_info["sample"] = mx.eval(sample_slice.astype(mx.float32)).tolist()
-                                    elif len(shape) == 3:
-                                        # 3D: first element, first 10 rows, first 10 values
-                                        sample_rows = min(10, shape[1])
-                                        sample_cols = min(10, shape[2])
-                                        sample_slice = value[0, :sample_rows, :sample_cols]
-                                        var_info["sample"] = mx.eval(sample_slice.astype(mx.float32)).tolist()
-                                    elif len(shape) >= 4:
-                                        # 4D+: first element along all but last 2 dims, then sample
-                                        sample_rows = min(10, shape[-2])
-                                        sample_cols = min(10, shape[-1])
-                                        # Flatten leading dimensions and take first element
-                                        indices = tuple(
-                                            [0] * (len(shape) - 2) + [slice(sample_rows), slice(sample_cols)]
-                                        )
-                                        sample_slice = value[indices]
-                                        var_info["sample"] = mx.eval(sample_slice.astype(mx.float32)).tolist()
-                            except Exception as e:  # noqa: BLE001
-                                # If sampling fails, continue without sample
-                                logger.debug(f"Failed to extract sample values: {e}")
-                                pass
+                            var_info["device"] = "mps"  # MLX uses Metal backend
+                            # Do NOT call mx.eval() or slice here; metadata is enough.
                     except ImportError:
                         pass
 

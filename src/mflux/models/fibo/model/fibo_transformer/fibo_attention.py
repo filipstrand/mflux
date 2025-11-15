@@ -2,6 +2,11 @@ import mlx.core as mx
 from mlx import nn
 from mlx.core.fast import scaled_dot_product_attention
 
+from mflux_debugger.semantic_checkpoint import (
+    debug_checkpoint_mlx_A,
+    debug_checkpoint_mlx_B,
+)
+
 
 def apply_rotary_emb_mlx(
     x: mx.array,
@@ -146,6 +151,9 @@ class FiboJointAttention(nn.Module):
         query = apply_rotary_emb_mlx(query, cos, sin)
         key = apply_rotary_emb_mlx(key, cos, sin)
 
+        # ----- MLX checkpoint A: Q/K/V after RMSNorm (+ RoPE) -----
+        debug_checkpoint_mlx_A(skip=False)
+
         # ===== Manual attention core (BriaFibo-style) =====
         # Convert to [B, H, S, D]
         query_bhsd = mx.transpose(query, (0, 2, 1, 3))
@@ -173,6 +181,9 @@ class FiboJointAttention(nn.Module):
         # Back to [B, S_total, H, D] then flatten to [B, S_total, inner_dim]
         attn_output = mx.transpose(attn_output_bhsd, (0, 2, 1, 3))
         attn_output = mx.reshape(attn_output, (batch_size, seq_total, self.inner_dim))
+
+        # ----- MLX checkpoint B: raw SDPA output (before to_out / splits) -----
+        debug_checkpoint_mlx_B(skip=False)
 
         # Split back into context and image streams
         context_attn_output = attn_output[:, :seq_ctx, :]

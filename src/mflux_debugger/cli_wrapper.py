@@ -747,15 +747,23 @@ class DebuggerCLI:
         return checkpoints
 
     def cmd_break(self, file_path: str, line: int, condition: Optional[str] = None):
-        """Set a breakpoint."""
-        print("\n💡 TIP: Consider using debug_checkpoint() in code instead of line breakpoints.", file=sys.stderr)
-        print("   More maintainable and provides better context.\n", file=sys.stderr)
+        """
+        Set a *line* breakpoint (DISABLED).
 
-        data = {"file_path": file_path, "line": line}
-        if condition:
-            data["condition"] = condition
-        response = self._api_call("POST", "/debug/breakpoint", data)
-        self._format_response(response)
+        Line-based breakpoints are intentionally disabled in favor of semantic
+        checkpoints (debug_checkpoint_* helpers and checkpoint-break).
+
+        This CLI command now only prints an error and does NOT contact the
+        debugger service.
+        """
+        print(
+            "\n❌ Line breakpoints via CLI are disabled.\n"
+            "   Use semantic checkpoints instead (debug_checkpoint_*/checkpoint-break).\n"
+            "   Example for A/B mode:\n"
+            "     mflux-debug-pytorch checkpoint-break pytorch_A\n"
+            "     mflux-debug-pytorch checkpoint-break pytorch_B\n",
+            file=sys.stderr,
+        )
 
     def cmd_checkpoint_break(
         self,
@@ -1673,12 +1681,14 @@ class DebuggerCLI:
 
         if not tutorial_script.exists():
             print(f"❌ Tutorial '{lesson}' not found at: {tutorial_script}", file=sys.stderr)
-            print(f"\n💡 Available tutorials for {self.framework}: basic", file=sys.stderr)
+            print(f"\n💡 Available tutorials for {self.framework}: basic, ab", file=sys.stderr)
             return
 
         # Define tutorial steps
         if lesson == "basic":
             self._show_basic_tutorial_guide(tutorial_script)
+        elif lesson == "ab":
+            self._show_ab_tutorial_guide(tutorial_script)
         else:
             print(f"❌ Unknown tutorial: {lesson}", file=sys.stderr)
 
@@ -1736,6 +1746,71 @@ class DebuggerCLI:
             print("  • Calls debug_checkpoint() with metadata (semantic breakpoints)")
             print("  • Demonstrates skip=True and conditional skip=expression")
             print("  • Optionally loads PyTorch tensors for comparison (if available)")
+        print("\n" + "=" * 70)
+
+    def _show_ab_tutorial_guide(self, script_path: Path):
+        """Show step-by-step guide for A/B attention debugging tutorial."""
+        print("🎓 Interactive Debugger Tutorial - A/B Attention Comparison")
+        print("=" * 70)
+
+        if self.framework == "pytorch":
+            print("\n📚 What you'll learn (PyTorch, A/B mode):")
+            print("  1. Using the dedicated A/B helpers: debug_checkpoint_pytorch_A/B")
+            print("  2. Bracketing the attention core with a single A and B checkpoint")
+            print("  3. Inspecting Q/K/V tensors at A")
+            print("  4. Inspecting attention outputs at B")
+            print("  5. Coordinating with the MLX A/B tutorial for cross-framework comparison")
+            print("\n🎯 Tutorial Script Location (PyTorch A/B):")
+            print(f"  {script_path}")
+            print("\n📝 What the script does:")
+            print("  • Builds tiny deterministic Q/K/V tensors with shape [B, S, H, D]")
+            print("  • Calls debug_checkpoint_pytorch_A(...) just before the attention core")
+            print("  • Runs a small scaled dot-product attention core")
+            print("  • Calls debug_checkpoint_pytorch_B(...) right after the attention core")
+            print("\n🚀 How to run this tutorial:")
+            print("  1. Start the PyTorch session:")
+            print(f"     mflux-debug-pytorch start {script_path}")
+            print("  2. Set checkpoint breakpoints on A and B:")
+            print("     mflux-debug-pytorch checkpoint-break pytorch_A")
+            print("     mflux-debug-pytorch checkpoint-break pytorch_B")
+            print("  3. Run until A, inspect Q/K/V:")
+            print("     mflux-debug-pytorch continue")
+            print('     mflux-debug-pytorch vars   # or eval "query.shape"')
+            print("  4. Continue to B and inspect attention output:")
+            print("     mflux-debug-pytorch continue")
+            print('     mflux-debug-pytorch eval "attn_output.shape"')
+            print("\n💡 Next step:")
+            print("  Run the MLX A/B tutorial to compare checkpoints across frameworks:")
+            print("     mflux-debug-mlx tutorial ab")
+        else:  # mlx
+            print("\n📚 What you'll learn (MLX, A/B mode):")
+            print("  1. Using the dedicated A/B helpers: debug_checkpoint_mlx_A/B")
+            print("  2. Matching the PyTorch attention core with MLX math")
+            print("  3. Verifying that Q/K/V match at A")
+            print("  4. Comparing attention outputs at B")
+            print("\n🎯 Tutorial Script Location (MLX A/B):")
+            print(f"  {script_path}")
+            print("\n📝 What the script does:")
+            print("  • Builds the same deterministic Q/K/V tensors as the PyTorch tutorial")
+            print("  • Calls debug_checkpoint_mlx_A(...) before the attention core")
+            print("  • Runs the equivalent scaled dot-product attention core in MLX")
+            print("  • Calls debug_checkpoint_mlx_B(...) after the attention core")
+            print("\n🚀 How to run this tutorial:")
+            print("  1. Start the MLX session:")
+            print(f"     mflux-debug-mlx start {script_path}")
+            print("  2. Set checkpoint breakpoints on A and B:")
+            print("     mflux-debug-mlx checkpoint-break mlx_A")
+            print("     mflux-debug-mlx checkpoint-break mlx_B")
+            print("  3. Run until A, inspect Q/K/V:")
+            print("     mflux-debug-mlx continue")
+            print('     mflux-debug-mlx vars   # or eval "query.shape"')
+            print("  4. Continue to B and inspect attention output:")
+            print("     mflux-debug-mlx continue")
+            print('     mflux-debug-mlx eval "attn_output.shape"')
+            print("\n💡 Recommended workflow:")
+            print("  1. Run the PyTorch A/B tutorial first:")
+            print("       mflux-debug-pytorch tutorial ab")
+            print("  2. Then run this MLX A/B tutorial and compare checkpoints A/B")
         print("\n" + "=" * 70)
         print("\n💡 BEFORE YOU START:")
         print(f"   Run 'mflux-debug-{self.framework} --help' to see all available commands.")
