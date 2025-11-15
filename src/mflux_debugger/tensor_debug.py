@@ -352,7 +352,13 @@ def debug_save(tensor: Any, name: str, exit_after: bool = False, skip: bool = Fa
         raise RuntimeError(f"debug_save failed for '{name}': {e}") from e
 
 
-def debug_load(name: str, exact_version: bool = False, to: str = "mlx") -> Any:
+def debug_load(
+    name: str,
+    exact_version: bool = False,
+    to: str = "mlx",
+    device: Optional[Any] = None,
+    dtype: Optional[Any] = None,
+) -> Any:
     """
     Load a tensor saved with debug_save().
 
@@ -372,6 +378,10 @@ def debug_load(name: str, exact_version: bool = False, to: str = "mlx") -> Any:
               Can use f-strings for loop indices: f"hidden_states_{block}_{timestep}"
         exact_version: If True, load the exact name without auto-versioning (default: False)
         to: Target framework format - "mlx" (default) or "pytorch"
+        device: Optional device for PyTorch tensors (e.g., "cuda", "cpu", torch.device("cuda:0"))
+                Ignored for MLX (MLX handles device automatically)
+        dtype: Optional dtype for PyTorch tensors (e.g., torch.bfloat16, torch.float32)
+               For MLX, can be a string like "float32" or "bfloat16"
 
     Returns:
         MLX array (if to="mlx", default)
@@ -395,8 +405,11 @@ def debug_load(name: str, exact_version: bool = False, to: str = "mlx") -> Any:
                 # Or explicitly:
                 latents = debug_load("initial_latents", to="mlx")
 
-                # Load as PyTorch tensor
-                latents_pt = debug_load("initial_latents", to="pytorch")
+                # Load as PyTorch tensor with device and dtype
+                latents_pt = debug_load("initial_latents", to="pytorch", device="cuda", dtype=torch.bfloat16)
+
+                # Load with device from context
+                latents = debug_load("initial_latents", to="pytorch", device=self.device, dtype=torch.bfloat16)
 
                 # Loop case - load tensor at each iteration
                 for block in range(num_blocks):
@@ -410,7 +423,7 @@ def debug_load(name: str, exact_version: bool = False, to: str = "mlx") -> Any:
     Note:
         - Automatically converts to the requested format (MLX array or PyTorch tensor)
         - For complex tensors (saved from PyTorch complex tensors), returns tuple (real, imag)
-        - Preserves the original tensor shape and dtype
+        - If device/dtype are provided, applies them after conversion
         - Raises FileNotFoundError if tensor not found (fail-fast behavior)
         - For loops: use f-strings with indices matching those used in debug_save()
         - The function handles all path resolution automatically - you don't need to configure anything!
@@ -468,20 +481,50 @@ def debug_load(name: str, exact_version: bool = False, to: str = "mlx") -> Any:
             if to == "mlx":
                 real_tensor = mx.array(real_np)
                 imag_tensor = mx.array(imag_np)
+                # Apply dtype if specified (MLX)
+                if dtype is not None:
+                    if isinstance(dtype, str):
+                        dtype_map = {
+                            "float32": mx.float32,
+                            "float16": mx.float16,
+                            "bfloat16": mx.bfloat16,
+                        }
+                        if dtype in dtype_map:
+                            real_tensor = mx.astype(real_tensor, dtype_map[dtype])
+                            imag_tensor = mx.astype(imag_tensor, dtype_map[dtype])
+                        else:
+                            logger.warning(f"Unknown MLX dtype string '{dtype}', ignoring")
+                    else:
+                        real_tensor = mx.astype(real_tensor, dtype)
+                        imag_tensor = mx.astype(imag_tensor, dtype)
             else:  # to == "pytorch"
                 real_tensor = torch.from_numpy(real_np).float()
                 imag_tensor = torch.from_numpy(imag_np).float()
 
+                # Apply device and dtype if specified (PyTorch)
+                if device is not None or dtype is not None:
+                    if device is not None and dtype is not None:
+                        real_tensor = real_tensor.to(device=device, dtype=dtype)
+                        imag_tensor = imag_tensor.to(device=device, dtype=dtype)
+                    elif device is not None:
+                        real_tensor = real_tensor.to(device=device)
+                        imag_tensor = imag_tensor.to(device=device)
+                    elif dtype is not None:
+                        real_tensor = real_tensor.to(dtype=dtype)
+                        imag_tensor = imag_tensor.to(dtype=dtype)
+
             # Get tensor info
             shape = real_tensor.shape
-            dtype = real_tensor.dtype if hasattr(real_tensor, "dtype") else type(real_tensor).__name__
+            result_dtype = real_tensor.dtype if hasattr(real_tensor, "dtype") else type(real_tensor).__name__
             size_mb = (tensor_np.nbytes) / (1024 * 1024)
 
-            logger.info(f"✅ Tensor loaded: '{name}' ← {load_path.name} (to={to})")
-            logger.info(f"   Shape: {shape}, dtype={dtype} (complex: real+imag), size: {size_mb:.2f} MB")
+            device_info = f", device={device}" if device is not None else ""
+            dtype_info = f", dtype={dtype}" if dtype is not None else ""
+            logger.info(f"✅ Tensor loaded: '{name}' ← {load_path.name} (to={to}{device_info}{dtype_info})")
+            logger.info(f"   Shape: {shape}, dtype={result_dtype} (complex: real+imag), size: {size_mb:.2f} MB")
             logger.info(f"   Called from: {caller_location}")
             print(
-                f"✅ [tensor_debug] Loaded '{name}': shape={shape}, type=complex (real+imag), size={size_mb:.2f}MB, to={to}",
+                f"✅ [tensor_debug] Loaded '{name}': shape={shape}, type=complex (real+imag), size={size_mb:.2f}MB, to={to}{device_info}{dtype_info}",
                 flush=True,
             )
             print(f"   File: {load_path}", flush=True)
@@ -505,6 +548,24 @@ def debug_load(name: str, exact_version: bool = False, to: str = "mlx") -> Any:
             # Convert to requested format
             if to == "mlx":
                 tensor_result = mx.array(tensor_np)
+                # Apply dtype if specified (MLX)
+                if dtype is not None:
+                    if isinstance(dtype, str):
+                        # Convert string dtype to MLX dtype
+                        dtype_map = {
+                            "float32": mx.float32,
+                            "float16": mx.float16,
+                            "bfloat16": mx.bfloat16,
+                            "int32": mx.int32,
+                            "int64": mx.int64,
+                        }
+                        if dtype in dtype_map:
+                            tensor_result = mx.astype(tensor_result, dtype_map[dtype])
+                        else:
+                            logger.warning(f"Unknown MLX dtype string '{dtype}', ignoring")
+                    else:
+                        # Assume it's already an MLX dtype
+                        tensor_result = mx.astype(tensor_result, dtype)
             else:  # to == "pytorch"
                 # Convert numpy to PyTorch tensor
                 if np.issubdtype(tensor_np.dtype, np.integer):
@@ -512,15 +573,29 @@ def debug_load(name: str, exact_version: bool = False, to: str = "mlx") -> Any:
                 else:
                     tensor_result = torch.from_numpy(tensor_np).float()
 
+                # Apply device and dtype if specified (PyTorch)
+                if device is not None or dtype is not None:
+                    if device is not None and dtype is not None:
+                        tensor_result = tensor_result.to(device=device, dtype=dtype)
+                    elif device is not None:
+                        tensor_result = tensor_result.to(device=device)
+                    elif dtype is not None:
+                        tensor_result = tensor_result.to(dtype=dtype)
+
         # Get tensor info
         shape = tensor_result.shape
-        dtype = tensor_result.dtype if hasattr(tensor_result, "dtype") else type(tensor_result).__name__
+        result_dtype = tensor_result.dtype if hasattr(tensor_result, "dtype") else type(tensor_result).__name__
         size_mb = tensor_np.nbytes / (1024 * 1024)
 
-        logger.info(f"✅ Tensor loaded: '{name}' ← {load_path.name} (to={to})")
-        logger.info(f"   Shape: {shape}, dtype: {dtype}, size: {size_mb:.2f} MB")
+        device_info = f", device={device}" if device is not None else ""
+        dtype_info = f", dtype={dtype}" if dtype is not None else ""
+        logger.info(f"✅ Tensor loaded: '{name}' ← {load_path.name} (to={to}{device_info}{dtype_info})")
+        logger.info(f"   Shape: {shape}, dtype: {result_dtype}, size: {size_mb:.2f} MB")
         logger.info(f"   Called from: {caller_location}")
-        print(f"✅ [tensor_debug] Loaded '{name}': shape={shape}, size={size_mb:.2f}MB, to={to}", flush=True)
+        print(
+            f"✅ [tensor_debug] Loaded '{name}': shape={shape}, size={size_mb:.2f}MB, to={to}{device_info}{dtype_info}",
+            flush=True,
+        )
         print(f"   File: {load_path}", flush=True)
         print(f"   Called from: {caller_location}", flush=True)
 
