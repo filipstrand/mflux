@@ -39,21 +39,101 @@ class FIBO(nn.Module):
         config: RuntimeConfig,
         negative_prompt: str | None = None,
     ) -> GeneratedImage:
-        """
-        Minimal FIBO txt2img pipeline in MLX.
+        encoder_hidden_states = debug_load("pt_encoder_hidden_states")
+        stacked_prompt_layers = debug_load("pt_prompt_layers")
+        text_ids = debug_load("pt_text_ids")
+        latent_image_ids = debug_load("pt_latent_image_ids")
+        attention_mask = debug_load("pt_attention_mask")
 
-        NOTE: For now we rely on PyTorch to provide the text-conditioning tensors
-        via debug_save() (pt_encoder_hidden_states, pt_prompt_layers, etc.).
-        The denoising loop and VAE decoding run fully in MLX.
-        """
+        batch_twice = encoder_hidden_states.shape[0]
+        if batch_twice % 2 != 0:
+            raise ValueError(
+                f"Expected encoder_hidden_states batch dimension to be even (guidance uncond+cond), got {batch_twice}"
+            )
+        batch_size = batch_twice // 2
+
+        # Convert stacked prompt layers to the list expected by the transformer
+        prompt_layers: list[mx.array] = [stacked_prompt_layers[i] for i in range(stacked_prompt_layers.shape[0])]
+
         # ---------------------------------------------------------------------
-        # 1. Load final latents directly from PyTorch
+        # 2. Prepare scheduler and initial latents (FlowMatch-style)
         # ---------------------------------------------------------------------
-        # For testing reshape/unpack logic, we skip:
-        # - Text encoder loading (saves time)
-        # - Transformer/denoising loop (saves time)
-        # - Only load final latents and run VAE decode
-        latents = debug_load("fibo_final_latents")
+        runtime_config = config
+        scheduler = runtime_config.scheduler
+        num_steps = runtime_config.num_inference_steps
+        height = runtime_config.height
+        width = runtime_config.width
+
+        # FIBO uses a VAE scale factor of 16 (see BriaFiboPipeline / VAE config)
+        vae_scale_factor = 16
+        latent_height = height // vae_scale_factor
+        latent_width = width // vae_scale_factor
+
+        channels = self.transformer.in_channels
+
+        # Create initial Gaussian latents in (B, C, H', W')
+        key = mx.random.key(seed)
+        latents_4d = mx.random.normal(
+            shape=(batch_size, channels, latent_height, latent_width),
+            key=key,
+        )
+
+        # Pack to (B, seq, C) to match transformer expectations
+        latents = mx.transpose(latents_4d, (0, 2, 3, 1))
+        latents = mx.reshape(latents, (batch_size, latent_height * latent_width, channels))
+
+        guidance_scale = runtime_config.guidance
+
+        # ---------------------------------------------------------------------
+        # 3. Denoising loop in MLX (mirrors PyTorch BriaFiboPipeline)
+        # ---------------------------------------------------------------------
+        print(f"[FIBO-MLX] Starting denoising loop with {num_steps} steps...", flush=True)
+        for step_index in range(num_steps):
+            # Scheduler timesteps are pre-computed inside FlowMatchEulerDiscreteScheduler
+            timestep_value = scheduler.timesteps[step_index]
+            print(f"[FIBO-MLX] Step {step_index + 1}/{num_steps} (t={timestep_value:.4f})", flush=True)
+
+            # Classifier-free guidance: duplicate latents if guidance > 1
+            if guidance_scale > 1.0:
+                latent_model_input = mx.concatenate([latents, latents], axis=0)
+            else:
+                latent_model_input = latents
+
+            # Build timestep array matching the latent batch size
+            timestep = mx.full(
+                (latent_model_input.shape[0],),
+                timestep_value,
+                dtype=latent_model_input.dtype,
+            )
+
+            # One denoising step with the MLX transformer
+            noise_pred = self.transformer(
+                hidden_states=latent_model_input,
+                encoder_hidden_states=encoder_hidden_states,
+                text_encoder_layers=prompt_layers,
+                timestep=timestep,
+                img_ids=latent_image_ids,
+                txt_ids=text_ids,
+                attention_mask=attention_mask,
+            )
+
+            # Perform classifier-free guidance if enabled
+            if guidance_scale > 1.0:
+                # noise_pred: (2 * B, seq, C)
+                half = noise_pred.shape[0] // 2
+                noise_uncond = noise_pred[:half]
+                noise_text = noise_pred[half:]
+                noise_pred = noise_uncond + guidance_scale * (noise_text - noise_uncond)
+
+            # Scheduler update: x_t -> x_{t-1}
+            latents = scheduler.step(
+                model_output=noise_pred,
+                timestep=step_index,
+                sample=latents,
+            )
+
+            # Force computation to keep the loop responsive under MLX lazy eval
+            mx.eval(latents)
 
         # Get dimensions from the loaded latents
         batch_size = latents.shape[0]
