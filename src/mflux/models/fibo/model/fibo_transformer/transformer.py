@@ -189,4 +189,20 @@ class FiboTransformer(nn.Module):
         # 7. Output projection back to latent channels
         hidden_states = self.norm_out(hidden_states, temb)
         output = self.proj_out(hidden_states)  # (B, seq, out_channels)
+
+        # ----- MLX checkpoint B: after full transformer core (post-FFN, norm_out, and proj_out) -----
+        from mflux_debugger.semantic_checkpoint import debug_checkpoint_mlx_B
+
+        debug_checkpoint_mlx_B(
+            ab_run_id="7g28hs9k1zq",
+            skip=False,
+            metadata={
+                "stage": "B",
+                "description": "after full transformer core (post-FFN, norm_out, proj_out)",
+            },
+            hidden_states=hidden_states,
+            encoder_hidden_states=encoder_hidden_states,
+            output=output,
+        )
+
         return output

@@ -152,7 +152,7 @@ class FiboJointAttention(nn.Module):
 
         # ----- MLX checkpoint A: Q/K/V after RMSNorm (+ RoPE) -----
         debug_checkpoint_mlx_A(
-            ab_run_id="98af23kls9xz",
+            ab_run_id="7g28hs9k1zq",
             skip=False,
             metadata={
                 "stage": "A",
