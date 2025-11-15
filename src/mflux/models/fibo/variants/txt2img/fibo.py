@@ -154,6 +154,15 @@ class FIBO(nn.Module):
         # ---------------------------------------------------------------------
         # 4. Unpack latents and decode with the MLX FIBO VAE
         # ---------------------------------------------------------------------
+
+        # LOAD HERE!
+        # For cross-framework validation, override MLX latents with the PyTorch
+        # final latents saved via debug_save() in the BriaFiboPipeline.
+        # This ensures that all reshape/share logic matches before VAE decode.
+        # If the tensor file is missing, debug_load will raise; for now we let
+        # that propagate so misconfigurations are obvious.
+        latents = debug_load("fibo_final_latents")
+
         # latents: (B, seq, C) where seq = latent_height * latent_width
         latents_unpacked = mx.reshape(
             latents,
