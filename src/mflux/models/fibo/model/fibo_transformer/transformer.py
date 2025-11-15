@@ -7,6 +7,7 @@ from mflux.models.fibo.model.fibo_transformer.single_transformer_block import Fi
 from mflux.models.fibo.model.fibo_transformer.text_projection import BriaFiboTextProjection
 from mflux.models.fibo.model.fibo_transformer.time_embed import BriaFiboTimestepProjEmbeddings
 from mflux.models.flux.model.flux_transformer.ada_layer_norm_continuous import AdaLayerNormContinuous
+from mflux_debugger.semantic_checkpoint import debug_checkpoint
 
 
 class FiboTransformer(nn.Module):
@@ -107,6 +108,8 @@ class FiboTransformer(nn.Module):
         Returns:
             Sample tensor with same spatial shape and channel count as input hidden_states.
         """
+        # ----- MLX checkpoint A: transformer forward entry -----
+        debug_checkpoint("mlx_A", skip=False)
         # PyTorch FIBO transformer expects hidden_states with shape (B, seq_len, in_channels)
         batch_size, seq_len, channels = hidden_states.shape
 
@@ -187,6 +190,9 @@ class FiboTransformer(nn.Module):
             hidden_states = combined[:, encoder_len:, ...]
 
         # 7. Output projection back to latent channels
+        # ----- MLX checkpoint B: just before final norm/projection -----
+        debug_checkpoint("mlx_B", skip=False)
+
         hidden_states = self.norm_out(hidden_states, temb)
         output = self.proj_out(hidden_states)  # (B, seq, out_channels)
         return output

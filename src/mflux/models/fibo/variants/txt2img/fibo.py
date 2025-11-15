@@ -1,3 +1,5 @@
+import sys
+
 import mlx.core as mx
 from mlx import nn
 
@@ -49,7 +51,7 @@ class FIBO(nn.Module):
         attention_mask = debug_load("pt_attention_mask")
         prompt_layers = [stacked_prompt_layers[i] for i in range(stacked_prompt_layers.shape[0])]
 
-        transformer_output = self.transformer(
+        self.transformer(
             hidden_states=hidden_states,
             encoder_hidden_states=encoder_hidden_states,
             text_encoder_layers=prompt_layers,
@@ -58,6 +60,7 @@ class FIBO(nn.Module):
             txt_ids=text_ids,
             attention_mask=attention_mask,
         )
+        sys.exit(0)
 
         # We don't really care about the generation just now!
         decoded = mx.zeros((1, 3, config.height, config.width), dtype=mx.float32)
