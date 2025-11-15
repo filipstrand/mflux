@@ -4,7 +4,6 @@ from mlx.core.fast import scaled_dot_product_attention
 
 from mflux_debugger.semantic_checkpoint import (
     debug_checkpoint_mlx_A,
-    debug_checkpoint_mlx_B,
 )
 
 
@@ -153,6 +152,7 @@ class FiboJointAttention(nn.Module):
 
         # ----- MLX checkpoint A: Q/K/V after RMSNorm (+ RoPE) -----
         debug_checkpoint_mlx_A(
+            ab_run_id="98af23kls9xz",
             skip=False,
             metadata={
                 "stage": "A",
@@ -193,16 +193,6 @@ class FiboJointAttention(nn.Module):
         # Back to [B, S_total, H, D] then flatten to [B, S_total, inner_dim]
         attn_output = mx.transpose(attn_output_bhsd, (0, 2, 1, 3))
         attn_output = mx.reshape(attn_output, (batch_size, seq_total, self.inner_dim))
-
-        # ----- MLX checkpoint B: raw SDPA output (before to_out / splits) -----
-        debug_checkpoint_mlx_B(
-            skip=False,
-            metadata={
-                "stage": "B",
-                "description": "raw SDPA output (before to_out / splits)",
-            },
-            attn_output=attn_output,
-        )
 
         # Split back into context and image streams
         context_attn_output = attn_output[:, :seq_ctx, :]

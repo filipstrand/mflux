@@ -30,30 +30,35 @@ CHECKPOINT_HARD_LIMIT_GB = 10.0
 class CheckpointWriter:
     """Writes checkpoint state to JSON files automatically."""
 
-    def __init__(self, script_name: str):
+    def __init__(self, script_name: str, ab_run_id: Optional[str] = None):
         """
         Initialize checkpoint writer for a script.
 
         Args:
             script_name: Name of the script being debugged (used for directory)
+            ab_run_id: Optional A/B debugging run identifier. When provided,
+                all existing sessions in `runs/latest/` whose directory name
+                does *not* start with this ID will be archived. This ensures
+                that `runs/latest/` only contains data for the current A/B run.
         """
         self.script_name = script_name
+        self.ab_run_id = ab_run_id
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        # Archive old sessions for this script
+        # Archive old sessions
         self._archive_old_sessions()
 
         # Check storage limits before starting
         self._check_storage_limits()
 
-        # Create session directory (logs/runs/latest/{script}_{timestamp}/)
-        self.session_dir = get_run_session_dir(script_name, self.timestamp)
+        # Create session directory (logs/runs/latest/{run_id__}{script}_{timestamp}/)
+        self.session_dir = get_run_session_dir(script_name, self.timestamp, ab_run_id=self.ab_run_id)
 
         # Checkpoints go in a subdirectory
-        self.checkpoints_dir = get_run_checkpoints_dir(script_name, self.timestamp)
+        self.checkpoints_dir = get_run_checkpoints_dir(script_name, self.timestamp, ab_run_id=self.ab_run_id)
 
         # Script output log file
-        self.output_log_path = get_run_output_log_path(script_name, self.timestamp)
+        self.output_log_path = get_run_output_log_path(script_name, self.timestamp, ab_run_id=self.ab_run_id)
         self.output_log_file = None  # Will be opened when first checkpoint is hit
 
         # Track checkpoint hit counts
@@ -62,35 +67,58 @@ class CheckpointWriter:
         logger.info(f"📂 Run session started: {self.session_dir.relative_to(self.session_dir.parent.parent.parent)}")
 
     def _archive_old_sessions(self):
-        """Archive all existing run sessions for this script."""
+        """
+        Archive existing run sessions.
+
+        Behavior:
+          - When `ab_run_id` is provided, ANY session directory in
+            `runs/latest/` whose name does *not* start with
+            `{ab_run_id}__` is moved to `runs/archive/`.
+          - When `ab_run_id` is None, we fall back to the previous
+            behavior and only archive sessions for this script name.
+        """
         latest_dir = get_runs_latest_dir()
         if not latest_dir.exists():
             return
 
-        # Find all session directories for this script
-        pattern = f"{self.script_name}_*"
-        old_sessions = list(latest_dir.glob(pattern))
-
-        if not old_sessions:
-            return
-
-        # Get archive directory
         archive_dir = get_runs_archive_dir()
-
-        # Move old sessions to archive
         archived_count = 0
-        for session_dir in old_sessions:
-            if session_dir.is_dir():
+
+        if self.ab_run_id:
+            # Global A/B mode: keep only directories for this run_id in latest
+            prefix = f"{self.ab_run_id}__"
+            session_dirs = [p for p in latest_dir.iterdir() if p.is_dir()]
+            for session_dir in session_dirs:
+                if session_dir.name.startswith(prefix):
+                    continue
                 archive_path = archive_dir / session_dir.name
                 try:
                     if archive_path.exists():
-                        # If already archived, remove the old archive
                         shutil.rmtree(archive_path)
                     shutil.move(str(session_dir), str(archive_path))
-                    logger.debug(f"📦 Archived old session: {session_dir.name}")
+                    logger.debug(f"📦 Archived old session (different run_id): {session_dir.name}")
                     archived_count += 1
                 except Exception as e:  # noqa: BLE001
                     logger.warning(f"Failed to archive {session_dir.name}: {e}")
+        else:
+            # Legacy mode: archive sessions for this script only
+            pattern = f"{self.script_name}_*"
+            old_sessions = list(latest_dir.glob(pattern))
+            if not old_sessions:
+                return
+
+            for session_dir in old_sessions:
+                if session_dir.is_dir():
+                    archive_path = archive_dir / session_dir.name
+                    try:
+                        if archive_path.exists():
+                            # If already archived, remove the old archive
+                            shutil.rmtree(archive_path)
+                        shutil.move(str(session_dir), str(archive_path))
+                        logger.debug(f"📦 Archived old session: {session_dir.name}")
+                        archived_count += 1
+                    except Exception as e:  # noqa: BLE001
+                        logger.warning(f"Failed to archive {session_dir.name}: {e}")
 
         if archived_count > 0:
             logger.info(f"📦 Archived {archived_count} old run session(s)")
@@ -385,12 +413,16 @@ class CheckpointWriter:
 _CHECKPOINT_WRITER: Optional[CheckpointWriter] = None
 
 
-def get_checkpoint_writer(script_name: str) -> CheckpointWriter:
+def get_checkpoint_writer(script_name: str, ab_run_id: Optional[str] = None) -> CheckpointWriter:
     """Get or create the global checkpoint writer for a script."""
     global _CHECKPOINT_WRITER
 
-    if _CHECKPOINT_WRITER is None or _CHECKPOINT_WRITER.script_name != script_name:
-        _CHECKPOINT_WRITER = CheckpointWriter(script_name)
+    if (
+        _CHECKPOINT_WRITER is None
+        or _CHECKPOINT_WRITER.script_name != script_name
+        or _CHECKPOINT_WRITER.ab_run_id != ab_run_id
+    ):
+        _CHECKPOINT_WRITER = CheckpointWriter(script_name, ab_run_id=ab_run_id)
 
     return _CHECKPOINT_WRITER
 

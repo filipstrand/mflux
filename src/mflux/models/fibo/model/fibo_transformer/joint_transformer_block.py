@@ -4,6 +4,7 @@ from mlx import nn
 from mflux.models.fibo.model.fibo_transformer.feed_forward import FiboFeedForward
 from mflux.models.fibo.model.fibo_transformer.fibo_ada_layer_norm_zero import FiboAdaLayerNormZero
 from mflux.models.fibo.model.fibo_transformer.fibo_attention import FiboJointAttention
+from mflux_debugger.semantic_checkpoint import debug_checkpoint_mlx_B
 
 
 class FiboJointTransformerBlock(nn.Module):
@@ -89,5 +90,17 @@ class FiboJointTransformerBlock(nn.Module):
         # 4. FP16 clipping for numerical parity with PyTorch.
         if encoder_hidden_states.dtype == mx.float16:
             encoder_hidden_states = mx.clip(encoder_hidden_states, -65504.0, 65504.0)
+
+        # ----- MLX checkpoint B: after full transformer block (post-FFN + clipping) -----
+        debug_checkpoint_mlx_B(
+            ab_run_id="98af23kls9xz",
+            skip=False,
+            metadata={
+                "stage": "B",
+                "description": "after full transformer block (post-FFN + clipping)",
+            },
+            hidden_states=hidden_states,
+            encoder_hidden_states=encoder_hidden_states,
+        )
 
         return encoder_hidden_states, hidden_states

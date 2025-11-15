@@ -15,6 +15,10 @@ _CHECKPOINT_REGISTRY: Dict[str, "CheckpointDefinition"] = {}
 # Flag to check if debugger is active
 _DEBUGGER_ACTIVE = False
 
+# Global A/B run identifier (must be consistent across all A/B checkpoints
+# within a single process).
+_AB_RUN_ID: Optional[str] = None
+
 
 @dataclass
 class CheckpointDefinition:
@@ -345,8 +349,10 @@ def _log_checkpoint_to_json(
         script_path = frame.f_code.co_filename
         script_name = Path(script_path).stem
 
-        # Get checkpoint writer
-        writer = get_checkpoint_writer(script_name)
+        # Get checkpoint writer, passing along the current A/B run identifier
+        # (if any) so that run directories can be named consistently and older
+        # runs archived.
+        writer = get_checkpoint_writer(script_name, ab_run_id=_AB_RUN_ID)
 
         # Capture checkpoint
         writer.capture_checkpoint(
@@ -421,7 +427,61 @@ def _extract_context_from_variables(frame, variables: dict) -> Dict:
 # === Convenience wrappers for A/B-style attention comparison ==================
 
 
-def debug_checkpoint_mlx_A(*args, **kwargs):
+def _set_or_check_ab_run_id(ab_run_id: str, checkpoint_name: str) -> None:
+    """
+    Set the global A/B run identifier or verify it matches a previous value.
+
+    This ensures that all four A/B checkpoints (mlx_A/B, pytorch_A/B) for a
+    given process share the same run identifier.
+    """
+    global _AB_RUN_ID
+
+    if _AB_RUN_ID is None:
+        _AB_RUN_ID = ab_run_id
+        return
+
+    if _AB_RUN_ID != ab_run_id:
+        raise ValueError(
+            f"Conflicting ab_run_id for checkpoint '{checkpoint_name}': "
+            f"previously '{_AB_RUN_ID}', now '{ab_run_id}'. "
+            "All A/B checkpoints in a single run must share the same ab_run_id."
+        )
+
+
+def _merge_ab_metadata(
+    ab_run_id: str,
+    checkpoint_name: str,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Merge an explicit ab_run_id into metadata, validating consistency.
+    """
+    if metadata is None:
+        metadata = {}
+    if not isinstance(metadata, dict):
+        raise TypeError(
+            f"metadata for A/B checkpoint '{checkpoint_name}' must be a dict, got {type(metadata).__name__}"
+        )
+
+    if "ab_run_id" in metadata and metadata["ab_run_id"] != ab_run_id:
+        raise ValueError(
+            f"Conflicting ab_run_id in metadata for '{checkpoint_name}': {metadata['ab_run_id']} vs {ab_run_id}"
+        )
+
+    metadata["ab_run_id"] = ab_run_id
+    return metadata
+
+
+def debug_checkpoint_mlx_A(
+    *,
+    ab_run_id: str,
+    stream: Optional[str] = None,
+    context: Optional[Dict] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+    skip: bool = False,
+    verified: bool = False,
+    **variables: Any,
+) -> None:
     """
     Specialized checkpoint for MLX attention input (checkpoint A).
 
@@ -429,31 +489,98 @@ def debug_checkpoint_mlx_A(*args, **kwargs):
     semantic name \"mlx_A\". It exists so that A/B-style debugging has a
     consistent, discoverable entry point in user code.
     """
-    return debug_checkpoint("mlx_A", *args, **kwargs)
+    _set_or_check_ab_run_id(ab_run_id, "mlx_A")
+    merged_meta = _merge_ab_metadata(ab_run_id, "mlx_A", metadata)
+    debug_checkpoint(
+        "mlx_A",
+        stream=stream,
+        context=context,
+        metadata=merged_meta,
+        skip=skip,
+        verified=verified,
+        **variables,
+    )
 
 
-def debug_checkpoint_mlx_B(*args, **kwargs):
+def debug_checkpoint_mlx_B(
+    *,
+    ab_run_id: str,
+    stream: Optional[str] = None,
+    context: Optional[Dict] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+    skip: bool = False,
+    verified: bool = False,
+    **variables: Any,
+) -> None:
     """
     Specialized checkpoint for MLX attention output (checkpoint B).
 
     Uses the semantic name \"mlx_B\".
     """
-    return debug_checkpoint("mlx_B", *args, **kwargs)
+    _set_or_check_ab_run_id(ab_run_id, "mlx_B")
+    merged_meta = _merge_ab_metadata(ab_run_id, "mlx_B", metadata)
+    debug_checkpoint(
+        "mlx_B",
+        stream=stream,
+        context=context,
+        metadata=merged_meta,
+        skip=skip,
+        verified=verified,
+        **variables,
+    )
 
 
-def debug_checkpoint_pytorch_A(*args, **kwargs):
+def debug_checkpoint_pytorch_A(
+    *,
+    ab_run_id: str,
+    stream: Optional[str] = None,
+    context: Optional[Dict] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+    skip: bool = False,
+    verified: bool = False,
+    **variables: Any,
+) -> None:
     """
     Specialized checkpoint for PyTorch attention input (checkpoint A).
 
     Uses the semantic name \"pytorch_A\".
     """
-    return debug_checkpoint("pytorch_A", *args, **kwargs)
+    _set_or_check_ab_run_id(ab_run_id, "pytorch_A")
+    merged_meta = _merge_ab_metadata(ab_run_id, "pytorch_A", metadata)
+    debug_checkpoint(
+        "pytorch_A",
+        stream=stream,
+        context=context,
+        metadata=merged_meta,
+        skip=skip,
+        verified=verified,
+        **variables,
+    )
 
 
-def debug_checkpoint_pytorch_B(*args, **kwargs):
+def debug_checkpoint_pytorch_B(
+    *,
+    ab_run_id: str,
+    stream: Optional[str] = None,
+    context: Optional[Dict] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+    skip: bool = False,
+    verified: bool = False,
+    **variables: Any,
+) -> None:
     """
     Specialized checkpoint for PyTorch attention output (checkpoint B).
 
     Uses the semantic name \"pytorch_B\".
     """
-    return debug_checkpoint("pytorch_B", *args, **kwargs)
+    _set_or_check_ab_run_id(ab_run_id, "pytorch_B")
+    merged_meta = _merge_ab_metadata(ab_run_id, "pytorch_B", metadata)
+    debug_checkpoint(
+        "pytorch_B",
+        stream=stream,
+        context=context,
+        metadata=merged_meta,
+        skip=skip,
+        verified=verified,
+        **variables,
+    )

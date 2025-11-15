@@ -117,27 +117,33 @@ def get_runs_archive_dir() -> Path:
     return dir_path
 
 
-def get_run_session_dir(script_name: str, timestamp: str) -> Path:
+def get_run_session_dir(script_name: str, timestamp: str, ab_run_id: str | None = None) -> Path:
     """
     Get session directory for a script run.
 
-    Returns: logs/runs/latest/{script_name}_{timestamp}/
+    Returns:
+        logs/runs/latest/{script_name}_{timestamp}/              (no ab_run_id)
+        logs/runs/latest/{ab_run_id}__{script_name}_{timestamp}/ (when ab_run_id is set)
     """
-    session_dir = get_runs_latest_dir() / f"{script_name}_{timestamp}"
+    base_name = f"{script_name}_{timestamp}"
+    if ab_run_id:
+        base_name = f"{ab_run_id}__{base_name}"
+
+    session_dir = get_runs_latest_dir() / base_name
     session_dir.mkdir(parents=True, exist_ok=True)
     return session_dir
 
 
-def get_run_checkpoints_dir(script_name: str, timestamp: str) -> Path:
+def get_run_checkpoints_dir(script_name: str, timestamp: str, ab_run_id: str | None = None) -> Path:
     """Get checkpoints directory for a run session."""
-    checkpoints_dir = get_run_session_dir(script_name, timestamp) / "checkpoints"
+    checkpoints_dir = get_run_session_dir(script_name, timestamp, ab_run_id=ab_run_id) / "checkpoints"
     checkpoints_dir.mkdir(parents=True, exist_ok=True)
     return checkpoints_dir
 
 
-def get_run_output_log_path(script_name: str, timestamp: str) -> Path:
+def get_run_output_log_path(script_name: str, timestamp: str, ab_run_id: str | None = None) -> Path:
     """Get script output log file path."""
-    return get_run_session_dir(script_name, timestamp) / "script_output.log"
+    return get_run_session_dir(script_name, timestamp, ab_run_id=ab_run_id) / "script_output.log"
 
 
 # Coverage reports

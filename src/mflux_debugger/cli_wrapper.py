@@ -28,7 +28,6 @@ Usage:
 """
 
 import argparse
-import fnmatch
 import json
 import os
 import re
@@ -774,101 +773,20 @@ class DebuggerCLI:
         script_dir: Optional[Path] = None,
     ):
         """
-        Set conditional breakpoints on semantic checkpoints.
+        DISABLED: interactive checkpoint breakpoints via CLI.
 
-        Args:
-            checkpoint_name: Single checkpoint name to break on
-            context: Context condition as key=value pairs
-            all_checkpoints: If True, set breakpoints on all discovered checkpoints
-            pattern: Glob pattern to match checkpoint names (e.g., "txt2img_*", "*rope*")
-            script_dir: Directory to scan for checkpoints (default: current working directory)
+        We now require semantic checkpoints to be defined directly in code via
+        `debug_checkpoint_*` helpers (and the dedicated A/B helpers). This keeps
+        the source of truth in the codebase and avoids ad-hoc CLI state.
         """
-        # Warning: This is not the recommended approach
-        print("\n⚠️  WARNING: Interactive checkpoint breakpoints are NOT recommended!", file=sys.stderr)
-        print("📝 RECOMMENDED: Use debug_checkpoint(skip=False) directly in code instead.", file=sys.stderr)
-        print("   This provides better maintainability and clarity.\n", file=sys.stderr)
-
-        condition_dict = {}
-
-        # Parse context string like "block=0,timestep=0,hit_count=1"
-        if context:
-            for pair in context.split(","):
-                if "=" in pair:
-                    key, value = pair.split("=", 1)
-                    key = key.strip()
-                    value = value.strip()
-                    # Try to convert to int if possible
-                    try:
-                        condition_dict[key] = int(value)
-                    except ValueError:
-                        condition_dict[key] = value
-
-        # Handle bulk checkpoint setting
-        if all_checkpoints or pattern:
-            if script_dir is None:
-                script_dir = Path.cwd()
-
-            # Get all directories to scan
-            scan_dirs = [script_dir]
-            editable_dirs = self._get_editable_install_dirs()
-            scan_dirs.extend(editable_dirs)
-
-            # Scan for checkpoints in all directories
-            if editable_dirs:
-                print("🔍 Scanning for checkpoints in:", file=sys.stderr)
-                print(f"   • {script_dir} (main)", file=sys.stderr)
-                for ed in editable_dirs:
-                    print(f"   • {ed} (editable)", file=sys.stderr)
-            else:
-                print(f"🔍 Scanning for checkpoints in {script_dir}...", file=sys.stderr)
-
-            checkpoints = []
-            for scan_dir in scan_dirs:
-                checkpoints.extend(self._scan_for_checkpoints(scan_dir))
-
-            if not checkpoints:
-                print("❌ No checkpoints found", file=sys.stderr)
-                return
-
-            # Filter by pattern if provided
-            if pattern:
-                checkpoint_names = [cp[2] for cp in checkpoints]
-                matched_names = [name for name in checkpoint_names if fnmatch.fnmatch(name, pattern)]
-                checkpoints = [cp for cp in checkpoints if cp[2] in matched_names]
-
-                if not matched_names:
-                    print(f"❌ No checkpoints match pattern: {pattern}", file=sys.stderr)
-                    return
-
-            # Get unique checkpoint names
-            unique_names = sorted(set(cp[2] for cp in checkpoints))
-
-            print(f"\n📋 Found {len(unique_names)} checkpoint(s):", file=sys.stderr)
-            for name in unique_names:
-                print(f"   • {name}", file=sys.stderr)
-
-            # Set breakpoints for all
-            print("\n⚙️  Setting breakpoints...", file=sys.stderr)
-            success_count = 0
-            for name in unique_names:
-                try:
-                    data = {"checkpoint_name": name, "condition": condition_dict}
-                    response = self._api_call("POST", "/debug/checkpoint/break", data)
-                    success_count += 1
-                except Exception as e:  # noqa: BLE001, PERF203
-                    print(f"   ⚠️  Failed to set breakpoint for '{name}': {e}", file=sys.stderr)
-
-            print(f"\n✅ Set {success_count}/{len(unique_names)} checkpoint breakpoints", file=sys.stderr)
-            return
-
-        # Single checkpoint setting
-        if not checkpoint_name:
-            print("❌ Error: Must provide checkpoint_name, --all, or --pattern", file=sys.stderr)
-            sys.exit(1)
-
-        data = {"checkpoint_name": checkpoint_name, "condition": condition_dict}
-        response = self._api_call("POST", "/debug/checkpoint/break", data)
-        self._format_response(response)
+        print(
+            "\n❌ Semantic checkpoint breakpoints via CLI are disabled.\n"
+            "   Define and manage checkpoints directly in code using the dedicated\n"
+            "   helpers (debug_checkpoint_mlx_A/B, debug_checkpoint_pytorch_A/B, etc.).\n"
+            "   In A/B mode, rely solely on those semantic checkpoints instead of\n"
+            "   `mflux-debug-<framework> checkpoint-break`.\n",
+            file=sys.stderr,
+        )
 
     def cmd_checkpoint_list(self, script_dir: Optional[Path] = None):
         """List checkpoints relevant to the current debug session."""
@@ -1052,6 +970,21 @@ class DebuggerCLI:
         """Terminate debugging session."""
         response = self._api_call("POST", "/debug/terminate", timeout=10)
         self._format_response(response)
+
+        # IMPORTANT:
+        # The /debug/terminate endpoint shuts down the in-process debugger session,
+        # but the FastAPI/uvicorn server will continue running unless we explicitly
+        # kill it. In practice this means that ports 8000/8001 stay busy and stale
+        # sessions can accumulate.
+        #
+        # To make `mflux-debug-<framework> terminate` behave like a hard reset for
+        # the current debugger service, we now also clean up the server process
+        # and any rogue uvicorn instances on this framework's port, using the same
+        # logic as `_cleanup_stale_sessions()` (which is used before `start`).
+        #
+        # This matches the behavior users expect from "terminate": both the debug
+        # session and its backing server are fully torn down.
+        self._cleanup_stale_sessions()
 
     def cmd_log(self, lines: int = 50, follow: bool = False):
         """View script output logs (what the script being debugged prints)."""
