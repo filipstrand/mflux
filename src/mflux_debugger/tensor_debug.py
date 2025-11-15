@@ -352,7 +352,7 @@ def debug_save(tensor: Any, name: str, exit_after: bool = False, skip: bool = Fa
         raise RuntimeError(f"debug_save failed for '{name}': {e}") from e
 
 
-def debug_load(name: str, exact_version: bool = False) -> Any:
+def debug_load(name: str, exact_version: bool = False, to: str = "mlx") -> Any:
     """
     Load a tensor saved with debug_save().
 
@@ -371,14 +371,16 @@ def debug_load(name: str, exact_version: bool = False) -> Any:
               Must match the name used in debug_save(name)
               Can use f-strings for loop indices: f"hidden_states_{block}_{timestep}"
         exact_version: If True, load the exact name without auto-versioning (default: False)
+        to: Target framework format - "mlx" (default) or "pytorch"
 
     Returns:
-        MLX array with the loaded tensor data (if called from MLX context)
-        PyTorch tensor or numpy array (if called from PyTorch context)
-        For complex tensors, returns a tuple (real, imag)
+        MLX array (if to="mlx", default)
+        PyTorch tensor (if to="pytorch")
+        For complex tensors, returns a tuple (real, imag) in the requested format
 
     Raises:
         FileNotFoundError: If the tensor file is not found
+        ValueError: If to parameter is not "mlx" or "pytorch"
 
     Examples:
         ```python
@@ -388,8 +390,13 @@ def debug_load(name: str, exact_version: bool = False) -> Any:
         # Then use it ANYWHERE - no path manipulation needed!
         class MyModel:
             def forward(self, x):
-                # Simple case - load one tensor
+                # Simple case - load one tensor as MLX (default)
                 latents = debug_load("initial_latents")
+                # Or explicitly:
+                latents = debug_load("initial_latents", to="mlx")
+
+                # Load as PyTorch tensor
+                latents_pt = debug_load("initial_latents", to="pytorch")
 
                 # Loop case - load tensor at each iteration
                 for block in range(num_blocks):
@@ -401,7 +408,7 @@ def debug_load(name: str, exact_version: bool = False) -> Any:
         ```
 
     Note:
-        - Automatically converts to the appropriate format (MLX array, PyTorch tensor, or numpy)
+        - Automatically converts to the requested format (MLX array or PyTorch tensor)
         - For complex tensors (saved from PyTorch complex tensors), returns tuple (real, imag)
         - Preserves the original tensor shape and dtype
         - Raises FileNotFoundError if tensor not found (fail-fast behavior)
@@ -416,9 +423,17 @@ def debug_load(name: str, exact_version: bool = False) -> Any:
     caller_line = frame.f_lineno
     caller_location = f"{caller_file}:{caller_line}"
 
-    try:
-        import mlx.core as mx
+    # Validate 'to' parameter
+    if to not in ("mlx", "pytorch"):
+        raise ValueError(f"Invalid 'to' parameter: {to}. Must be 'mlx' or 'pytorch'")
 
+    # Check required frameworks
+    if to == "mlx" and mx is None:
+        raise ImportError("MLX not available - debug_load requires MLX to be installed when to='mlx'")
+    if to == "pytorch" and torch is None:
+        raise ImportError("PyTorch not available - debug_load requires PyTorch to be installed when to='pytorch'")
+
+    try:
         # Check directory size (informational only for load)
         _check_directory_size(operation="load")
 
@@ -445,54 +460,71 @@ def debug_load(name: str, exact_version: bool = False) -> Any:
         )
 
         if is_complex:
-            # Extract real and imaginary parts and convert to MLX arrays
-            real_mlx = mx.array(tensor_np["real"])
-            imag_mlx = mx.array(tensor_np["imag"])
+            # Extract real and imaginary parts
+            real_np = tensor_np["real"]
+            imag_np = tensor_np["imag"]
+
+            # Convert to requested format
+            if to == "mlx":
+                real_tensor = mx.array(real_np)
+                imag_tensor = mx.array(imag_np)
+            else:  # to == "pytorch"
+                real_tensor = torch.from_numpy(real_np).float()
+                imag_tensor = torch.from_numpy(imag_np).float()
 
             # Get tensor info
-            shape = real_mlx.shape
-            dtype = real_mlx.dtype
+            shape = real_tensor.shape
+            dtype = real_tensor.dtype if hasattr(real_tensor, "dtype") else type(real_tensor).__name__
             size_mb = (tensor_np.nbytes) / (1024 * 1024)
 
-            logger.info(f"✅ Tensor loaded: '{name}' ← {load_path.name}")
-            logger.info(f"   Shape: {shape}, dtype: {dtype} (complex: real+imag), size: {size_mb:.2f} MB")
+            logger.info(f"✅ Tensor loaded: '{name}' ← {load_path.name} (to={to})")
+            logger.info(f"   Shape: {shape}, dtype={dtype} (complex: real+imag), size: {size_mb:.2f} MB")
             logger.info(f"   Called from: {caller_location}")
             print(
-                f"✅ [tensor_debug] Loaded '{name}': shape={shape}, type=complex (real+imag), size={size_mb:.2f}MB",
+                f"✅ [tensor_debug] Loaded '{name}': shape={shape}, type=complex (real+imag), size={size_mb:.2f}MB, to={to}",
                 flush=True,
             )
+            print(f"   File: {load_path}", flush=True)
             print(f"   Called from: {caller_location}", flush=True)
 
             # Return as tuple (real, imag) for complex tensors
-            return (real_mlx, imag_mlx)
+            return (real_tensor, imag_tensor)
         else:
-            # Convert to MLX array for real tensors
+            # For real tensors, handle dtype conversion
             # If saved as float32 but contains integer values (common for input_ids, attention_mask),
-            # detect and convert to int32 for MLX compatibility
+            # detect and convert appropriately
             if tensor_np.dtype == np.float32:
                 # Check if all values are integers (within float32 precision)
                 if np.allclose(tensor_np, np.round(tensor_np)):
-                    # Convert to int32 (MLX's preferred integral type)
-                    tensor_np = tensor_np.astype(np.int32)
+                    # Convert to int32 for MLX, int64 for PyTorch
+                    if to == "mlx":
+                        tensor_np = tensor_np.astype(np.int32)
+                    else:  # to == "pytorch"
+                        tensor_np = tensor_np.astype(np.int64)
 
-            tensor_mlx = mx.array(tensor_np)
+            # Convert to requested format
+            if to == "mlx":
+                tensor_result = mx.array(tensor_np)
+            else:  # to == "pytorch"
+                # Convert numpy to PyTorch tensor
+                if np.issubdtype(tensor_np.dtype, np.integer):
+                    tensor_result = torch.from_numpy(tensor_np).long()
+                else:
+                    tensor_result = torch.from_numpy(tensor_np).float()
 
         # Get tensor info
-        shape = tensor_mlx.shape
-        dtype = tensor_mlx.dtype
+        shape = tensor_result.shape
+        dtype = tensor_result.dtype if hasattr(tensor_result, "dtype") else type(tensor_result).__name__
         size_mb = tensor_np.nbytes / (1024 * 1024)
 
-        logger.info(f"✅ Tensor loaded: '{name}' ← {load_path.name}")
+        logger.info(f"✅ Tensor loaded: '{name}' ← {load_path.name} (to={to})")
         logger.info(f"   Shape: {shape}, dtype: {dtype}, size: {size_mb:.2f} MB")
         logger.info(f"   Called from: {caller_location}")
-        print(f"✅ [tensor_debug] Loaded '{name}': shape={shape}, size={size_mb:.2f}MB", flush=True)
+        print(f"✅ [tensor_debug] Loaded '{name}': shape={shape}, size={size_mb:.2f}MB, to={to}", flush=True)
         print(f"   File: {load_path}", flush=True)
         print(f"   Called from: {caller_location}", flush=True)
 
-        return tensor_mlx
-
-    except ImportError as e:
-        raise ImportError("MLX not available - debug_load requires MLX to be installed") from e
+        return tensor_result
     except Exception as e:
         logger.error(f"❌ Failed to load tensor '{name}': {e}")
         raise RuntimeError(f"debug_load failed for '{name}': {e}") from e
