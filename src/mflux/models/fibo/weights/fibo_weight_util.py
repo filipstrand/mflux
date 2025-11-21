@@ -42,9 +42,6 @@ class FIBOWeightUtil:
         transformer: nn.Module,
         text_encoder: nn.Module | None = None,
     ):
-        if weights.vae:
-            vae.update(weights.vae, strict=False)
-        if getattr(weights, "transformer", None):
-            transformer.update(weights.transformer, strict=False)
-        if text_encoder is not None and getattr(weights, "text_encoder", None):
-            text_encoder.update(weights.text_encoder, strict=False)
+        vae.update(weights.vae, strict=False)
+        transformer.update(weights.transformer, strict=False)
+        text_encoder.update(weights.text_encoder, strict=False)

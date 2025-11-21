@@ -30,20 +30,16 @@ class FIBOInitializer:
         )
         fibo_model.fibo_tokenizer = tokenizer_handler.fibo
 
-        # 3. Initialize VAE model
+        # 3. Initialize all models
         fibo_model.vae = Wan2_2_VAE()
-
-        # 4. Initialize transformer model (mirror diffusers BriaFiboTransformer2DModel config)
+        fibo_model.text_encoder = SmolLM3_3B_TextEncoder()
         fibo_model.transformer = FiboTransformer(
             in_channels=48,
             num_layers=8,
             num_single_layers=38,
         )
 
-        # 5. Initialize text encoder (SmolLM3-3B, MLX implementation)
-        fibo_model.text_encoder = SmolLM3_3B_TextEncoder()
-
-        # 6. Apply weights and quantize VAE, transformer, and text encoder
+        # 4. Apply weights and quantize VAE, transformer, and text encoder
         fibo_model.bits = FIBOWeightUtil.set_weights_and_quantize(
             quantize_arg=quantize,
             weights=weights,
@@ -51,7 +47,6 @@ class FIBOInitializer:
             transformer=fibo_model.transformer,
             text_encoder=fibo_model.text_encoder,
         )
-        fibo_model.local_path = local_path
 
     @staticmethod
     def init_vlm(
