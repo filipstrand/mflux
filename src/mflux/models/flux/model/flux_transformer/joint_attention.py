@@ -8,6 +8,7 @@ class JointAttention(nn.Module):
     def __init__(self):
         super().__init__()
         self.head_dimension = 128
+        self.batch_size = 1
         self.num_heads = 24
 
         self.to_q = nn.Linear(3072, 3072)
@@ -28,9 +29,7 @@ class JointAttention(nn.Module):
         hidden_states: mx.array,
         encoder_hidden_states: mx.array,
         image_rotary_emb: mx.array,
-        mask: mx.array | None = None,
     ) -> tuple[mx.array, mx.array]:
-        batch_size = hidden_states.shape[0]
         # 1a. Compute Q,K,V for hidden_states
         query, key, value = AttentionUtils.process_qkv(
             hidden_states=hidden_states,
@@ -68,10 +67,9 @@ class JointAttention(nn.Module):
             query=query,
             key=key,
             value=value,
-            batch_size=batch_size,
+            batch_size=self.batch_size,
             num_heads=self.num_heads,
             head_dim=self.head_dimension,
-            mask=mask,
         )
 
         # 3. Separate the results
