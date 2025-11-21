@@ -1,13 +1,9 @@
-"""Qwen3VL Vision MLP for MLX."""
-
 import mlx.core as mx
 import numpy as np
 from mlx import nn
 
 
 class Qwen3VLVisionMLP(nn.Module):
-    """MLP layer for Qwen3VL vision transformer."""
-
     def __init__(
         self,
         hidden_size: int = 1024,

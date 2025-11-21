@@ -1,5 +1,3 @@
-"""Qwen3VL Vision Block for MLX."""
-
 import mlx.core as mx
 from mlx import nn
 
@@ -8,8 +6,6 @@ from .qwen3_vl_vision_mlp import Qwen3VLVisionMLP
 
 
 class Qwen3VLVisionBlock(nn.Module):
-    """Transformer block for Qwen3VL vision transformer."""
-
     def __init__(
         self,
         hidden_size: int = 1024,

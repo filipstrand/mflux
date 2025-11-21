@@ -1,16 +1,9 @@
-"""
-Qwen3VL Decoder for FIBO VLM.
-
-Custom implementation using only FIBO VLM-specific components.
-No dependencies on Qwen components.
-"""
-
 import mlx.core as mx
 from mlx import nn
 
-from .qwen3_vl_decoder_layer import Qwen3VLDecoderLayer
-from .qwen3_vl_rms_norm import Qwen3VLRMSNorm
-from .qwen3_vl_rope import Qwen3VLRotaryEmbedding
+from mflux.models.fibo_vlm.model.qwen3_vl_decoder_layer import Qwen3VLDecoderLayer
+from mflux.models.fibo_vlm.model.qwen3_vl_rms_norm import Qwen3VLRMSNorm
+from mflux.models.fibo_vlm.model.qwen3_vl_rope import Qwen3VLRotaryEmbedding
 
 
 class Qwen3VLDecoder(nn.Module):
