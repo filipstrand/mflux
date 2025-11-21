@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 from mflux.error.exceptions import PromptFileReadError
-from mflux.models.fibo.model.fibo_vlm.fibo_vlm import FiboVLM
+from mflux.models.fibo_vlm.model.fibo_vlm import FiboVLM
 from mflux.ui.cli.parsers import CommandLineParser
 
 

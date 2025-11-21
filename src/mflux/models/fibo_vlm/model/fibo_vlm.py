@@ -5,7 +5,7 @@ import mlx.core as mx
 import numpy as np
 from PIL import Image
 
-from mflux.models.fibo.fibo_initializer import FIBOInitializer
+from mflux.models.fibo_vlm.fibo_vlm_initializer import FIBOVLMInitializer
 from mflux.models.fibo_vlm.model.qwen3_vl_util import Qwen3VLUtil
 
 
@@ -15,7 +15,7 @@ class FiboVLM:
         model_id: str = "briaai/FIBO-vlm",
         local_path: str | None = None,
     ):
-        FIBOInitializer.init_vlm(
+        FIBOVLMInitializer.init(
             vlm_model=self,
             model_id=model_id,
             local_path=local_path,

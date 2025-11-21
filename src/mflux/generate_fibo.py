@@ -3,6 +3,7 @@ from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.error.exceptions import PromptFileReadError, StopImageGenerationException
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
+from mflux.models.fibo_vlm.model.fibo_vlm import FiboVLM
 from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
 from mflux.ui.prompt_utils import PromptUtils
@@ -22,7 +23,22 @@ def main():
     if args.guidance is None:
         args.guidance = ui_defaults.GUIDANCE_SCALE
 
-    # 1. Load the FIBO model
+    # 1. Prepare the prompt
+    prompt = PromptUtils.get_effective_prompt(args)
+
+    # 1a. Generate JSON prompt using FiboVLM
+    vlm = FiboVLM()
+    json_prompt = vlm.generate(
+        top_p=0.9,
+        temperature=0.2,
+        max_tokens=4096,
+        stop=["<|im_end|>", "<|end_of_text|>"],
+        task="generate",
+        prompt=prompt,
+        seed=42,
+    )
+
+    # 2. Load the FIBO model
     fibo = FIBO(
         model_config=ModelConfig.fibo(),
         quantize=args.quantize,
@@ -37,7 +53,7 @@ def main():
             # 3. Generate an image for each seed value
             image = fibo.generate_image(
                 seed=seed,
-                prompt=PromptUtils.get_effective_prompt(args),
+                prompt=json_prompt,
                 negative_prompt=PromptUtils.get_effective_negative_prompt(args),
                 config=Config(
                     num_inference_steps=args.steps,

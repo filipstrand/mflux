@@ -30,14 +30,11 @@ class Qwen3VLVisionBlock(nn.Module):
         rotary_pos_emb: mx.array | None = None,
         position_embeddings: tuple[mx.array, mx.array] | None = None,
     ) -> mx.array:
-        """Forward pass."""
-        # Self-attention with residual
         hidden_states = hidden_states + self.attn(
             self.norm1(hidden_states),
             cu_seqlens=cu_seqlens,
             rotary_pos_emb=rotary_pos_emb,
             position_embeddings=position_embeddings,
         )
-        # MLP with residual
         hidden_states = hidden_states + self.mlp(self.norm2(hidden_states))
         return hidden_states

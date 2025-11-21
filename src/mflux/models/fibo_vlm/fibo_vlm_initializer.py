@@ -8,7 +8,7 @@ class FIBOVLMInitializer:
         self.config = config
 
     @staticmethod
-    def init_vlm(
+    def init(
         vlm_model,
         model_id: str = "briaai/FIBO-vlm",
         local_path: str | None = None,
