@@ -6,7 +6,6 @@ from mflux.models.fibo_vlm.model.qwen3_vl_vision_model import Qwen3VLVisionModel
 class FIBOVLMInitializer:
     def __init__(self, config):
         self.config = config
-        self.model = self.initialize_model()
 
     @staticmethod
     def init_vlm(
