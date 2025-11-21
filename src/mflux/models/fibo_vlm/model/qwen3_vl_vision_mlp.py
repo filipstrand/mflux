@@ -26,5 +26,4 @@ class Qwen3VLVisionMLP(nn.Module):
             raise ValueError(f"Unsupported activation: {hidden_act}")
 
     def __call__(self, hidden_state: mx.array) -> mx.array:
-        """Forward pass."""
         return self.linear_fc2(self.act_fn(self.linear_fc1(hidden_state)))
