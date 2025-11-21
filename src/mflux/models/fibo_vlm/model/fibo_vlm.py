@@ -5,8 +5,8 @@ import mlx.core as mx
 import numpy as np
 from PIL import Image
 
-from ...fibo_initializer import FIBOInitializer
-from .qwen3_vl_util import Qwen3VLUtil
+from mflux.models.fibo.fibo_initializer import FIBOInitializer
+from mflux.models.fibo_vlm.model.qwen3_vl_util import Qwen3VLUtil
 
 
 class FiboVLM:
