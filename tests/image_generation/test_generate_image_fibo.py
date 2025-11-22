@@ -46,7 +46,7 @@ OWL_PROMPT_REFINED = """
   "short_description": "A hyper-detailed, ultra-fluffy owl sitting in the trees at night, looking directly at the camera with wide, adorable, expressive eyes. Its feathers are soft and voluminous, catching the cool moonlight with subtle silver highlights. The owl's gaze is curious and full of charm, giving it a whimsical, storybook-like personality.",
   "objects": [
     {
-      "description": "An adorable, fluffy owl with large, expressive eyes and soft, voluminous feathers. Its plumage is a mix of white and subtle silver highlights from the moonlight.",
+      "description": "An adorable, fluffy owl with large, expressive eyes and soft, voluminous feathers. Its plumage is a mix of warm browns, grays, and subtle silver highlights from the moonlight.",
       "location": "center",
       "relationship": "The owl is the sole subject, perched comfortably within its environment.",
       "relative_size": "large within frame",
@@ -64,7 +64,7 @@ OWL_PROMPT_REFINED = """
   },
   "aesthetics": {
     "composition": "centered, portrait composition",
-    "color_scheme": "cool blues and silvers from the moonlight contrasting with white of the owl and forest.",
+    "color_scheme": "cool blues and silvers from the moonlight contrasting with warm browns and grays of the owl and forest.",
     "mood_atmosphere": "mysterious, enchanting, whimsical, and serene.",
     "aesthetic_score": "very high",
     "preference_score": "very high"

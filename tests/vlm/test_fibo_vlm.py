@@ -7,6 +7,78 @@ from PIL import Image
 from mflux.models.fibo_vlm.model.fibo_vlm import FiboVLM
 from tests.image_generation.test_generate_image_fibo import OWL_PROMPT, OWL_PROMPT_REFINED
 
+INSPIRE_PROMPT = """
+{
+  "short_description": "A surreal and dreamlike scene unfolds in a vast, empty landscape under a starry night sky. In the foreground, a lone, weathered wooden structure resembling a small house or shed stands, with a single window emitting a warm, yellow light. To the left, a cluster of similarly constructed, smaller wooden forms are scattered across the ground. The overall atmosphere is one of quiet solitude and mystery, with a touch of cosmic wonder.",
+  "objects": [
+    {
+      "description": "A solitary, rustic wooden structure with a pitched roof, resembling a small cabin or shed. It has a single window that glows with a warm, inviting yellow light.",
+      "location": "center-right foreground",
+      "relationship": "It is the most prominent object in the scene, standing alone in the landscape.",
+      "relative_size": "medium",
+      "shape_and_color": "Rectangular base with a triangular roof, made of weathered, light brown wood. The window is square and emits yellow light.",
+      "texture": "rough, weathered wood",
+      "appearance_details": "The wood appears aged and slightly worn. The window light casts a soft glow.",
+      "orientation": "upright"
+    },
+    {
+      "description": "A cluster of smaller, similarly styled wooden structures, appearing as fragments or derelict sheds. They are scattered across the ground to the left of the main structure.",
+      "location": "left midground",
+      "relationship": "These structures appear to be remnants or companions to the main wooden structure, creating a sense of a lost settlement.",
+      "relative_size": "small",
+      "shape_and_color": "Various rectangular and cuboid shapes, light brown wood.",
+      "texture": "rough, weathered wood",
+      "appearance_details": "Some have visible doorways or openings. They are less detailed than the main structure.",
+      "number_of_objects": 5,
+      "orientation": "various, mostly upright"
+    },
+    {
+      "description": "A vast, star-filled night sky that transitions into a deep, dark expanse.",
+      "location": "top half of the image",
+      "relationship": "It forms the backdrop for the entire scene, emphasizing the cosmic scale.",
+      "relative_size": "large",
+      "shape_and_color": "Vast, dark blue to black gradient, filled with countless white and yellow stars.",
+      "texture": "smooth, celestial",
+      "appearance_details": "The stars are sharp points of light, some forming constellations. A subtle nebula-like glow is visible in the upper right.",
+      "orientation": "horizontal"
+    },
+    {
+      "description": "The ground is a flat, dark, and somewhat textured surface, resembling a desolate plain or a cosmic dust field.",
+      "location": "bottom half of the image",
+      "relationship": "It serves as the base for the wooden structures and the overall environment.",
+      "relative_size": "large",
+      "shape_and_color": "Dark, muted brown or charcoal grey, with subtle variations in tone.",
+      "texture": "slightly granular, dusty",
+      "appearance_details": "Appears to be a fine, powdery substance. Some faint indentations are visible.",
+      "orientation": "horizontal"
+    }
+  ],
+  "background_setting": "An expansive, desolate landscape under a clear, star-filled night sky. The ground is a flat, dark plain. The horizon is indistinct, blending into the sky.",
+  "lighting": {
+    "conditions": "night, starlight, internal glow",
+    "direction": "ambient from stars, warm light emanating from the window",
+    "shadows": "soft, elongated shadows cast by the structures, suggesting a low light source"
+  },
+  "aesthetics": {
+    "composition": "centered framing with the main structure slightly off-center, creating a sense of balance and depth",
+    "color_scheme": "limited palette of dark blues, browns, and yellows, with high contrast between the starry sky and the earthly structures",
+    "mood_atmosphere": "surreal, mysterious, serene, cosmic",
+    "aesthetic_score": "very high",
+    "preference_score": "very high"
+  },
+  "photographic_characteristics": {
+    "depth_of_field": "deep",
+    "focus": "sharp focus on the wooden structures and stars",
+    "camera_angle": "eye-level",
+    "lens_focal_length": "standard lens"
+  },
+  "style_medium": "digital art",
+  "text_render": [],
+  "context": "This image evokes a sense of wonder and isolation, suitable for concept art for a science fiction or fantasy game, or as a piece of atmospheric digital art.",
+  "artistic_style": "surreal, cosmic, minimalist"
+}
+"""
+
 
 @pytest.fixture
 def vlm():
@@ -69,6 +141,5 @@ def test_vlm_inspire_json_from_image(vlm):
     )
 
     # then
-    expected_json_output = '{"short_description":"A charming, stylized illustration of a young owl perched on a mossy branch in a dimly lit forest. The owl has large, expressive eyes and soft, feathered textures. The background is a blur of dark trees and foliage, creating a serene and slightly mysterious atmosphere. The overall impression is one of innocence and nature\'s quiet beauty.","objects":[{"description":"A young owl with large, round, dark eyes that have bright yellow irises. Its plumage is a soft, mottled brown and beige, with distinct feather patterns. It has small, pointed ear tufts and a small yellow beak.","location":"center","relationship":"perched on a branch","relative_size":"medium","shape_and_color":"Rounded body shape, predominantly brown and beige with yellow eyes and beak.","texture":"soft, feathery","appearance_details":"Its eyes are wide and seem to gaze directly at the viewer. The feathers have a layered, textured appearance.","number_of_objects":1,"pose":"Sitting upright, with wings slightly tucked.","expression":"curious and gentle","action":"perching","gender":"neutral","orientation":"upright"},{"description":"A thick, gnarled tree branch covered in vibrant green moss.","location":"bottom-center foreground","relationship":"the owl is perched on this branch","relative_size":"medium","shape_and_color":"Irregular, organic shape, dark brown wood with bright green moss.","texture":"rough bark under soft, velvety moss","appearance_details":"The moss is lush and covers a significant portion of the branch\'s surface.","number_of_objects":1,"orientation":"horizontal"},{"description":"Several slender tree trunks and branches forming the background.","location":"background","relationship":"surrounding the owl and branch","relative_size":"large","shape_and_color":"Vertical, irregular shapes, dark brown and grey.","texture":"rough bark","appearance_details":"Some branches have sparse green leaves. The trees are out of focus.","orientation":"vertical"}],"background_setting":"A dense, dark forest with tall trees and foliage. The background is softly blurred, suggesting depth and a sense of enclosure. Hints of lighter tones suggest distant light filtering through the canopy.","lighting":{"conditions":"dim forest light","direction":"soft, diffused light from the front and slightly above","shadows":"soft, subtle shadows that enhance the form of the owl and branch without being harsh"},"aesthetics":{"composition":"centered composition, with the owl as the clear focal point","color_scheme":"earthy tones of brown, beige, and green, with contrasting yellow accents and a dark, muted background","mood_atmosphere":"serene, innocent, slightly mysterious","aesthetic_score":"high","preference_score":"high"},"photographic_characteristics":{"depth_of_field":"shallow, with a blurred background","focus":"sharp focus on the owl and the branch","camera_angle":"eye-level","lens_focal_length":"standard lens (e.g., 50mm)"},"style_medium":"digital illustration","text_render":[],"context":"This image would be suitable for children\'s book illustrations, nature-themed art, or as a decorative element for a calm, natural setting.","artistic_style":"stylized, soft, detailed"}'
-    assert json_output == expected_json_output, "Generated JSON output does not match expected output exactly."
+    assert json_output == INSPIRE_PROMPT, "Generated JSON output does not match expected output exactly."
     assert isinstance(json.loads(json_output), dict), "Output should be a valid JSON object"

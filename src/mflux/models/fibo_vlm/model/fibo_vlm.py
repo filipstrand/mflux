@@ -1,3 +1,4 @@
+import json
 import textwrap
 from typing import Any, Dict, List, Optional
 
@@ -187,7 +188,14 @@ class FiboVLM:
         # Decode using tokenizer (match diffusers: skip_special_tokens=True)
         generated_text = self.processor.tokenizer.decode(generated_tokens_np, skip_special_tokens=True)
 
-        return generated_text
+        # Format JSON output to match expected format (pretty-printed with 2-space indent)
+        try:
+            parsed_json = json.loads(generated_text)
+            formatted_json = json.dumps(parsed_json, indent=2, ensure_ascii=False)
+            return f"\n{formatted_json}\n"
+        except json.JSONDecodeError:
+            # If it's not valid JSON, return as-is
+            return generated_text
 
     @staticmethod
     def _build_messages(
