@@ -10,7 +10,6 @@ from mflux.models.fibo.tokenizer.fibo_tokenizer import TokenizerFibo
 class PromptEncoder:
     @staticmethod
     def encode_prompt(
-        seed: int,
         prompt: str,
         negative_prompt: str | None,
         tokenizer: TokenizerFibo,
@@ -20,8 +19,9 @@ class PromptEncoder:
         if negative_prompt is None or negative_prompt == "":
             negative_prompt = "ugly, blurry, low quality"
 
-        # 1. Convert prompt to JSON format using VLM, unless already in JSON format
-        json_prompt = PromptEncoder._get_json_prompt(prompt, seed)
+        # 1. Convert prompt to JSON format
+        json.loads(prompt)
+        json_prompt = prompt
 
         # 2. Get prompt embeddings for positive and negative prompt
         prompt_embeds, prompt_layers, prompt_attention_mask = PromptEncoder.get_prompt_embeds(

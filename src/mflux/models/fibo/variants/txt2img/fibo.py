@@ -62,7 +62,6 @@ class FIBO(nn.Module):
 
         # 2. Encode the prompt
         json_prompt, encoder_hidden_states, text_encoder_layers = PromptEncoder.encode_prompt(
-            seed=seed,
             prompt=prompt,
             negative_prompt=negative_prompt,
             tokenizer=self.fibo_tokenizer,

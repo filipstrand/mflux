@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from mflux.models.fibo.model.fibo_vlm.fibo_vlm import FiboVLM
+from mflux.models.fibo_vlm.model.fibo_vlm import FiboVLM
 
 
 @pytest.fixture
