@@ -22,6 +22,7 @@ class WeightTarget:
     hf_patterns: List[str]  # HuggingFace naming patterns, e.g., ["transformer_blocks.{block}.attn.to_q.weight"]
     transform: Optional[Callable[[mx.array], mx.array]] = None  # Optional transform (reshape, transpose, etc.)
     required: bool = True  # If False, weight is optional (may not exist in all models)
+    max_blocks: Optional[int] = None  # Override num_blocks for this target (e.g., for fixed-size lists)
 
 
 class WeightMapping(Protocol):

@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 import mlx.nn as nn
 
 if TYPE_CHECKING:
+    from mflux.models.fibo.weights.fibo_weight_handler import FIBOWeightHandler
     from mflux.models.flux.variants.controlnet.weight_handler_controlnet import WeightHandlerControlnet
     from mflux.models.flux.weights.weight_handler import WeightHandler
     from mflux.models.qwen.weights.qwen_weight_handler import QwenWeightHandler
@@ -19,9 +20,6 @@ class QuantizationUtil:
         weights: "WeightHandler",
     ) -> None:
         q_level = weights.meta_data.quantization_level
-
-        # mx.save_tensors saves metadata dict kv 'quantization_level': 'None' as a str: str mapping
-        # we coerce both configs to NoneType to help users use non-quantized saved model files
         if q_level == "None":
             q_level = None
         if quantize == "None":
@@ -92,3 +90,23 @@ class QuantizationUtil:
             nn.quantize(vae, bits=bits)
             nn.quantize(transformer, bits=bits)
             # nn.quantize(text_encoder, bits=bits)  # Quantization of text encoder causes significant semantic degradation
+
+    @staticmethod
+    def quantize_fibo_models(
+        vae: nn.Module,
+        transformer: nn.Module,
+        text_encoder: nn.Module | None,
+        quantize: int,
+        weights: "FIBOWeightHandler",
+    ) -> None:
+        q_level = weights.meta_data.quantization_level
+        if q_level == "None":
+            q_level = None
+        if quantize == "None":
+            quantize = None
+
+        if quantize is not None or q_level is not None:
+            bits = int(q_level) if q_level is not None else quantize
+            nn.quantize(vae, class_predicate=QuantizationUtil.quantization_predicate, bits=bits)
+            nn.quantize(transformer, class_predicate=QuantizationUtil.quantization_predicate, bits=bits)
+            nn.quantize(text_encoder, class_predicate=QuantizationUtil.quantization_predicate, bits=bits)
