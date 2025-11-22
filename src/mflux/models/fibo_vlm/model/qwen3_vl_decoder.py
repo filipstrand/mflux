@@ -27,18 +27,12 @@ class Qwen3VLDecoder(nn.Module):
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
         self.num_hidden_layers = num_hidden_layers
-
-        # Qwen3VL uses explicit head_dim (defaults to 128 if not provided)
         if head_dim is None:
-            head_dim = 128  # Default for Qwen3VL
-
+            head_dim = 128
         if mrope_section is None:
-            # Fallback to Qwen default for text if not provided
             mrope_section = [24, 20, 20]
 
         self.embed_tokens = nn.Embedding(vocab_size, hidden_size)
-
-        # Create decoder layers with custom FIBO VLM components
         self.layers = [
             Qwen3VLDecoderLayer(
                 hidden_size=hidden_size,
@@ -62,13 +56,9 @@ class Qwen3VLDecoder(nn.Module):
             scaling_factor=attention_scaling,
             mrope_section=mrope_section,
         )
-
-        # Language modeling head for generation
         self.lm_head = nn.Linear(hidden_size, vocab_size, bias=False)
-
-        # Vision components (for multimodal support) - will be initialized separately
         self.visual = None
-        self.image_token_id = None  # Will be set from config
+        self.image_token_id = None
 
     def __call__(
         self,
@@ -86,7 +76,6 @@ class Qwen3VLDecoder(nn.Module):
 
         # Handle vision inputs if provided
         if pixel_values is not None and image_grid_thw is not None and self.visual is not None:
-            # Process vision inputs (similar to QwenEncoder)
             image_embeds_split = self._get_image_features(pixel_values, image_grid_thw)
             image_embeds = mx.concatenate(image_embeds_split, axis=0)
 
@@ -115,20 +104,15 @@ class Qwen3VLDecoder(nn.Module):
             attention_mask = mx.ones((batch_size, seq_len), dtype=mx.int32)
 
         # Position embeddings
-        # If using cache, compute position IDs relative to cached sequence length
         if use_cache and past_key_values is not None:
-            # Get cached sequence length from first layer's key cache
             cached_seq_len = past_key_values[0][0].shape[2] if len(past_key_values) > 0 else 0
-            # Position IDs for new tokens start from cached_seq_len
             cache_position = mx.arange(cached_seq_len, cached_seq_len + seq_len, dtype=mx.int32)
         else:
-            # First iteration: positions start from 0
             cache_position = mx.arange(seq_len, dtype=mx.int32)
         position_ids = mx.expand_dims(mx.expand_dims(cache_position, axis=0), axis=0)
         position_ids = mx.broadcast_to(position_ids, (3, batch_size, seq_len))
 
         # Create causal + padding mask
-        # Use the dtype of inputs_embeds for masks (usually float16)
         mask_dtype = inputs_embeds.dtype
         padding_mask = mx.where(
             attention_mask == 1,
@@ -151,15 +135,9 @@ class Qwen3VLDecoder(nn.Module):
             causal_tri_mask = mx.expand_dims(mx.expand_dims(causal_tri_mask, axis=0), axis=0)
             causal_tri_mask = mx.broadcast_to(causal_tri_mask, (batch_size, 1, seq_len, seq_len))
         attention_mask_4d = causal_tri_mask + padding_mask
-
-        # Forward through layers
         hidden_states = inputs_embeds
         position_embeddings = self.rotary_emb(hidden_states, position_ids)
 
-        # Handle KV cache - use provided past_key_values or None
-        # past_key_values is a list of (key, value) tuples, one per layer
-
-        # Forward through layers (decoder layers verified - checkpoints removed)
         present_key_values = [] if use_cache else None
         for layer_idx, layer in enumerate(self.layers):
             layer_past = None
@@ -181,18 +159,9 @@ class Qwen3VLDecoder(nn.Module):
 
         # Final norm
         hidden_states = self.norm(hidden_states)
-
-        # Use float32 for lm_head computation to avoid numerical precision issues
-        # with large matrix multiplications (151936 vocab size)
-        # Cast inputs to float32, compute, then cast back to float16
         hidden_states_f32 = hidden_states.astype(mx.float32)
         weight_f32 = self.lm_head.weight.astype(mx.float32)
-
-        # Perform matrix multiplication in float32
-        # MLX Linear does: input @ weight.T
         logits_f32 = mx.matmul(hidden_states_f32, weight_f32.T)
-
-        # Cast back to float16 to match expected output dtype
         logits = logits_f32.astype(hidden_states.dtype)
 
         if use_cache:

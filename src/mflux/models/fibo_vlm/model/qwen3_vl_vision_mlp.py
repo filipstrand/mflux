@@ -13,11 +13,9 @@ class Qwen3VLVisionMLP(nn.Module):
         super().__init__()
         self.hidden_size = hidden_size
         self.intermediate_size = intermediate_size
-
         self.linear_fc1 = nn.Linear(hidden_size, intermediate_size, bias=True)
         self.linear_fc2 = nn.Linear(intermediate_size, hidden_size, bias=True)
 
-        # Activation function
         if hidden_act == "gelu_pytorch_tanh":
             self.act_fn = lambda x: 0.5 * x * (1 + mx.tanh(mx.sqrt(2 / np.pi) * (x + 0.044715 * x**3)))
         elif hidden_act == "gelu":

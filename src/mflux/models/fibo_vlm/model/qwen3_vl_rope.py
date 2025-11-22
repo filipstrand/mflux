@@ -46,7 +46,7 @@ class Qwen3VLRotaryEmbedding(nn.Module):
         freqs_t = freqs[0]
         freqs_t_np = np.array(freqs_t)
 
-        for dim, offset in enumerate((1, 2), start=1):  # H=1, W=2
+        for dim, offset in enumerate((1, 2), start=1):
             length = mrope_section[dim] * 3
             indices_np = np.arange(offset, length, 3)
             freqs_dim_np = np.array(freqs[dim])

@@ -26,86 +26,50 @@ class Qwen3VLVisionAttention(nn.Module):
         position_embeddings: tuple[mx.array, mx.array] | None = None,
     ) -> mx.array:
         seq_length = hidden_states.shape[0]
-
-        # Compute QKV: (seq_len, hidden) -> (3, seq_len, num_heads, head_dim)
         qkv = self.qkv(hidden_states).reshape(seq_length, 3, self.num_heads, self.head_dim)
-        # Permute to match PyTorch ordering and unbind
-        qkv = qkv.transpose(1, 0, 2, 3)  # (3, seq_len, num_heads, head_dim)
+        qkv = qkv.transpose(1, 0, 2, 3)
         query_states, key_states, value_states = mx.split(qkv, 3, axis=0)
-        query_states = query_states.squeeze(0)  # (seq_len, num_heads, head_dim)
+        query_states = query_states.squeeze(0)
         key_states = key_states.squeeze(0)
         value_states = value_states.squeeze(0)
 
-        # Apply rotary position embedding (cos, sin from position_embeddings)
         if position_embeddings is not None:
-            cos, sin = position_embeddings  # (seq_len, head_dim)
+            cos, sin = position_embeddings
             query_states, key_states = self.apply_rotary_pos_emb_vision(query_states, key_states, cos, sin)
 
-        # Chunked attention based on cu_seqlens (non-flash path in PyTorch)
-        # Use fast MLX attention for better performance
         attn_outputs_chunks: list[mx.array] = []
         if cu_seqlens is not None and len(cu_seqlens) > 1:
             lengths = [int((cu_seqlens[i + 1] - cu_seqlens[i]).item()) for i in range(len(cu_seqlens) - 1)]
             offset = 0
             for length in lengths:
-                # Slice chunks: (chunk_len, num_heads, head_dim)
                 q_chunk = query_states[offset : offset + length]
                 k_chunk = key_states[offset : offset + length]
                 v_chunk = value_states[offset : offset + length]
                 offset += length
 
-                # Transpose to (num_heads, chunk_len, head_dim) for fast attention
-                # scaled_dot_product_attention expects (batch, num_heads, seq_len, head_dim)
-                # We need to add batch dimension: (1, num_heads, chunk_len, head_dim)
-                q = q_chunk.transpose(1, 0, 2)  # (num_heads, chunk_len, head_dim)
+                q = q_chunk.transpose(1, 0, 2)
                 k = k_chunk.transpose(1, 0, 2)
                 v = v_chunk.transpose(1, 0, 2)
-
-                # Add batch dimension for fast attention
-                q = mx.expand_dims(q, axis=0)  # (1, num_heads, chunk_len, head_dim)
+                q = mx.expand_dims(q, axis=0)
                 k = mx.expand_dims(k, axis=0)
                 v = mx.expand_dims(v, axis=0)
 
-                # Use fast MLX attention
-                attn_output = scaled_dot_product_attention(
-                    q,
-                    k,
-                    v,
-                    scale=self.scaling,
-                    mask=None,  # No mask for vision attention chunks
-                )
-
-                # Remove batch dimension and transpose back: (chunk_len, num_heads, head_dim)
+                attn_output = scaled_dot_product_attention(q, k, v, scale=self.scaling, mask=None)
                 attn_output = attn_output.squeeze(0).transpose(1, 0, 2)
                 attn_outputs_chunks.append(attn_output)
 
-            # Concatenate along sequence dimension
-            attn_output = mx.concatenate(attn_outputs_chunks, axis=0)  # (seq_len, num_heads, head_dim)
+            attn_output = mx.concatenate(attn_outputs_chunks, axis=0)
         else:
-            # No chunking: single sequence
-            # Transpose to (num_heads, seq_len, head_dim) for fast attention
-            q = query_states.transpose(1, 0, 2)  # (num_heads, seq_len, head_dim)
+            q = query_states.transpose(1, 0, 2)
             k = key_states.transpose(1, 0, 2)
             v = value_states.transpose(1, 0, 2)
-
-            # Add batch dimension for fast attention
-            q = mx.expand_dims(q, axis=0)  # (1, num_heads, seq_len, head_dim)
+            q = mx.expand_dims(q, axis=0)
             k = mx.expand_dims(k, axis=0)
             v = mx.expand_dims(v, axis=0)
 
-            # Use fast MLX attention
-            attn_output = scaled_dot_product_attention(
-                q,
-                k,
-                v,
-                scale=self.scaling,
-                mask=None,  # No mask for vision attention
-            )
-
-            # Remove batch dimension and transpose back: (seq_len, num_heads, head_dim)
+            attn_output = scaled_dot_product_attention(q, k, v, scale=self.scaling, mask=None)
             attn_output = attn_output.squeeze(0).transpose(1, 0, 2)
 
-        # Final projection: (seq_len, num_heads * head_dim) -> (seq_len, dim)
         attn_output = attn_output.reshape(seq_length, self.dim)
         attn_output = self.proj(attn_output)
         return attn_output

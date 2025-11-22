@@ -69,14 +69,12 @@ class Qwen3VLVisionModel(nn.Module):
         ]
 
     def rot_pos_emb(self, grid_thw: mx.array) -> mx.array:
-        """Generate rotary position embeddings from grid_thw (inspired by Qwen 2.5)."""
         pos_ids = []
         for i in range(grid_thw.shape[0]):
             t, h, w = int(grid_thw[i, 0].item()), int(grid_thw[i, 1].item()), int(grid_thw[i, 2].item())
 
-            # Create position IDs like Qwen 2.5
-            hpos_ids = mx.repeat(mx.arange(h, dtype=mx.int32)[..., None], w, axis=1)  # (h, w)
-            wpos_ids = mx.repeat(mx.arange(w, dtype=mx.int32)[None, ...], h, axis=0)  # (h, w)
+            hpos_ids = mx.repeat(mx.arange(h, dtype=mx.int32)[..., None], w, axis=1)
+            wpos_ids = mx.repeat(mx.arange(w, dtype=mx.int32)[None, ...], h, axis=0)
 
             # Reshape for spatial merging
             merge_h = h // self.spatial_merge_size
@@ -84,42 +82,30 @@ class Qwen3VLVisionModel(nn.Module):
             hpos_ids = hpos_ids.reshape(merge_h, self.spatial_merge_size, merge_w, self.spatial_merge_size)
             wpos_ids = wpos_ids.reshape(merge_h, self.spatial_merge_size, merge_w, self.spatial_merge_size)
 
-            # Transpose to match Qwen 2.5 format
             hpos_ids = mx.transpose(hpos_ids, (0, 2, 1, 3))
             wpos_ids = mx.transpose(wpos_ids, (0, 2, 1, 3))
-
-            # Flatten
             hpos_ids = hpos_ids.reshape(-1)
             wpos_ids = wpos_ids.reshape(-1)
 
-            # Stack and tile for temporal frames
             pos_id_pair = mx.stack([hpos_ids, wpos_ids], axis=-1)
             if t > 1:
                 pos_id_pair = mx.tile(pos_id_pair, (t, 1))
 
             pos_ids.append(pos_id_pair)
 
-        # Concatenate all position IDs
         pos_ids = mx.concatenate(pos_ids, axis=0)
-
-        # Get max grid size and lookup rotary embeddings
         max_grid_size = int(mx.max(grid_thw[:, 1:]).item())
-        rotary_pos_emb_full = self.rotary_pos_emb(max_grid_size)  # (max_grid_size, dim // 2)
+        rotary_pos_emb_full = self.rotary_pos_emb(max_grid_size)
 
-        # Lookup embeddings for h and w positions
         h_indices = pos_ids[:, 0].astype(mx.int32)
         w_indices = pos_ids[:, 1].astype(mx.int32)
-        h_emb = rotary_pos_emb_full[h_indices]  # (total_tokens, dim // 2)
-        w_emb = rotary_pos_emb_full[w_indices]  # (total_tokens, dim // 2)
-
-        # Stack and reshape like Qwen 2.5
-        rotary_pos_emb = mx.stack([h_emb, w_emb], axis=1)  # (total_tokens, 2, dim // 2)
-        rotary_pos_emb = rotary_pos_emb.reshape(rotary_pos_emb.shape[0], -1)  # (total_tokens, dim)
-
+        h_emb = rotary_pos_emb_full[h_indices]
+        w_emb = rotary_pos_emb_full[w_indices]
+        rotary_pos_emb = mx.stack([h_emb, w_emb], axis=1)
+        rotary_pos_emb = rotary_pos_emb.reshape(rotary_pos_emb.shape[0], -1)
         return rotary_pos_emb
 
-    def fast_pos_embed_interpolate(self, grid_thw: mx.array) -> mx.array:
-        """Interpolate position embeddings for variable grid sizes."""
+    def _fast_pos_embed_interpolate(self, grid_thw: mx.array) -> mx.array:
         grid_ts = grid_thw[:, 0]
         grid_hs = grid_thw[:, 1]
         grid_ws = grid_thw[:, 2]
@@ -207,9 +193,7 @@ class Qwen3VLVisionModel(nn.Module):
         for pos_embed, t, h, w in zip(patch_pos_embeds_list, grid_ts, grid_hs, grid_ws):
             t, h, w = int(t.item()), int(h.item()), int(w.item())
             pos_embed = mx.tile(pos_embed, (t, 1))
-            # Reshape: (t, h // merge_size, merge_size, w // merge_size, merge_size, hidden_size)
             pos_embed = pos_embed.reshape(t, h // merge_size, merge_size, w // merge_size, merge_size, -1)
-            # Permute: (t, h // merge_size, w // merge_size, merge_size, merge_size, hidden_size)
             pos_embed = pos_embed.transpose(0, 1, 3, 2, 4, 5)
             pos_embed = pos_embed.reshape(-1, pos_embed.shape[-1])
             patch_pos_embeds_permute.append(pos_embed)
@@ -218,25 +202,9 @@ class Qwen3VLVisionModel(nn.Module):
         return patch_pos_embeds
 
     def __call__(self, hidden_states: mx.array, grid_thw: mx.array) -> tuple[mx.array, list[mx.array]]:
-        """
-        Forward pass.
-
-        Args:
-            hidden_states: Shape (seq_len, in_channels * temporal_patch_size * patch_size * patch_size)
-            grid_thw: Shape (num_images, 3) - (temporal, height, width) for each image
-
-        Returns:
-            image_embeds: Shape (seq_len, out_hidden_size) - Final image embeddings
-            deepstack_image_embeds: List of embeddings from deepstack layers
-        """
-        # Patch embedding
         hidden_states = self.patch_embed(hidden_states)
-
-        # Position embeddings
-        pos_embeds = self.fast_pos_embed_interpolate(grid_thw)
+        pos_embeds = self._fast_pos_embed_interpolate(grid_thw)
         hidden_states = hidden_states + pos_embeds
-
-        # Rotary position embeddings
         rotary_pos_emb = self.rot_pos_emb(grid_thw)
 
         # Prepare position embeddings for attention
@@ -273,9 +241,5 @@ class Qwen3VLVisionModel(nn.Module):
                 deepstack_embeds = self.deepstack_merger_list[deepstack_idx](hidden_states)
                 deepstack_image_embeds.append(deepstack_embeds)
 
-        # Final merger - match PyTorch: pass hidden_states directly, let merger handle reshaping
-        # PyTorch just does: hidden_states = self.merger(hidden_states)
-        # The merger normalizes over hidden_size (1024), then reshapes to merged size (4096)
         image_embeds = self.merger(hidden_states)
-
         return image_embeds, deepstack_image_embeds
