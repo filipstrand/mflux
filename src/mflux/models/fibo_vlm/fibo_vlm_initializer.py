@@ -1,6 +1,6 @@
-from mflux.models.fibo.weights import FIBOWeightHandler
 from mflux.models.fibo_vlm.model.qwen3_vl_decoder import Qwen3VLDecoder
 from mflux.models.fibo_vlm.model.qwen3_vl_vision_model import Qwen3VLVisionModel
+from mflux.models.fibo_vlm.weights.fibo_vlm_weight_handler import FIBOVLMWeightHandler
 
 
 class FIBOVLMInitializer:
@@ -14,7 +14,7 @@ class FIBOVLMInitializer:
         local_path: str | None = None,
     ) -> None:
         # 1. Load VLM weights
-        weights = FIBOWeightHandler.load_vlm_regular_weights(
+        weights = FIBOVLMWeightHandler.load_vlm_regular_weights(
             repo_id=model_id,
             local_path=local_path,
         )
