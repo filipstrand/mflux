@@ -84,27 +84,6 @@ class PromptEncoder:
         return prompt_layers
 
     @staticmethod
-    def _get_json_prompt(prompt: str, seed: int) -> str:
-        try:
-            json.loads(prompt)
-            json_prompt = prompt
-        except (json.JSONDecodeError, ValueError):
-            from mflux.models.fibo.model.fibo_vlm.fibo_vlm import FiboVLM
-
-            vlm = FiboVLM(model_id="briaai/FIBO-vlm")
-            json_prompt = vlm.generate(
-                top_p=0.9,
-                temperature=0.2,
-                max_tokens=4096,
-                stop=["<|im_end|>", "<|end_of_text|>"],
-                task="generate",
-                prompt=prompt,
-                seed=seed,
-            )
-            del vlm
-        return json_prompt
-
-    @staticmethod
     def get_prompt_embeds(
         prompt: Union[str, List[str]],
         text_encoder: SmolLM3_3B_TextEncoder,
