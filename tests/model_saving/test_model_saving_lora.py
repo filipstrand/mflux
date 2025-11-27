@@ -3,15 +3,16 @@ import shutil
 from pathlib import Path
 
 import numpy as np
+import pytest
 
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.txt2img.flux import Flux1
 
 PATH = "tests/4bit/"
 
 
 class TestModelSavingLora:
+    @pytest.mark.slow
     def test_save_and_load_4bit_model_with_lora(self):
         # Clean up any existing temporary directories from previous test runs
         TestModelSavingLora.delete_folder_if_exists(PATH)
@@ -35,18 +36,16 @@ class TestModelSavingLora:
             image1 = fluxB.generate_image(
                 seed=44,
                 prompt="mkym this is made of wool, pizza",
-                config=Config(
-                    num_inference_steps=2,
-                    height=341,
-                    width=768,
-                ),
+                num_inference_steps=2,
+                height=341,
+                width=768,
             )
             del fluxB
 
             # when loading the quantized model from a local path (also without specifying bits) with a LoRA...
             fluxC = Flux1(
                 model_config=ModelConfig.schnell(),
-                local_path=PATH,
+                model_path=PATH,
                 lora_paths=TestModelSavingLora.get_lora_path(),
                 lora_scales=[1.0],
             )
@@ -55,11 +54,9 @@ class TestModelSavingLora:
             image2 = fluxC.generate_image(
                 seed=44,
                 prompt="mkym this is made of wool, pizza",
-                config=Config(
-                    num_inference_steps=2,
-                    height=341,
-                    width=768,
-                ),
+                num_inference_steps=2,
+                height=341,
+                width=768,
             )
 
             # then we confirm that we get the exact *identical* image in both cases

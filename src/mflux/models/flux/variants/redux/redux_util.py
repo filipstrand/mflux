@@ -9,6 +9,26 @@ from mflux.utils.image_util import ImageUtil
 
 class ReduxUtil:
     @staticmethod
+    def validate_redux_image_strengths(
+        redux_image_paths: list[Path],
+        redux_image_strengths: list[float] | None,
+    ) -> list[float] | None:
+        if not redux_image_strengths or len(redux_image_strengths) == 0:
+            return redux_image_strengths
+
+        # If strengths provided but not enough for all images, fill with default (1.0)
+        if len(redux_image_strengths) < len(redux_image_paths):
+            redux_image_strengths.extend([1.0] * (len(redux_image_paths) - len(redux_image_strengths)))
+
+        # If too many strengths provided, raise error
+        elif len(redux_image_strengths) > len(redux_image_paths):
+            raise ValueError(
+                f"Too many strengths provided ({len(redux_image_strengths)}), expted at most {len(redux_image_paths)}."
+            )
+
+        return redux_image_strengths
+
+    @staticmethod
     def embed_images(
         image_paths: list[str] | list[Path],
         image_encoder: SiglipVisionTransformer,

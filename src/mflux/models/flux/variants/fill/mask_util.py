@@ -2,8 +2,8 @@ from pathlib import Path
 
 import mlx.core as mx
 
+from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 from mflux.models.flux.model.flux_vae.vae import VAE
-from mflux.utils.array_util import ArrayUtil
 from mflux.utils.image_util import ImageUtil
 
 
@@ -39,11 +39,11 @@ class MaskUtil:
         # 3. Create and pack the masked image
         masked_image = image * (1 - the_mask)
         masked_image = vae.encode(masked_image)
-        masked_image = ArrayUtil.pack_latents(latents=masked_image, height=height, width=width)
+        masked_image = FluxLatentCreator.pack_latents(latents=masked_image, height=height, width=width)
 
         # 4. Resize mask and pack latents
         mask = MaskUtil.reshape_mask(the_mask=the_mask, height=height, width=width)
-        mask = ArrayUtil.pack_latents(latents=mask, height=height, width=width, num_channels_latents=64)
+        mask = FluxLatentCreator.pack_latents(latents=mask, height=height, width=width, num_channels_latents=64)
 
         # 5. Concat the masked_image and the mask
         masked_image_latents = mx.concatenate([masked_image, mask], axis=-1)

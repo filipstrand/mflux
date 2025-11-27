@@ -9,9 +9,9 @@ import PIL.Image
 import PIL.ImageDraw
 from PIL._typing import StrOrBytesPath
 
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config.config import Config
 from mflux.models.flux.variants.concept_attention.attention_data import ConceptHeatmap
-from mflux.ui.box_values import AbsoluteBoxValues, BoxValues
+from mflux.utils.box_values import AbsoluteBoxValues, BoxValues
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.metadata_builder import MetadataBuilder
 
@@ -22,7 +22,7 @@ class ImageUtil:
     @staticmethod
     def to_image(
         decoded_latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         seed: int,
         prompt: str,
         quantization: int,
@@ -141,14 +141,11 @@ class ImageUtil:
         left: int | str = 0,
         fill_color: tuple = (255, 255, 255),
     ) -> PIL.Image.Image:
-        """
-        Expand the image by padding it with the top/right/bottom/left box values specified
-        in either pixels or percentages relative to original image dimensions.
-        """
         if box_values is None:
             box_values = BoxValues(top=top, right=right, bottom=bottom, left=left).normalize_to_dimensions(
-                image.width, image.height
-            )  # Create new image with expanded dimensions, paste the original image into it
+                width=image.width,
+                height=image.height,
+            )
 
         new_width = image.width + box_values.left + box_values.right
         new_height = image.height + box_values.top + box_values.bottom
@@ -158,10 +155,6 @@ class ImageUtil:
 
     @staticmethod
     def create_outpaint_mask_image(orig_width: int, orig_height: int, **create_bordered_image_kwargs):
-        """
-        Create an outpaint mask image that is black in the middle representing the original image dimensions
-        and a white border on the outside paddings representing the areas to be painted over.
-        """
         return ImageUtil.create_bordered_image(
             orig_width,
             orig_height,
@@ -182,9 +175,6 @@ class ImageUtil:
         bottom: int | str = 0,
         left: int | str = 0,
     ) -> PIL.Image.Image:
-        """
-        Create an image with border color and a content/fill-colored center based on CSS box model values.
-        """
         if box_values is None:
             box_values = BoxValues(top=top, right=right, bottom=bottom, left=left).normalize_to_dimensions(
                 orig_width, orig_height
@@ -257,7 +247,6 @@ class ImageUtil:
 
     @staticmethod
     def _embed_metadata(metadata: dict, path: str | Path) -> None:
-        """Original EXIF metadata embedding - preserved for compatibility"""
         try:
             # Convert metadata dictionary to a string
             metadata_str = json.dumps(metadata)

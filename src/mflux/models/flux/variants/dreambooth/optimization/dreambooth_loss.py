@@ -2,8 +2,8 @@ import random
 
 import mlx.core as mx
 
-from mflux.config.config import Config
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config.config import Config
+from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.latent_creator.latent_creator import LatentCreator
 from mflux.models.flux.variants.dreambooth.dataset.batch import Batch, Example
 from mflux.models.flux.variants.txt2img.flux import Flux1
@@ -11,7 +11,7 @@ from mflux.models.flux.variants.txt2img.flux import Flux1
 
 class DreamBoothLoss:
     @staticmethod
-    def compute_loss(flux: Flux1, config: RuntimeConfig, batch: Batch) -> mx.float16:
+    def compute_loss(flux: Flux1, config: Config, batch: Batch) -> mx.float16:
         losses = [
             DreamBoothLoss._single_example_loss(flux, config, example, batch.rng)
             for example in batch.examples
@@ -19,7 +19,7 @@ class DreamBoothLoss:
         return mx.mean(mx.array(losses))
 
     @staticmethod
-    def _single_example_loss(flux: Flux1, config: RuntimeConfig, example: Example, rng: random.Random) -> mx.float16:
+    def _single_example_loss(flux: Flux1, config: Config, example: Example, rng: random.Random) -> mx.float16:
         # Must be a better way to handle the randomness than this, but we already
         # save/restore the random state via the iterator so this is a continent shortcut.
         time_seed = rng.randint(0, 2**32 - 1)
@@ -41,7 +41,7 @@ class DreamBoothLoss:
         # Generate pure noise
         pure_noise = mx.random.normal(
             shape=clean_image.shape,
-            dtype=Config.precision,
+            dtype=ModelConfig.precision,
             key=mx.random.key(noise_seed),
         )
 

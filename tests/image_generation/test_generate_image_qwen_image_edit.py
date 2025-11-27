@@ -1,11 +1,12 @@
 import pytest
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.qwen.variants.edit import QwenImageEdit
 from tests.image_generation.helpers.image_generation_edit_test_helper import ImageGeneratorEditTestHelper
 
 
 class TestImageGeneratorQwenImageEdit:
+    @pytest.mark.slow
     def test_image_generation_qwen_edit(self):
         ImageGeneratorEditTestHelper.assert_matches_reference_image(
             reference_image_path="reference_qwen_edit.png",
@@ -23,6 +24,7 @@ class TestImageGeneratorQwenImageEdit:
             mismatch_threshold=0.25,
         )
 
+    @pytest.mark.slow
     @pytest.mark.high_memory_requirement
     def test_image_generation_qwen_edit_multiple_images(self):
         ImageGeneratorEditTestHelper.assert_matches_reference_image(

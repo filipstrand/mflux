@@ -1,9 +1,12 @@
-from mflux.config.model_config import ModelConfig
+import pytest
+
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.txt2img.flux import Flux1
 from tests.image_generation.helpers.image_generation_test_helper import ImageGeneratorTestHelper
 
 
 class TestImageGenerator:
+    @pytest.mark.slow
     def test_image_generation_schnell(self):
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_schnell.png",
@@ -17,6 +20,7 @@ class TestImageGenerator:
             prompt="Luxury food photograph",
         )
 
+    @pytest.mark.slow
     def test_image_generation_dev(self):
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_dev.png",
@@ -30,6 +34,7 @@ class TestImageGenerator:
             prompt="Luxury food photograph",
         )
 
+    @pytest.mark.slow
     def test_image_generation_dev_lora(self):
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_dev_lora.png",
@@ -45,6 +50,7 @@ class TestImageGenerator:
             lora_scales=[1.0],
         )
 
+    @pytest.mark.slow
     def test_image_generation_dev_multiple_loras(self):
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_dev_lora_multiple.png",
@@ -60,6 +66,7 @@ class TestImageGenerator:
             lora_scales=[0.4, 0.6],
         )
 
+    @pytest.mark.slow
     def test_image_generation_dev_image_to_image(self):
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_dev_image_to_image.png",

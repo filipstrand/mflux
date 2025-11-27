@@ -1,25 +1,21 @@
-import mlx.nn as nn
-
+from mflux.models.common.weights.loading.weight_applier import WeightApplier
+from mflux.models.common.weights.loading.weight_loader import WeightLoader
 from mflux.models.depth_pro.model.depth_pro_model import DepthProModel
-from mflux.models.depth_pro.weights.weight_handler_depth_pro import WeightHandlerDepthPro
+from mflux.models.depth_pro.weights.depth_pro_weight_definition import DepthProWeightDefinition
 
 
 class DepthProInitializer:
     @staticmethod
-    def init(depth_pro_model: DepthProModel, quantize: int | None = None) -> None:
-        # 1. Load the weights
-        depth_pro_weights = WeightHandlerDepthPro.load_weights()
-        WeightHandlerDepthPro.reposition_encoder_weights(depth_pro_weights, "upsample_latent0")
-        WeightHandlerDepthPro.reposition_encoder_weights(depth_pro_weights, "upsample_latent1")
-        WeightHandlerDepthPro.reposition_encoder_weights(depth_pro_weights, "upsample0")
-        WeightHandlerDepthPro.reposition_encoder_weights(depth_pro_weights, "upsample1")
-        WeightHandlerDepthPro.reposition_encoder_weights(depth_pro_weights, "upsample2")
-        WeightHandlerDepthPro.reposition_head_weights(depth_pro_weights)
-        WeightHandlerDepthPro.reshape_transposed_convolution_weights(depth_pro_weights)
+    def init(model: DepthProModel, quantize: int | None = None) -> None:
+        # 1. Load weights using unified loader (handles download from Apple CDN)
+        weights = WeightLoader.load(weight_definition=DepthProWeightDefinition)
 
-        # 2. Assign the weights to the model
-        depth_pro_model.update(depth_pro_weights.weights, strict=False)
-
-        # 3. Optionally quantize the model
-        if quantize:
-            nn.quantize(depth_pro_model, bits=quantize)
+        # 2. Apply weights and quantize using unified applier
+        WeightApplier.apply_and_quantize(
+            weights=weights,
+            quantize_arg=quantize,
+            weight_definition=DepthProWeightDefinition,
+            models={
+                "depth_pro": model,
+            },
+        )

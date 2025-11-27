@@ -1,34 +1,19 @@
-"""
-Test metadata embedding and reading functionality.
-
-This test generates a single small image using the schnell model and verifies
-that all metadata fields are correctly embedded and can be read back.
-"""
-
 import json
 import os
 import tempfile
 from datetime import datetime
 from pathlib import Path
 
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
+import pytest
+
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.utils.metadata_reader import MetadataReader
 
 
 class TestMetadata:
-    """Test suite for image metadata functionality."""
-
+    @pytest.mark.slow
     def test_metadata_complete(self):
-        """
-        Comprehensive test that generates one image using img2img and verifies:
-        - EXIF metadata (all fields including img2img-specific ones)
-        - mflux-info command output formatting
-        - Creation timestamp validity
-        - Optional fields handling (both None and populated)
-        - Metadata reader handles missing files gracefully
-        """
         # Use a temporary file - don't keep it open to avoid conflicts
         fd, temp_path = tempfile.mkstemp(suffix=".png")
         os.close(fd)  # Close the file descriptor immediately
@@ -44,18 +29,14 @@ class TestMetadata:
                 quantize=8,
             )
 
-            config = Config(
+            image = flux.generate_image(
+                seed=42,
+                prompt="A simple test image",
                 num_inference_steps=2,
                 height=256,
                 width=256,
                 image_path=reference_image,
                 image_strength=0.3,
-            )
-
-            image = flux.generate_image(
-                seed=42,
-                prompt="A simple test image",
-                config=config,
             )
 
             # Save with metadata (overwrite=True since mkstemp creates an empty file)
@@ -159,9 +140,9 @@ class TestMetadata:
             # =================================================================
             # Test 11: mflux-info command output
             # =================================================================
-            from mflux.info import format_metadata
+            from mflux.utils.info_util import InfoUtil
 
-            output = format_metadata(metadata)
+            output = InfoUtil.format_metadata(metadata)
             assert "A simple test image" in output, "Prompt should be in output"
             assert "MFLUX" in output, "MFLUX should be mentioned"
             assert "42" in output, "Seed should be in output"

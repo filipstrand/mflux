@@ -1,11 +1,14 @@
 import os
 from pathlib import Path
 
-from mflux.models.depth_pro.depth_pro import DepthPro
+import pytest
+
+from mflux.models.depth_pro.model.depth_pro import DepthPro
 from mflux.utils.image_compare import ImageCompare
 
 
 class TestDepthPro:
+    @pytest.mark.slow
     def test_depth_pro_generation(self):
         # Resolve paths
         resource_dir = Path(__file__).parent.parent / "resources"
@@ -32,5 +35,5 @@ class TestDepthPro:
 
         finally:
             # Cleanup
-            if os.path.exists(output_image_path):
+            if os.path.exists(output_image_path) and "MFLUX_PRESERVE_TEST_OUTPUT" not in os.environ:
                 os.remove(output_image_path)

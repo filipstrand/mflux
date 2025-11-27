@@ -5,6 +5,109 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2025-12-03
+
+# MFLUX v.0.13.0 Release Notes
+
+### 🎨 New Model Support
+
+- **Z-Image Turbo Support**: Added support for [Z-Image Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo), a fast distilled Z-Image variant optimized for speed
+- **New command**: `mflux-generate-z-image-turbo` for rapid image generation (with LoRA support, img2img, and quantization)
+
+### ✨ New Features
+
+- **FIBO VLM Quantization Support**: The FIBO VLM commands (`mflux-fibo-inspire`, `mflux-fibo-refine`) now support quantization via the `-q` flag (3, 4, 5, 6, or 8-bit)
+
+- **Unified `--model` argument**: The `--model` flag now accepts local paths, HuggingFace repos, or predefined model names
+  - Local paths: `--model /Users/me/models/fibo-4bit` or `--model ~/my-model`
+  - HuggingFace repos: `--model briaai/Fibo-mlx-4bit`
+  - Predefined names: `--model dev`, `--model schnell`, `--model fibo`
+  - This mirrors how LoRA paths work for a consistent UX
+
+- **Scale Factor Dimensions for Img2Img**: Generalized the scale factor feature (e.g., `2x`, `0.5x`, `auto`) from upscaling to all img2img commands
+  - Specify output dimensions relative to input image: `--width 2x --height 2x`
+  - Use `auto` to match input image dimensions: `--width auto --height auto`
+  - Mix scale factors with absolute values: `--width 2x --height 512`
+  - Supported in: `mflux-generate`, `mflux-generate-z-image-turbo`, `mflux-generate-fibo`, `mflux-generate-kontext`, `mflux-generate-qwen`
+- **DimensionResolver utility**: New `DimensionResolver.resolve()` for consistent dimension handling across commands
+
+### 🔧 Architecture Improvements
+
+- **Unified Resolution System**: New `resolution/` module for consistent parameter resolution across all models
+  - `PathResolution`: Resolves model paths from local paths, HuggingFace repos, or predefined names
+  - `LoRAResolution`: Handles LoRA path resolution from all supported formats
+  - `ConfigResolution`: Centralizes configuration resolution logic  
+  - `QuantizationResolution`: Determines quantization from saved models or CLI args
+- **Unified Weight Loading System**: Complete rewrite of weight handling with declarative mappings
+  - New `WeightLoader` with single `load(model_path)` interface
+  - `WeightDefinition` classes define model structure per model family
+  - `WeightMapping` declarative mappings replace imperative weight handlers
+  - Removed all per-model `weight_handler_*.py` files in favor of unified system
+- **Unified Tokenizer System**: New common tokenizer module
+  - `TokenizerLoader.load_all()` with unified `model_path` interface
+  - Removed model-specific tokenizer handlers (`clip_tokenizer.py`, `t5_tokenizer.py`, etc.)
+- **Unified LoRA API**: Simplified LoRA loading to a single `lora_paths` parameter
+  - All LoRA formats now resolved through `LoRALibrary.resolve_paths()`:
+    - Local paths: `/path/to/lora.safetensors`
+    - Registry names: `my-lora` (from `LORA_LIBRARY_PATH`)
+    - HuggingFace repos: `author/model`
+    - **New**: HuggingFace collections: `repo_id:filename.safetensors`
+  - Simplified model initialization: just pass `lora_paths` and everything resolves automatically
+- **Unified Latent Creator Interface**: Standardized `unpack_latents(latents, height, width)` signature across all model families
+  - `FluxLatentCreator`, `ZImageLatentCreator`, `FiboLatentCreator`, and `QwenLatentCreator` now share the same interface
+  - Moved `FIBO._unpack_latents` to `FiboLatentCreator.unpack_latents` for consistency
+- **StepwiseHandler Refactor**: Fixed `StepwiseHandler` to work with all model types by accepting a `latent_creator` parameter
+  - Previously hardcoded to `FluxLatentCreator`, now model-agnostic
+  - Each command passes its appropriate latent creator to `CallbackManager.register_callbacks()`
+- **CLI Reorganization**: Moved CLI entry points to model-specific directories (e.g., `mflux/models/flux/cli/`)
+
+### 🔄 Breaking Changes
+
+- **Simplified `generate_image()` API** (programmatic users only):
+  - Removed `Config` class - parameters are now passed directly to `generate_image()`
+  - Removed `RuntimeConfig` class - internal complexity eliminated
+  - Added `Flux1` export to main `mflux` module for cleaner imports
+- **LoRA API simplified** (programmatic users only):
+  - Removed `lora_names` and `lora_repo_id` parameters from all model classes (`Flux1`, `QwenImage`, `QwenImageEdit`, etc.)
+  - Removed `--lora-name` and `--lora-repo-id` CLI arguments
+  - Removed `LoRAHuggingFaceDownloader` class
+
+### 🔄 Breaking Changes (CLI)
+
+- **`--path` flag removed**: The deprecated `--path` flag for loading models has been removed. Use `--model` instead for local paths, HuggingFace repos, or predefined model names.
+
+### 🐛 Bug Fixes
+
+- **`--model` flag not working**: Fixed bug where the `--model` argument wasn't being used for loading models from HuggingFace or local paths. All CLI commands now correctly use `--model` for model path resolution.
+- **Model Saving Index File**: Fixed issue where locally saved models (via `mflux-save`) would fail to load when uploaded to HuggingFace, due to missing `model.safetensors.index.json`. The model saver now generates this index file alongside the safetensor shards, ensuring compatibility with both mflux and standard HuggingFace loading paths. (see [#285](https://github.com/filipstrand/mflux/issues/285))
+
+### 🧪 Test Infrastructure
+
+- **Test markers**: Added `fast` and `slow` pytest markers to categorize tests
+  - Fast tests: Unit tests that don't generate images (parsers, schedulers, resolution, utilities)
+  - Slow tests: Integration tests that generate actual images and compare to references
+- **New Makefile targets**:
+  - `make test-fast` - Run fast tests only (quick feedback during development)
+  - `make test-slow` - Run slow tests only (image generation tests)
+  - `make test` - Run all tests (unchanged)
+- Run specific test categories: `pytest -m fast` or `pytest -m slow`
+- **GitHub Actions CI**: Fast tests now run automatically on PRs and pushes to main
+
+### 🔧 Internal Changes
+
+- Simplified `WeightLoader.load()` to take a single `model_path` parameter instead of separate `repo_id` and `local_path`
+- Simplified `TokenizerLoader.load_all()` with the same unified `model_path` interface
+- Renamed `local_path` parameter to `model_path` in all model constructors for clarity
+- Removed `quantization_util.py` - quantization now handled through `QuantizationResolution`
+- Removed `lora_huggingface_downloader.py` - downloading integrated into `LoRAResolution`
+- Added comprehensive test coverage for resolution modules
+
+### 👩‍💻 Contributors
+
+- **Filip Strand (@filipstrand)**: Z-Image Turbo support, architecture improvements, core development
+
+---
+
 ## [0.12.1] - 2025-11-27
 
 ### 🐛 Bug Fixes

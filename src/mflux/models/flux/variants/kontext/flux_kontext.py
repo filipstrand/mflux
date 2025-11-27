@@ -1,11 +1,10 @@
+from pathlib import Path
+
 import mlx.core as mx
 from mlx import nn
-from tqdm import tqdm
 
-from mflux.callbacks.callbacks import Callbacks
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config.config import Config
+from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.flux.flux_initializer import FluxInitializer
 from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 from mflux.models.flux.model.flux_text_encoder.clip_encoder.clip_encoder import CLIPEncoder
@@ -13,8 +12,7 @@ from mflux.models.flux.model.flux_text_encoder.prompt_encoder import PromptEncod
 from mflux.models.flux.model.flux_text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.flux.model.flux_transformer.transformer import Transformer
 from mflux.models.flux.model.flux_vae.vae import VAE
-from mflux.models.flux.variants.kontext.utils.kontext_util import KontextUtil
-from mflux.utils.array_util import ArrayUtil
+from mflux.models.flux.variants.kontext.kontext_util import KontextUtil
 from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
@@ -29,43 +27,58 @@ class Flux1Kontext(nn.Module):
     def __init__(
         self,
         quantize: int | None = None,
-        local_path: str | None = None,
+        model_path: str | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
+        model_config: ModelConfig = ModelConfig.dev_kontext(),
     ):
         super().__init__()
         FluxInitializer.init(
-            flux_model=self,
-            model_config=ModelConfig.dev_kontext(),
+            model=self,
             quantize=quantize,
-            local_path=local_path,
+            model_path=model_path,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
+            model_config=model_config,
         )
 
     def generate_image(
         self,
         seed: int,
         prompt: str,
-        config: Config,
+        num_inference_steps: int = 4,
+        height: int = 1024,
+        width: int = 1024,
+        guidance: float = 4.0,
+        image_path: Path | str | None = None,
+        image_strength: float | None = None,
+        scheduler: str = "linear",
     ) -> GeneratedImage:
-        # 0. Create a new runtime config based on the model type and input parameters
-        config = RuntimeConfig(config, self.model_config)
-        time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
+        # 0. Create a new config based on the model type and input parameters
+        config = Config(
+            width=width,
+            height=height,
+            guidance=guidance,
+            scheduler=scheduler,
+            image_path=image_path,
+            image_strength=image_strength,
+            model_config=self.model_config,
+            num_inference_steps=num_inference_steps,
+        )
 
         # 1. Create the initial latents
         latents = FluxLatentCreator.create_noise(
             seed=seed,
-            height=config.height,
             width=config.width,
+            height=config.height,
         )
 
         # 2. Encode the prompt
         prompt_embeds, pooled_prompt_embeds = PromptEncoder.encode_prompt(
             prompt=prompt,
             prompt_cache=self.prompt_cache,
-            t5_tokenizer=self.t5_tokenizer,
-            clip_tokenizer=self.clip_tokenizer,
+            t5_tokenizer=self.tokenizers["t5"],
+            clip_tokenizer=self.tokenizers["clip"],
             t5_text_encoder=self.t5_text_encoder,
             clip_text_encoder=self.clip_text_encoder,
         )
@@ -73,28 +86,24 @@ class Flux1Kontext(nn.Module):
         # 3. Create the static image conditioning latents and IDs
         static_image_latents, kontext_image_ids = KontextUtil.create_image_conditioning_latents(
             vae=self.vae,
-            height=config.height,
             width=config.width,
+            height=config.height,
             image_path=config.image_path,
         )
 
-        # (Optional) Call subscribers for beginning of loop
-        Callbacks.before_loop(
-            seed=seed,
-            prompt=prompt,
-            latents=latents,
-            config=config,
-        )
+        # 4. Create callback context and call before_loop
+        ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
+        ctx.before_loop(latents)
 
-        for t in time_steps:
+        for t in config.time_steps:
             try:
                 # Scale model input if needed by the scheduler
                 latents = config.scheduler.scale_model_input(latents, t)
 
-                # 4.t Concatenate the updated latents with the static image latents
+                # 5.t Concatenate the updated latents with the static image latents
                 hidden_states = mx.concatenate([latents, static_image_latents], axis=1)
 
-                # 5.t Predict the noise
+                # 6.t Predict the noise
                 noise = self.transformer(
                     t=t,
                     config=config,
@@ -104,50 +113,29 @@ class Flux1Kontext(nn.Module):
                     kontext_image_ids=kontext_image_ids,
                 )
 
-                # 6.t Extract only the noise for the generation latents (first part)
+                # 7.t Extract only the noise for the generation latents (first part)
                 noise = noise[:, : latents.shape[1]]
 
-                # 7.t Take one denoise step
-                latents = config.scheduler.step(
-                    model_output=noise,
-                    timestep=t,
-                    sample=latents,
-                )
+                # 8.t Take one denoise step
+                latents = config.scheduler.step(noise=noise, timestep=t, latents=latents)
 
-                # (Optional) Call subscribers in-loop
-                Callbacks.in_loop(
-                    t=t,
-                    seed=seed,
-                    prompt=prompt,
-                    latents=latents,
-                    config=config,
-                    time_steps=time_steps,
-                )
+                # 9.t Call subscribers in-loop
+                ctx.in_loop(t, latents)
 
                 # (Optional) Evaluate to enable progress tracking
                 mx.eval(latents)
 
             except KeyboardInterrupt:  # noqa: PERF203
-                Callbacks.interruption(
-                    t=t,
-                    seed=seed,
-                    prompt=prompt,
-                    latents=latents,
-                    config=config,
-                    time_steps=time_steps,
+                ctx.interruption(t, latents)
+                raise StopImageGenerationException(
+                    f"Stopping image generation at step {t + 1}/{config.num_inference_steps}"
                 )
-                raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(time_steps)}")
 
-        # (Optional) Call subscribers after loop
-        Callbacks.after_loop(
-            seed=seed,
-            prompt=prompt,
-            latents=latents,
-            config=config,
-        )
+        # 10. Call subscribers after loop
+        ctx.after_loop(latents)
 
-        # 8. Decode the latent array and return the image
-        latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
+        # 11. Decode the latent array and return the image
+        latents = FluxLatentCreator.unpack_latents(latents=latents, height=config.height, width=config.width)
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,
@@ -158,5 +146,5 @@ class Flux1Kontext(nn.Module):
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
             image_path=config.image_path,
-            generation_time=time_steps.format_dict["elapsed"],
+            generation_time=config.time_steps.format_dict["elapsed"],
         )

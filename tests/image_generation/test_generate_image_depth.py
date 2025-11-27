@@ -1,8 +1,11 @@
-from mflux.config.model_config import ModelConfig
+import pytest
+
+from mflux.models.common.config import ModelConfig
 from tests.image_generation.helpers.image_generation_depth_test_helper import ImageGeneratorDepthTestHelper
 
 
 class TestImageGeneratorDepth:
+    @pytest.mark.slow
     def test_image_generation_with_reference_image(self):
         ImageGeneratorDepthTestHelper.assert_matches_reference_image(
             reference_image_path="reference_depth_dev_from_image.png",

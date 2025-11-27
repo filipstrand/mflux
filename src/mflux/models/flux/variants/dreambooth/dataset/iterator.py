@@ -102,7 +102,6 @@ class Iterator:
         return Batch(examples=examples, rng=self.rng)
 
     def to_dict(self) -> dict[str, Any]:
-        """Returns the current state as a dictionary."""
         return {
             "position": self._position,
             "epoch": self._epoch,
@@ -116,7 +115,6 @@ class Iterator:
 
     @classmethod
     def from_dict(cls, state_dict: dict[str, Any], dataset: Dataset) -> "Iterator":
-        """Creates an iterator from a state dictionary."""
         # Convert the RNG state elements to tuples
         rng_state = state_dict["rng_state"]
         rng_state = (rng_state[0], tuple(rng_state[1]), rng_state[2])
@@ -134,7 +132,6 @@ class Iterator:
         )
 
     def to_json(self, filepath: str) -> None:
-        """Save iterator state to a JSON file."""
         with open(filepath, "w") as f:
             json.dump(self.to_dict(), f, indent=4)
 

@@ -58,9 +58,6 @@ class SmolLM3_3B_SelfAttention(nn.Module):
             k = k.astype(hidden_states.dtype)
             v = v.astype(hidden_states.dtype)
 
-        # Force evaluation to ensure computation is complete
-        mx.eval(q, k, v)
-
         # Reshape to (batch, heads, seq, head_dim)
         q = q.reshape(batch_size, seq_len, self.num_attention_heads, self.head_dim).transpose(0, 2, 1, 3)
         k = k.reshape(batch_size, seq_len, self.num_key_value_heads, self.head_dim).transpose(0, 2, 1, 3)

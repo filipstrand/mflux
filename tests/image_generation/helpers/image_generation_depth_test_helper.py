@@ -1,8 +1,7 @@
 import os
 from pathlib import Path
 
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.depth.flux_depth import Flux1Depth
 from mflux.utils.image_compare import ImageCompare
 
@@ -33,13 +32,11 @@ class ImageGeneratorDepthTestHelper:
             image = flux.generate_image(
                 seed=seed,
                 prompt=prompt,
-                config=Config(
-                    num_inference_steps=steps,
-                    height=height,
-                    width=width,
-                    image_path=image_path,
-                    depth_image_path=depth_image_path,
-                ),
+                num_inference_steps=steps,
+                height=height or 1024,
+                width=width or 1024,
+                image_path=image_path,
+                depth_image_path=depth_image_path,
             )
 
             image.save(path=output_image_path, overwrite=True)

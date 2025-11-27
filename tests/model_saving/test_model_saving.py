@@ -3,17 +3,18 @@ import shutil
 from pathlib import Path
 
 import numpy as np
+import pytest
 
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
+from mflux.models.common.weights.loading.weight_loader import WeightLoader
 from mflux.models.flux.variants.txt2img.flux import Flux1
-from mflux.models.flux.weights.weight_handler import WeightHandler
 from mflux.utils.version_util import VersionUtil
 
 PATH = "tests/4bit/"
 
 
 class TestModelSaving:
+    @pytest.mark.slow
     def test_save_and_load_4bit_model(self):
         # Clean up any existing temporary directories from previous test runs
         TestModelSaving.delete_folder_if_exists(PATH)
@@ -27,35 +28,31 @@ class TestModelSaving:
             image1 = fluxA.generate_image(
                 seed=42,
                 prompt="Luxury food photograph",
-                config=Config(
-                    num_inference_steps=15,
-                    height=341,
-                    width=768,
-                ),
+                num_inference_steps=15,
+                height=341,
+                width=768,
             )
             fluxA.save_model(PATH)
             del fluxA
 
             # Verify that the mflux version is correctly saved in the model's metadata
-            _, quantization_level, mflux_version = WeightHandler._load_vae(root_path=Path(PATH))
+            _, quantization_level, mflux_version = WeightLoader._try_load_mflux_format(Path(PATH) / "vae")
             assert mflux_version == VersionUtil.get_mflux_version(), "mflux version not correctly saved in metadata"  # fmt: off
-            assert quantization_level == "4", "quantization level not correctly saved in metadata"  # fmt: off
+            assert quantization_level == 4, "quantization level not correctly saved in metadata"  # fmt: off
 
             # when loading the quantized model (also without specifying bits)
             fluxB = Flux1(
                 model_config=ModelConfig.dev(),
-                local_path=PATH,
+                model_path=PATH,
             )
 
             # then we can load the model and generate the identical image
             image2 = fluxB.generate_image(
                 seed=42,
                 prompt="Luxury food photograph",
-                config=Config(
-                    num_inference_steps=15,
-                    height=341,
-                    width=768,
-                ),
+                num_inference_steps=15,
+                height=341,
+                width=768,
             )
             np.testing.assert_array_equal(
                 np.array(image1.image),

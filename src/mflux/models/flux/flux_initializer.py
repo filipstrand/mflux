@@ -1,236 +1,217 @@
-from mflux.config.model_config import ModelConfig
-from mflux.models.depth_pro.depth_pro import DepthPro
+from mflux.callbacks.callback_registry import CallbackRegistry
+from mflux.models.common.config import ModelConfig
+from mflux.models.common.lora.mapping.lora_loader import LoRALoader
+from mflux.models.common.tokenizer import TokenizerLoader
+from mflux.models.common.weights.loading.loaded_weights import LoadedWeights
+from mflux.models.common.weights.loading.weight_applier import WeightApplier
+from mflux.models.common.weights.loading.weight_loader import WeightLoader
+from mflux.models.depth_pro.model.depth_pro import DepthPro
 from mflux.models.flux.model.flux_text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.flux.model.flux_text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.flux.model.flux_transformer.transformer import Transformer
 from mflux.models.flux.model.flux_vae.vae import VAE
 from mflux.models.flux.model.redux_encoder.redux_encoder import ReduxEncoder
 from mflux.models.flux.model.siglip_vision_transformer.siglip_vision_transformer import SiglipVisionTransformer
-from mflux.models.flux.tokenizer.clip_tokenizer import TokenizerCLIP
-from mflux.models.flux.tokenizer.t5_tokenizer import TokenizerT5
-from mflux.models.flux.tokenizer.tokenizer_handler import TokenizerHandler
 from mflux.models.flux.variants.controlnet.transformer_controlnet import TransformerControlnet
-from mflux.models.flux.variants.controlnet.weight_handler_controlnet import WeightHandlerControlnet
-from mflux.models.flux.variants.redux.weight_handler_redux import WeightHandlerRedux
-from mflux.models.common.lora.download.lora_huggingface_downloader import LoRAHuggingFaceDownloader
-from mflux.models.flux.weights.weight_handler import WeightHandler
-from mflux.models.flux.weights.weight_handler_lora import WeightHandlerLoRA
-from mflux.models.flux.weights.weight_util import WeightUtil
+from mflux.models.flux.weights.flux_lora_mapping import FluxLoRAMapping
+from mflux.models.flux.weights.flux_weight_definition import (
+    FluxControlnetWeightDefinition,
+    FluxReduxWeightDefinition,
+    FluxWeightDefinition,
+)
 
 
 class FluxInitializer:
     @staticmethod
     def init(
-        flux_model,
+        model,
         model_config: ModelConfig,
         quantize: int | None,
-        local_path: str | None,
+        model_path: str | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
-        lora_names: list[str] | None = None,
-        lora_repo_id: str | None = None,
         custom_transformer=None,
     ) -> None:
-        # 0. Set paths, configs, and prompt_cache for later
-        lora_paths = lora_paths or []
-        flux_model.prompt_cache = {}
-        flux_model.model_config = model_config
-
-        # 1. Load the regular weights
-        weights = WeightHandler.load_regular_weights(
-            repo_id=model_config.model_name,
-            local_path=local_path,
-            transformer_repo_id=model_config.custom_transformer_model,
-        )
-
-        # 2. Initialize tokenizers
-        tokenizers = TokenizerHandler(
-            repo_id=model_config.model_name,
-            max_t5_length=model_config.max_sequence_length,
-            local_path=local_path,
-        )
-        flux_model.t5_tokenizer = TokenizerT5(
-            tokenizer=tokenizers.t5,
-            max_length=model_config.max_sequence_length,
-        )
-        flux_model.clip_tokenizer = TokenizerCLIP(
-            tokenizer=tokenizers.clip,
-        )
-
-        # 3. Initialize all models
-        flux_model.vae = VAE()
-        flux_model.t5_text_encoder = T5Encoder()
-        flux_model.clip_text_encoder = CLIPEncoder()
-        if custom_transformer is not None:
-            flux_model.transformer = custom_transformer
-        else:
-            flux_model.transformer = Transformer(
-                model_config=model_config,
-                num_transformer_blocks=weights.num_transformer_blocks(),
-                num_single_transformer_blocks=weights.num_single_transformer_blocks(),
-            )
-
-        # 4. Apply weights and quantize the models
-        flux_model.bits = WeightUtil.set_weights_and_quantize(
-            quantize_arg=quantize,
-            weights=weights,
-            vae=flux_model.vae,
-            transformer=flux_model.transformer,
-            t5_text_encoder=flux_model.t5_text_encoder,
-            clip_text_encoder=flux_model.clip_text_encoder,
-        )
-
-        # 5. Set LoRA weights
-        hf_lora_paths = LoRAHuggingFaceDownloader.download_loras(
-            lora_names=lora_names,
-            repo_id=lora_repo_id,
-            model_name="Flux",
-        )
-        flux_model.lora_paths = lora_paths + hf_lora_paths
-        flux_model.lora_scales = (lora_scales or []) + [1.0] * len(hf_lora_paths)
-        lora_weights = WeightHandlerLoRA.load_lora_weights(
-            transformer=flux_model.transformer,
-            lora_files=flux_model.lora_paths,
-            lora_scales=flux_model.lora_scales,
-        )
-        WeightHandlerLoRA.set_lora_weights(
-            transformer=flux_model.transformer,
-            loras=lora_weights,
-        )
+        path = model_path if model_path else model_config.model_name
+        FluxInitializer._init_config(model, model_config)
+        weights = FluxInitializer._load_weights(path)
+        FluxInitializer._init_tokenizers(model, path, model_config)
+        FluxInitializer._init_models(model, model_config, weights, custom_transformer)
+        FluxInitializer._apply_weights(model, weights, quantize)
+        FluxInitializer._apply_lora(model, lora_paths, lora_scales)
 
     @staticmethod
     def init_depth(
-        flux_model,
+        model,
         model_config: ModelConfig,
         quantize: int | None,
-        local_path: str | None,
+        model_path: str | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
-        lora_names: list[str] | None = None,
-        lora_repo_id: str | None = None,
-    ):
-        # 1. Start with the same init as regular Flux
+    ) -> None:
         FluxInitializer.init(
-            flux_model=flux_model,
+            model=model,
             model_config=model_config,
             quantize=quantize,
-            local_path=local_path,
+            model_path=model_path,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
-            lora_names=lora_names,
-            lora_repo_id=lora_repo_id,
         )
-
-        # 2. Initialize the DepthPro model
-        flux_model.depth_pro = DepthPro()
+        model.depth_pro = DepthPro()
 
     @staticmethod
     def init_redux(
-        flux_model,
+        model,
+        model_config: ModelConfig,
         quantize: int | None,
-        local_path: str | None,
+        model_path: str | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
-        lora_names: list[str] | None = None,
-        lora_repo_id: str | None = None,
-    ):
-        # 1. Start with the same init as regular Flux dev
+    ) -> None:
         FluxInitializer.init(
-            flux_model=flux_model,
-            model_config=ModelConfig.dev(),
+            model=model,
             quantize=quantize,
-            local_path=local_path,
+            model_path=model_path,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
-            lora_names=lora_names,
-            lora_repo_id=lora_repo_id,
+            model_config=model_config,
         )
 
-        # 2. Initialize the redux specific addons
-        redux_weights = WeightHandlerRedux.load_weights()
-        flux_model.image_embedder = ReduxEncoder()
-        flux_model.image_encoder = SiglipVisionTransformer()
-        WeightUtil.set_redux_weights_and_quantize(
-            quantize_arg=quantize,
+        redux_weights = WeightLoader.load(
+            weight_definition=FluxReduxWeightDefinition,
+            model_path=ModelConfig.dev_redux().model_name,
+        )
+        model.image_embedder = ReduxEncoder()
+        model.image_encoder = SiglipVisionTransformer()
+        WeightApplier.apply_and_quantize(
             weights=redux_weights,
-            redux_encoder=flux_model.image_embedder,
-            siglip_vision_transformer=flux_model.image_encoder,
+            quantize_arg=quantize,
+            weight_definition=FluxReduxWeightDefinition,
+            models={
+                "siglip": model.image_encoder,
+                "redux_encoder": model.image_embedder,
+            },
         )
 
     @staticmethod
     def init_controlnet(
-        flux_model,
+        model,
         model_config: ModelConfig,
         quantize: int | None,
-        local_path: str | None,
+        model_path: str | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
-        lora_names: list[str] | None = None,
-        lora_repo_id: str | None = None,
     ) -> None:
-        # 1. Start with the same init as regular Flux
         FluxInitializer.init(
-            flux_model=flux_model,
+            model=model,
             model_config=model_config,
             quantize=quantize,
-            local_path=local_path,
+            model_path=model_path,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
-            lora_names=lora_names,
-            lora_repo_id=lora_repo_id,
         )
 
-        # 2. Apply ControlNet-specific initialization
-        weights_controlnet = WeightHandlerControlnet.load_controlnet_transformer(
-            controlnet_model=model_config.controlnet_model
+        controlnet_component = FluxControlnetWeightDefinition.get_controlnet_component()
+        controlnet_weights = WeightLoader.load_single(
+            component=controlnet_component,
+            repo_id=model_config.controlnet_model,
         )
-        flux_model.transformer_controlnet = TransformerControlnet(
+        model.transformer_controlnet = TransformerControlnet(
             model_config=model_config,
-            num_transformer_blocks=weights_controlnet.num_transformer_blocks(),
-            num_single_transformer_blocks=weights_controlnet.num_single_transformer_blocks(),
+            num_transformer_blocks=controlnet_weights.num_transformer_blocks(),
+            num_single_transformer_blocks=controlnet_weights.num_single_transformer_blocks(),
         )
-        WeightUtil.set_controlnet_weights_and_quantize(
+        WeightApplier.apply_and_quantize_single(
+            weights=controlnet_weights,
+            model=model.transformer_controlnet,
+            component=controlnet_component,
             quantize_arg=quantize,
-            weights=weights_controlnet,
-            transformer_controlnet=flux_model.transformer_controlnet,
+            quantization_predicate=FluxWeightDefinition.quantization_predicate,
         )
 
     @staticmethod
     def init_concept(
-        flux_model,
+        model,
         model_config: ModelConfig,
         quantize: int | None,
-        local_path: str | None,
+        model_path: str | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
-        lora_names: list[str] | None = None,
-        lora_repo_id: str | None = None,
-    ):
-        # Import here to avoid circular dependency
+    ) -> None:
         from mflux.models.flux.variants.concept_attention.transformer_concept import TransformerConcept
 
-        # 1. Load weights first to get flux_transformer dimensions
-        weights = WeightHandler.load_regular_weights(
-            repo_id=model_config.model_name,
-            local_path=local_path,
-        )
-
-        # 2. Create custom TransformerConcept
+        path = model_path if model_path else model_config.model_name
+        FluxInitializer._init_config(model, model_config)
+        weights = FluxInitializer._load_weights(path)
+        FluxInitializer._init_tokenizers(model, path, model_config)
         custom_transformer = TransformerConcept(
             model_config=model_config,
             num_transformer_blocks=weights.num_transformer_blocks(),
             num_single_transformer_blocks=weights.num_single_transformer_blocks(),
         )
+        FluxInitializer._init_models(model, model_config, weights, custom_transformer)
+        FluxInitializer._apply_weights(model, weights, quantize)
+        FluxInitializer._apply_lora(model, lora_paths, lora_scales)
 
-        # 3. Use the improved FluxInitializer with custom flux_transformer
-        FluxInitializer.init(
-            flux_model=flux_model,
-            model_config=model_config,
-            quantize=quantize,
-            local_path=local_path,
+    @staticmethod
+    def _init_config(model, model_config: ModelConfig) -> None:
+        model.prompt_cache = {}
+        model.model_config = model_config
+        model.callbacks = CallbackRegistry()
+
+    @staticmethod
+    def _load_weights(model_path: str) -> LoadedWeights:
+        return WeightLoader.load(
+            weight_definition=FluxWeightDefinition,
+            model_path=model_path,
+        )
+
+    @staticmethod
+    def _init_tokenizers(model, model_path: str, model_config: ModelConfig) -> None:
+        model.tokenizers = TokenizerLoader.load_all(
+            definitions=FluxWeightDefinition.get_tokenizers(),
+            model_path=model_path,
+            max_length_overrides={"t5": model_config.max_sequence_length},
+        )
+
+    @staticmethod
+    def _init_models(
+        model,
+        model_config: ModelConfig,
+        weights: LoadedWeights,
+        custom_transformer=None,
+    ) -> None:
+        model.vae = VAE()
+        model.t5_text_encoder = T5Encoder()
+        model.clip_text_encoder = CLIPEncoder()
+        if custom_transformer is not None:
+            model.transformer = custom_transformer
+        else:
+            model.transformer = Transformer(
+                model_config=model_config,
+                num_transformer_blocks=weights.num_transformer_blocks(),
+                num_single_transformer_blocks=weights.num_single_transformer_blocks(),
+            )
+
+    @staticmethod
+    def _apply_weights(model, weights: LoadedWeights, quantize: int | None) -> None:
+        model.bits = WeightApplier.apply_and_quantize(
+            weights=weights,
+            quantize_arg=quantize,
+            weight_definition=FluxWeightDefinition,
+            models={
+                "vae": model.vae,
+                "transformer": model.transformer,
+                "t5_encoder": model.t5_text_encoder,
+                "clip_encoder": model.clip_text_encoder,
+            },
+        )
+
+    @staticmethod
+    def _apply_lora(model, lora_paths: list[str] | None, lora_scales: list[float] | None) -> None:
+        model.lora_paths, model.lora_scales = LoRALoader.load_and_apply_lora(
+            lora_mapping=FluxLoRAMapping.get_mapping(),
+            transformer=model.transformer,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
-            lora_names=lora_names,
-            lora_repo_id=lora_repo_id,
-            custom_transformer=custom_transformer,
         )

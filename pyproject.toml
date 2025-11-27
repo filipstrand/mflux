@@ -3,21 +3,18 @@ requires = ["uv_build>=0.7.19,<0.8.0"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
-default-excludes = true # __pycache__, *.pyc, and *.pyo
+default-excludes = true
 module-name = "mflux"
 namespace = true
 source-exclude = [
-    # documentation assets were 27MB on 2025-07-05
     "**/assets/**",
-    # dreambooth examples ~=5MB on 2025-07-05
     "**/models/flux/variants/dreambooth/_example/images/**",
-    # loss pdf/tex does not need to be distributed
     "**/optimization/_loss_derivation/**",
 ]
 
 [project]
 name = "mflux"
-version = "0.12.1"
+version = "0.13.0.dev0"
 description = "A MLX port of FLUX based on the Huggingface Diffusers implementation."
 readme = "README.md"
 keywords = ["diffusers", "flux", "mlx"]
@@ -42,9 +39,8 @@ dependencies = [
     "requests>=2.32.4",
     "safetensors>=0.4.4,<1.0",
     "sentencepiece>=0.2.0,<1.0; python_version<'3.13'",
-    # sentencepiece 0.2.1 is first release with 3.13 and 3.14 wheels: https://pypi.org/project/sentencepiece/0.2.1/
     "sentencepiece>=0.2.1,<1.0; python_version>='3.13'",
-    "tokenizers>=0.20.3; python_version>='3.13'", # transformers -> tokenizers
+    "tokenizers>=0.20.3; python_version>='3.13'",
     "toml>=0.10.2,<1.0",
     "torch>=2.7.1",
     "torch>=2.3.1,<3.0; python_version<'3.13'",
@@ -68,36 +64,37 @@ dev = [
     "matplotlib>3.10,<4.0",
     "pytest>=8.3.0,<9.0",
     "pytest-timer>=1.0,<2.0",
-    "mlx==0.29.2",  # Used ONLY during test runs to ensure deterministic test results
+    "mlx==0.29.2",
 ]
 
 [project.urls]
 homepage = "https://github.com/filipstrand/mflux"
 
 [project.scripts]
-mflux-generate = "mflux.generate:main"
-mflux-generate-controlnet = "mflux.generate_controlnet:main"
-mflux-generate-in-context = "mflux.generate_in_context_dev:main"
-mflux-generate-in-context-edit = "mflux.generate_in_context_edit:main"
-mflux-generate-in-context-catvton = "mflux.generate_in_context_catvton:main"
-mflux-generate-fill = "mflux.generate_fill:main"
-mflux-generate-depth = "mflux.generate_depth:main"
-mflux-generate-redux = "mflux.generate_redux:main"
-mflux-generate-kontext = "mflux.generate_kontext:main"
-mflux-generate-qwen = "mflux.generate_qwen:main"
-mflux-generate-qwen-edit = "mflux.generate_qwen_edit:main"
-mflux-generate-fibo = "mflux.generate_fibo:main"
-mflux-refine-fibo = "mflux.refine_fibo:main"
-mflux-inspire-fibo = "mflux.inspire_fibo:main"
-mflux-concept = "mflux.concept:main"
-mflux-concept-from-image = "mflux.concept_from_image:main"
-mflux-save = "mflux.save:main"
-mflux-save-depth = "mflux.save_depth:main"
-mflux-train = "mflux.train:main"
-mflux-upscale = "mflux.upscale:main"
-mflux-lora-library = "mflux.lora_library:main"
-mflux-info = "mflux.info:main"
-mflux-completions = "mflux.ui.cli.completions.install:main"
+mflux-generate = "mflux.models.flux.cli.flux_generate:main"
+mflux-generate-controlnet = "mflux.models.flux.cli.flux_generate_controlnet:main"
+mflux-generate-in-context = "mflux.models.flux.cli.flux_generate_in_context_dev:main"
+mflux-generate-in-context-edit = "mflux.models.flux.cli.flux_generate_in_context_edit:main"
+mflux-generate-in-context-catvton = "mflux.models.flux.cli.flux_generate_in_context_catvton:main"
+mflux-generate-fill = "mflux.models.flux.cli.flux_generate_fill:main"
+mflux-generate-depth = "mflux.models.flux.cli.flux_generate_depth:main"
+mflux-generate-redux = "mflux.models.flux.cli.flux_generate_redux:main"
+mflux-generate-kontext = "mflux.models.flux.cli.flux_generate_kontext:main"
+mflux-generate-qwen = "mflux.models.qwen.cli.qwen_image_generate:main"
+mflux-generate-qwen-edit = "mflux.models.qwen.cli.qwen_image_edit_generate:main"
+mflux-generate-fibo = "mflux.models.fibo.cli.fibo_generate:main"
+mflux-generate-z-image-turbo = "mflux.models.z_image.cli.z_image_turbo_generate:main"
+mflux-refine-fibo = "mflux.models.fibo_vlm.cli.fibo_refine:main"
+mflux-inspire-fibo = "mflux.models.fibo_vlm.cli.fibo_inspire:main"
+mflux-concept = "mflux.models.flux.cli.flux_concept:main"
+mflux-concept-from-image = "mflux.models.flux.cli.flux_concept_from_image:main"
+mflux-save = "mflux.models.common.cli.save:main"
+mflux-save-depth = "mflux.models.depth_pro.cli.save_depth:main"
+mflux-train = "mflux.models.common.cli.train:main"
+mflux-upscale = "mflux.models.flux.cli.flux_upscale:main"
+mflux-lora-library = "mflux.models.common.cli.lora_library:main"
+mflux-info = "mflux.models.common.cli.info:main"
+mflux-completions = "mflux.cli.completions.install:main"
 
 
 [tool.ruff]
@@ -107,44 +104,18 @@ target-version = "py310"
 respect-gitignore = true
 
 [tool.ruff.lint]
-# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`) codes by default.
-# Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
-# McCabe complexity (`C901`) by default.
 select = ["BLE", "E4", "E7", "E9", "F", "I", "ICN", "LOG", "PERF", "W"]
 ignore = []
-
-# Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
 unfixable = []
-
-# Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.format]
-# Like Black, use double quotes for strings.
 quote-style = "double"
-
-# Like Black, indent with spaces, rather than tabs.
 indent-style = "space"
-
-# Like Black, respect magic trailing commas.
 skip-magic-trailing-comma = false
-
-# Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
-
-# Enable auto-formatting of code examples in docstrings. Markdown,
-# reStructuredText code/literal blocks and doctests are all supported.
-#
-# This is currently disabled by default, but it is planned for this
-# to be opt-out in the future.
 docstring-code-format = false
-
-# Set the line length limit used when formatting code snippets in
-# docstrings.
-#
-# This only has an effect when the `docstring-code-format` setting is
-# enabled.
 docstring-code-line-length = "dynamic"
 
 [tool.pytest.ini_options]
@@ -155,7 +126,6 @@ markers = [
     "high_memory_requirement: marks tests that require high memory (deselect with '-m \"not high_memory_requirement\"')",
 ]
 
-# https://docs.astral.sh/ruff/settings/#lintisort
 [tool.ruff.lint.isort]
 case-sensitive = false
 combine-as-imports = true
@@ -173,7 +143,6 @@ section-order = [
 
 [tool.mypy]
 disable_error_code = [
-    # TODO: for each error code - clean them up in a single PR then remove entry
     "annotation-unchecked",
     "arg-type",
     "assignment",
@@ -188,5 +157,4 @@ disable_error_code = [
 error_summary = true
 ignore_missing_imports = true
 implicit_optional = true
-# we should feel free to use new hinting features even if we back support to earlier versions
 python_version = "3.12"

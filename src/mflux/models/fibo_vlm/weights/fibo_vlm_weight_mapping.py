@@ -1,7 +1,7 @@
 from typing import List
 
 from mflux.models.common.weights.mapping.weight_mapping import WeightMapping, WeightTarget
-from mflux.models.fibo.weights.fibo_weight_mapping import transpose_conv3d_weight
+from mflux.models.common.weights.mapping.weight_transforms import WeightTransforms
 
 
 class FIBOVLMWeightMapping(WeightMapping):
@@ -9,214 +9,210 @@ class FIBOVLMWeightMapping(WeightMapping):
     def get_vlm_decoder_mapping(num_layers: int = 36) -> List[WeightTarget]:
         return [
             WeightTarget(
-                mlx_path="embed_tokens.weight",
-                hf_patterns=["model.language_model.embed_tokens.weight"],
+                to_pattern="embed_tokens.weight",
+                from_pattern=["model.language_model.embed_tokens.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{block}.self_attn.q_proj.weight",
-                hf_patterns=["model.language_model.layers.{block}.self_attn.q_proj.weight"],
+                to_pattern="layers.{block}.self_attn.q_proj.weight",
+                from_pattern=["model.language_model.layers.{block}.self_attn.q_proj.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{block}.self_attn.q_proj.bias",
-                hf_patterns=["model.language_model.layers.{block}.self_attn.q_proj.bias"],
+                to_pattern="layers.{block}.self_attn.q_proj.bias",
+                from_pattern=["model.language_model.layers.{block}.self_attn.q_proj.bias"],
             ),
             WeightTarget(
-                mlx_path="layers.{block}.self_attn.k_proj.weight",
-                hf_patterns=["model.language_model.layers.{block}.self_attn.k_proj.weight"],
+                to_pattern="layers.{block}.self_attn.k_proj.weight",
+                from_pattern=["model.language_model.layers.{block}.self_attn.k_proj.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{block}.self_attn.k_proj.bias",
-                hf_patterns=["model.language_model.layers.{block}.self_attn.k_proj.bias"],
+                to_pattern="layers.{block}.self_attn.k_proj.bias",
+                from_pattern=["model.language_model.layers.{block}.self_attn.k_proj.bias"],
             ),
             WeightTarget(
-                mlx_path="layers.{block}.self_attn.v_proj.weight",
-                hf_patterns=["model.language_model.layers.{block}.self_attn.v_proj.weight"],
+                to_pattern="layers.{block}.self_attn.v_proj.weight",
+                from_pattern=["model.language_model.layers.{block}.self_attn.v_proj.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{block}.self_attn.v_proj.bias",
-                hf_patterns=["model.language_model.layers.{block}.self_attn.v_proj.bias"],
+                to_pattern="layers.{block}.self_attn.v_proj.bias",
+                from_pattern=["model.language_model.layers.{block}.self_attn.v_proj.bias"],
             ),
             WeightTarget(
-                mlx_path="layers.{block}.self_attn.o_proj.weight",
-                hf_patterns=["model.language_model.layers.{block}.self_attn.o_proj.weight"],
+                to_pattern="layers.{block}.self_attn.o_proj.weight",
+                from_pattern=["model.language_model.layers.{block}.self_attn.o_proj.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{block}.self_attn.o_proj.bias",
-                hf_patterns=["model.language_model.layers.{block}.self_attn.o_proj.bias"],
+                to_pattern="layers.{block}.self_attn.o_proj.bias",
+                from_pattern=["model.language_model.layers.{block}.self_attn.o_proj.bias"],
             ),
             WeightTarget(
-                mlx_path="layers.{block}.self_attn.q_norm.weight",
-                hf_patterns=["model.language_model.layers.{block}.self_attn.q_norm.weight"],
+                to_pattern="layers.{block}.self_attn.q_norm.weight",
+                from_pattern=["model.language_model.layers.{block}.self_attn.q_norm.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{block}.self_attn.k_norm.weight",
-                hf_patterns=["model.language_model.layers.{block}.self_attn.k_norm.weight"],
+                to_pattern="layers.{block}.self_attn.k_norm.weight",
+                from_pattern=["model.language_model.layers.{block}.self_attn.k_norm.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{block}.mlp.gate_proj.weight",
-                hf_patterns=["model.language_model.layers.{block}.mlp.gate_proj.weight"],
+                to_pattern="layers.{block}.mlp.gate_proj.weight",
+                from_pattern=["model.language_model.layers.{block}.mlp.gate_proj.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{block}.mlp.gate_proj.bias",
-                hf_patterns=["model.language_model.layers.{block}.mlp.gate_proj.bias"],
+                to_pattern="layers.{block}.mlp.gate_proj.bias",
+                from_pattern=["model.language_model.layers.{block}.mlp.gate_proj.bias"],
             ),
             WeightTarget(
-                mlx_path="layers.{block}.mlp.up_proj.weight",
-                hf_patterns=["model.language_model.layers.{block}.mlp.up_proj.weight"],
+                to_pattern="layers.{block}.mlp.up_proj.weight",
+                from_pattern=["model.language_model.layers.{block}.mlp.up_proj.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{block}.mlp.up_proj.bias",
-                hf_patterns=["model.language_model.layers.{block}.mlp.up_proj.bias"],
+                to_pattern="layers.{block}.mlp.up_proj.bias",
+                from_pattern=["model.language_model.layers.{block}.mlp.up_proj.bias"],
             ),
             WeightTarget(
-                mlx_path="layers.{block}.mlp.down_proj.weight",
-                hf_patterns=["model.language_model.layers.{block}.mlp.down_proj.weight"],
+                to_pattern="layers.{block}.mlp.down_proj.weight",
+                from_pattern=["model.language_model.layers.{block}.mlp.down_proj.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{block}.mlp.down_proj.bias",
-                hf_patterns=["model.language_model.layers.{block}.mlp.down_proj.bias"],
+                to_pattern="layers.{block}.mlp.down_proj.bias",
+                from_pattern=["model.language_model.layers.{block}.mlp.down_proj.bias"],
             ),
             WeightTarget(
-                mlx_path="layers.{block}.input_layernorm.weight",
-                hf_patterns=["model.language_model.layers.{block}.input_layernorm.weight"],
+                to_pattern="layers.{block}.input_layernorm.weight",
+                from_pattern=["model.language_model.layers.{block}.input_layernorm.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{block}.post_attention_layernorm.weight",
-                hf_patterns=["model.language_model.layers.{block}.post_attention_layernorm.weight"],
+                to_pattern="layers.{block}.post_attention_layernorm.weight",
+                from_pattern=["model.language_model.layers.{block}.post_attention_layernorm.weight"],
             ),
             WeightTarget(
-                mlx_path="norm.weight",
-                hf_patterns=["model.language_model.norm.weight"],
+                to_pattern="norm.weight",
+                from_pattern=["model.language_model.norm.weight"],
             ),
             WeightTarget(
-                mlx_path="lm_head.weight",
-                hf_patterns=["lm_head.weight"],
+                to_pattern="lm_head.weight",
+                from_pattern=["model.language_model.embed_tokens.weight"],
             ),
         ]
 
     @staticmethod
     def get_vlm_visual_mapping(depth: int = 24) -> List[WeightTarget]:
         return [
-            # Patch embedding
             WeightTarget(
-                mlx_path="patch_embed.proj.weight",
-                hf_patterns=["model.visual.patch_embed.proj.weight"],
-                transform=transpose_conv3d_weight,
+                to_pattern="patch_embed.proj.weight",
+                from_pattern=["model.visual.patch_embed.proj.weight"],
+                transform=WeightTransforms.transpose_conv3d_weight,
             ),
             WeightTarget(
-                mlx_path="patch_embed.proj.bias",
-                hf_patterns=["model.visual.patch_embed.proj.bias"],
-            ),
-            # Position embeddings
-            WeightTarget(
-                mlx_path="pos_embed.weight",
-                hf_patterns=["model.visual.pos_embed.weight"],
-            ),
-            # Vision transformer blocks
-            WeightTarget(
-                mlx_path="blocks.{block}.norm1.weight",
-                hf_patterns=["model.visual.blocks.{block}.norm1.weight"],
+                to_pattern="patch_embed.proj.bias",
+                from_pattern=["model.visual.patch_embed.proj.bias"],
             ),
             WeightTarget(
-                mlx_path="blocks.{block}.norm1.bias",
-                hf_patterns=["model.visual.blocks.{block}.norm1.bias"],
+                to_pattern="pos_embed.weight",
+                from_pattern=["model.visual.pos_embed.weight"],
             ),
             WeightTarget(
-                mlx_path="blocks.{block}.norm2.weight",
-                hf_patterns=["model.visual.blocks.{block}.norm2.weight"],
+                to_pattern="blocks.{block}.norm1.weight",
+                from_pattern=["model.visual.blocks.{block}.norm1.weight"],
             ),
             WeightTarget(
-                mlx_path="blocks.{block}.norm2.bias",
-                hf_patterns=["model.visual.blocks.{block}.norm2.bias"],
+                to_pattern="blocks.{block}.norm1.bias",
+                from_pattern=["model.visual.blocks.{block}.norm1.bias"],
+            ),
+            WeightTarget(
+                to_pattern="blocks.{block}.norm2.weight",
+                from_pattern=["model.visual.blocks.{block}.norm2.weight"],
+            ),
+            WeightTarget(
+                to_pattern="blocks.{block}.norm2.bias",
+                from_pattern=["model.visual.blocks.{block}.norm2.bias"],
             ),
             # Attention
             WeightTarget(
-                mlx_path="blocks.{block}.attn.qkv.weight",
-                hf_patterns=["model.visual.blocks.{block}.attn.qkv.weight"],
+                to_pattern="blocks.{block}.attn.qkv.weight",
+                from_pattern=["model.visual.blocks.{block}.attn.qkv.weight"],
             ),
             WeightTarget(
-                mlx_path="blocks.{block}.attn.qkv.bias",
-                hf_patterns=["model.visual.blocks.{block}.attn.qkv.bias"],
+                to_pattern="blocks.{block}.attn.qkv.bias",
+                from_pattern=["model.visual.blocks.{block}.attn.qkv.bias"],
             ),
             WeightTarget(
-                mlx_path="blocks.{block}.attn.proj.weight",
-                hf_patterns=["model.visual.blocks.{block}.attn.proj.weight"],
+                to_pattern="blocks.{block}.attn.proj.weight",
+                from_pattern=["model.visual.blocks.{block}.attn.proj.weight"],
             ),
             WeightTarget(
-                mlx_path="blocks.{block}.attn.proj.bias",
-                hf_patterns=["model.visual.blocks.{block}.attn.proj.bias"],
+                to_pattern="blocks.{block}.attn.proj.bias",
+                from_pattern=["model.visual.blocks.{block}.attn.proj.bias"],
             ),
             # MLP
             WeightTarget(
-                mlx_path="blocks.{block}.mlp.linear_fc1.weight",
-                hf_patterns=["model.visual.blocks.{block}.mlp.linear_fc1.weight"],
+                to_pattern="blocks.{block}.mlp.linear_fc1.weight",
+                from_pattern=["model.visual.blocks.{block}.mlp.linear_fc1.weight"],
             ),
             WeightTarget(
-                mlx_path="blocks.{block}.mlp.linear_fc1.bias",
-                hf_patterns=["model.visual.blocks.{block}.mlp.linear_fc1.bias"],
+                to_pattern="blocks.{block}.mlp.linear_fc1.bias",
+                from_pattern=["model.visual.blocks.{block}.mlp.linear_fc1.bias"],
             ),
             WeightTarget(
-                mlx_path="blocks.{block}.mlp.linear_fc2.weight",
-                hf_patterns=["model.visual.blocks.{block}.mlp.linear_fc2.weight"],
+                to_pattern="blocks.{block}.mlp.linear_fc2.weight",
+                from_pattern=["model.visual.blocks.{block}.mlp.linear_fc2.weight"],
             ),
             WeightTarget(
-                mlx_path="blocks.{block}.mlp.linear_fc2.bias",
-                hf_patterns=["model.visual.blocks.{block}.mlp.linear_fc2.bias"],
+                to_pattern="blocks.{block}.mlp.linear_fc2.bias",
+                from_pattern=["model.visual.blocks.{block}.mlp.linear_fc2.bias"],
             ),
             # Final merger
             WeightTarget(
-                mlx_path="merger.norm.weight",
-                hf_patterns=["model.visual.merger.norm.weight"],
+                to_pattern="merger.norm.weight",
+                from_pattern=["model.visual.merger.norm.weight"],
             ),
             WeightTarget(
-                mlx_path="merger.norm.bias",
-                hf_patterns=["model.visual.merger.norm.bias"],
+                to_pattern="merger.norm.bias",
+                from_pattern=["model.visual.merger.norm.bias"],
             ),
             WeightTarget(
-                mlx_path="merger.linear_fc1.weight",
-                hf_patterns=["model.visual.merger.linear_fc1.weight"],
+                to_pattern="merger.linear_fc1.weight",
+                from_pattern=["model.visual.merger.linear_fc1.weight"],
             ),
             WeightTarget(
-                mlx_path="merger.linear_fc1.bias",
-                hf_patterns=["model.visual.merger.linear_fc1.bias"],
+                to_pattern="merger.linear_fc1.bias",
+                from_pattern=["model.visual.merger.linear_fc1.bias"],
             ),
             WeightTarget(
-                mlx_path="merger.linear_fc2.weight",
-                hf_patterns=["model.visual.merger.linear_fc2.weight"],
+                to_pattern="merger.linear_fc2.weight",
+                from_pattern=["model.visual.merger.linear_fc2.weight"],
             ),
             WeightTarget(
-                mlx_path="merger.linear_fc2.bias",
-                hf_patterns=["model.visual.merger.linear_fc2.bias"],
-            ),
-            # DeepStack mergers (fixed 3 items, not depth-based)
-            WeightTarget(
-                mlx_path="deepstack_merger_list.{block}.norm.weight",
-                hf_patterns=["model.visual.deepstack_merger_list.{block}.norm.weight"],
-                max_blocks=3,  # Fixed 3 items (0, 1, 2)
+                to_pattern="merger.linear_fc2.bias",
+                from_pattern=["model.visual.merger.linear_fc2.bias"],
             ),
             WeightTarget(
-                mlx_path="deepstack_merger_list.{block}.norm.bias",
-                hf_patterns=["model.visual.deepstack_merger_list.{block}.norm.bias"],
+                to_pattern="deepstack_merger_list.{block}.norm.weight",
+                from_pattern=["model.visual.deepstack_merger_list.{block}.norm.weight"],
                 max_blocks=3,
             ),
             WeightTarget(
-                mlx_path="deepstack_merger_list.{block}.linear_fc1.weight",
-                hf_patterns=["model.visual.deepstack_merger_list.{block}.linear_fc1.weight"],
+                to_pattern="deepstack_merger_list.{block}.norm.bias",
+                from_pattern=["model.visual.deepstack_merger_list.{block}.norm.bias"],
                 max_blocks=3,
             ),
             WeightTarget(
-                mlx_path="deepstack_merger_list.{block}.linear_fc1.bias",
-                hf_patterns=["model.visual.deepstack_merger_list.{block}.linear_fc1.bias"],
+                to_pattern="deepstack_merger_list.{block}.linear_fc1.weight",
+                from_pattern=["model.visual.deepstack_merger_list.{block}.linear_fc1.weight"],
                 max_blocks=3,
             ),
             WeightTarget(
-                mlx_path="deepstack_merger_list.{block}.linear_fc2.weight",
-                hf_patterns=["model.visual.deepstack_merger_list.{block}.linear_fc2.weight"],
+                to_pattern="deepstack_merger_list.{block}.linear_fc1.bias",
+                from_pattern=["model.visual.deepstack_merger_list.{block}.linear_fc1.bias"],
                 max_blocks=3,
             ),
             WeightTarget(
-                mlx_path="deepstack_merger_list.{block}.linear_fc2.bias",
-                hf_patterns=["model.visual.deepstack_merger_list.{block}.linear_fc2.bias"],
+                to_pattern="deepstack_merger_list.{block}.linear_fc2.weight",
+                from_pattern=["model.visual.deepstack_merger_list.{block}.linear_fc2.weight"],
+                max_blocks=3,
+            ),
+            WeightTarget(
+                to_pattern="deepstack_merger_list.{block}.linear_fc2.bias",
+                from_pattern=["model.visual.deepstack_merger_list.{block}.linear_fc2.bias"],
                 max_blocks=3,
             ),
         ]

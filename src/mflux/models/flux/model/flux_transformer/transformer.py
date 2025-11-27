@@ -3,8 +3,8 @@ import math
 import mlx.core as mx
 from mlx import nn
 
-from mflux.config.model_config import ModelConfig
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config.config import Config
+from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.flux.model.flux_transformer.ada_layer_norm_continuous import AdaLayerNormContinuous
 from mflux.models.flux.model.flux_transformer.embed_nd import EmbedND
 from mflux.models.flux.model.flux_transformer.joint_transformer_block import JointTransformerBlock
@@ -32,7 +32,7 @@ class Transformer(nn.Module):
     def __call__(
         self,
         t: int,
-        config: RuntimeConfig,
+        config: Config,
         hidden_states: mx.array,
         prompt_embeds: mx.array,
         pooled_prompt_embeds: mx.array,
@@ -130,7 +130,7 @@ class Transformer(nn.Module):
     def compute_rotary_embeddings(
         prompt_embeds: mx.array,
         pos_embed: EmbedND,
-        config: RuntimeConfig,
+        config: Config,
         kontext_image_ids: mx.array | None = None,
     ) -> mx.array:
         txt_ids = Transformer._prepare_text_ids(seq_len=prompt_embeds.shape[1])
@@ -148,7 +148,7 @@ class Transformer(nn.Module):
         t: int,
         pooled_prompt_embeds: mx.array,
         time_text_embed: TimeTextEmbed,
-        config: RuntimeConfig,
+        config: Config,
     ) -> mx.array:
         time_step = config.scheduler.sigmas[t] * config.num_train_steps
         time_step = mx.broadcast_to(time_step, (1,)).astype(config.precision)

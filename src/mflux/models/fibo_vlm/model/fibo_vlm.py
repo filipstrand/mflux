@@ -6,26 +6,30 @@ import mlx.core as mx
 import numpy as np
 from PIL import Image
 
-from mflux.models.fibo.tokenizer.qwen2vl_processor import Qwen2VLProcessor
-from mflux.models.fibo_vlm.fibo_vlm_initializer import FIBOVLMInitializer
+from mflux.models.fibo_vlm.fibo_vlm_initializer import FiboVLMInitializer
 from mflux.models.fibo_vlm.model.qwen3_vl_decoder import Qwen3VLDecoder
 from mflux.models.fibo_vlm.model.qwen3_vl_util import Qwen3VLUtil
+from mflux.models.fibo_vlm.tokenizer.qwen2vl_processor import Qwen2VLProcessor
 
 
 class FiboVLM:
     decoder = Qwen3VLDecoder
-    processor: Qwen2VLProcessor
 
     def __init__(
         self,
         model_id: str = "briaai/FIBO-vlm",
-        local_path: str | None = None,
+        model_path: str | None = None,
+        quantize: int | None = None,
     ):
-        FIBOVLMInitializer.init(
-            vlm_model=self,
-            model_id=model_id,
-            local_path=local_path,
+        FiboVLMInitializer.init(
+            model=self,
+            model_path=model_path if model_path else model_id,
+            quantize=quantize,
         )
+
+    @property
+    def processor(self) -> Qwen2VLProcessor:
+        return self.tokenizers["fibo_vlm"].processor
 
     def generate(
         self,
@@ -107,8 +111,8 @@ class FiboVLM:
         messages = FiboVLM._build_messages(
             task=task,
             image=image,
-            refine_image=refine_image,
             prompt=prompt,
+            refine_image=refine_image,
             structured_prompt=FiboVLM._normalize_json(structured_prompt),
             editing_instructions=editing_instructions,
         )
@@ -119,17 +123,17 @@ class FiboVLM:
         image_grid_thw = mx.array(formatted["image_grid_thw"]) if formatted.get("image_grid_thw") is not None else None
         stop_token_sequences = [self.processor.tokenizer.encode(s, add_special_tokens=False) for s in stop]
         generated_ids = Qwen3VLUtil.generate_text(
+            seed=seed,
+            top_p=top_p,
             decoder=self.decoder,
             input_ids=input_ids,
             attention_mask=attention_mask,
             pixel_values=pixel_values,
             image_grid_thw=image_grid_thw,
             max_new_tokens=max_tokens,
-            top_p=top_p,
             temperature=temperature,
             stop_token_sequences=stop_token_sequences,
             eos_token_id=self.processor.tokenizer.eos_token_id,
-            seed=seed,
         )
         generated_tokens = generated_ids[:, input_ids.shape[1] :]
         generated_text = self.processor.tokenizer.decode(np.array(generated_tokens[0]), skip_special_tokens=True)

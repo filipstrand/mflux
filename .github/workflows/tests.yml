@@ -1,0 +1,37 @@
+name: Fast Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  fast-tests:
+    runs-on: macos-14  # Apple Silicon runner (M1)
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: |
+          uv venv
+          uv pip install -e .
+          uv pip install pytest
+
+      - name: Run fast tests
+        run: |
+          source .venv/bin/activate
+          python -m pytest -m fast -v
+

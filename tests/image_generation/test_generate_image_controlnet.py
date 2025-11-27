@@ -1,8 +1,11 @@
-from mflux.config.model_config import ModelConfig
+import pytest
+
+from mflux.models.common.config import ModelConfig
 from tests.image_generation.helpers.image_generation_controlnet_test_helper import ImageGeneratorControlnetTestHelper
 
 
 class TestImageGeneratorControlnet:
+    @pytest.mark.slow
     def test_image_generation_schnell_controlnet(self):
         ImageGeneratorControlnetTestHelper.assert_matches_reference_image(
             reference_image_path="reference_controlnet_schnell.png",
@@ -17,6 +20,7 @@ class TestImageGeneratorControlnet:
             controlnet_strength=0.4,
         )
 
+    @pytest.mark.slow
     def test_image_generation_dev_controlnet(self):
         ImageGeneratorControlnetTestHelper.assert_matches_reference_image(
             reference_image_path="reference_controlnet_dev.png",
@@ -31,6 +35,7 @@ class TestImageGeneratorControlnet:
             controlnet_strength=0.4,
         )
 
+    @pytest.mark.slow
     def test_image_generation_dev_lora_controlnet(self):
         ImageGeneratorControlnetTestHelper.assert_matches_reference_image(
             reference_image_path="reference_controlnet_dev_lora.png",
@@ -47,6 +52,7 @@ class TestImageGeneratorControlnet:
             controlnet_strength=0.4,
         )
 
+    @pytest.mark.slow
     def test_image_upscaling(self):
         ImageGeneratorControlnetTestHelper.assert_matches_reference_image(
             reference_image_path="reference_upscaled.png",

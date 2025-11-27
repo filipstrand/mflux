@@ -4,9 +4,10 @@ import mlx.core as mx
 import numpy as np
 from PIL import Image
 
+from mflux.models.common.tokenizer import Tokenizer
+from mflux.models.qwen.model.qwen_text_encoder.qwen_prompt_encoder import QwenPromptEncoder
 from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
 from mflux.models.qwen.model.qwen_text_encoder.qwen_vision_language_encoder import QwenVisionLanguageEncoder
-from mflux.models.qwen.tokenizer.qwen_tokenizer import TokenizerQwen
 from mflux.models.qwen.tokenizer.qwen_vision_language_tokenizer import QwenVisionLanguageTokenizer
 
 
@@ -59,7 +60,7 @@ class QwenVisionLanguagePromptEncoder:
         negative_prompt: Optional[str] = None,
         image: Optional[Union[Image.Image, np.ndarray, str]] = None,
         prompt_cache: Optional[dict] = None,
-        qwen_tokenizer: Optional[TokenizerQwen] = None,
+        qwen_tokenizer: Optional[Tokenizer] = None,
         qwen_text_encoder: Optional[QwenTextEncoder] = None,
         qwen_vl_tokenizer: Optional[QwenVisionLanguageTokenizer] = None,
         qwen_vl_encoder: Optional[QwenVisionLanguageEncoder] = None,
@@ -84,7 +85,7 @@ class QwenVisionLanguagePromptEncoder:
                     "Text-only components (qwen_tokenizer, qwen_text_encoder) are required when no image is provided"
                 )
 
-            return QwenVisionLanguagePromptEncoder.encode_prompt(
+            return QwenPromptEncoder.encode_prompt(
                 prompt=prompt,
                 negative_prompt=negative_prompt or "",
                 prompt_cache=prompt_cache,

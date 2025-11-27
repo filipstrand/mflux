@@ -1,8 +1,11 @@
-from mflux.config.model_config import ModelConfig
+import pytest
+
+from mflux.models.common.config import ModelConfig
 from tests.image_generation.helpers.image_generation_concept_test_helper import ImageGenerationConceptTestHelper
 
 
 class TestImageGeneratorConcept:
+    @pytest.mark.slow
     def test_concept_attention_generation(self):
         ImageGenerationConceptTestHelper.assert_matches_reference_image_concept(
             reference_heatmap_path="reference_concept_schnell_heatmap.png",
@@ -18,6 +21,7 @@ class TestImageGeneratorConcept:
             heatmap_timesteps=[0, 1, 2, 3],
         )
 
+    @pytest.mark.slow
     def test_concept_attention_from_image(self):
         ImageGenerationConceptTestHelper.assert_matches_reference_image_concept_from_image(
             reference_heatmap_path="reference_concept_from_image_schnell_heatmap.png",

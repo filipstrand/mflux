@@ -1,40 +1,44 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from mflux.callbacks.callback import AfterLoopCallback, BeforeLoopCallback, InLoopCallback, InterruptCallback
+
+if TYPE_CHECKING:
+    from mflux.callbacks.generation_context import GenerationContext
+    from mflux.models.common.config.config import Config
 
 
 class CallbackRegistry:
-    in_loop = []
-    before_loop = []
-    interrupt = []
-    after_loop = []
+    def __init__(self):
+        self.in_loop: list[InLoopCallback] = []
+        self.before_loop: list[BeforeLoopCallback] = []
+        self.interrupt: list[InterruptCallback] = []
+        self.after_loop: list[AfterLoopCallback] = []
 
-    @staticmethod
-    def register_in_loop(callback: InLoopCallback) -> None:
-        CallbackRegistry.in_loop.append(callback)
+    def register(self, callback) -> None:
+        if hasattr(callback, "call_before_loop"):
+            self.before_loop.append(callback)
+        if hasattr(callback, "call_in_loop"):
+            self.in_loop.append(callback)
+        if hasattr(callback, "call_after_loop"):
+            self.after_loop.append(callback)
+        if hasattr(callback, "call_interrupt"):
+            self.interrupt.append(callback)
 
-    @staticmethod
-    def register_before_loop(callback: BeforeLoopCallback) -> None:
-        CallbackRegistry.before_loop.append(callback)
+    def start(self, seed: int, prompt: str, config: Config) -> GenerationContext:
+        from mflux.callbacks.generation_context import GenerationContext
 
-    @staticmethod
-    def register_after_loop(callback: AfterLoopCallback) -> None:
-        CallbackRegistry.after_loop.append(callback)
+        return GenerationContext(self, seed, prompt, config)
 
-    @staticmethod
-    def register_interrupt(callback: InterruptCallback) -> None:
-        CallbackRegistry.interrupt.append(callback)
+    def before_loop_callbacks(self) -> list[BeforeLoopCallback]:
+        return self.before_loop
 
-    @staticmethod
-    def before_loop_callbacks() -> list[BeforeLoopCallback]:
-        return CallbackRegistry.before_loop
+    def in_loop_callbacks(self) -> list[InLoopCallback]:
+        return self.in_loop
 
-    @staticmethod
-    def in_loop_callbacks() -> list[InLoopCallback]:
-        return CallbackRegistry.in_loop
+    def after_loop_callbacks(self) -> list[AfterLoopCallback]:
+        return self.after_loop
 
-    @staticmethod
-    def after_loop_callbacks() -> list[AfterLoopCallback]:
-        return CallbackRegistry.after_loop
-
-    @staticmethod
-    def interrupt_callbacks() -> list[InterruptCallback]:
-        return CallbackRegistry.interrupt
+    def interrupt_callbacks(self) -> list[InterruptCallback]:
+        return self.interrupt

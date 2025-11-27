@@ -6,13 +6,12 @@ from unittest import mock
 
 import pytest
 
-from mflux.models.common.lora.download import lora_library
-from mflux.ui.cli.parsers import CommandLineParser
+from mflux.cli.parser.parsers import CommandLineParser
+from mflux.models.common.resolution import lora_resolution
 
 
 @pytest.fixture
 def temp_lora_library():
-    """Create a temporary lora library for testing."""
     with tempfile.TemporaryDirectory() as temp_dir:
         lib_path = Path(temp_dir) / "lora_library"
         lib_path.mkdir()
@@ -26,12 +25,12 @@ def temp_lora_library():
         yield lib_path
 
 
+@pytest.mark.fast
 def test_parser_resolves_lora_paths_from_library(temp_lora_library):
-    """Test that parser resolves lora names to full paths from library."""
     # Set up the environment variable
     with mock.patch.dict(os.environ, {"LORA_LIBRARY_PATH": str(temp_lora_library)}):
         # Re-initialize the registry
-        lora_library._initialize_registry()
+        lora_resolution.LoraResolution._initialize_registry()
 
         parser = CommandLineParser()
         parser.add_model_arguments()
@@ -63,8 +62,8 @@ def test_parser_resolves_lora_paths_from_library(temp_lora_library):
         assert args.lora_scales == [0.5, 0.8]
 
 
+@pytest.mark.fast
 def test_parser_preserves_full_paths(temp_lora_library):
-    """Test that parser preserves full paths that already exist."""
     # Create a lora file outside the library
     with tempfile.NamedTemporaryFile(suffix=".safetensors", delete=False) as tmp_file:
         external_lora = tmp_file.name
@@ -85,15 +84,15 @@ def test_parser_preserves_full_paths(temp_lora_library):
         os.unlink(external_lora)
 
 
+@pytest.mark.fast
 def test_parser_mixed_lora_paths(temp_lora_library):
-    """Test parser with mix of library names and full paths."""
     # Create an external lora file
     with tempfile.NamedTemporaryFile(suffix=".safetensors", delete=False) as tmp_file:
         external_lora = tmp_file.name
 
     try:
         with mock.patch.dict(os.environ, {"LORA_LIBRARY_PATH": str(temp_lora_library)}):
-            lora_library._initialize_registry()
+            lora_resolution.LoraResolution._initialize_registry()
 
             parser = CommandLineParser()
             parser.add_model_arguments()
@@ -122,11 +121,11 @@ def test_parser_mixed_lora_paths(temp_lora_library):
         os.unlink(external_lora)
 
 
+@pytest.mark.fast
 def test_parser_unknown_lora_names_error():
-    """Test that unknown lora names raise an error."""
     # No library path set
     with mock.patch.dict(os.environ, {}, clear=True):
-        lora_library._initialize_registry()
+        lora_resolution.LoraResolution._initialize_registry()
 
         parser = CommandLineParser()
         parser.add_model_arguments()

@@ -5,15 +5,10 @@ import PIL.Image
 from tqdm import tqdm
 
 from mflux.callbacks.callback import AfterLoopCallback, BeforeLoopCallback, InLoopCallback
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config.config import Config
 
 
 class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
-    """
-    Optimizes memory usage by clearing caches and removing unused model
-    components at strategic points in the execution cycle.
-    """
-
     def __init__(self, model, keep_transformer: bool = True, cache_limit_bytes: int = 1000**3):
         self.model = model
         self.keep_transformer = keep_transformer
@@ -27,7 +22,7 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         canny_image: PIL.Image.Image | None = None,
         depth_image: PIL.Image.Image | None = None,
     ) -> None:
@@ -40,7 +35,7 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         time_steps: tqdm,
     ) -> None:
         self.peak_memory = mx.get_peak_memory()
@@ -50,7 +45,7 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
     ) -> None:
         self.peak_memory = mx.get_peak_memory()
         if not self.keep_transformer:
@@ -66,8 +61,9 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
             self.model.text_encoder = None
         if hasattr(self.model, "qwen_vl_encoder") and self.model.qwen_vl_encoder is not None:
             self.model.qwen_vl_encoder = None
-        if hasattr(self.model, "qwen_vl_tokenizer") and self.model.qwen_vl_tokenizer is not None:
-            self.model.qwen_vl_tokenizer = None
+        # Clear VLM tokenizers from the tokenizers dict if present
+        if hasattr(self.model, "tokenizers") and "qwen_vl" in self.model.tokenizers:
+            self.model.tokenizers["qwen_vl"] = None
         gc.collect()
         mx.clear_cache()
 
