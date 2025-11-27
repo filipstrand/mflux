@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2025-11-27
+
+# MFLUX v.0.12.0 Release Notes
+
+### 🎨 New Model Support
+
+- **Bria FIBO Support**: Added support for [FIBO](https://huggingface.co/briaai/FIBO), the first open-source JSON-native text-to-image model from [Bria.ai](https://bria.ai)
+- **Three operation modes**: Generate (text-to-image with VLM expansion), Refine (structured prompt editing), and Inspire (image-to-prompt extraction)
+- **New commands**:
+  - `mflux-generate-fibo` - Generate images from text prompts with VLM-guided JSON expansion
+  - `mflux-refine-fibo` - Refine images using structured JSON prompts for targeted attribute editing
+  - `mflux-inspire-fibo` - Extract structured prompts from reference images for style transfer and remixing
+- **VLM-guided JSON prompting**: Automatically expands short text prompts into 1,000+ word structured schemas using a fine-tuned Qwen3-VL model
+
+### 🔧 Restructure and 🔄 Breaking Changes
+
+- **Common module reorganization**: Moved shared functionality to `models/common/` for better code reuse
+  - Unified latent creators across model families
+  - Centralized scheduler implementations
+  - Common quantization utilities
+  - Shared model saving functionality
+
+### 👩‍💻 Contributors
+
+- **Filip Strand (@filipstrand)**: FIBO model implementation, architecture, core development
+
+---
+
 ## [0.11.1] - 2025-11-13
 
 # MFLUX v.0.11.1 Release Notes
