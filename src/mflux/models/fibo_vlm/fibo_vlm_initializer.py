@@ -44,22 +44,7 @@ class FIBOVLMInitializer:
         if local_path:
             root_path = Path(local_path)
         else:
-            # Use snapshot_download to get cached path - download ALL files without filtering
-            # This ensures we get the complete snapshot directory structure
-            try:
-                root_path = Path(
-                    snapshot_download(
-                        repo_id=model_id,
-                        local_files_only=True,
-                    )
-                )
-            except (FileNotFoundError, OSError):
-                # Model not in cache, allow download if online
-                root_path = Path(
-                    snapshot_download(
-                        repo_id=model_id,
-                    )
-                )
+            root_path = FIBOVLMInitializer._get_model_path(model_id)
 
         # Try different possible tokenizer paths (like FiboTokenizerHandler does)
         tokenizer_path = root_path / "tokenizer"
@@ -86,3 +71,42 @@ class FIBOVLMInitializer:
                 os.environ["HF_HUB_OFFLINE"] = old_offline
 
         return tokenizer
+
+    @staticmethod
+    def _get_model_path(model_id: str) -> Path:
+        # Try to use cached path first
+        try:
+            root_path = Path(
+                snapshot_download(
+                    repo_id=model_id,
+                    local_files_only=True,
+                )
+            )
+            # Check if tokenizer files actually exist - the model weights might be cached
+            # but tokenizer files may not have been downloaded yet
+            if not FIBOVLMInitializer._tokenizer_files_exist(root_path):
+                # Tokenizer files missing, need to download them
+                root_path = Path(
+                    snapshot_download(
+                        repo_id=model_id,
+                        local_files_only=False,
+                    )
+                )
+        except (FileNotFoundError, OSError):
+            # Model not in cache, allow download if online
+            root_path = Path(
+                snapshot_download(
+                    repo_id=model_id,
+                )
+            )
+        return root_path
+
+    @staticmethod
+    def _tokenizer_files_exist(root_path: Path) -> bool:
+        # Check for vocab.json in possible tokenizer locations
+        possible_paths = [
+            root_path / "tokenizer" / "vocab.json",
+            root_path / "text_encoder" / "vocab.json",
+            root_path / "vocab.json",
+        ]
+        return any(p.exists() for p in possible_paths)
