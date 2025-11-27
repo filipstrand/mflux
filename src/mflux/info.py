@@ -4,8 +4,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from mflux.post_processing.metadata_reader import MetadataReader
 from mflux.ui.cli.parsers import CommandLineParser
+from mflux.utils.metadata_reader import MetadataReader
 
 
 def format_metadata(metadata: dict) -> str:
@@ -121,4 +121,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

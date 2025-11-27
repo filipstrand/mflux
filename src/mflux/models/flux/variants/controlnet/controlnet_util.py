@@ -6,8 +6,8 @@ import numpy as np
 import PIL.Image
 
 from mflux.models.flux.model.flux_vae.vae import VAE
-from mflux.post_processing.array_util import ArrayUtil
-from mflux.post_processing.image_util import StrOrBytesPath
+from mflux.utils.array_util import ArrayUtil
+from mflux.utils.image_util import StrOrBytesPath
 
 log = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class ControlnetUtil:
         controlnet_image_path: StrOrBytesPath,
         is_canny: bool,
     ) -> tuple[mx.array, PIL.Image.Image]:
-        from mflux.post_processing.image_util import ImageUtil
+        from mflux.utils.image_util import ImageUtil
 
         control_image = ImageUtil.load_image(controlnet_image_path)
         control_image = ControlnetUtil._scale_image(height=height, width=width, img=control_image)

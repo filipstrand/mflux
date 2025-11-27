@@ -1,9 +1,9 @@
 import sys
 from pathlib import Path
 
-from mflux.post_processing.image_util import ImageUtil
 from mflux.ui.box_values import AbsoluteBoxValues, BoxValues
 from mflux.ui.cli.parsers import CommandLineParser
+from mflux.utils.image_util import ImageUtil
 
 
 def main():

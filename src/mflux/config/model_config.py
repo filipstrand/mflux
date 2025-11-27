@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from mflux.error.error import InvalidBaseModel, ModelConfigError
+from mflux.utils.exceptions import InvalidBaseModel, ModelConfigError
 
 
 class ModelConfig:
@@ -93,6 +93,11 @@ class ModelConfig:
     @lru_cache
     def qwen_image_edit() -> "ModelConfig":
         return AVAILABLE_MODELS["qwen-image-edit"]
+
+    @staticmethod
+    @lru_cache
+    def fibo() -> "ModelConfig":
+        return AVAILABLE_MODELS["fibo"]
 
     def x_embedder_input_dim(self) -> int:
         if "Fill" in self.model_name:
@@ -318,5 +323,17 @@ AVAILABLE_MODELS = {
         supports_guidance=None,
         requires_sigma_shift=None,
         priority=12,
+    ),
+    "fibo": ModelConfig(
+        aliases=["fibo"],
+        model_name="briaai/FIBO",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,
+        requires_sigma_shift=False,
+        priority=13,
     ),
 }

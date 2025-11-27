@@ -6,17 +6,18 @@ from mflux.callbacks.callbacks import Callbacks
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.error.exceptions import StopImageGenerationException
-from mflux.latent_creator.latent_creator import Img2Img, LatentCreator
+from mflux.models.common.latent_creator.latent_creator import Img2Img, LatentCreator
+from mflux.models.common.weights.model_saver import ModelSaver
+from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
 from mflux.models.qwen.model.qwen_text_encoder.qwen_prompt_encoder import QwenPromptEncoder
 from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer
 from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
 from mflux.models.qwen.qwen_initializer import QwenImageInitializer
-from mflux.models.qwen.weights.qwen_model_saver import QwenModelSaver
-from mflux.post_processing.array_util import ArrayUtil
-from mflux.post_processing.generated_image import GeneratedImage
-from mflux.post_processing.image_util import ImageUtil
+from mflux.utils.array_util import ArrayUtil
+from mflux.utils.exceptions import StopImageGenerationException
+from mflux.utils.generated_image import GeneratedImage
+from mflux.utils.image_util import ImageUtil
 
 
 class QwenImage(nn.Module):
@@ -64,6 +65,7 @@ class QwenImage(nn.Module):
             width=runtime_config.width,
             img2img=Img2Img(
                 vae=self.vae,
+                latent_creator=QwenLatentCreator,
                 sigmas=runtime_config.scheduler.sigmas,
                 init_time_step=runtime_config.init_time_step,
                 image_path=runtime_config.image_path,
@@ -166,7 +168,19 @@ class QwenImage(nn.Module):
         )
 
     def save_model(self, base_path: str) -> None:
-        QwenModelSaver.save_model(self, self.bits, base_path)
+        ModelSaver.save_model(
+            model=self,
+            bits=self.bits,
+            base_path=base_path,
+            tokenizers=[
+                ("qwen_tokenizer.tokenizer", "tokenizer"),
+            ],
+            components=[
+                ("vae", "vae"),
+                ("transformer", "transformer"),
+                ("text_encoder", "text_encoder"),
+            ],
+        )
 
     @staticmethod
     def compute_guided_noise(

@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from mflux.callbacks.instances.battery_saver import BatterySaver, get_battery_percentage
-from mflux.error.exceptions import StopImageGenerationException
+from mflux.utils.exceptions import StopImageGenerationException
 
 
 def test_get_battery_percentage_while_charging():

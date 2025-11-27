@@ -2,11 +2,11 @@ from pathlib import Path
 
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.config.config import Config
-from mflux.error.exceptions import PromptFileReadError, StopImageGenerationException
 from mflux.models.qwen.variants.edit.qwen_image_edit import QwenImageEdit
 from mflux.ui import defaults as ui_defaults
 from mflux.ui.cli.parsers import CommandLineParser
-from mflux.ui.prompt_utils import get_effective_negative_prompt, get_effective_prompt
+from mflux.ui.prompt_utils import PromptUtils
+from mflux.utils.exceptions import PromptFileReadError, StopImageGenerationException
 
 
 def main():
@@ -53,7 +53,7 @@ def main():
             # 4. Generate an image for each seed value
             image = qwen.generate_image(
                 seed=seed,
-                prompt=get_effective_prompt(args),
+                prompt=PromptUtils.get_effective_prompt(args),
                 config=Config(
                     num_inference_steps=args.steps,
                     height=args.height,
@@ -61,7 +61,7 @@ def main():
                     guidance=args.guidance,
                     image_path=config_image_path,
                 ),
-                negative_prompt=get_effective_negative_prompt(args),
+                negative_prompt=PromptUtils.get_effective_negative_prompt(args),
                 image_paths=image_paths,
             )
 

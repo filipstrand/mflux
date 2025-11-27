@@ -1,6 +1,6 @@
 import subprocess
 
-from mflux.error.exceptions import CommandExecutionError
+from mflux.utils.exceptions import CommandExecutionError
 
 
 class GitOperations:

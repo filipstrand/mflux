@@ -3,7 +3,7 @@ import numpy as np
 import PIL.Image
 import pytest
 
-from mflux.post_processing.image_util import ImageUtil
+from mflux.utils.image_util import ImageUtil
 
 
 @pytest.fixture

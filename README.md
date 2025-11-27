@@ -4,7 +4,7 @@
 
 ### About
 
-Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) and [Qwen Image](https://github.com/QwenLM/Qwen-Image) models locally on your Mac!
+Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux), [Qwen Image](https://github.com/QwenLM/Qwen-Image) and [FIBO](https://huggingface.co/briaai/FIBO) models locally on your Mac!
 
 ### Table of contents
 
@@ -23,6 +23,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) and [Qwen Image](h
 - [🦙 Qwen Models](#-qwen-models)
   * [🖼️ Qwen Image](#%EF%B8%8F-qwen-image)
   * [✏️ Qwen Image Edit](#%EF%B8%8F-qwen-image-edit)
+- [🌀 FIBO](#-fibo)
 - [🔌 LoRA](#-lora)
 - [🎭 In-Context Generation](#-in-context-generation)
   * [📸 Kontext](#-kontext)
@@ -50,7 +51,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux) and [Qwen Image](h
 
 ### Philosophy
 
-MFLUX is a line-by-line port of the FLUX and Qwen implementations in the [Huggingface Diffusers](https://github.com/huggingface/diffusers) and [Huggingface Transformers](https://github.com/huggingface/transformers) libraries to [Apple MLX](https://github.com/ml-explore/mlx).
+MFLUX is a line-by-line port of the FLUX, Qwen and Bria models implementations in the [Huggingface Diffusers](https://github.com/huggingface/diffusers) and [Huggingface Transformers](https://github.com/huggingface/transformers) libraries to [Apple MLX](https://github.com/ml-explore/mlx).
 MFLUX is purposefully kept minimal and explicit - Network architectures are hardcoded and no config files are used
 except for the tokenizers. The aim is to have a tiny codebase with the single purpose of expressing these models
 (thereby avoiding too many abstractions). While MFLUX priorities readability over generality and performance, [it can still be quite fast](#%EF%B8%8F-image-generation-speed-updated), [and even faster quantized](#%EF%B8%8F-quantization).
@@ -1084,6 +1085,344 @@ mflux-generate-qwen-edit \
 7. **Image Quality**: Qwen images come out quite soft compared to Flux models
 
 ⚠️ *Note: The Qwen Image Edit model requires downloading the `Qwen/Qwen-Image-Edit-2509` model weights (~58GB for the full model, or use quantization for smaller sizes).*
+
+---
+
+### 🌀 FIBO
+
+MFLUX supports [FIBO](https://huggingface.co/briaai/FIBO) from [Bria.ai](https://bria.ai), the first open-source JSON-native text-to-image model trained on long structured captions. FIBO delivers high image quality, strong prompt adherence, and professional-grade control—trained exclusively on licensed data. ([Technical Paper](https://arxiv.org/abs/2511.06876))
+
+![FIBO Example](src/mflux/assets/fibo_example.jpg)
+
+FIBO is an 8B-parameter DiT-based, flow-matching model using **SmolLM3-3B** as the text encoder with a novel **DimFusion** conditioning architecture for efficient long-caption training, and **Wan 2.2** as the VAE. The VLM-assisted prompting uses a fine-tuned **Qwen3-VL** to expand short user intents, fill in missing details, and extract/edit structured prompts from images.
+
+Most text-to-image models excel at imagination—but not control. FIBO is trained on structured JSON captions up to 1,000+ words, enabling precise, reproducible control over lighting, composition, color, and camera settings. The structured captions foster native disentanglement, allowing targeted, iterative refinement without prompt drift. 
+
+
+#### Key Features
+
+- **VLM-guided JSON-native prompting**: Transform short prompts into structured schemas with 1,000+ words (lighting, camera, composition, DoF)
+- **Disentangled control**: Tweak a single attribute (e.g., camera angle) without breaking the scene
+- **Strong prompt adherence**: High alignment on PRISM-style evaluations
+- **Enterprise-grade**: 100% licensed data with governance, repeatability, and legal clarity
+
+#### The three modes: ✨ Generate, 🔧 Refine, and 💡 Inspire
+
+**✨ Generate**: While the actual prompt input to FIBO is a structured JSON file, the generate command provides an interface to input pure text prompts. These are then expanded into structured JSON prompts using FIBO's Vision-Language Model (VLM) before being passed to the diffusion model for image generation. For example, the following prompt produces one of the images above:
+
+```sh
+mflux-generate-fibo \
+  --prompt "Three cartoon animal chefs in a colorful bakery kitchen, Pixar style: a bunny with floppy ears wearing a tall white chef hat and pink apron holding a chocolate cake on the left, a raccoon with a striped tail wearing blue oven mitts and a yellow bandana frosting cupcakes in the center, a penguin wearing a red bowtie and checkered apron carrying a tray of golden croissants on the right, warm kitchen lighting with flour dust in air" \
+  --width 1200 \
+  --height 540 \
+  --steps 20 \
+  --guidance 4.0 \ 
+  --seed 42 \
+  --output animal_bakers.png
+``` 
+ 
+This command will output both the generated image (`animal_bakers.png`) and a JSON prompt file (`animal_bakers.json`) containing the expanded structured prompt used for generation.
+When the input prompt is pure text, it will be processed through FIBO's VLM to create the structured JSON prompt automatically. 
+Conversely, if a JSON prompt file is provided, it will be used directly for image generation, thus bypassing the VLM step and giving you full control over the prompt structure.
+Another way to call the model directly is to provide a JSON prompt file as input:
+
+```sh
+mflux-generate-fibo \
+    --prompt-file animal_bakers.json \
+    --width 1200 \
+    --height 540 \
+    --steps 20 \
+    --guidance 4.0 \ 
+    --seed 42 \
+    --output animal_bakers.png
+```
+
+A point worth emphasizing is that when working with a JSON prompt file, the user can use whatever tool they prefer to edit it and is not forced to use the built in FIBO-VLM. Other good alternatives are [coding](https://cursor.com/agents) [agents](https://www.claude.com/product/claude-code), other [LLMs](https://github.com/ml-explore/mlx-lm)/[VLMs](https://github.com/Blaizzy/mlx-vlm) etc. 
+
+<details>
+<summary><strong>Click to expand the JSON prompt file used (animal_bakers.json)</strong></summary>
+
+```json
+{
+  "short_description": "Three cartoon animal chefs are in a bakery kitchen, each holding a culinary creation. A bunny chef on the left presents a chocolate cake, a raccoon chef in the center is frosting cupcakes, and a penguin chef on the right carries a tray of croissants. The kitchen is brightly lit with warm tones, and flour dusts the air, creating a lively and cheerful baking atmosphere.",
+  "objects": [
+    {
+      "description": "A cartoon bunny wearing a white chef's hat and a pink apron, holding a chocolate cake with white frosting and cherries.",
+      "location": "left foreground",
+      "relationship": "The bunny chef is presenting the chocolate cake.",
+      "relative_size": "medium",
+      "shape_and_color": "Rounded bunny shape, white hat, pink apron, brown cake, white frosting, red cherries.",
+      "texture": "smooth",
+      "appearance_details": "Floppy ears, rosy cheeks, smiling expression.",
+      "pose": "Standing upright, holding the cake with both hands.",
+      "expression": "Joyful and proud.",
+      "clothing": "White chef's hat, pink apron.",
+      "action": "Holding and presenting a cake.",
+      "gender": "female",
+      "skin_tone_and_texture": "White fur, smooth texture.",
+      "orientation": "Upright, facing forward."
+    },
+    {
+      "description": "A cartoon raccoon wearing blue oven mitts and a yellow bandana, actively frosting cupcakes with pink and yellow frosting.",
+      "location": "center midground",
+      "relationship": "The raccoon chef is in the process of frosting cupcakes.",
+      "relative_size": "medium",
+      "shape_and_color": "Distinct raccoon shape, blue mitts, yellow bandana, pink and yellow frosting, brown cupcakes.",
+      "texture": "smooth",
+      "appearance_details": "Striped tail, bushy fur, focused expression.",
+      "pose": "Leaning forward slightly, hands busy frosting.",
+      "expression": "Concentrated and happy.",
+      "clothing": "Blue oven mitts, yellow bandana.",
+      "action": "Frosting cupcakes.",
+      "gender": "male",
+      "skin_tone_and_texture": "Brown and black fur, smooth texture.",
+      "orientation": "Upright, slightly angled."
+    },
+    {
+      "description": "A cartoon penguin wearing a red bowtie and a checkered apron, carrying a tray of golden croissants.",
+      "location": "right foreground",
+      "relationship": "The penguin chef is carrying a tray of freshly baked croissants.",
+      "relative_size": "medium",
+      "shape_and_color": "Classic penguin shape, red bowtie, red and white apron, golden croissants.",
+      "texture": "smooth",
+      "appearance_details": "Black and white body, orange beak and feet, smiling expression.",
+      "pose": "Standing upright, holding the tray with both hands.",
+      "expression": "Cheerful and friendly.",
+      "clothing": "Red bowtie, checkered apron.",
+      "action": "Carrying a tray of croissants.",
+      "gender": "male",
+      "skin_tone_and_texture": "Feathered texture, smooth appearance.",
+      "orientation": "Upright, facing forward."
+    },
+    {
+      "description": "A chocolate cake with white frosting and two red cherries on top.",
+      "location": "left foreground",
+      "relationship": "Held by the bunny chef.",
+      "relative_size": "medium",
+      "shape_and_color": "Round cake, dark brown, white frosting, red cherries.",
+      "texture": "smooth frosting, slightly textured cake",
+      "appearance_details": "Decorated with cherries.",
+      "number_of_objects": 1,
+      "orientation": "Horizontal"
+    },
+    {
+      "description": "A tray filled with golden-brown croissants.",
+      "location": "right foreground",
+      "relationship": "Carried by the penguin chef.",
+      "relative_size": "medium",
+      "shape_and_color": "Elongated, crescent-shaped croissants, golden brown.",
+      "texture": "flaky, slightly crisp exterior",
+      "appearance_details": "Arranged neatly on a metal tray.",
+      "number_of_objects": 1,
+      "orientation": "Horizontal"
+    }
+  ],
+  "background_setting": "A brightly lit bakery kitchen with wooden countertops, shelves stocked with baking ingredients and equipment, and a window in the background. Flour is lightly dusted in the air.",
+  "lighting": {
+    "conditions": "warm indoor lighting",
+    "direction": "front-lit and side-lit",
+    "shadows": "soft, diffused shadows"
+  },
+  "aesthetics": {
+    "composition": "centered composition with the three chefs forming a horizontal line",
+    "color_scheme": "warm and cheerful, with dominant browns, yellows, pinks, and whites",
+    "mood_atmosphere": "joyful, friendly, and inviting",
+    "aesthetic_score": "very high",
+    "preference_score": "very high"
+  },
+  "photographic_characteristics": {
+    "depth_of_field": "shallow",
+    "focus": "sharp focus on the chefs and their creations",
+    "camera_angle": "eye-level",
+    "lens_focal_length": "standard lens"
+  },
+  "style_medium": "digital illustration",
+  "text_render": [],
+  "context": "This image is a charming illustration, likely for a children's book, educational material, or a bakery-themed advertisement, designed to evoke feelings of happiness and the joy of baking.",
+  "artistic_style": "Pixar-style animation"
+}
+```
+Note: This JSON prompt was generated using FIBO's "Generate" mode from a short text description. Note the strong alignment between the JSON prompt and the image!
+</details>
+
+**🔧 Refine**: While the JSON prompt can be edited manually, it can be quite complex and inconvenient to modify directly. The refinement mode helps to solve this issue by also expanding a simple user instruction in order to tweak specific attributes. The VLM processes these instructions and updates the JSON prompt accordingly before generating new images.
+
+![FIBO Refine Example](src/mflux/assets/fibo_refine_example.jpg)
+
+
+Assuming we already have a previous prompt file, like `owl_brown.json`, we can refine this prompt to change the owl's color and add some accessories:
+
+```sh
+mflux-refine-fibo \
+    --prompt-file owl_brown.json \
+    --instructions "Make the owl white instead of brown, and add round glasses and a black scarf. Keep everything else exactly the same - the same forest background, moonlight lighting, composition, and overall whimsical atmosphere." \
+    --output owl_white.json
+```
+
+<details>
+<summary><strong>Click to expand the refined JSON prompt file (owl_white.json)</strong></summary>
+
+```json
+{
+  "short_description": "A hyper-detailed, ultra-fluffy owl sitting in the trees at night, looking directly at the camera with wide, adorable, expressive eyes. Its feathers are soft and voluminous, catching the cool moonlight with subtle silver highlights. The owl's gaze is curious and full of charm, giving it a whimsical, storybook-like personality. It is wearing round glasses and a black scarf.",
+  "objects": [
+    {
+      "description": "An adorable, fluffy owl with large, expressive eyes and soft, voluminous feathers. Its plumage is white, with subtle silver highlights from the moonlight. It is wearing round glasses and a black scarf.",
+      "location": "center",
+      "relationship": "The owl is the sole subject, perched comfortably within its environment.",
+      "relative_size": "large within frame",
+      "shape_and_color": "Round head, large eyes, bulky body, predominantly white with silver accents.",
+      "texture": "Extremely soft, fluffy, and detailed feathers, giving a plush toy-like appearance.",
+      "appearance_details": "The eyes are wide, dark, and reflective, conveying a sense of wonder and curiosity. The beak is small and light-colored, almost hidden by the feathers. Subtle silver highlights catch the moonlight on its feathers. It has round glasses on its nose and a black scarf around its neck.",
+      "orientation": "upright, facing forward"
+    }
+  ],
+  "background_setting": "A dark, nocturnal forest setting with blurred trees and foliage, illuminated by a soft, cool moonlight. The background is out of focus, emphasizing the owl.",
+  "lighting": {
+    "conditions": "moonlight",
+    "direction": "backlit and side-lit from the left",
+    "shadows": "soft, diffused shadows on the right side of the owl and within the background foliage, indicating a single light source."
+  },
+  "aesthetics": {
+    "composition": "centered, portrait composition",
+    "color_scheme": "cool blues and silvers from the moonlight contrasting with white of the owl and forest.",
+    "mood_atmosphere": "mysterious, enchanting, whimsical, and serene.",
+    "aesthetic_score": "very high",
+    "preference_score": "very high"
+  },
+  "photographic_characteristics": {
+    "depth_of_field": "shallow",
+    "focus": "sharp focus on the owl's face and eyes, with a soft blur in the background.",
+    "camera_angle": "eye-level",
+    "lens_focal_length": "portrait lens (e.g., 50mm-85mm)"
+  },
+  "style_medium": "digital illustration",
+  "text_render": [],
+  "context": "A whimsical character illustration, possibly for a children's book, animated film, or fantasy art collection.",
+  "artistic_style": "fantasy, illustrative, detailed"
+}
+```
+Note: This JSON prompt was refined from the original `owl_brown.json` by changing the owl's color to white and adding round glasses and a black scarf, while preserving the forest background, moonlight lighting, and whimsical atmosphere.
+</details>
+
+Finally, generate the refined white owl image using the updated JSON prompt:
+
+```sh
+mflux-generate-fibo \
+    --prompt-file owl_white.json \
+    --width 1024 \
+    --height 560 \
+    --steps 20 \
+    --guidance 4.0 \
+    --seed 42 \
+    --quantize 4 \
+    --output owl_white.png
+```
+
+The refine command reads the existing JSON prompt, applies the refinement instructions to change the owl's color and add accessories, and outputs a new refined JSON file. This refined prompt is then used to generate a new image that reflects the requested changes while maintaining the overall scene and composition.
+
+It is worth noting that refine does not work the same way as other editing techniques like Flux Kontext or Qwen Image Edit. Instead of modifying an existing image, it modifies the underlying **structured prompt** to produce a new image that reflects the requested changes while maintaining the overall scene and composition.
+
+**💡 Inspire**: Provide an image instead of text. FIBO's vision-language model extracts a detailed, structured prompt, blends it with your creative intent, and produces related images—ideal for inspiration without overreliance on the original.
+
+![FIBO Inspire Example](src/mflux/assets/fibo_inspire_example.jpg)
+
+Starting from an image, you can extract a structured JSON prompt that captures its visual characteristics. For example, using a [blue and brown bird on brown tree trunk](https://unsplash.com/photos/blue-and-brown-bird-on-brown-tree-trunk-DPXytK8Z59Y), we can extract a detailed prompt:
+
+```sh
+mflux-inspire-fibo \
+    --image-path bird.jpg \
+    --prompt "blue and brown bird on brown tree trunk" \
+    --output bird_inspired.json \
+    --seed 42
+```
+
+This command analyzes the image and generates a structured JSON prompt file (`bird_inspired.json`) that describes the visual elements, composition, lighting, and style. You can then use this JSON prompt to generate new images with similar characteristics:
+
+```sh
+mflux-generate-fibo \
+    --prompt-file bird_inspired.json \
+    --width 1024 \
+    --height 672 \
+    --steps 20 \
+    --guidance 4.0 \
+    --seed 42 \
+    -q 8 \
+    --output bird_inspired.png
+```
+
+
+<details>
+<summary><strong>Click to expand the JSON prompt file used (bird_inspired.json)</strong></summary>
+
+```json
+{
+  "short_description": "A vibrant blue and brown kingfisher is perched on a weathered tree trunk, facing left. The bird's iridescent plumage is detailed, with striking orange and white markings on its chest and throat. Its long, sharp black beak is prominent. The background is a soft, out-of-focus gradient of warm yellow and green, creating a natural and serene environment. The lighting highlights the textures of the bird's feathers and the rough bark of the trunk.",
+  "objects": [
+    {
+      "description": "A male kingfisher with striking iridescent blue plumage on its back and wings, a rich orange and white chest, and a black beak. It has a small, dark eye and a red-orange patch on its face.",
+      "location": "center",
+      "relationship": "perched on the tree trunk",
+      "relative_size": "medium within frame",
+      "shape_and_color": "Bird shape, predominantly blue, orange, and white.",
+      "texture": "Feathers appear smooth and slightly glossy.",
+      "appearance_details": "The beak is long, thin, and black. The orange patch on its face is distinct.",
+      "number_of_objects": 1,
+      "pose": "Standing upright on its legs, head turned to the left.",
+      "expression": "Alert and focused.",
+      "action": "Perched, observing its surroundings.",
+      "gender": "male",
+      "orientation": "Facing left, upright"
+    },
+    {
+      "description": "A section of a weathered, rough tree trunk, providing a perch for the kingfisher. It has a natural, organic shape with visible bark texture.",
+      "location": "bottom-center foreground",
+      "relationship": "supports the kingfisher",
+      "relative_size": "medium",
+      "shape_and_color": "Irregular cylindrical shape, brown and grey tones.",
+      "texture": "Rough, gnarled bark texture.",
+      "appearance_details": "Some smaller branches or knots are visible on the trunk.",
+      "number_of_objects": 1,
+      "orientation": "Horizontal, lying on its side"
+    }
+  ],
+  "background_setting": "A soft, blurred background with a warm gradient transitioning from a light yellow at the top to a muted green at the bottom. This creates a natural, out-of-focus environment, likely foliage or sky.",
+  "lighting": {
+    "conditions": "natural daylight",
+    "direction": "side-lit from the right",
+    "shadows": "soft shadows, particularly on the left side of the bird and the trunk"
+  },
+  "aesthetics": {
+    "composition": "rule of thirds, with the bird positioned slightly off-center",
+    "color_scheme": "vibrant blues and oranges contrasting with the soft yellow and green background",
+    "mood_atmosphere": "serene, natural, captivating",
+    "aesthetic_score": "very high",
+    "preference_score": "very high"
+  },
+  "photographic_characteristics": {
+    "depth_of_field": "shallow, with a strong bokeh effect in the background",
+    "focus": "sharp focus on the kingfisher",
+    "camera_angle": "eye-level",
+    "lens_focal_length": "telephoto lens"
+  },
+  "style_medium": "photograph",
+  "text_render": [],
+  "context": "This image is a wildlife photograph, likely intended for nature magazines, educational materials, or as a decorative print for nature enthusiasts.",
+  "artistic_style": "photorealistic, detailed"
+}
+```
+Note: This JSON prompt was extracted from the input image using FIBO's VLM, capturing the visual characteristics of a kingfisher bird perched on a tree trunk with a bokeh background.
+</details>
+
+The inspire command is particularly useful when you want to:
+- Extract the visual style and composition from a reference image
+- Create variations of an existing image while maintaining its core characteristics
+- Understand how FIBO interprets and structures visual information
+- Blend your creative intent (via the optional `--prompt` parameter) with the visual content of the image
+
+Note: The optional `--prompt` parameter allows you to guide the VLM's interpretation of the image. For example, you might use `--prompt "futuristic cityscape"` to influence how the image is analyzed and structured.
+
+⚠️ *Note: FIBO requires downloading the `briaai/FIBO` model weights (~24GB) and the `briaai/FIBO-vlm` vision-language model (~8GB), totaling ~32GB for the full model, or use quantization for smaller sizes.*
 
 ---
 

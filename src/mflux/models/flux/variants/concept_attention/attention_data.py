@@ -46,7 +46,7 @@ class ConceptHeatmap:
     width: int
 
     def save(self, path: str | Path, export_json_metadata: bool = False, overwrite: bool = False) -> None:
-        from mflux.post_processing.image_util import ImageUtil
+        from mflux.utils.image_util import ImageUtil
 
         ImageUtil.save_image(
             image=self.image,

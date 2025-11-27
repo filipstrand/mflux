@@ -5,13 +5,13 @@ import time
 import typing as t
 from pathlib import Path
 
+from mflux.models.common.lora.download.lora_library import get_lora_path
 from mflux.models.flux.variants.in_context.utils.in_context_loras import LORA_NAME_MAP, LORA_REPO_ID
 from mflux.ui import (
     box_values,
     defaults as ui_defaults,
     scale_factor,
 )
-from mflux.utils.lora_library import get_lora_path
 
 
 class ModelSpecAction(argparse.Action):
@@ -274,8 +274,14 @@ class CommandLineParser(argparse.ArgumentParser):
             self.error("--model / -m must be provided, or 'model' must be specified in the config file.")
 
         if self.supports_image_generation and namespace.seed is None and namespace.auto_seeds > 0:
-            # choose N int seeds in the range of  0 < value < 1 billion
-            namespace.seed = [random.randint(0, int(1e7)) for _ in range(namespace.auto_seeds)]
+            # choose N unique int seeds in the range of  0 < value < 1 billion
+            # Use random.sample to guarantee uniqueness
+            max_seed_value = int(1e7)
+            if namespace.auto_seeds > max_seed_value + 1:
+                # If requesting more seeds than possible unique values, allow duplicates
+                namespace.seed = [random.randint(0, max_seed_value) for _ in range(namespace.auto_seeds)]
+            else:
+                namespace.seed = random.sample(range(max_seed_value + 1), namespace.auto_seeds)
 
         if self.supports_image_generation and namespace.seed is None:
             # final default: did not obtain seed from metadata, --seed, or --auto-seeds

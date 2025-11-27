@@ -9,8 +9,8 @@ from mflux.models.flux.variants.dreambooth.dataset.batch import Example
 from mflux.models.flux.variants.dreambooth.dataset.dreambooth_preprocessing import DreamBoothPreProcessing
 from mflux.models.flux.variants.dreambooth.state.training_spec import ExampleSpec
 from mflux.models.flux.variants.txt2img.flux import Flux1
-from mflux.post_processing.array_util import ArrayUtil
-from mflux.post_processing.image_util import ImageUtil
+from mflux.utils.array_util import ArrayUtil
+from mflux.utils.image_util import ImageUtil
 
 
 class Dataset:

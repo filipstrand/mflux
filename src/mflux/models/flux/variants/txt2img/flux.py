@@ -6,18 +6,19 @@ from mflux.callbacks.callbacks import Callbacks
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.error.exceptions import StopImageGenerationException
-from mflux.latent_creator.latent_creator import Img2Img, LatentCreator
+from mflux.models.common.latent_creator.latent_creator import Img2Img, LatentCreator
+from mflux.models.common.weights.model_saver import ModelSaver
 from mflux.models.flux.flux_initializer import FluxInitializer
+from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 from mflux.models.flux.model.flux_text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.flux.model.flux_text_encoder.prompt_encoder import PromptEncoder
 from mflux.models.flux.model.flux_text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.flux.model.flux_transformer.transformer import Transformer
 from mflux.models.flux.model.flux_vae.vae import VAE
-from mflux.models.flux.weights.model_saver import ModelSaver
-from mflux.post_processing.array_util import ArrayUtil
-from mflux.post_processing.generated_image import GeneratedImage
-from mflux.post_processing.image_util import ImageUtil
+from mflux.utils.array_util import ArrayUtil
+from mflux.utils.exceptions import StopImageGenerationException
+from mflux.utils.generated_image import GeneratedImage
+from mflux.utils.image_util import ImageUtil
 
 
 class Flux1(nn.Module):
@@ -62,6 +63,7 @@ class Flux1(nn.Module):
             width=config.width,
             img2img=Img2Img(
                 vae=self.vae,
+                latent_creator=FluxLatentCreator,
                 image_path=config.image_path,
                 sigmas=config.scheduler.sigmas,
                 init_time_step=config.init_time_step,
@@ -163,7 +165,21 @@ class Flux1(nn.Module):
         )
 
     def save_model(self, base_path: str) -> None:
-        ModelSaver.save_model(self, self.bits, base_path)
+        ModelSaver.save_model(
+            model=self,
+            bits=self.bits,
+            base_path=base_path,
+            tokenizers=[
+                ("clip_tokenizer.tokenizer", "tokenizer"),
+                ("t5_tokenizer.tokenizer", "tokenizer_2"),
+            ],
+            components=[
+                ("vae", "vae"),
+                ("transformer", "transformer"),
+                ("clip_text_encoder", "text_encoder"),
+                ("t5_text_encoder", "text_encoder_2"),
+            ],
+        )
 
     def freeze(self, **kwargs):
         self.vae.freeze()

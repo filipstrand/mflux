@@ -8,17 +8,17 @@ from mflux.callbacks.callbacks import Callbacks
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.error.exceptions import StopImageGenerationException
-from mflux.latent_creator.latent_creator import LatentCreator
+from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
 from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer
 from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
 from mflux.models.qwen.qwen_edit_initializer import QwenImageEditInitializer
 from mflux.models.qwen.variants.edit.utils.qwen_edit_util import QwenEditUtil
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
-from mflux.post_processing.array_util import ArrayUtil
-from mflux.post_processing.generated_image import GeneratedImage
-from mflux.post_processing.image_util import ImageUtil
+from mflux.utils.array_util import ArrayUtil
+from mflux.utils.exceptions import StopImageGenerationException
+from mflux.utils.generated_image import GeneratedImage
+from mflux.utils.image_util import ImageUtil
 
 
 class QwenImageEdit(nn.Module):
@@ -56,14 +56,14 @@ class QwenImageEdit(nn.Module):
         image_paths: list[str] | None = None,
     ) -> GeneratedImage:
         if image_paths is None:
-            image_paths = [config.image_path]
+            image_paths = [str(config.image_path)]
 
         runtime_config, vl_width, vl_height, vae_width, vae_height = self._compute_dimensions(config, image_paths)
         timesteps = runtime_config.scheduler.timesteps
         time_steps = tqdm(range(len(timesteps)))
 
         # 1. Create initial latents
-        latents = LatentCreator.create(
+        latents = QwenLatentCreator.create_noise(
             seed=seed,
             height=runtime_config.height,
             width=runtime_config.width,

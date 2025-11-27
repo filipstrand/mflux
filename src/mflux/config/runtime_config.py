@@ -5,8 +5,8 @@ import mlx.core as mx
 
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
-from mflux.schedulers import SCHEDULER_REGISTRY, try_import_external_scheduler
-from mflux.schedulers.linear_scheduler import LinearScheduler
+from mflux.models.common.schedulers import SCHEDULER_REGISTRY, try_import_external_scheduler
+from mflux.models.common.schedulers.linear_scheduler import LinearScheduler
 
 logger = logging.getLogger(__name__)
 

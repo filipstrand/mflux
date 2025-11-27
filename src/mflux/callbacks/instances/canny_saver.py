@@ -6,7 +6,7 @@ import PIL.Image
 
 from mflux.callbacks.callback import BeforeLoopCallback
 from mflux.config.runtime_config import RuntimeConfig
-from mflux.post_processing.image_util import ImageUtil
+from mflux.utils.image_util import ImageUtil
 
 
 class CannyImageSaver(BeforeLoopCallback):

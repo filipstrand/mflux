@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from mflux.ui.cli.parsers import CommandLineParser
-from mflux.ui.prompt_utils import get_effective_prompt
+from mflux.ui.prompt_utils import PromptUtils
 
 
 @pytest.fixture
@@ -46,7 +46,7 @@ def test_prompt_stdin_vs_regular(mflux_generate_parser):
     with patch("sys.argv", ["mflux-generate", "--prompt", regular_prompt, "--model", "dev"]):
         args = mflux_generate_parser.parse_args()
         assert args.prompt == regular_prompt
-        assert get_effective_prompt(args) == regular_prompt
+        assert PromptUtils.get_effective_prompt(args) == regular_prompt
 
 
 def test_prompt_stdin_with_whitespace(mflux_generate_parser):
@@ -57,7 +57,7 @@ def test_prompt_stdin_with_whitespace(mflux_generate_parser):
     with patch("sys.stdin", StringIO(stdin_content)):
         with patch("sys.argv", ["mflux-generate", "--prompt", "-", "--model", "dev"]):
             args = mflux_generate_parser.parse_args()
-            effective_prompt = get_effective_prompt(args)
+            effective_prompt = PromptUtils.get_effective_prompt(args)
             assert effective_prompt == expected_prompt
 
 
@@ -73,5 +73,5 @@ def test_prompt_file_takes_precedence_over_stdin(mflux_generate_parser, temp_out
     with patch("sys.stdin", StringIO(stdin_content)):
         with patch("sys.argv", ["mflux-generate", "--prompt-file", str(prompt_file), "--model", "dev"]):
             args = mflux_generate_parser.parse_args()
-            effective_prompt = get_effective_prompt(args)
+            effective_prompt = PromptUtils.get_effective_prompt(args)
             assert effective_prompt == file_prompt

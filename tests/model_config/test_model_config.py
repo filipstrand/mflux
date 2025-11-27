@@ -1,7 +1,7 @@
 import pytest
 
 from mflux.config.model_config import ModelConfig
-from mflux.error.error import InvalidBaseModel, ModelConfigError
+from mflux.utils.exceptions import InvalidBaseModel, ModelConfigError
 
 
 def test_bfl_dev():
