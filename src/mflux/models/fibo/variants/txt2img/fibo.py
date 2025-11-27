@@ -88,18 +88,18 @@ class FIBO(nn.Module):
         for t in time_steps:
             try:
                 # 3.t Predict the noise
-                noise_pred = self.transformer(
+                noise = self.transformer(
                     t=t,
                     config=runtime_config,
                     hidden_states=latents,
                     encoder_hidden_states=encoder_hidden_states,
                     text_encoder_layers=text_encoder_layers,
                 )
-                noise_pred = FIBO._apply_classifier_free_guidance(noise_pred, runtime_config.guidance)
+                noise = FIBO._apply_classifier_free_guidance(noise, runtime_config.guidance)
 
                 # 4.t Take one denoise step
                 latents = runtime_config.scheduler.step(
-                    model_output=noise_pred,
+                    model_output=noise,
                     timestep=t,
                     sample=latents,
                 )
@@ -155,10 +155,10 @@ class FIBO(nn.Module):
         )
 
     @staticmethod
-    def _apply_classifier_free_guidance(noise_pred: mx.array, guidance: float) -> mx.array:
-        half = noise_pred.shape[0] // 2
-        noise_uncond = noise_pred[:half]
-        noise_text = noise_pred[half:]
+    def _apply_classifier_free_guidance(noise: mx.array, guidance: float) -> mx.array:
+        half = noise.shape[0] // 2
+        noise_uncond = noise[:half]
+        noise_text = noise[half:]
         return noise_uncond + guidance * (noise_text - noise_uncond)
 
     @staticmethod
