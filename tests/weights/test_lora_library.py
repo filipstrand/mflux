@@ -5,17 +5,17 @@ from unittest import mock
 
 import pytest
 
-from mflux.models.common.lora.download import lora_library
+from mflux.models.common.lora.download.lora_library import LoRALibrary
 
 
 @pytest.fixture(autouse=True)
 def reset_lora_registry():
     """Reset the global registry before and after each test."""
-    original = lora_library._LORA_REGISTRY.copy()
-    lora_library._LORA_REGISTRY.clear()
+    original = LoRALibrary._registry.copy()
+    LoRALibrary._registry.clear()
     yield
-    lora_library._LORA_REGISTRY.clear()
-    lora_library._LORA_REGISTRY.update(original)
+    LoRALibrary._registry.clear()
+    LoRALibrary._registry.update(original)
 
 
 @pytest.fixture
@@ -50,7 +50,7 @@ def test_discover_lora_files_single_path(temp_lora_dirs):
     """Test discovering files in a single library path."""
     lib1, lib2 = temp_lora_dirs
 
-    result = lora_library._discover_lora_files([lib1])
+    result = LoRALibrary._discover_files([lib1])
 
     assert len(result) == 4  # Should not include digit-named files in transformer/
     assert "style_a" in result
@@ -69,7 +69,7 @@ def test_discover_lora_files_multiple_paths_precedence(temp_lora_dirs):
     lib1, lib2 = temp_lora_dirs
 
     # lib1 should take precedence over lib2
-    result = lora_library._discover_lora_files([lib1, lib2])
+    result = LoRALibrary._discover_files([lib1, lib2])
 
     assert len(result) == 5  # style_a, style_b, style_c, style_valid, style_d
     assert "style_a" in result
@@ -87,7 +87,7 @@ def test_discover_lora_files_multiple_paths_precedence(temp_lora_dirs):
 
 def test_discover_lora_files_nonexistent_path():
     """Test handling of nonexistent paths."""
-    result = lora_library._discover_lora_files([Path("/nonexistent/path")])
+    result = LoRALibrary._discover_files([Path("/nonexistent/path")])
     assert result == {}
 
 
@@ -96,7 +96,7 @@ def test_get_lora_path_existing_file(temp_lora_dirs):
     lib1, _ = temp_lora_dirs
     existing_file = lib1 / "style_a.safetensors"
 
-    result = lora_library.get_lora_path(str(existing_file))
+    result = LoRALibrary.get_path(str(existing_file))
     assert result == str(existing_file)
 
 
@@ -106,20 +106,20 @@ def test_get_lora_path_from_registry(temp_lora_dirs):
 
     # Mock the registry
     with mock.patch.object(
-        lora_library,
-        "_LORA_REGISTRY",
+        LoRALibrary,
+        "_registry",
         {
             "style_a": lib1 / "style_a.safetensors",
             "style_b": lib1 / "style_b.safetensors",
         },
     ):
         # Should resolve from registry
-        assert lora_library.get_lora_path("style_a") == str(lib1 / "style_a.safetensors")
-        assert lora_library.get_lora_path("style_b") == str(lib1 / "style_b.safetensors")
+        assert LoRALibrary.get_path("style_a") == str(lib1 / "style_a.safetensors")
+        assert LoRALibrary.get_path("style_b") == str(lib1 / "style_b.safetensors")
 
         # Should raise FileNotFoundError if not in registry
         with pytest.raises(FileNotFoundError, match="LoRA file not found: 'unknown_style'"):
-            lora_library.get_lora_path("unknown_style")
+            LoRALibrary.get_path("unknown_style")
 
 
 def test_initialize_registry_from_env(temp_lora_dirs):
@@ -131,8 +131,8 @@ def test_initialize_registry_from_env(temp_lora_dirs):
 
     with mock.patch.dict(os.environ, {"LORA_LIBRARY_PATH": env_path}):
         # Re-initialize the registry
-        lora_library._initialize_registry()
-        registry = lora_library.get_registry()
+        LoRALibrary._initialize_registry()
+        registry = LoRALibrary.get_registry()
 
         assert len(registry) == 5  # Includes style_valid from transformer/
         assert "style_a" in registry
@@ -150,22 +150,22 @@ def test_initialize_registry_from_env(temp_lora_dirs):
 def test_initialize_registry_empty_env():
     """Test that registry is empty when env var is not set."""
     # Save the original registry
-    original_registry = lora_library._LORA_REGISTRY.copy()
+    original_registry = LoRALibrary._registry.copy()
     try:
         with mock.patch.dict(os.environ, {}, clear=True):
-            lora_library._initialize_registry()
-            registry = lora_library.get_registry()
+            LoRALibrary._initialize_registry()
+            registry = LoRALibrary.get_registry()
             assert registry == {}
     finally:
         # Restore the original registry
-        lora_library._LORA_REGISTRY = original_registry
+        LoRALibrary._registry = original_registry
 
 
 def test_get_registry_returns_copy():
     """Test that get_registry returns a copy, not the original."""
-    with mock.patch.object(lora_library, "_LORA_REGISTRY", {"test": Path("/test")}):
-        registry1 = lora_library.get_registry()
-        registry2 = lora_library.get_registry()
+    with mock.patch.object(LoRALibrary, "_registry", {"test": Path("/test")}):
+        registry1 = LoRALibrary.get_registry()
+        registry2 = LoRALibrary.get_registry()
 
         # Should be equal but different objects
         assert registry1 == registry2
@@ -173,7 +173,7 @@ def test_get_registry_returns_copy():
 
         # Modifying the copy shouldn't affect the original
         registry1["new"] = Path("/new")
-        assert "new" not in lora_library._LORA_REGISTRY
+        assert "new" not in LoRALibrary._registry
 
 
 def test_transformer_digit_filtering(temp_lora_dirs):
@@ -185,7 +185,7 @@ def test_transformer_digit_filtering(temp_lora_dirs):
     (lib1 / "other_dir").mkdir()
     (lib1 / "other_dir" / "5.safetensors").touch()  # Should be included (not in transformer/)
 
-    result = lora_library._discover_lora_files([lib1])
+    result = LoRALibrary._discover_files([lib1])
 
     # Digit files NOT in transformer/ should be included
     assert "9" in result

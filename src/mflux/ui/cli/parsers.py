@@ -5,7 +5,7 @@ import time
 import typing as t
 from pathlib import Path
 
-from mflux.models.common.lora.download.lora_library import get_lora_path
+from mflux.models.common.lora.download.lora_library import LoRALibrary
 from mflux.models.flux.variants.in_context.utils.in_context_loras import LORA_NAME_MAP, LORA_REPO_ID
 from mflux.ui import (
     box_values,
@@ -320,7 +320,7 @@ class CommandLineParser(argparse.ArgumentParser):
             resolved_paths = []
             for lora_path in namespace.lora_paths:
                 try:
-                    resolved_path = get_lora_path(lora_path)
+                    resolved_path = LoRALibrary.get_path(lora_path)
                     resolved_paths.append(resolved_path)
                 except FileNotFoundError as e:  # noqa: PERF203
                     self.error(str(e))

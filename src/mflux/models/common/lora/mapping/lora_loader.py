@@ -56,16 +56,29 @@ class LoRALoader:
 
         # Apply LoRA using the provided mapping
         flat_mapping = LoRALoader._get_flat_mapping(lora_mapping)
-        applied_count = LoRALoader._apply_lora_with_mapping(transformer, weights, scale, flat_mapping)
+        applied_count, matched_keys = LoRALoader._apply_lora_with_mapping(transformer, weights, scale, flat_mapping)
 
-        print(f"   ✅ Applied to {applied_count} layers")
+        # Report results
+        total_keys = len(weights)
+        unmatched_keys = set(weights.keys()) - matched_keys
+
+        print(f"   ✅ Applied to {applied_count} layers ({len(matched_keys)}/{total_keys} keys matched)")
+
+        if unmatched_keys:
+            print(f"   ⚠️  {len(unmatched_keys)} unmatched keys in LoRA file:")
+            # Show first few unmatched keys as examples
+            for key in sorted(unmatched_keys)[:5]:
+                print(f"      - {key}")
+            if len(unmatched_keys) > 5:
+                print(f"      ... and {len(unmatched_keys) - 5} more")
 
     @staticmethod
     def _apply_lora_with_mapping(
         transformer: nn.Module, weights: dict, scale: float, lora_mappings: Dict[str, Tuple[str, str, bool]]
-    ) -> int:
+    ) -> Tuple[int, set]:
         applied_count = 0
         lora_data_by_target = {}
+        matched_keys: set[str] = set()
 
         # Group LoRA weights by their target layers
         for weight_key, weight_value in weights.items():
@@ -99,6 +112,7 @@ class LoRALoader:
             if found_mapping is None:
                 continue
 
+            matched_keys.add(weight_key)
             target_path, matrix_name, transpose = found_mapping
 
             # Handle block substitution in target path
@@ -115,7 +129,7 @@ class LoRALoader:
             if LoRALoader._apply_lora_matrices_to_target(transformer, target_path, lora_data, scale):
                 applied_count += 1
 
-        return applied_count
+        return applied_count, matched_keys
 
     @staticmethod
     def _apply_lora_matrices_to_target(transformer: nn.Module, target_path: str, lora_data: dict, scale: float) -> bool:

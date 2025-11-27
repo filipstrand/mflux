@@ -7,7 +7,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-from mflux.models.common.lora.download.lora_library import _discover_lora_files
+from mflux.models.common.lora.download.lora_library import LoRALibrary
 
 
 def list_loras(paths: list[str] | None = None) -> int:
@@ -48,7 +48,7 @@ def list_loras(paths: list[str] | None = None) -> int:
         return 1
 
     # Discover all LoRA files
-    lora_registry = _discover_lora_files(valid_paths)
+    lora_registry = LoRALibrary._discover_files(valid_paths)
 
     if not lora_registry:
         print("No .safetensors files found in the specified directories.")

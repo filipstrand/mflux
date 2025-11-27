@@ -1,87 +1,97 @@
 import os
 from pathlib import Path
 
+from mflux.ui.defaults import MFLUX_LORA_CACHE_DIR
+from mflux.utils.download import snapshot_download
 
-def _discover_lora_files(library_paths: list[Path]) -> dict[str, Path]:
-    """
-    Discover all .safetensors files in the library paths and their subdirectories.
-    Earlier paths in the list have higher precedence for duplicate basenames.
 
-    Args:
-        library_paths: List of paths to LORA library directories (in precedence order)
+class LoRALibrary:
+    _registry: dict[str, Path] = {}
 
-    Returns:
-        Dictionary mapping basename (without extension) to full path
-    """
-    lora_files = {}
+    @staticmethod
+    def get_path(path_or_name: str) -> str:
+        path = Path(path_or_name)
+        if path.exists():
+            return str(path)
 
-    # Process paths in reverse order so earlier paths overwrite later ones
-    for library_path in reversed(library_paths):
-        if not library_path.exists() or not library_path.is_dir():
-            continue
+        if path_or_name in LoRALibrary._registry:
+            return str(LoRALibrary._registry[path_or_name])
 
-        # Find all .safetensors files recursively
-        for safetensor_path in library_path.rglob("*.safetensors"):
-            # Use the basename without extension as the key
-            basename = safetensor_path.stem
+        # HuggingFace repo_id format (contains exactly one /)
+        if "/" in path_or_name and path_or_name.count("/") == 1:
+            return LoRALibrary._download_from_huggingface(path_or_name)
 
-            # Skip files with digit-only names (0-9) in transformer directories
-            if basename.isdigit() and safetensor_path.parent.name == "transformer":
+        raise FileNotFoundError(
+            f"LoRA file not found: '{path_or_name}'. File does not exist and is not in the LoRA library."
+        )
+
+    @staticmethod
+    def resolve_paths(paths: list[str] | None) -> list[str]:
+        if not paths:
+            return []
+        return [resolved for path in paths if (resolved := LoRALibrary._try_resolve_path(path))]
+
+    @staticmethod
+    def get_registry() -> dict[str, Path]:
+        return LoRALibrary._registry.copy()
+
+    @staticmethod
+    def _try_resolve_path(path: str) -> str | None:
+        try:
+            return LoRALibrary.get_path(path)
+        except FileNotFoundError as e:
+            print(f"⚠️  {e}")
+            return None
+
+    @staticmethod
+    def _download_from_huggingface(repo_id: str) -> str:
+        cache_path = MFLUX_LORA_CACHE_DIR
+        cache_path.mkdir(parents=True, exist_ok=True)
+
+        print(f"Downloading LoRA from HuggingFace: {repo_id}...")
+        download_path = Path(
+            snapshot_download(
+                repo_id=repo_id,
+                allow_patterns=["*.safetensors"],
+                cache_dir=str(cache_path),
+            )
+        )
+
+        safetensor_files = list(download_path.glob("*.safetensors"))
+        if not safetensor_files:
+            raise FileNotFoundError(f"No .safetensors file found in HuggingFace repo: {repo_id}")
+
+        lora_path = str(safetensor_files[0])
+        print(f"LoRA downloaded: {lora_path}")
+        return lora_path
+
+    @staticmethod
+    def _discover_files(library_paths: list[Path]) -> dict[str, Path]:
+        lora_files = {}
+
+        # Process in reverse so earlier paths take precedence
+        for library_path in reversed(library_paths):
+            if not library_path.exists() or not library_path.is_dir():
                 continue
 
-            # Earlier paths in the list take precedence (overwrite)
-            lora_files[basename] = safetensor_path.resolve()
+            for safetensor_path in library_path.rglob("*.safetensors"):
+                basename = safetensor_path.stem
 
-    return lora_files
+                # Skip digit-only names in transformer directories
+                if basename.isdigit() and safetensor_path.parent.name == "transformer":
+                    continue
 
+                lora_files[basename] = safetensor_path.resolve()
 
-# Global registry that will be populated on module import
-_LORA_REGISTRY: dict[str, Path] = {}
+        return lora_files
 
-
-def _initialize_registry() -> None:
-    """Initialize the global LORA registry from LORA_LIBRARY_PATH environment variable."""
-    global _LORA_REGISTRY
-
-    library_path_env = os.environ.get("LORA_LIBRARY_PATH")
-    if library_path_env:
-        # Split by colon to support multiple paths
-        library_paths = [Path(p.strip()) for p in library_path_env.split(":") if p.strip()]
-        _LORA_REGISTRY = _discover_lora_files(library_paths)
+    @staticmethod
+    def _initialize_registry() -> None:
+        library_path_env = os.environ.get("LORA_LIBRARY_PATH")
+        if library_path_env:
+            library_paths = [Path(p.strip()) for p in library_path_env.split(":") if p.strip()]
+            LoRALibrary._registry = LoRALibrary._discover_files(library_paths)
 
 
-def get_lora_path(path_or_name: str) -> str:
-    """
-    Get the full path for a LORA file, resolving from library if needed.
-
-    Args:
-        path_or_name: Either a full path or a basename that exists in the library
-
-    Returns:
-        The resolved path as a string
-
-    Raises:
-        FileNotFoundError: If the file cannot be found either as a path or in the registry
-    """
-    # If it's already a path that exists, return it as-is
-    path = Path(path_or_name)
-    if path.exists():
-        return str(path)
-
-    # Otherwise, check if it's in the registry
-    if path_or_name in _LORA_REGISTRY:
-        return str(_LORA_REGISTRY[path_or_name])
-
-    # If not found, raise FileNotFoundError
-    raise FileNotFoundError(
-        f"LoRA file not found: '{path_or_name}'. File does not exist and is not in the LoRA library."
-    )
-
-
-def get_registry() -> dict[str, Path]:
-    """Get a copy of the current LORA registry."""
-    return _LORA_REGISTRY.copy()
-
-
-# Initialize the registry when the module is imported
-_initialize_registry()
+# Initialize on module import
+LoRALibrary._initialize_registry()

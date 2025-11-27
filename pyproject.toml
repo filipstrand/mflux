@@ -17,7 +17,7 @@ source-exclude = [
 
 [project]
 name = "mflux"
-version = "0.12.1"
+version = "0.13.0.dev0"
 description = "A MLX port of FLUX based on the Huggingface Diffusers implementation."
 readme = "README.md"
 keywords = ["diffusers", "flux", "mlx"]
@@ -87,6 +87,7 @@ mflux-generate-kontext = "mflux.generate_kontext:main"
 mflux-generate-qwen = "mflux.generate_qwen:main"
 mflux-generate-qwen-edit = "mflux.generate_qwen_edit:main"
 mflux-generate-fibo = "mflux.generate_fibo:main"
+mflux-generate-z-image-turbo = "mflux.generate_z_image_turbo:main"
 mflux-refine-fibo = "mflux.refine_fibo:main"
 mflux-inspire-fibo = "mflux.inspire_fibo:main"
 mflux-concept = "mflux.concept:main"

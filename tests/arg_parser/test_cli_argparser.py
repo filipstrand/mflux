@@ -442,8 +442,8 @@ def test_lora_args(mflux_generate_parser, mflux_generate_minimal_argv, base_meta
         assert args.lora_paths is None
         assert args.lora_scales is None
 
-    # Mock get_lora_path to bypass file validation for test purposes
-    with patch("mflux.ui.cli.parsers.get_lora_path", side_effect=lambda x: x):
+    # Mock LoRALibrary.get_path to bypass file validation for test purposes
+    with patch("mflux.ui.cli.parsers.LoRALibrary.get_path", side_effect=lambda x: x):
         # test metadata config accepted
         with patch('sys.argv', mflux_generate_minimal_argv + ['--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
             args = mflux_generate_parser.parse_args()
