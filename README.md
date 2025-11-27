@@ -1116,7 +1116,7 @@ mflux-generate-fibo \
   --width 1200 \
   --height 540 \
   --steps 20 \
-  --guidance 4.0 \ 
+  --guidance 4.0 \
   --seed 42 \
   --output animal_bakers.png
 ``` 
@@ -1132,7 +1132,7 @@ mflux-generate-fibo \
     --width 1200 \
     --height 540 \
     --steps 20 \
-    --guidance 4.0 \ 
+    --guidance 4.0 \
     --seed 42 \
     --output animal_bakers.png
 ```
