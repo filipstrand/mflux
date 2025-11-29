@@ -23,7 +23,7 @@ class ZImageLatentCreator:
         return latents
 
     @staticmethod
-    def unpack_latents(latents: mx.array) -> mx.array:
+    def unpack_latents(latents: mx.array, height: int, width: int) -> mx.array:  # noqa: ARG004
         latents = mx.expand_dims(latents, axis=0)
         latents = mx.squeeze(latents, axis=2)
         return latents

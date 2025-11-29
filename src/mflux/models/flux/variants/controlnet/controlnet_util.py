@@ -5,8 +5,8 @@ import mlx.core as mx
 import numpy as np
 import PIL.Image
 
+from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 from mflux.models.flux.model.flux_vae.vae import VAE
-from mflux.utils.array_util import ArrayUtil
 from mflux.utils.image_util import StrOrBytesPath
 
 log = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ class ControlnetUtil:
         controlnet_cond = vae.encode(controlnet_cond)
         if is_canny:
             controlnet_cond = (controlnet_cond / vae.scaling_factor) + vae.shift_factor
-        controlnet_cond = ArrayUtil.pack_latents(latents=controlnet_cond, height=height, width=width)
+        controlnet_cond = FluxLatentCreator.pack_latents(latents=controlnet_cond, height=height, width=width)
         return controlnet_cond, control_image
 
     @staticmethod

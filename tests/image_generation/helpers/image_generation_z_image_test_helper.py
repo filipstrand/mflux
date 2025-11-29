@@ -2,9 +2,9 @@ import os
 import shutil
 from pathlib import Path
 
+from mflux.cli.defaults.defaults import MFLUX_LORA_CACHE_DIR
 from mflux.config.config import Config
 from mflux.models.z_image import ZImageTurbo
-from mflux.ui.defaults import MFLUX_LORA_CACHE_DIR
 from mflux.utils.image_compare import ImageCompare
 
 

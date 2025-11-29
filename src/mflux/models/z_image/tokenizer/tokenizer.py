@@ -1,9 +1,8 @@
 from pathlib import Path
 
 import mlx.core as mx
+from huggingface_hub import snapshot_download
 from transformers import AutoTokenizer
-
-from mflux.utils.download import snapshot_download
 
 
 class Tokenizer:

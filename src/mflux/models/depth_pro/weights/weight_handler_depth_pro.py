@@ -6,9 +6,9 @@ import mlx.core as mx
 import torch
 from mlx.utils import tree_unflatten
 
+from mflux.cli.defaults.defaults import MFLUX_CACHE_DIR
 from mflux.models.flux.weights.weight_handler import MetaData
 from mflux.models.flux.weights.weight_util import WeightUtil
-from mflux.ui.defaults import MFLUX_CACHE_DIR
 
 logger = logging.getLogger(__name__)
 

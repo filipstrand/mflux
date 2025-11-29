@@ -1,5 +1,3 @@
-"""Common weight mapping utilities."""
-
-from mflux.models.common.weights.model_saver import ModelSaver
+from mflux.models.common.weights.saving.model_saver import ModelSaver
 
 __all__ = ["ModelSaver"]

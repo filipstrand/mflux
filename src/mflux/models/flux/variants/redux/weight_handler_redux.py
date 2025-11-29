@@ -1,8 +1,9 @@
 from pathlib import Path
 
+from huggingface_hub import snapshot_download
+
 from mflux.config.model_config import ModelConfig
 from mflux.models.flux.weights.weight_handler import MetaData, WeightHandler
-from mflux.utils.download import snapshot_download
 
 
 class WeightHandlerRedux:

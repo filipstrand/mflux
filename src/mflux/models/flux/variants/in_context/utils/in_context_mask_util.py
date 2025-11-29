@@ -1,8 +1,8 @@
 import mlx.core as mx
 
+from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 from mflux.models.flux.model.flux_vae.vae import VAE
 from mflux.models.flux.variants.fill.mask_util import MaskUtil
-from mflux.utils.array_util import ArrayUtil
 from mflux.utils.image_util import ImageUtil
 
 
@@ -67,7 +67,7 @@ class InContextMaskUtil:
 
         # Encode and process exactly like MaskUtil.create_masked_latents
         encoded_image = vae.encode(masked_concatenated_image)
-        encoded_image = ArrayUtil.pack_latents(
+        encoded_image = FluxLatentCreator.pack_latents(
             latents=encoded_image,
             height=height,
             width=width,
@@ -78,7 +78,7 @@ class InContextMaskUtil:
             height=height,
             width=width,
         )
-        processed_mask = ArrayUtil.pack_latents(
+        processed_mask = FluxLatentCreator.pack_latents(
             latents=processed_mask,
             height=height,
             width=width,

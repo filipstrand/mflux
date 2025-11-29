@@ -7,8 +7,8 @@ import PIL.Image
 
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.depth_pro.depth_pro import DepthPro
+from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 from mflux.models.flux.model.flux_vae.vae import VAE
-from mflux.utils.array_util import ArrayUtil
 from mflux.utils.image_util import ImageUtil
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ class DepthUtil:
         )
         depth_map_array = ImageUtil.to_array(scaled_depth_map)
         encoded_depth = vae.encode(depth_map_array)
-        depth_latents = ArrayUtil.pack_latents(latents=encoded_depth, height=config.height, width=config.width)
+        depth_latents = FluxLatentCreator.pack_latents(latents=encoded_depth, height=config.height, width=config.width)
 
         return depth_latents, depth_image
 

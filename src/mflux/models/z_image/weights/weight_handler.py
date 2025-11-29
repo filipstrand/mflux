@@ -2,10 +2,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import mlx.core as mx
+from huggingface_hub import snapshot_download
 
 from mflux.models.common.weights.mapping.weight_mapper import WeightMapper
 from mflux.models.z_image.weights.z_image_weight_mapping import ZImageWeightMapping
-from mflux.utils.download import snapshot_download
 
 
 @dataclass
@@ -33,17 +33,6 @@ class WeightHandler:
         local_path: str | None = None,
         load_text_encoder: bool = True,
     ) -> "WeightHandler":
-        """
-        Load Z-Image weights from HuggingFace or local path.
-
-        Args:
-            repo_id: HuggingFace repo ID (e.g., "Tongyi-MAI/Z-Image-Turbo")
-            local_path: Local path to weights
-            load_text_encoder: Whether to load text encoder weights (default True)
-
-        Returns:
-            WeightHandler with loaded and mapped weights
-        """
         root_path = WeightHandler._get_root_path(repo_id, local_path)
 
         # Try to load mflux-saved weights first
@@ -78,7 +67,6 @@ class WeightHandler:
         repo_id: str | None = None,
         local_path: str | None = None,
     ) -> dict:
-        """Load and map VAE weights from HuggingFace format."""
         root_path = WeightHandler._get_root_path(repo_id, local_path)
         vae_path = root_path / "vae"
 

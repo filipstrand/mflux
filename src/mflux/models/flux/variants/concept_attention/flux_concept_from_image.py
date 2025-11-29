@@ -16,7 +16,6 @@ from mflux.models.flux.model.flux_vae.vae import VAE
 from mflux.models.flux.variants.concept_attention.attention_data import GenerationAttentionData
 from mflux.models.flux.variants.concept_attention.concept_util import ConceptUtil
 from mflux.models.flux.variants.concept_attention.transformer_concept import TransformerConcept
-from mflux.utils.array_util import ArrayUtil
 from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
@@ -77,7 +76,7 @@ class Flux1ConceptFromImage(nn.Module):
 
         # Start with an appropriately noised version of the encoded image
         latents = LatentCreator.add_noise_by_interpolation(
-            clean=ArrayUtil.pack_latents(latents=encoded_image, height=config.height, width=config.width),
+            clean=FluxLatentCreator.pack_latents(latents=encoded_image, height=config.height, width=config.width),
             noise=static_noise,
             sigma=config.scheduler.sigmas[config.init_time_step],
         )
@@ -130,7 +129,9 @@ class Flux1ConceptFromImage(nn.Module):
 
                 # 5.t Follow reverse diffusion trajectory
                 latents = LatentCreator.add_noise_by_interpolation(
-                    clean=ArrayUtil.pack_latents(latents=encoded_image, height=config.height, width=config.width),
+                    clean=FluxLatentCreator.pack_latents(
+                        latents=encoded_image, height=config.height, width=config.width
+                    ),
                     noise=static_noise,
                     sigma=config.scheduler.sigmas[t + 1],
                 )
@@ -181,7 +182,7 @@ class Flux1ConceptFromImage(nn.Module):
         )
 
         # 7. Decode the latent array and return the image
-        latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
+        latents = FluxLatentCreator.unpack_latents(latents=latents, height=config.height, width=config.width)
         decoded = self.vae.decode(latents)
 
         return ImageUtil.to_image(

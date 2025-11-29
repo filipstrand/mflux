@@ -54,11 +54,6 @@ class QwenWeightUtil:
 
     @staticmethod
     def _convert_weights_to_bf16(weights_dict: dict):
-        """
-        Recursively convert all weight tensors to BF16.
-        This matches PyTorch's behavior where the text encoder model is loaded in BF16.
-        """
-
         def convert_recursive(obj):
             if isinstance(obj, mx.array):
                 return obj.astype(mx.bfloat16)

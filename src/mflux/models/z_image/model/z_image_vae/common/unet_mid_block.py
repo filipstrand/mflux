@@ -6,18 +6,6 @@ from mflux.models.z_image.model.z_image_vae.common.resnet_block_2d import Resnet
 
 
 class UNetMidBlock(nn.Module):
-    """
-    Mid block for the VAE decoder.
-
-    Matches diffusers UNetMidBlock2D with:
-    - ResNet block
-    - Self-attention
-    - ResNet block
-
-    Architecture:
-        resnet_0 -> attention -> resnet_1
-    """
-
     def __init__(self, channels: int = 512):
         super().__init__()
         self.attentions = [Attention(channels=channels)]

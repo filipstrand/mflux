@@ -6,6 +6,7 @@ from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
 from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
+from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
 from mflux.utils.image_compare import ImageCompare
 
 
@@ -26,8 +27,8 @@ class ImageGeneratorEditTestHelper:
         negative_prompt: str | None = None,
         quantize: int = 8,
         image_paths: list[str] | None = None,
-        lora_names: list[str] | None = None,
-        lora_repo_id: str | None = None,
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
         mismatch_threshold: float | None = None,
     ):
         # resolve paths
@@ -48,13 +49,9 @@ class ImageGeneratorEditTestHelper:
             # given
             model_kwargs = {
                 "quantize": quantize,
+                "lora_paths": lora_paths,
+                "lora_scales": lora_scales,
             }
-
-            # Add HuggingFace LoRA parameters if provided
-            if lora_names is not None:
-                model_kwargs["lora_names"] = lora_names
-            if lora_repo_id is not None:
-                model_kwargs["lora_repo_id"] = lora_repo_id
 
             model = model_class(**model_kwargs)
 
@@ -86,7 +83,7 @@ class ImageGeneratorEditTestHelper:
             import tempfile
 
             temp_dir = tempfile.mkdtemp()
-            handler = StepwiseHandler(model=model, output_dir=temp_dir)
+            handler = StepwiseHandler(model=model, output_dir=temp_dir, latent_creator=QwenLatentCreator)
             CallbackRegistry.register_before_loop(handler)
             CallbackRegistry.register_in_loop(handler)
             CallbackRegistry.register_interrupt(handler)

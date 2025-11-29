@@ -52,7 +52,7 @@ class TestImageGeneratorQwenImage:
             width=768,
             prompt="Luxury food photograph",
             negative_prompt="ugly, blurry, low quality",
-            lora_repo_id="lightx2v/Qwen-Image-Lightning",
-            lora_names=["Qwen-Image-Lightning-4steps-V2.0.safetensors"],
+            lora_paths=["lightx2v/Qwen-Image-Lightning:Qwen-Image-Lightning-4steps-V2.0.safetensors"],
+            lora_scales=[1.0],
             mismatch_threshold=0.65,  # LoRA tests have higher variance due to model updates
         )

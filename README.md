@@ -258,7 +258,11 @@ mflux-generate \
 
 - **`--quantize`** or **`-q`** (optional, `int`, default: `None`): [Quantization](#%EF%B8%8F-quantization) (choose between `3`, `4`, `5`, `6`, or `8` bits).
 
-- **`--lora-paths`** (optional, `[str]`, default: `None`): The paths to the [LoRA](#-LoRA) weights.
+- **`--lora-paths`** (optional, `[str]`, default: `None`): The paths to the [LoRA](#-LoRA) weights. Supports multiple formats:
+  - Local files: `/path/to/lora.safetensors`
+  - HuggingFace repos: `author/model` (auto-downloads)
+  - HuggingFace collections: `repo_id:filename.safetensors` (downloads specific file)
+  - Registry names: `my-lora` (via `LORA_LIBRARY_PATH`)
 
 - **`--lora-scales`** (optional, `[float]`, default: `None`): The scale for each respective [LoRA](#-LoRA) (will default to `1.0` if not specified and only one LoRA weight is loaded.)
 
@@ -273,10 +277,6 @@ mflux-generate \
 - **`--low-ram`** (optional): Reduces GPU memory usage by limiting the MLX cache size and releasing text encoders and transformer components after use (single image generation only). While this may slightly decrease performance, it helps prevent system memory swapping to disk, allowing image generation on systems with limited RAM.
 
 - **`--battery-percentage-stop-limit`** or **`-B`** (optional, `int`, default: `5`): On Mac laptops powered by battery, automatically stops image generation when battery percentage reaches this threshold. Prevents your Mac from shutting down and becoming unresponsive during long generation sessions.
-
-- **`--lora-name`** (optional, `str`, default: `None`): The name of the LoRA to download from Hugging Face.
-
-- **`--lora-repo-id`** (optional, `str`, default: `"ali-vilab/In-Context-LoRA"`): The Hugging Face repository ID for LoRAs.
 
 - **`--stepwise-image-output-dir`** (optional, `str`, default: `None`): [EXPERIMENTAL] Output directory to write step-wise images and their final composite image to. This feature may change in future versions. When specified, MFLUX will save an image for each denoising step, allowing you to visualize the generation process from noise to final image.
 
@@ -1468,6 +1468,28 @@ mflux-generate \
 
 Just to see the difference, this image displays the four cases: One of having both adapters fully active, partially active and no LoRA at all.
 The example above also show the usage of `--lora-scales` flag.
+
+#### HuggingFace LoRA Downloads
+
+MFLUX can automatically download LoRAs directly from HuggingFace. Simply pass the repository ID to `--lora-paths`:
+
+```sh
+# Download from a HuggingFace repo (auto-finds the .safetensors file)
+mflux-generate \
+    --prompt "a portrait" \
+    --lora-paths "author/lora-model"
+```
+
+For repositories with multiple LoRA files (collections), use the `repo_id:filename` format to specify which file to download:
+
+```sh
+# Download a specific file from a collection
+mflux-generate \
+    --prompt "film storyboard style, a cat" \
+    --lora-paths "ali-vilab/In-Context-LoRA:film-storyboard.safetensors"
+```
+
+Downloaded LoRAs are cached locally and reused on subsequent runs.
 
 #### LoRA Library Path
 

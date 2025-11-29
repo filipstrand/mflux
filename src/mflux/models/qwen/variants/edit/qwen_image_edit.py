@@ -15,7 +15,6 @@ from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
 from mflux.models.qwen.qwen_edit_initializer import QwenImageEditInitializer
 from mflux.models.qwen.variants.edit.utils.qwen_edit_util import QwenEditUtil
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
-from mflux.utils.array_util import ArrayUtil
 from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
@@ -32,8 +31,6 @@ class QwenImageEdit(nn.Module):
         local_path: str | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
-        lora_names: list[str] | None = None,
-        lora_repo_id: str | None = None,
     ):
         super().__init__()
         QwenImageEditInitializer.init(
@@ -43,8 +40,6 @@ class QwenImageEdit(nn.Module):
             local_path=local_path,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
-            lora_names=lora_names,
-            lora_repo_id=lora_repo_id,
         )
 
     def generate_image(
@@ -171,7 +166,9 @@ class QwenImageEdit(nn.Module):
         )
 
         # 7. Decode the latent array and return the image
-        latents = ArrayUtil.unpack_latents(latents=latents, height=runtime_config.height, width=runtime_config.width)
+        latents = QwenLatentCreator.unpack_latents(
+            latents=latents, height=runtime_config.height, width=runtime_config.width
+        )
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,

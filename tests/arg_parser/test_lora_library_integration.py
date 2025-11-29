@@ -6,8 +6,8 @@ from unittest import mock
 
 import pytest
 
+from mflux.cli.parser.parsers import CommandLineParser
 from mflux.models.common.lora.download import lora_library
-from mflux.ui.cli.parsers import CommandLineParser
 
 
 @pytest.fixture
@@ -31,7 +31,7 @@ def test_parser_resolves_lora_paths_from_library(temp_lora_library):
     # Set up the environment variable
     with mock.patch.dict(os.environ, {"LORA_LIBRARY_PATH": str(temp_lora_library)}):
         # Re-initialize the registry
-        lora_library._initialize_registry()
+        lora_library.LoRALibrary._initialize_registry()
 
         parser = CommandLineParser()
         parser.add_model_arguments()
@@ -93,7 +93,7 @@ def test_parser_mixed_lora_paths(temp_lora_library):
 
     try:
         with mock.patch.dict(os.environ, {"LORA_LIBRARY_PATH": str(temp_lora_library)}):
-            lora_library._initialize_registry()
+            lora_library.LoRALibrary._initialize_registry()
 
             parser = CommandLineParser()
             parser.add_model_arguments()
@@ -126,7 +126,7 @@ def test_parser_unknown_lora_names_error():
     """Test that unknown lora names raise an error."""
     # No library path set
     with mock.patch.dict(os.environ, {}, clear=True):
-        lora_library._initialize_registry()
+        lora_library.LoRALibrary._initialize_registry()
 
         parser = CommandLineParser()
         parser.add_model_arguments()

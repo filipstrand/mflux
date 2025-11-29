@@ -95,9 +95,6 @@ class QwenTransformer(nn.Module):
         t: int | float,
         config: RuntimeConfig,
     ) -> mx.array:
-        """
-        Compute timestep tensor from step index or value.
-        """
         if isinstance(t, int):
             if t < len(config.scheduler.sigmas):
                 timestep_idx = t

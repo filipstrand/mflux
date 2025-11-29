@@ -16,7 +16,6 @@ from mflux.models.flux.model.flux_vae.vae import VAE
 from mflux.models.flux.variants.concept_attention.attention_data import GenerationAttentionData
 from mflux.models.flux.variants.concept_attention.concept_util import ConceptUtil
 from mflux.models.flux.variants.concept_attention.transformer_concept import TransformerConcept
-from mflux.utils.array_util import ArrayUtil
 from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
@@ -169,7 +168,7 @@ class Flux1Concept(nn.Module):
         )
 
         # 7. Decode the latent array and return the image
-        latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
+        latents = FluxLatentCreator.unpack_latents(latents=latents, height=config.height, width=config.width)
         decoded = self.vae.decode(latents)
 
         return ImageUtil.to_image(

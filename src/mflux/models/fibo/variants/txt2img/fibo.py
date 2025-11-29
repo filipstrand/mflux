@@ -7,7 +7,7 @@ from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.common.latent_creator.latent_creator import Img2Img, LatentCreator
-from mflux.models.common.weights.model_saver import ModelSaver
+from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.fibo.fibo_initializer import FIBOInitializer
 from mflux.models.fibo.latent_creator.fibo_latent_creator import FiboLatentCreator
 from mflux.models.fibo.model.fibo_text_encoder.prompt_encoder import PromptEncoder
@@ -139,7 +139,7 @@ class FIBO(nn.Module):
         )
 
         # 5. Decode the latent array and return the image
-        latents = FIBO._unpack_latents(latents, runtime_config.height, runtime_config.width)
+        latents = FiboLatentCreator.unpack_latents(latents, runtime_config.height, runtime_config.width)
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,
@@ -160,16 +160,6 @@ class FIBO(nn.Module):
         noise_uncond = noise[:half]
         noise_text = noise[half:]
         return noise_uncond + guidance * (noise_text - noise_uncond)
-
-    @staticmethod
-    def _unpack_latents(latents: mx.array, height: int, width: int) -> mx.array:
-        batch_size, seq_len, channels = latents.shape
-        vae_scale_factor = 16
-        latent_height = height // vae_scale_factor
-        latent_width = width // vae_scale_factor
-        latents = mx.reshape(latents, (batch_size, latent_height, latent_width, channels))
-        latents = mx.transpose(latents, (0, 3, 1, 2))
-        return latents
 
     def save_model(self, base_path: str) -> None:
         ModelSaver.save_model(

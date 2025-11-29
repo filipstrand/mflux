@@ -1,5 +1,4 @@
 from mflux.config.model_config import ModelConfig
-from mflux.models.common.lora.download.lora_library import LoRALibrary
 from mflux.models.common.lora.mapping.lora_loader import LoRALoader
 from mflux.models.z_image.model.z_image_text_encoder.text_encoder import TextEncoder
 from mflux.models.z_image.model.z_image_transformer.transformer import ZImageTransformer
@@ -56,12 +55,9 @@ class ZImageInitializer:
         )
 
         # 5. Apply LoRA weights if provided
-        z_image_model.lora_paths = LoRALibrary.resolve_paths(lora_paths)
-        z_image_model.lora_scales = lora_scales or []
-        if z_image_model.lora_paths:
-            LoRALoader.load_and_apply_lora(
-                lora_mapping=ZImageLoRAMapping.get_mapping(),
-                transformer=z_image_model.transformer,
-                lora_files=z_image_model.lora_paths,
-                lora_scales=z_image_model.lora_scales,
-            )
+        z_image_model.lora_paths, z_image_model.lora_scales = LoRALoader.load_and_apply_lora(
+            lora_mapping=ZImageLoRAMapping.get_mapping(),
+            transformer=z_image_model.transformer,
+            lora_paths=lora_paths,
+            lora_scales=lora_scales,
+        )

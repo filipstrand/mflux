@@ -6,17 +6,6 @@ from mflux.config.config import Config
 
 
 class Attention(nn.Module):
-    """
-    Self-attention block for the VAE.
-
-    Matches diffusers Attention with:
-    - group_norm before attention
-    - QKV projections
-    - residual connection
-
-    Used in UNetMidBlock2D.
-    """
-
     def __init__(self, channels: int = 512, num_groups: int = 32):
         super().__init__()
         self.channels = channels

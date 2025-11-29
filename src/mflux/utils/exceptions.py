@@ -1,34 +1,32 @@
 class MFluxException(Exception):
-    """base class for all custom exceptions in mflux package."""
+    pass
 
 
 class ImageSavingException(MFluxException):
-    """error occurred while attempting to save image to storage."""
+    pass
 
 
 class MetadataEmbedException(MFluxException):
-    """error occurred while attempting to embed metadata in image"""
+    pass
 
 
 class MFluxUserException(MFluxException):
-    """an exception raised by user behavior or intention."""
+    pass
 
 
 class PromptFileReadError(MFluxUserException):
-    """Exception raised for errors in reading the prompt file."""
+    pass
 
 
 class StopImageGenerationException(MFluxUserException):
-    """user has requested to stop a image generation in progress."""
+    pass
 
 
 class StopTrainingException(MFluxUserException):
-    """user has requested to stop the training process in progress."""
+    pass
 
 
 class CommandExecutionError(MFluxException):
-    """Raised when a subprocess command invoked by mflux tooling fails."""
-
     def __init__(self, cmd: list[str], return_code: int, stdout: str | None, stderr: str | None):
         self.cmd = cmd
         self.return_code = return_code
@@ -40,12 +38,12 @@ class CommandExecutionError(MFluxException):
 
 
 class ReferenceVsOutputImageError(AssertionError):
-    """Raised when reference and output images don't match within the allowed threshold."""
+    pass
 
 
 class ModelConfigError(ValueError):
-    """User error in model config."""
+    pass
 
 
 class InvalidBaseModel(ModelConfigError):
-    """Invalid base model, cannot infer model properties."""
+    pass

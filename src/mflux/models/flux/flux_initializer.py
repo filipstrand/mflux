@@ -1,4 +1,5 @@
 from mflux.config.model_config import ModelConfig
+from mflux.models.common.lora.mapping.lora_loader import LoRALoader
 from mflux.models.depth_pro.depth_pro import DepthPro
 from mflux.models.flux.model.flux_text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.flux.model.flux_text_encoder.t5_encoder.t5_encoder import T5Encoder
@@ -12,9 +13,8 @@ from mflux.models.flux.tokenizer.tokenizer_handler import TokenizerHandler
 from mflux.models.flux.variants.controlnet.transformer_controlnet import TransformerControlnet
 from mflux.models.flux.variants.controlnet.weight_handler_controlnet import WeightHandlerControlnet
 from mflux.models.flux.variants.redux.weight_handler_redux import WeightHandlerRedux
-from mflux.models.common.lora.download.lora_huggingface_downloader import LoRAHuggingFaceDownloader
+from mflux.models.flux.weights.flux_lora_mapping import FluxLoRAMapping
 from mflux.models.flux.weights.weight_handler import WeightHandler
-from mflux.models.flux.weights.weight_handler_lora import WeightHandlerLoRA
 from mflux.models.flux.weights.weight_util import WeightUtil
 
 
@@ -27,12 +27,9 @@ class FluxInitializer:
         local_path: str | None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
-        lora_names: list[str] | None = None,
-        lora_repo_id: str | None = None,
         custom_transformer=None,
     ) -> None:
         # 0. Set paths, configs, and prompt_cache for later
-        lora_paths = lora_paths or []
         flux_model.prompt_cache = {}
         flux_model.model_config = model_config
 
@@ -81,21 +78,11 @@ class FluxInitializer:
         )
 
         # 5. Set LoRA weights
-        hf_lora_paths = LoRAHuggingFaceDownloader.download_loras(
-            lora_names=lora_names,
-            repo_id=lora_repo_id,
-            model_name="Flux",
-        )
-        flux_model.lora_paths = lora_paths + hf_lora_paths
-        flux_model.lora_scales = (lora_scales or []) + [1.0] * len(hf_lora_paths)
-        lora_weights = WeightHandlerLoRA.load_lora_weights(
+        flux_model.lora_paths, flux_model.lora_scales = LoRALoader.load_and_apply_lora(
+            lora_mapping=FluxLoRAMapping.get_mapping(),
             transformer=flux_model.transformer,
-            lora_files=flux_model.lora_paths,
-            lora_scales=flux_model.lora_scales,
-        )
-        WeightHandlerLoRA.set_lora_weights(
-            transformer=flux_model.transformer,
-            loras=lora_weights,
+            lora_paths=lora_paths,
+            lora_scales=lora_scales,
         )
 
     @staticmethod
@@ -106,8 +93,6 @@ class FluxInitializer:
         local_path: str | None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
-        lora_names: list[str] | None = None,
-        lora_repo_id: str | None = None,
     ):
         # 1. Start with the same init as regular Flux
         FluxInitializer.init(
@@ -117,8 +102,6 @@ class FluxInitializer:
             local_path=local_path,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
-            lora_names=lora_names,
-            lora_repo_id=lora_repo_id,
         )
 
         # 2. Initialize the DepthPro model
@@ -131,8 +114,6 @@ class FluxInitializer:
         local_path: str | None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
-        lora_names: list[str] | None = None,
-        lora_repo_id: str | None = None,
     ):
         # 1. Start with the same init as regular Flux dev
         FluxInitializer.init(
@@ -142,8 +123,6 @@ class FluxInitializer:
             local_path=local_path,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
-            lora_names=lora_names,
-            lora_repo_id=lora_repo_id,
         )
 
         # 2. Initialize the redux specific addons
@@ -165,8 +144,6 @@ class FluxInitializer:
         local_path: str | None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
-        lora_names: list[str] | None = None,
-        lora_repo_id: str | None = None,
     ) -> None:
         # 1. Start with the same init as regular Flux
         FluxInitializer.init(
@@ -176,8 +153,6 @@ class FluxInitializer:
             local_path=local_path,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
-            lora_names=lora_names,
-            lora_repo_id=lora_repo_id,
         )
 
         # 2. Apply ControlNet-specific initialization
@@ -203,8 +178,6 @@ class FluxInitializer:
         local_path: str | None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
-        lora_names: list[str] | None = None,
-        lora_repo_id: str | None = None,
     ):
         # Import here to avoid circular dependency
         from mflux.models.flux.variants.concept_attention.transformer_concept import TransformerConcept
@@ -230,7 +203,5 @@ class FluxInitializer:
             local_path=local_path,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
-            lora_names=lora_names,
-            lora_repo_id=lora_repo_id,
             custom_transformer=custom_transformer,
         )

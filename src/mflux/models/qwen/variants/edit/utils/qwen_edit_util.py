@@ -3,7 +3,7 @@ import os
 import mlx.core as mx
 
 from mflux.models.common.latent_creator.latent_creator import LatentCreator
-from mflux.utils.array_util import ArrayUtil
+from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
 
 
 class QwenEditUtil:
@@ -41,7 +41,7 @@ class QwenEditUtil:
                 width=calc_w,
             )
 
-            image_latents = ArrayUtil.pack_latents(
+            image_latents = QwenLatentCreator.pack_latents(
                 latents=input_image,
                 height=calc_h,
                 width=calc_w,

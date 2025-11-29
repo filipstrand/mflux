@@ -28,5 +28,5 @@ class DepthImageSaver(BeforeLoopCallback):
         base, ext = os.path.splitext(self.path)
         ImageUtil.save_image(
             image=depth_image,
-            path=f"{base}_depth_map{ext}"
-        )  # fmt: off
+            path=f"{base}_depth_map{ext}",
+        )

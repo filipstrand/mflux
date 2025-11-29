@@ -3,15 +3,6 @@ from mlx import nn
 
 
 class ResnetBlock2D(nn.Module):
-    """
-    A ResNet block for the VAE decoder.
-
-    Matches diffusers ResnetBlock2D with time_embedding_norm="default" and temb_channels=None.
-
-    Architecture:
-        norm1 -> silu -> conv1 -> norm2 -> silu -> conv2 + skip_connection
-    """
-
     def __init__(
         self,
         in_channels: int,

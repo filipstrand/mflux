@@ -1,13 +1,24 @@
 import re
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Tuple
 
 import mlx.core as mx
 import mlx.nn as nn
 
+from mflux.models.common.lora.download.lora_library import LoRALibrary
 from mflux.models.common.lora.layer.fused_linear_lora_layer import FusedLoRALinear
 from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
 from mflux.models.common.lora.mapping.lora_mapping import LoRATarget
+
+
+@dataclass
+class PatternMatch:
+    source_pattern: str
+    target_path: str
+    matrix_name: str  # "lora_A", "lora_B", or "alpha"
+    transpose: bool
+    transform: Callable[[mx.array], mx.array] | None = None
 
 
 class LoRALoader:
@@ -15,30 +26,39 @@ class LoRALoader:
     def load_and_apply_lora(
         lora_mapping: list[LoRATarget],
         transformer: nn.Module,
-        lora_files: list[str],
+        lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
-    ) -> None:
-        if not lora_files:
-            return
+    ) -> tuple[list[str], list[float]]:
+        # Resolve paths and scales
+        resolved_paths = LoRALibrary.resolve_paths(lora_paths)
+        resolved_scales = LoRALibrary.resolve_scales(lora_scales)
 
-        # Validate scales - handle both None and empty list cases
-        if lora_scales is None or len(lora_scales) == 0:
-            lora_scales = [1.0] * len(lora_files)
-        elif len(lora_scales) != len(lora_files):
+        if not resolved_paths:
+            return resolved_paths, resolved_scales
+
+        # Validate scales
+        if len(resolved_scales) == 0:
+            resolved_scales = [1.0] * len(resolved_paths)
+        elif len(resolved_scales) != len(resolved_paths):
             raise ValueError(
-                f"Number of LoRA scales ({len(lora_scales)}) must match number of LoRA files ({len(lora_files)})"
+                f"Number of LoRA scales ({len(resolved_scales)}) must match number of LoRA files ({len(resolved_paths)})"
             )
 
-        print(f"📦 Loading {len(lora_files)} LoRA file(s)...")
+        print(f"📦 Loading {len(resolved_paths)} LoRA file(s)...")
 
-        for lora_file, scale in zip(lora_files, lora_scales):
+        for lora_file, scale in zip(resolved_paths, resolved_scales):
             LoRALoader._apply_single_lora(transformer, lora_file, scale, lora_mapping)
 
         print("✅ All LoRA weights applied successfully")
 
+        return resolved_paths, resolved_scales
+
     @staticmethod
     def _apply_single_lora(
-        transformer: nn.Module, lora_file: str, scale: float, lora_mapping: list[LoRATarget]
+        transformer: nn.Module,
+        lora_file: str,
+        scale: float,
+        lora_mapping: list[LoRATarget],
     ) -> None:
         # Load the LoRA weights
         if not Path(lora_file).exists():
@@ -54,9 +74,11 @@ class LoRALoader:
             print(f"❌ Failed to load LoRA file: {e}")
             return
 
-        # Apply LoRA using the provided mapping
-        flat_mapping = LoRALoader._get_flat_mapping(lora_mapping)
-        applied_count, matched_keys = LoRALoader._apply_lora_with_mapping(transformer, weights, scale, flat_mapping)
+        # Build pattern mappings from LoRATargets
+        pattern_mappings = LoRALoader._build_pattern_mappings(lora_mapping)
+
+        # Apply LoRA using the mappings (allows multiple targets per source)
+        applied_count, matched_keys = LoRALoader._apply_lora_with_mapping(transformer, weights, scale, pattern_mappings)
 
         # Report results
         total_keys = len(weights)
@@ -66,63 +88,95 @@ class LoRALoader:
 
         if unmatched_keys:
             print(f"   ⚠️  {len(unmatched_keys)} unmatched keys in LoRA file:")
-            # Show first few unmatched keys as examples
             for key in sorted(unmatched_keys)[:5]:
                 print(f"      - {key}")
             if len(unmatched_keys) > 5:
                 print(f"      ... and {len(unmatched_keys) - 5} more")
 
     @staticmethod
+    def _build_pattern_mappings(targets: list[LoRATarget]) -> list[PatternMatch]:
+        mappings = []
+
+        for target in targets:
+            # Add up weight patterns (lora_B)
+            mappings.extend(
+                PatternMatch(
+                    source_pattern=pattern,
+                    target_path=target.model_path,
+                    matrix_name="lora_B",
+                    transpose=True,
+                    transform=target.up_transform,
+                )
+                for pattern in target.possible_up_patterns
+            )
+
+            # Add down weight patterns (lora_A)
+            mappings.extend(
+                PatternMatch(
+                    source_pattern=pattern,
+                    target_path=target.model_path,
+                    matrix_name="lora_A",
+                    transpose=True,
+                    transform=target.down_transform,
+                )
+                for pattern in target.possible_down_patterns
+            )
+
+            # Add alpha patterns (no transpose, no transform)
+            mappings.extend(
+                PatternMatch(
+                    source_pattern=pattern,
+                    target_path=target.model_path,
+                    matrix_name="alpha",
+                    transpose=False,
+                    transform=None,
+                )
+                for pattern in target.possible_alpha_patterns
+            )
+
+        return mappings
+
+    @staticmethod
     def _apply_lora_with_mapping(
-        transformer: nn.Module, weights: dict, scale: float, lora_mappings: Dict[str, Tuple[str, str, bool]]
-    ) -> Tuple[int, set]:
+        transformer: nn.Module,
+        weights: dict,
+        scale: float,
+        pattern_mappings: list[PatternMatch],
+    ) -> tuple[int, set]:
         applied_count = 0
-        lora_data_by_target = {}
+        lora_data_by_target: dict[str, dict] = {}
         matched_keys: set[str] = set()
 
-        # Group LoRA weights by their target layers
+        # For each weight key, find ALL matching patterns (not just first)
+        # This allows multiple targets to use the same source (e.g., QKV split)
         for weight_key, weight_value in weights.items():
-            found_mapping = None
-            block_idx = None
+            for mapping in pattern_mappings:
+                match_result = LoRALoader._match_pattern(weight_key, mapping.source_pattern)
+                if match_result is None:
+                    continue
 
-            # Pattern matching logic
-            for pattern, mapping_info in lora_mappings.items():
-                if "{block}" in pattern:
-                    # Extract block number from the weight key - try both . and _ separators
-                    # This handles both standard LoRA formats (dot-separated) and other formats (underscore-separated)
-                    # Find all numbers in the weight key
-                    numbers_in_key = re.findall(r"\d+", weight_key)
-                    for num_str in numbers_in_key:
-                        try:
-                            test_block_idx = int(num_str)
-                            concrete_pattern = pattern.format(block=test_block_idx)
-                            if weight_key == concrete_pattern:
-                                found_mapping = mapping_info
-                                block_idx = test_block_idx
-                                break
-                        except (ValueError, KeyError):
-                            continue
-                    if found_mapping:
-                        break
-                else:
-                    if weight_key == pattern:
-                        found_mapping = mapping_info
-                        break
+                matched_keys.add(weight_key)
+                block_idx = match_result
 
-            if found_mapping is None:
-                continue
+                # Resolve target path with block index if needed
+                target_path = mapping.target_path
+                if block_idx is not None and "{block}" in target_path:
+                    target_path = target_path.format(block=block_idx)
 
-            matched_keys.add(weight_key)
-            target_path, matrix_name, transpose = found_mapping
+                # Apply transform if specified
+                transformed_value = weight_value
+                if mapping.transform is not None:
+                    transformed_value = mapping.transform(weight_value)
 
-            # Handle block substitution in target path
-            if block_idx is not None and "{block}" in target_path:
-                target_path = target_path.format(block=block_idx)
+                # Apply transpose if needed
+                if mapping.transpose:
+                    transformed_value = transformed_value.T
 
-            if target_path not in lora_data_by_target:
-                lora_data_by_target[target_path] = {}
+                # Store for this target
+                if target_path not in lora_data_by_target:
+                    lora_data_by_target[target_path] = {}
 
-            lora_data_by_target[target_path][matrix_name] = (weight_value, transpose)
+                lora_data_by_target[target_path][mapping.matrix_name] = transformed_value
 
         # Apply LoRA to each target
         for target_path, lora_data in lora_data_by_target.items():
@@ -130,6 +184,22 @@ class LoRALoader:
                 applied_count += 1
 
         return applied_count, matched_keys
+
+    @staticmethod
+    def _match_pattern(weight_key: str, pattern: str) -> int | None:
+        if "{block}" in pattern:
+            # Find all numbers in the weight key
+            numbers_in_key = re.findall(r"\d+", weight_key)
+            for num_str in numbers_in_key:
+                test_block_idx = int(num_str)
+                concrete_pattern = pattern.replace("{block}", str(test_block_idx))
+                if weight_key == concrete_pattern:
+                    return test_block_idx
+            return None
+        else:
+            if weight_key == pattern:
+                return 0  # Return 0 to indicate match (no block)
+            return None
 
     @staticmethod
     def _apply_lora_matrices_to_target(transformer: nn.Module, target_path: str, lora_data: dict, scale: float) -> bool:
@@ -152,19 +222,14 @@ class LoRALoader:
             print(f"❌ Missing required LoRA matrices for {target_path}")
             return False
 
-        lora_A, transpose_A = lora_data["lora_A"]
-        lora_B, transpose_B = lora_data["lora_B"]
-
-        # Handle transposition
-        if transpose_A:
-            lora_A = lora_A.T
-        if transpose_B:
-            lora_B = lora_B.T
+        # Values are already transformed and transposed
+        lora_A = lora_data["lora_A"]
+        lora_B = lora_data["lora_B"]
 
         # Handle alpha scaling
         alpha_scale = 1.0
         if "alpha" in lora_data:
-            alpha_value, _ = lora_data["alpha"]
+            alpha_value = lora_data["alpha"]
             rank = lora_A.shape[1]
             alpha_scale = float(alpha_value) / rank
 
@@ -181,47 +246,33 @@ class LoRALoader:
             # Handle fusion: if the current module is already a LoRA layer, fuse them
             if is_lora_linear:
                 print(f"   🔀 Fusing with existing LoRA at {target_path}")
-                # Create a temporary LoRA layer from the base linear of the existing LoRA
                 lora_layer = LoRALinear.from_linear(current_module.linear, r=lora_A.shape[1], scale=effective_scale)
-                # Set the LoRA matrices
                 lora_layer.lora_A = lora_A
                 lora_layer.lora_B = lora_B
-                # Apply alpha scaling to the matrices if present
                 if "alpha" in lora_data:
                     lora_layer.lora_B = lora_layer.lora_B * alpha_scale
-
-                # Create fused layer with the existing LoRA and the new one
                 fused_layer = FusedLoRALinear(base_linear=current_module.linear, loras=[current_module, lora_layer])
                 replacement_layer = fused_layer
             elif is_fused_linear:
                 print(f"   🔀 Adding to existing fusion at {target_path}")
-                # Create a temporary LoRA layer from the base linear
                 lora_layer = LoRALinear.from_linear(
                     current_module.base_linear, r=lora_A.shape[1], scale=effective_scale
                 )
-                # Set the LoRA matrices
                 lora_layer.lora_A = lora_A
                 lora_layer.lora_B = lora_B
-                # Apply alpha scaling to the matrices if present
                 if "alpha" in lora_data:
                     lora_layer.lora_B = lora_layer.lora_B * alpha_scale
-
-                # Add to existing fusion
                 fused_layer = FusedLoRALinear(
                     base_linear=current_module.base_linear, loras=current_module.loras + [lora_layer]
                 )
                 replacement_layer = fused_layer
             else:
                 # First LoRA on this layer
-                # Create LoRA layer
                 lora_layer = LoRALinear.from_linear(current_module, r=lora_A.shape[1], scale=effective_scale)
-                # Set the LoRA matrices - use the correct dimensions from the LoRA file
                 lora_layer.lora_A = lora_A
                 lora_layer.lora_B = lora_B
-                # Apply alpha scaling to the matrices if present
                 if "alpha" in lora_data:
                     lora_layer.lora_B = lora_layer.lora_B * alpha_scale
-
                 replacement_layer = lora_layer
 
             # Replace the layer in the parent module
@@ -242,22 +293,3 @@ class LoRALoader:
         else:
             print(f"❌ Target layer {target_path} is not a linear layer")
             return False
-
-    @staticmethod
-    def _get_flat_mapping(targets: list[LoRATarget]) -> Dict[str, Tuple[str, str, bool]]:
-        flat_mapping = {}
-
-        for target in targets:
-            # Add up weight patterns (lora_B, transposed)
-            for pattern in target.possible_up_patterns:
-                flat_mapping[pattern] = (target.model_path, "lora_B", True)
-
-            # Add down weight patterns (lora_A, transposed)
-            for pattern in target.possible_down_patterns:
-                flat_mapping[pattern] = (target.model_path, "lora_A", True)
-
-            # Add alpha patterns (no transpose)
-            for pattern in target.possible_alpha_patterns:
-                flat_mapping[pattern] = (target.model_path, "alpha", False)
-
-        return flat_mapping

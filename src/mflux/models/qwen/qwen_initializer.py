@@ -1,5 +1,4 @@
 from mflux.config.model_config import ModelConfig
-from mflux.models.common.lora.download.lora_huggingface_downloader import LoRAHuggingFaceDownloader
 from mflux.models.common.lora.mapping.lora_loader import LoRALoader
 from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer
@@ -19,8 +18,6 @@ class QwenImageInitializer:
         local_path: str | None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
-        lora_names: list[str] | None = None,
-        lora_repo_id: str | None = None,
     ) -> None:
         # 0. Set paths, configs, and prompt_cache for later
         qwen_model.prompt_cache = {}
@@ -54,17 +51,9 @@ class QwenImageInitializer:
         )
 
         # 5. Set LoRA weights
-        hf_lora_paths = LoRAHuggingFaceDownloader.download_loras(
-            lora_names=lora_names,
-            repo_id=lora_repo_id,
-            model_name="Qwen",
+        qwen_model.lora_paths, qwen_model.lora_scales = LoRALoader.load_and_apply_lora(
+            lora_mapping=QwenLoRAMapping.get_mapping(),
+            transformer=qwen_model.transformer,
+            lora_paths=lora_paths,
+            lora_scales=lora_scales,
         )
-        qwen_model.lora_paths = (lora_paths or []) + hf_lora_paths
-        qwen_model.lora_scales = (lora_scales or []) + [1.0] * len(hf_lora_paths)
-        if qwen_model.lora_paths:
-            LoRALoader.load_and_apply_lora(
-                lora_mapping=QwenLoRAMapping.get_mapping(),
-                transformer=qwen_model.transformer,
-                lora_files=qwen_model.lora_paths,
-                lora_scales=qwen_model.lora_scales,
-            )

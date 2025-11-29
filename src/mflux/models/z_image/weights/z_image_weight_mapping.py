@@ -1,12 +1,7 @@
 from typing import List
 
-import mlx.core as mx
-
 from mflux.models.common.weights.mapping.weight_mapping import WeightMapping, WeightTarget
-
-
-def transpose_conv2d_weight(weight: mx.array) -> mx.array:
-    return weight.transpose(0, 2, 3, 1)
+from mflux.models.common.weights.mapping.weight_transforms import transpose_conv2d_weight
 
 
 class ZImageWeightMapping(WeightMapping):
@@ -14,56 +9,56 @@ class ZImageWeightMapping(WeightMapping):
     def get_text_encoder_mapping() -> List[WeightTarget]:
         return [
             WeightTarget(
-                mlx_path="embed_tokens.weight",
-                hf_patterns=["model.embed_tokens.weight"],
+                to_pattern="embed_tokens.weight",
+                from_pattern=["model.embed_tokens.weight"],
             ),
             WeightTarget(
-                mlx_path="norm.weight",
-                hf_patterns=["model.norm.weight"],
+                to_pattern="norm.weight",
+                from_pattern=["model.norm.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.input_layernorm.weight",
-                hf_patterns=["model.layers.{layer}.input_layernorm.weight"],
+                to_pattern="layers.{layer}.input_layernorm.weight",
+                from_pattern=["model.layers.{layer}.input_layernorm.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.post_attention_layernorm.weight",
-                hf_patterns=["model.layers.{layer}.post_attention_layernorm.weight"],
+                to_pattern="layers.{layer}.post_attention_layernorm.weight",
+                from_pattern=["model.layers.{layer}.post_attention_layernorm.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.self_attn.q_proj.weight",
-                hf_patterns=["model.layers.{layer}.self_attn.q_proj.weight"],
+                to_pattern="layers.{layer}.self_attn.q_proj.weight",
+                from_pattern=["model.layers.{layer}.self_attn.q_proj.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.self_attn.k_proj.weight",
-                hf_patterns=["model.layers.{layer}.self_attn.k_proj.weight"],
+                to_pattern="layers.{layer}.self_attn.k_proj.weight",
+                from_pattern=["model.layers.{layer}.self_attn.k_proj.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.self_attn.v_proj.weight",
-                hf_patterns=["model.layers.{layer}.self_attn.v_proj.weight"],
+                to_pattern="layers.{layer}.self_attn.v_proj.weight",
+                from_pattern=["model.layers.{layer}.self_attn.v_proj.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.self_attn.o_proj.weight",
-                hf_patterns=["model.layers.{layer}.self_attn.o_proj.weight"],
+                to_pattern="layers.{layer}.self_attn.o_proj.weight",
+                from_pattern=["model.layers.{layer}.self_attn.o_proj.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.self_attn.q_norm.weight",
-                hf_patterns=["model.layers.{layer}.self_attn.q_norm.weight"],
+                to_pattern="layers.{layer}.self_attn.q_norm.weight",
+                from_pattern=["model.layers.{layer}.self_attn.q_norm.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.self_attn.k_norm.weight",
-                hf_patterns=["model.layers.{layer}.self_attn.k_norm.weight"],
+                to_pattern="layers.{layer}.self_attn.k_norm.weight",
+                from_pattern=["model.layers.{layer}.self_attn.k_norm.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.mlp.gate_proj.weight",
-                hf_patterns=["model.layers.{layer}.mlp.gate_proj.weight"],
+                to_pattern="layers.{layer}.mlp.gate_proj.weight",
+                from_pattern=["model.layers.{layer}.mlp.gate_proj.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.mlp.up_proj.weight",
-                hf_patterns=["model.layers.{layer}.mlp.up_proj.weight"],
+                to_pattern="layers.{layer}.mlp.up_proj.weight",
+                from_pattern=["model.layers.{layer}.mlp.up_proj.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.mlp.down_proj.weight",
-                hf_patterns=["model.layers.{layer}.mlp.down_proj.weight"],
+                to_pattern="layers.{layer}.mlp.down_proj.weight",
+                from_pattern=["model.layers.{layer}.mlp.down_proj.weight"],
             ),
         ]
 
@@ -71,316 +66,316 @@ class ZImageWeightMapping(WeightMapping):
     def get_vae_mapping() -> List[WeightTarget]:
         return [
             WeightTarget(
-                mlx_path="encoder.conv_in.conv2d.weight",
-                hf_patterns=["encoder.conv_in.weight"],
+                to_pattern="encoder.conv_in.conv2d.weight",
+                from_pattern=["encoder.conv_in.weight"],
                 transform=transpose_conv2d_weight,
             ),
             WeightTarget(
-                mlx_path="encoder.conv_in.conv2d.bias",
-                hf_patterns=["encoder.conv_in.bias"],
+                to_pattern="encoder.conv_in.conv2d.bias",
+                from_pattern=["encoder.conv_in.bias"],
             ),
             WeightTarget(
-                mlx_path="encoder.down_blocks.{block}.resnets.{res}.norm1.weight",
-                hf_patterns=["encoder.down_blocks.{block}.resnets.{res}.norm1.weight"],
+                to_pattern="encoder.down_blocks.{block}.resnets.{res}.norm1.weight",
+                from_pattern=["encoder.down_blocks.{block}.resnets.{res}.norm1.weight"],
             ),
             WeightTarget(
-                mlx_path="encoder.down_blocks.{block}.resnets.{res}.norm1.bias",
-                hf_patterns=["encoder.down_blocks.{block}.resnets.{res}.norm1.bias"],
+                to_pattern="encoder.down_blocks.{block}.resnets.{res}.norm1.bias",
+                from_pattern=["encoder.down_blocks.{block}.resnets.{res}.norm1.bias"],
             ),
             WeightTarget(
-                mlx_path="encoder.down_blocks.{block}.resnets.{res}.conv1.weight",
-                hf_patterns=["encoder.down_blocks.{block}.resnets.{res}.conv1.weight"],
+                to_pattern="encoder.down_blocks.{block}.resnets.{res}.conv1.weight",
+                from_pattern=["encoder.down_blocks.{block}.resnets.{res}.conv1.weight"],
                 transform=transpose_conv2d_weight,
             ),
             WeightTarget(
-                mlx_path="encoder.down_blocks.{block}.resnets.{res}.conv1.bias",
-                hf_patterns=["encoder.down_blocks.{block}.resnets.{res}.conv1.bias"],
+                to_pattern="encoder.down_blocks.{block}.resnets.{res}.conv1.bias",
+                from_pattern=["encoder.down_blocks.{block}.resnets.{res}.conv1.bias"],
             ),
             WeightTarget(
-                mlx_path="encoder.down_blocks.{block}.resnets.{res}.norm2.weight",
-                hf_patterns=["encoder.down_blocks.{block}.resnets.{res}.norm2.weight"],
+                to_pattern="encoder.down_blocks.{block}.resnets.{res}.norm2.weight",
+                from_pattern=["encoder.down_blocks.{block}.resnets.{res}.norm2.weight"],
             ),
             WeightTarget(
-                mlx_path="encoder.down_blocks.{block}.resnets.{res}.norm2.bias",
-                hf_patterns=["encoder.down_blocks.{block}.resnets.{res}.norm2.bias"],
+                to_pattern="encoder.down_blocks.{block}.resnets.{res}.norm2.bias",
+                from_pattern=["encoder.down_blocks.{block}.resnets.{res}.norm2.bias"],
             ),
             WeightTarget(
-                mlx_path="encoder.down_blocks.{block}.resnets.{res}.conv2.weight",
-                hf_patterns=["encoder.down_blocks.{block}.resnets.{res}.conv2.weight"],
+                to_pattern="encoder.down_blocks.{block}.resnets.{res}.conv2.weight",
+                from_pattern=["encoder.down_blocks.{block}.resnets.{res}.conv2.weight"],
                 transform=transpose_conv2d_weight,
             ),
             WeightTarget(
-                mlx_path="encoder.down_blocks.{block}.resnets.{res}.conv2.bias",
-                hf_patterns=["encoder.down_blocks.{block}.resnets.{res}.conv2.bias"],
+                to_pattern="encoder.down_blocks.{block}.resnets.{res}.conv2.bias",
+                from_pattern=["encoder.down_blocks.{block}.resnets.{res}.conv2.bias"],
             ),
             WeightTarget(
-                mlx_path="encoder.down_blocks.{block}.resnets.{res}.conv_shortcut.weight",
-                hf_patterns=["encoder.down_blocks.{block}.resnets.{res}.conv_shortcut.weight"],
-                transform=transpose_conv2d_weight,
-                required=False,
-            ),
-            WeightTarget(
-                mlx_path="encoder.down_blocks.{block}.resnets.{res}.conv_shortcut.bias",
-                hf_patterns=["encoder.down_blocks.{block}.resnets.{res}.conv_shortcut.bias"],
-                required=False,
-            ),
-            WeightTarget(
-                mlx_path="encoder.down_blocks.{block}.downsamplers.0.conv.weight",
-                hf_patterns=["encoder.down_blocks.{block}.downsamplers.0.conv.weight"],
+                to_pattern="encoder.down_blocks.{block}.resnets.{res}.conv_shortcut.weight",
+                from_pattern=["encoder.down_blocks.{block}.resnets.{res}.conv_shortcut.weight"],
                 transform=transpose_conv2d_weight,
                 required=False,
             ),
             WeightTarget(
-                mlx_path="encoder.down_blocks.{block}.downsamplers.0.conv.bias",
-                hf_patterns=["encoder.down_blocks.{block}.downsamplers.0.conv.bias"],
+                to_pattern="encoder.down_blocks.{block}.resnets.{res}.conv_shortcut.bias",
+                from_pattern=["encoder.down_blocks.{block}.resnets.{res}.conv_shortcut.bias"],
                 required=False,
             ),
             WeightTarget(
-                mlx_path="encoder.mid_block.resnets.{i}.norm1.weight",
-                hf_patterns=["encoder.mid_block.resnets.{i}.norm1.weight"],
-            ),
-            WeightTarget(
-                mlx_path="encoder.mid_block.resnets.{i}.norm1.bias",
-                hf_patterns=["encoder.mid_block.resnets.{i}.norm1.bias"],
-            ),
-            WeightTarget(
-                mlx_path="encoder.mid_block.resnets.{i}.conv1.weight",
-                hf_patterns=["encoder.mid_block.resnets.{i}.conv1.weight"],
-                transform=transpose_conv2d_weight,
-            ),
-            WeightTarget(
-                mlx_path="encoder.mid_block.resnets.{i}.conv1.bias",
-                hf_patterns=["encoder.mid_block.resnets.{i}.conv1.bias"],
-            ),
-            WeightTarget(
-                mlx_path="encoder.mid_block.resnets.{i}.norm2.weight",
-                hf_patterns=["encoder.mid_block.resnets.{i}.norm2.weight"],
-            ),
-            WeightTarget(
-                mlx_path="encoder.mid_block.resnets.{i}.norm2.bias",
-                hf_patterns=["encoder.mid_block.resnets.{i}.norm2.bias"],
-            ),
-            WeightTarget(
-                mlx_path="encoder.mid_block.resnets.{i}.conv2.weight",
-                hf_patterns=["encoder.mid_block.resnets.{i}.conv2.weight"],
-                transform=transpose_conv2d_weight,
-            ),
-            WeightTarget(
-                mlx_path="encoder.mid_block.resnets.{i}.conv2.bias",
-                hf_patterns=["encoder.mid_block.resnets.{i}.conv2.bias"],
-            ),
-            WeightTarget(
-                mlx_path="encoder.mid_block.attentions.0.group_norm.weight",
-                hf_patterns=["encoder.mid_block.attentions.0.group_norm.weight"],
-            ),
-            WeightTarget(
-                mlx_path="encoder.mid_block.attentions.0.group_norm.bias",
-                hf_patterns=["encoder.mid_block.attentions.0.group_norm.bias"],
-            ),
-            WeightTarget(
-                mlx_path="encoder.mid_block.attentions.0.to_q.weight",
-                hf_patterns=["encoder.mid_block.attentions.0.to_q.weight"],
-            ),
-            WeightTarget(
-                mlx_path="encoder.mid_block.attentions.0.to_q.bias",
-                hf_patterns=["encoder.mid_block.attentions.0.to_q.bias"],
-            ),
-            WeightTarget(
-                mlx_path="encoder.mid_block.attentions.0.to_k.weight",
-                hf_patterns=["encoder.mid_block.attentions.0.to_k.weight"],
-            ),
-            WeightTarget(
-                mlx_path="encoder.mid_block.attentions.0.to_k.bias",
-                hf_patterns=["encoder.mid_block.attentions.0.to_k.bias"],
-            ),
-            WeightTarget(
-                mlx_path="encoder.mid_block.attentions.0.to_v.weight",
-                hf_patterns=["encoder.mid_block.attentions.0.to_v.weight"],
-            ),
-            WeightTarget(
-                mlx_path="encoder.mid_block.attentions.0.to_v.bias",
-                hf_patterns=["encoder.mid_block.attentions.0.to_v.bias"],
-            ),
-            WeightTarget(
-                mlx_path="encoder.mid_block.attentions.0.to_out.0.weight",
-                hf_patterns=["encoder.mid_block.attentions.0.to_out.0.weight"],
-            ),
-            WeightTarget(
-                mlx_path="encoder.mid_block.attentions.0.to_out.0.bias",
-                hf_patterns=["encoder.mid_block.attentions.0.to_out.0.bias"],
-            ),
-            WeightTarget(
-                mlx_path="encoder.conv_norm_out.norm.weight",
-                hf_patterns=["encoder.conv_norm_out.weight"],
-            ),
-            WeightTarget(
-                mlx_path="encoder.conv_norm_out.norm.bias",
-                hf_patterns=["encoder.conv_norm_out.bias"],
-            ),
-            WeightTarget(
-                mlx_path="encoder.conv_out.conv2d.weight",
-                hf_patterns=["encoder.conv_out.weight"],
-                transform=transpose_conv2d_weight,
-            ),
-            WeightTarget(
-                mlx_path="encoder.conv_out.conv2d.bias",
-                hf_patterns=["encoder.conv_out.bias"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.conv_in.conv.weight",
-                hf_patterns=["decoder.conv_in.weight"],
-                transform=transpose_conv2d_weight,
-            ),
-            WeightTarget(
-                mlx_path="decoder.conv_in.conv.bias",
-                hf_patterns=["decoder.conv_in.bias"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.mid_block.resnets.{i}.norm1.weight",
-                hf_patterns=["decoder.mid_block.resnets.{i}.norm1.weight"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.mid_block.resnets.{i}.norm1.bias",
-                hf_patterns=["decoder.mid_block.resnets.{i}.norm1.bias"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.mid_block.resnets.{i}.conv1.weight",
-                hf_patterns=["decoder.mid_block.resnets.{i}.conv1.weight"],
-                transform=transpose_conv2d_weight,
-            ),
-            WeightTarget(
-                mlx_path="decoder.mid_block.resnets.{i}.conv1.bias",
-                hf_patterns=["decoder.mid_block.resnets.{i}.conv1.bias"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.mid_block.resnets.{i}.norm2.weight",
-                hf_patterns=["decoder.mid_block.resnets.{i}.norm2.weight"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.mid_block.resnets.{i}.norm2.bias",
-                hf_patterns=["decoder.mid_block.resnets.{i}.norm2.bias"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.mid_block.resnets.{i}.conv2.weight",
-                hf_patterns=["decoder.mid_block.resnets.{i}.conv2.weight"],
-                transform=transpose_conv2d_weight,
-            ),
-            WeightTarget(
-                mlx_path="decoder.mid_block.resnets.{i}.conv2.bias",
-                hf_patterns=["decoder.mid_block.resnets.{i}.conv2.bias"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.mid_block.attentions.0.group_norm.weight",
-                hf_patterns=["decoder.mid_block.attentions.0.group_norm.weight"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.mid_block.attentions.0.group_norm.bias",
-                hf_patterns=["decoder.mid_block.attentions.0.group_norm.bias"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.mid_block.attentions.0.to_q.weight",
-                hf_patterns=["decoder.mid_block.attentions.0.to_q.weight"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.mid_block.attentions.0.to_q.bias",
-                hf_patterns=["decoder.mid_block.attentions.0.to_q.bias"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.mid_block.attentions.0.to_k.weight",
-                hf_patterns=["decoder.mid_block.attentions.0.to_k.weight"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.mid_block.attentions.0.to_k.bias",
-                hf_patterns=["decoder.mid_block.attentions.0.to_k.bias"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.mid_block.attentions.0.to_v.weight",
-                hf_patterns=["decoder.mid_block.attentions.0.to_v.weight"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.mid_block.attentions.0.to_v.bias",
-                hf_patterns=["decoder.mid_block.attentions.0.to_v.bias"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.mid_block.attentions.0.to_out.0.weight",
-                hf_patterns=["decoder.mid_block.attentions.0.to_out.0.weight"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.mid_block.attentions.0.to_out.0.bias",
-                hf_patterns=["decoder.mid_block.attentions.0.to_out.0.bias"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.up_blocks.{block}.resnets.{res}.norm1.weight",
-                hf_patterns=["decoder.up_blocks.{block}.resnets.{res}.norm1.weight"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.up_blocks.{block}.resnets.{res}.norm1.bias",
-                hf_patterns=["decoder.up_blocks.{block}.resnets.{res}.norm1.bias"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.up_blocks.{block}.resnets.{res}.conv1.weight",
-                hf_patterns=["decoder.up_blocks.{block}.resnets.{res}.conv1.weight"],
-                transform=transpose_conv2d_weight,
-            ),
-            WeightTarget(
-                mlx_path="decoder.up_blocks.{block}.resnets.{res}.conv1.bias",
-                hf_patterns=["decoder.up_blocks.{block}.resnets.{res}.conv1.bias"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.up_blocks.{block}.resnets.{res}.norm2.weight",
-                hf_patterns=["decoder.up_blocks.{block}.resnets.{res}.norm2.weight"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.up_blocks.{block}.resnets.{res}.norm2.bias",
-                hf_patterns=["decoder.up_blocks.{block}.resnets.{res}.norm2.bias"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.up_blocks.{block}.resnets.{res}.conv2.weight",
-                hf_patterns=["decoder.up_blocks.{block}.resnets.{res}.conv2.weight"],
-                transform=transpose_conv2d_weight,
-            ),
-            WeightTarget(
-                mlx_path="decoder.up_blocks.{block}.resnets.{res}.conv2.bias",
-                hf_patterns=["decoder.up_blocks.{block}.resnets.{res}.conv2.bias"],
-            ),
-            WeightTarget(
-                mlx_path="decoder.up_blocks.{block}.resnets.{res}.conv_shortcut.weight",
-                hf_patterns=["decoder.up_blocks.{block}.resnets.{res}.conv_shortcut.weight"],
+                to_pattern="encoder.down_blocks.{block}.downsamplers.0.conv.weight",
+                from_pattern=["encoder.down_blocks.{block}.downsamplers.0.conv.weight"],
                 transform=transpose_conv2d_weight,
                 required=False,
             ),
             WeightTarget(
-                mlx_path="decoder.up_blocks.{block}.resnets.{res}.conv_shortcut.bias",
-                hf_patterns=["decoder.up_blocks.{block}.resnets.{res}.conv_shortcut.bias"],
+                to_pattern="encoder.down_blocks.{block}.downsamplers.0.conv.bias",
+                from_pattern=["encoder.down_blocks.{block}.downsamplers.0.conv.bias"],
                 required=False,
             ),
             WeightTarget(
-                mlx_path="decoder.up_blocks.{block}.upsamplers.0.conv.weight",
-                hf_patterns=["decoder.up_blocks.{block}.upsamplers.0.conv.weight"],
+                to_pattern="encoder.mid_block.resnets.{i}.norm1.weight",
+                from_pattern=["encoder.mid_block.resnets.{i}.norm1.weight"],
+            ),
+            WeightTarget(
+                to_pattern="encoder.mid_block.resnets.{i}.norm1.bias",
+                from_pattern=["encoder.mid_block.resnets.{i}.norm1.bias"],
+            ),
+            WeightTarget(
+                to_pattern="encoder.mid_block.resnets.{i}.conv1.weight",
+                from_pattern=["encoder.mid_block.resnets.{i}.conv1.weight"],
+                transform=transpose_conv2d_weight,
+            ),
+            WeightTarget(
+                to_pattern="encoder.mid_block.resnets.{i}.conv1.bias",
+                from_pattern=["encoder.mid_block.resnets.{i}.conv1.bias"],
+            ),
+            WeightTarget(
+                to_pattern="encoder.mid_block.resnets.{i}.norm2.weight",
+                from_pattern=["encoder.mid_block.resnets.{i}.norm2.weight"],
+            ),
+            WeightTarget(
+                to_pattern="encoder.mid_block.resnets.{i}.norm2.bias",
+                from_pattern=["encoder.mid_block.resnets.{i}.norm2.bias"],
+            ),
+            WeightTarget(
+                to_pattern="encoder.mid_block.resnets.{i}.conv2.weight",
+                from_pattern=["encoder.mid_block.resnets.{i}.conv2.weight"],
+                transform=transpose_conv2d_weight,
+            ),
+            WeightTarget(
+                to_pattern="encoder.mid_block.resnets.{i}.conv2.bias",
+                from_pattern=["encoder.mid_block.resnets.{i}.conv2.bias"],
+            ),
+            WeightTarget(
+                to_pattern="encoder.mid_block.attentions.0.group_norm.weight",
+                from_pattern=["encoder.mid_block.attentions.0.group_norm.weight"],
+            ),
+            WeightTarget(
+                to_pattern="encoder.mid_block.attentions.0.group_norm.bias",
+                from_pattern=["encoder.mid_block.attentions.0.group_norm.bias"],
+            ),
+            WeightTarget(
+                to_pattern="encoder.mid_block.attentions.0.to_q.weight",
+                from_pattern=["encoder.mid_block.attentions.0.to_q.weight"],
+            ),
+            WeightTarget(
+                to_pattern="encoder.mid_block.attentions.0.to_q.bias",
+                from_pattern=["encoder.mid_block.attentions.0.to_q.bias"],
+            ),
+            WeightTarget(
+                to_pattern="encoder.mid_block.attentions.0.to_k.weight",
+                from_pattern=["encoder.mid_block.attentions.0.to_k.weight"],
+            ),
+            WeightTarget(
+                to_pattern="encoder.mid_block.attentions.0.to_k.bias",
+                from_pattern=["encoder.mid_block.attentions.0.to_k.bias"],
+            ),
+            WeightTarget(
+                to_pattern="encoder.mid_block.attentions.0.to_v.weight",
+                from_pattern=["encoder.mid_block.attentions.0.to_v.weight"],
+            ),
+            WeightTarget(
+                to_pattern="encoder.mid_block.attentions.0.to_v.bias",
+                from_pattern=["encoder.mid_block.attentions.0.to_v.bias"],
+            ),
+            WeightTarget(
+                to_pattern="encoder.mid_block.attentions.0.to_out.0.weight",
+                from_pattern=["encoder.mid_block.attentions.0.to_out.0.weight"],
+            ),
+            WeightTarget(
+                to_pattern="encoder.mid_block.attentions.0.to_out.0.bias",
+                from_pattern=["encoder.mid_block.attentions.0.to_out.0.bias"],
+            ),
+            WeightTarget(
+                to_pattern="encoder.conv_norm_out.norm.weight",
+                from_pattern=["encoder.conv_norm_out.weight"],
+            ),
+            WeightTarget(
+                to_pattern="encoder.conv_norm_out.norm.bias",
+                from_pattern=["encoder.conv_norm_out.bias"],
+            ),
+            WeightTarget(
+                to_pattern="encoder.conv_out.conv2d.weight",
+                from_pattern=["encoder.conv_out.weight"],
+                transform=transpose_conv2d_weight,
+            ),
+            WeightTarget(
+                to_pattern="encoder.conv_out.conv2d.bias",
+                from_pattern=["encoder.conv_out.bias"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.conv_in.conv.weight",
+                from_pattern=["decoder.conv_in.weight"],
+                transform=transpose_conv2d_weight,
+            ),
+            WeightTarget(
+                to_pattern="decoder.conv_in.conv.bias",
+                from_pattern=["decoder.conv_in.bias"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.mid_block.resnets.{i}.norm1.weight",
+                from_pattern=["decoder.mid_block.resnets.{i}.norm1.weight"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.mid_block.resnets.{i}.norm1.bias",
+                from_pattern=["decoder.mid_block.resnets.{i}.norm1.bias"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.mid_block.resnets.{i}.conv1.weight",
+                from_pattern=["decoder.mid_block.resnets.{i}.conv1.weight"],
+                transform=transpose_conv2d_weight,
+            ),
+            WeightTarget(
+                to_pattern="decoder.mid_block.resnets.{i}.conv1.bias",
+                from_pattern=["decoder.mid_block.resnets.{i}.conv1.bias"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.mid_block.resnets.{i}.norm2.weight",
+                from_pattern=["decoder.mid_block.resnets.{i}.norm2.weight"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.mid_block.resnets.{i}.norm2.bias",
+                from_pattern=["decoder.mid_block.resnets.{i}.norm2.bias"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.mid_block.resnets.{i}.conv2.weight",
+                from_pattern=["decoder.mid_block.resnets.{i}.conv2.weight"],
+                transform=transpose_conv2d_weight,
+            ),
+            WeightTarget(
+                to_pattern="decoder.mid_block.resnets.{i}.conv2.bias",
+                from_pattern=["decoder.mid_block.resnets.{i}.conv2.bias"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.mid_block.attentions.0.group_norm.weight",
+                from_pattern=["decoder.mid_block.attentions.0.group_norm.weight"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.mid_block.attentions.0.group_norm.bias",
+                from_pattern=["decoder.mid_block.attentions.0.group_norm.bias"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.mid_block.attentions.0.to_q.weight",
+                from_pattern=["decoder.mid_block.attentions.0.to_q.weight"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.mid_block.attentions.0.to_q.bias",
+                from_pattern=["decoder.mid_block.attentions.0.to_q.bias"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.mid_block.attentions.0.to_k.weight",
+                from_pattern=["decoder.mid_block.attentions.0.to_k.weight"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.mid_block.attentions.0.to_k.bias",
+                from_pattern=["decoder.mid_block.attentions.0.to_k.bias"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.mid_block.attentions.0.to_v.weight",
+                from_pattern=["decoder.mid_block.attentions.0.to_v.weight"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.mid_block.attentions.0.to_v.bias",
+                from_pattern=["decoder.mid_block.attentions.0.to_v.bias"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.mid_block.attentions.0.to_out.0.weight",
+                from_pattern=["decoder.mid_block.attentions.0.to_out.0.weight"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.mid_block.attentions.0.to_out.0.bias",
+                from_pattern=["decoder.mid_block.attentions.0.to_out.0.bias"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.up_blocks.{block}.resnets.{res}.norm1.weight",
+                from_pattern=["decoder.up_blocks.{block}.resnets.{res}.norm1.weight"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.up_blocks.{block}.resnets.{res}.norm1.bias",
+                from_pattern=["decoder.up_blocks.{block}.resnets.{res}.norm1.bias"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.up_blocks.{block}.resnets.{res}.conv1.weight",
+                from_pattern=["decoder.up_blocks.{block}.resnets.{res}.conv1.weight"],
+                transform=transpose_conv2d_weight,
+            ),
+            WeightTarget(
+                to_pattern="decoder.up_blocks.{block}.resnets.{res}.conv1.bias",
+                from_pattern=["decoder.up_blocks.{block}.resnets.{res}.conv1.bias"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.up_blocks.{block}.resnets.{res}.norm2.weight",
+                from_pattern=["decoder.up_blocks.{block}.resnets.{res}.norm2.weight"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.up_blocks.{block}.resnets.{res}.norm2.bias",
+                from_pattern=["decoder.up_blocks.{block}.resnets.{res}.norm2.bias"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.up_blocks.{block}.resnets.{res}.conv2.weight",
+                from_pattern=["decoder.up_blocks.{block}.resnets.{res}.conv2.weight"],
+                transform=transpose_conv2d_weight,
+            ),
+            WeightTarget(
+                to_pattern="decoder.up_blocks.{block}.resnets.{res}.conv2.bias",
+                from_pattern=["decoder.up_blocks.{block}.resnets.{res}.conv2.bias"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.up_blocks.{block}.resnets.{res}.conv_shortcut.weight",
+                from_pattern=["decoder.up_blocks.{block}.resnets.{res}.conv_shortcut.weight"],
                 transform=transpose_conv2d_weight,
                 required=False,
             ),
             WeightTarget(
-                mlx_path="decoder.up_blocks.{block}.upsamplers.0.conv.bias",
-                hf_patterns=["decoder.up_blocks.{block}.upsamplers.0.conv.bias"],
+                to_pattern="decoder.up_blocks.{block}.resnets.{res}.conv_shortcut.bias",
+                from_pattern=["decoder.up_blocks.{block}.resnets.{res}.conv_shortcut.bias"],
                 required=False,
             ),
             WeightTarget(
-                mlx_path="decoder.conv_norm_out.norm.weight",
-                hf_patterns=["decoder.conv_norm_out.weight"],
+                to_pattern="decoder.up_blocks.{block}.upsamplers.0.conv.weight",
+                from_pattern=["decoder.up_blocks.{block}.upsamplers.0.conv.weight"],
+                transform=transpose_conv2d_weight,
+                required=False,
             ),
             WeightTarget(
-                mlx_path="decoder.conv_norm_out.norm.bias",
-                hf_patterns=["decoder.conv_norm_out.bias"],
+                to_pattern="decoder.up_blocks.{block}.upsamplers.0.conv.bias",
+                from_pattern=["decoder.up_blocks.{block}.upsamplers.0.conv.bias"],
+                required=False,
             ),
             WeightTarget(
-                mlx_path="decoder.conv_out.conv.weight",
-                hf_patterns=["decoder.conv_out.weight"],
+                to_pattern="decoder.conv_norm_out.norm.weight",
+                from_pattern=["decoder.conv_norm_out.weight"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.conv_norm_out.norm.bias",
+                from_pattern=["decoder.conv_norm_out.bias"],
+            ),
+            WeightTarget(
+                to_pattern="decoder.conv_out.conv.weight",
+                from_pattern=["decoder.conv_out.weight"],
                 transform=transpose_conv2d_weight,
             ),
             WeightTarget(
-                mlx_path="decoder.conv_out.conv.bias",
-                hf_patterns=["decoder.conv_out.bias"],
+                to_pattern="decoder.conv_out.conv.bias",
+                from_pattern=["decoder.conv_out.bias"],
             ),
         ]
 
@@ -388,235 +383,235 @@ class ZImageWeightMapping(WeightMapping):
     def get_transformer_mapping() -> List[WeightTarget]:
         return [
             WeightTarget(
-                mlx_path="t_embedder.linear1.weight",
-                hf_patterns=["t_embedder.mlp.0.weight"],
+                to_pattern="t_embedder.linear1.weight",
+                from_pattern=["t_embedder.mlp.0.weight"],
             ),
             WeightTarget(
-                mlx_path="t_embedder.linear1.bias",
-                hf_patterns=["t_embedder.mlp.0.bias"],
+                to_pattern="t_embedder.linear1.bias",
+                from_pattern=["t_embedder.mlp.0.bias"],
             ),
             WeightTarget(
-                mlx_path="t_embedder.linear2.weight",
-                hf_patterns=["t_embedder.mlp.2.weight"],
+                to_pattern="t_embedder.linear2.weight",
+                from_pattern=["t_embedder.mlp.2.weight"],
             ),
             WeightTarget(
-                mlx_path="t_embedder.linear2.bias",
-                hf_patterns=["t_embedder.mlp.2.bias"],
+                to_pattern="t_embedder.linear2.bias",
+                from_pattern=["t_embedder.mlp.2.bias"],
             ),
             WeightTarget(
-                mlx_path="cap_embedder.0.weight",
-                hf_patterns=["cap_embedder.0.weight"],
+                to_pattern="cap_embedder.0.weight",
+                from_pattern=["cap_embedder.0.weight"],
             ),
             WeightTarget(
-                mlx_path="cap_embedder.1.weight",
-                hf_patterns=["cap_embedder.1.weight"],
+                to_pattern="cap_embedder.1.weight",
+                from_pattern=["cap_embedder.1.weight"],
             ),
             WeightTarget(
-                mlx_path="cap_embedder.1.bias",
-                hf_patterns=["cap_embedder.1.bias"],
+                to_pattern="cap_embedder.1.bias",
+                from_pattern=["cap_embedder.1.bias"],
             ),
             WeightTarget(
-                mlx_path="x_pad_token",
-                hf_patterns=["x_pad_token"],
+                to_pattern="x_pad_token",
+                from_pattern=["x_pad_token"],
             ),
             WeightTarget(
-                mlx_path="cap_pad_token",
-                hf_patterns=["cap_pad_token"],
+                to_pattern="cap_pad_token",
+                from_pattern=["cap_pad_token"],
             ),
             WeightTarget(
-                mlx_path="all_x_embedder.2-1.weight",
-                hf_patterns=["all_x_embedder.2-1.weight"],
+                to_pattern="all_x_embedder.2-1.weight",
+                from_pattern=["all_x_embedder.2-1.weight"],
             ),
             WeightTarget(
-                mlx_path="all_x_embedder.2-1.bias",
-                hf_patterns=["all_x_embedder.2-1.bias"],
+                to_pattern="all_x_embedder.2-1.bias",
+                from_pattern=["all_x_embedder.2-1.bias"],
             ),
             WeightTarget(
-                mlx_path="all_final_layer.2-1.linear.weight",
-                hf_patterns=["all_final_layer.2-1.linear.weight"],
+                to_pattern="all_final_layer.2-1.linear.weight",
+                from_pattern=["all_final_layer.2-1.linear.weight"],
             ),
             WeightTarget(
-                mlx_path="all_final_layer.2-1.linear.bias",
-                hf_patterns=["all_final_layer.2-1.linear.bias"],
+                to_pattern="all_final_layer.2-1.linear.bias",
+                from_pattern=["all_final_layer.2-1.linear.bias"],
             ),
             WeightTarget(
-                mlx_path="all_final_layer.2-1.adaLN_modulation.0.weight",
-                hf_patterns=["all_final_layer.2-1.adaLN_modulation.1.weight"],
+                to_pattern="all_final_layer.2-1.adaLN_modulation.0.weight",
+                from_pattern=["all_final_layer.2-1.adaLN_modulation.1.weight"],
             ),
             WeightTarget(
-                mlx_path="all_final_layer.2-1.adaLN_modulation.0.bias",
-                hf_patterns=["all_final_layer.2-1.adaLN_modulation.1.bias"],
+                to_pattern="all_final_layer.2-1.adaLN_modulation.0.bias",
+                from_pattern=["all_final_layer.2-1.adaLN_modulation.1.bias"],
             ),
             WeightTarget(
-                mlx_path="noise_refiner.{layer}.adaLN_modulation.0.weight",
-                hf_patterns=["noise_refiner.{layer}.adaLN_modulation.0.weight"],
+                to_pattern="noise_refiner.{layer}.adaLN_modulation.0.weight",
+                from_pattern=["noise_refiner.{layer}.adaLN_modulation.0.weight"],
             ),
             WeightTarget(
-                mlx_path="noise_refiner.{layer}.adaLN_modulation.0.bias",
-                hf_patterns=["noise_refiner.{layer}.adaLN_modulation.0.bias"],
+                to_pattern="noise_refiner.{layer}.adaLN_modulation.0.bias",
+                from_pattern=["noise_refiner.{layer}.adaLN_modulation.0.bias"],
             ),
             WeightTarget(
-                mlx_path="noise_refiner.{layer}.attention.to_q.weight",
-                hf_patterns=["noise_refiner.{layer}.attention.to_q.weight"],
+                to_pattern="noise_refiner.{layer}.attention.to_q.weight",
+                from_pattern=["noise_refiner.{layer}.attention.to_q.weight"],
             ),
             WeightTarget(
-                mlx_path="noise_refiner.{layer}.attention.to_k.weight",
-                hf_patterns=["noise_refiner.{layer}.attention.to_k.weight"],
+                to_pattern="noise_refiner.{layer}.attention.to_k.weight",
+                from_pattern=["noise_refiner.{layer}.attention.to_k.weight"],
             ),
             WeightTarget(
-                mlx_path="noise_refiner.{layer}.attention.to_v.weight",
-                hf_patterns=["noise_refiner.{layer}.attention.to_v.weight"],
+                to_pattern="noise_refiner.{layer}.attention.to_v.weight",
+                from_pattern=["noise_refiner.{layer}.attention.to_v.weight"],
             ),
             WeightTarget(
-                mlx_path="noise_refiner.{layer}.attention.to_out.0.weight",
-                hf_patterns=["noise_refiner.{layer}.attention.to_out.0.weight"],
+                to_pattern="noise_refiner.{layer}.attention.to_out.0.weight",
+                from_pattern=["noise_refiner.{layer}.attention.to_out.0.weight"],
             ),
             WeightTarget(
-                mlx_path="noise_refiner.{layer}.attention.norm_q.weight",
-                hf_patterns=["noise_refiner.{layer}.attention.norm_q.weight"],
+                to_pattern="noise_refiner.{layer}.attention.norm_q.weight",
+                from_pattern=["noise_refiner.{layer}.attention.norm_q.weight"],
             ),
             WeightTarget(
-                mlx_path="noise_refiner.{layer}.attention.norm_k.weight",
-                hf_patterns=["noise_refiner.{layer}.attention.norm_k.weight"],
+                to_pattern="noise_refiner.{layer}.attention.norm_k.weight",
+                from_pattern=["noise_refiner.{layer}.attention.norm_k.weight"],
             ),
             WeightTarget(
-                mlx_path="noise_refiner.{layer}.attention_norm1.weight",
-                hf_patterns=["noise_refiner.{layer}.attention_norm1.weight"],
+                to_pattern="noise_refiner.{layer}.attention_norm1.weight",
+                from_pattern=["noise_refiner.{layer}.attention_norm1.weight"],
             ),
             WeightTarget(
-                mlx_path="noise_refiner.{layer}.attention_norm2.weight",
-                hf_patterns=["noise_refiner.{layer}.attention_norm2.weight"],
+                to_pattern="noise_refiner.{layer}.attention_norm2.weight",
+                from_pattern=["noise_refiner.{layer}.attention_norm2.weight"],
             ),
             WeightTarget(
-                mlx_path="noise_refiner.{layer}.ffn_norm1.weight",
-                hf_patterns=["noise_refiner.{layer}.ffn_norm1.weight"],
+                to_pattern="noise_refiner.{layer}.ffn_norm1.weight",
+                from_pattern=["noise_refiner.{layer}.ffn_norm1.weight"],
             ),
             WeightTarget(
-                mlx_path="noise_refiner.{layer}.ffn_norm2.weight",
-                hf_patterns=["noise_refiner.{layer}.ffn_norm2.weight"],
+                to_pattern="noise_refiner.{layer}.ffn_norm2.weight",
+                from_pattern=["noise_refiner.{layer}.ffn_norm2.weight"],
             ),
             WeightTarget(
-                mlx_path="noise_refiner.{layer}.feed_forward.w1.weight",
-                hf_patterns=["noise_refiner.{layer}.feed_forward.w1.weight"],
+                to_pattern="noise_refiner.{layer}.feed_forward.w1.weight",
+                from_pattern=["noise_refiner.{layer}.feed_forward.w1.weight"],
             ),
             WeightTarget(
-                mlx_path="noise_refiner.{layer}.feed_forward.w2.weight",
-                hf_patterns=["noise_refiner.{layer}.feed_forward.w2.weight"],
+                to_pattern="noise_refiner.{layer}.feed_forward.w2.weight",
+                from_pattern=["noise_refiner.{layer}.feed_forward.w2.weight"],
             ),
             WeightTarget(
-                mlx_path="noise_refiner.{layer}.feed_forward.w3.weight",
-                hf_patterns=["noise_refiner.{layer}.feed_forward.w3.weight"],
+                to_pattern="noise_refiner.{layer}.feed_forward.w3.weight",
+                from_pattern=["noise_refiner.{layer}.feed_forward.w3.weight"],
             ),
             WeightTarget(
-                mlx_path="context_refiner.{layer}.attention.to_q.weight",
-                hf_patterns=["context_refiner.{layer}.attention.to_q.weight"],
+                to_pattern="context_refiner.{layer}.attention.to_q.weight",
+                from_pattern=["context_refiner.{layer}.attention.to_q.weight"],
             ),
             WeightTarget(
-                mlx_path="context_refiner.{layer}.attention.to_k.weight",
-                hf_patterns=["context_refiner.{layer}.attention.to_k.weight"],
+                to_pattern="context_refiner.{layer}.attention.to_k.weight",
+                from_pattern=["context_refiner.{layer}.attention.to_k.weight"],
             ),
             WeightTarget(
-                mlx_path="context_refiner.{layer}.attention.to_v.weight",
-                hf_patterns=["context_refiner.{layer}.attention.to_v.weight"],
+                to_pattern="context_refiner.{layer}.attention.to_v.weight",
+                from_pattern=["context_refiner.{layer}.attention.to_v.weight"],
             ),
             WeightTarget(
-                mlx_path="context_refiner.{layer}.attention.to_out.0.weight",
-                hf_patterns=["context_refiner.{layer}.attention.to_out.0.weight"],
+                to_pattern="context_refiner.{layer}.attention.to_out.0.weight",
+                from_pattern=["context_refiner.{layer}.attention.to_out.0.weight"],
             ),
             WeightTarget(
-                mlx_path="context_refiner.{layer}.attention.norm_q.weight",
-                hf_patterns=["context_refiner.{layer}.attention.norm_q.weight"],
+                to_pattern="context_refiner.{layer}.attention.norm_q.weight",
+                from_pattern=["context_refiner.{layer}.attention.norm_q.weight"],
             ),
             WeightTarget(
-                mlx_path="context_refiner.{layer}.attention.norm_k.weight",
-                hf_patterns=["context_refiner.{layer}.attention.norm_k.weight"],
+                to_pattern="context_refiner.{layer}.attention.norm_k.weight",
+                from_pattern=["context_refiner.{layer}.attention.norm_k.weight"],
             ),
             WeightTarget(
-                mlx_path="context_refiner.{layer}.attention_norm1.weight",
-                hf_patterns=["context_refiner.{layer}.attention_norm1.weight"],
+                to_pattern="context_refiner.{layer}.attention_norm1.weight",
+                from_pattern=["context_refiner.{layer}.attention_norm1.weight"],
             ),
             WeightTarget(
-                mlx_path="context_refiner.{layer}.attention_norm2.weight",
-                hf_patterns=["context_refiner.{layer}.attention_norm2.weight"],
+                to_pattern="context_refiner.{layer}.attention_norm2.weight",
+                from_pattern=["context_refiner.{layer}.attention_norm2.weight"],
             ),
             WeightTarget(
-                mlx_path="context_refiner.{layer}.ffn_norm1.weight",
-                hf_patterns=["context_refiner.{layer}.ffn_norm1.weight"],
+                to_pattern="context_refiner.{layer}.ffn_norm1.weight",
+                from_pattern=["context_refiner.{layer}.ffn_norm1.weight"],
             ),
             WeightTarget(
-                mlx_path="context_refiner.{layer}.ffn_norm2.weight",
-                hf_patterns=["context_refiner.{layer}.ffn_norm2.weight"],
+                to_pattern="context_refiner.{layer}.ffn_norm2.weight",
+                from_pattern=["context_refiner.{layer}.ffn_norm2.weight"],
             ),
             WeightTarget(
-                mlx_path="context_refiner.{layer}.feed_forward.w1.weight",
-                hf_patterns=["context_refiner.{layer}.feed_forward.w1.weight"],
+                to_pattern="context_refiner.{layer}.feed_forward.w1.weight",
+                from_pattern=["context_refiner.{layer}.feed_forward.w1.weight"],
             ),
             WeightTarget(
-                mlx_path="context_refiner.{layer}.feed_forward.w2.weight",
-                hf_patterns=["context_refiner.{layer}.feed_forward.w2.weight"],
+                to_pattern="context_refiner.{layer}.feed_forward.w2.weight",
+                from_pattern=["context_refiner.{layer}.feed_forward.w2.weight"],
             ),
             WeightTarget(
-                mlx_path="context_refiner.{layer}.feed_forward.w3.weight",
-                hf_patterns=["context_refiner.{layer}.feed_forward.w3.weight"],
+                to_pattern="context_refiner.{layer}.feed_forward.w3.weight",
+                from_pattern=["context_refiner.{layer}.feed_forward.w3.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.adaLN_modulation.0.weight",
-                hf_patterns=["layers.{layer}.adaLN_modulation.0.weight"],
+                to_pattern="layers.{layer}.adaLN_modulation.0.weight",
+                from_pattern=["layers.{layer}.adaLN_modulation.0.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.adaLN_modulation.0.bias",
-                hf_patterns=["layers.{layer}.adaLN_modulation.0.bias"],
+                to_pattern="layers.{layer}.adaLN_modulation.0.bias",
+                from_pattern=["layers.{layer}.adaLN_modulation.0.bias"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.attention.to_q.weight",
-                hf_patterns=["layers.{layer}.attention.to_q.weight"],
+                to_pattern="layers.{layer}.attention.to_q.weight",
+                from_pattern=["layers.{layer}.attention.to_q.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.attention.to_k.weight",
-                hf_patterns=["layers.{layer}.attention.to_k.weight"],
+                to_pattern="layers.{layer}.attention.to_k.weight",
+                from_pattern=["layers.{layer}.attention.to_k.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.attention.to_v.weight",
-                hf_patterns=["layers.{layer}.attention.to_v.weight"],
+                to_pattern="layers.{layer}.attention.to_v.weight",
+                from_pattern=["layers.{layer}.attention.to_v.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.attention.to_out.0.weight",
-                hf_patterns=["layers.{layer}.attention.to_out.0.weight"],
+                to_pattern="layers.{layer}.attention.to_out.0.weight",
+                from_pattern=["layers.{layer}.attention.to_out.0.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.attention.norm_q.weight",
-                hf_patterns=["layers.{layer}.attention.norm_q.weight"],
+                to_pattern="layers.{layer}.attention.norm_q.weight",
+                from_pattern=["layers.{layer}.attention.norm_q.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.attention.norm_k.weight",
-                hf_patterns=["layers.{layer}.attention.norm_k.weight"],
+                to_pattern="layers.{layer}.attention.norm_k.weight",
+                from_pattern=["layers.{layer}.attention.norm_k.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.attention_norm1.weight",
-                hf_patterns=["layers.{layer}.attention_norm1.weight"],
+                to_pattern="layers.{layer}.attention_norm1.weight",
+                from_pattern=["layers.{layer}.attention_norm1.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.attention_norm2.weight",
-                hf_patterns=["layers.{layer}.attention_norm2.weight"],
+                to_pattern="layers.{layer}.attention_norm2.weight",
+                from_pattern=["layers.{layer}.attention_norm2.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.ffn_norm1.weight",
-                hf_patterns=["layers.{layer}.ffn_norm1.weight"],
+                to_pattern="layers.{layer}.ffn_norm1.weight",
+                from_pattern=["layers.{layer}.ffn_norm1.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.ffn_norm2.weight",
-                hf_patterns=["layers.{layer}.ffn_norm2.weight"],
+                to_pattern="layers.{layer}.ffn_norm2.weight",
+                from_pattern=["layers.{layer}.ffn_norm2.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.feed_forward.w1.weight",
-                hf_patterns=["layers.{layer}.feed_forward.w1.weight"],
+                to_pattern="layers.{layer}.feed_forward.w1.weight",
+                from_pattern=["layers.{layer}.feed_forward.w1.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.feed_forward.w2.weight",
-                hf_patterns=["layers.{layer}.feed_forward.w2.weight"],
+                to_pattern="layers.{layer}.feed_forward.w2.weight",
+                from_pattern=["layers.{layer}.feed_forward.w2.weight"],
             ),
             WeightTarget(
-                mlx_path="layers.{layer}.feed_forward.w3.weight",
-                hf_patterns=["layers.{layer}.feed_forward.w3.weight"],
+                to_pattern="layers.{layer}.feed_forward.w3.weight",
+                from_pattern=["layers.{layer}.feed_forward.w3.weight"],
             ),
         ]

@@ -8,12 +8,12 @@ from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.common.latent_creator.latent_creator import LatentCreator
 from mflux.models.flux.flux_initializer import FluxInitializer
+from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 from mflux.models.flux.model.flux_text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.flux.model.flux_text_encoder.prompt_encoder import PromptEncoder
 from mflux.models.flux.model.flux_text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.flux.model.flux_transformer.transformer import Transformer
 from mflux.models.flux.model.flux_vae.vae import VAE
-from mflux.utils.array_util import ArrayUtil
 from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
@@ -32,8 +32,6 @@ class Flux1InContextDev(nn.Module):
         local_path: str | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
-        lora_names: list[str] | None = None,
-        lora_repo_id: str | None = None,
     ):
         super().__init__()
         FluxInitializer.init(
@@ -43,8 +41,6 @@ class Flux1InContextDev(nn.Module):
             local_path=local_path,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
-            lora_names=lora_names,
-            lora_repo_id=lora_repo_id,
         )
 
     def generate_image(
@@ -151,7 +147,7 @@ class Flux1InContextDev(nn.Module):
         )
 
         # 6. Decode the latent array and return the image
-        latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
+        latents = FluxLatentCreator.unpack_latents(latents=latents, height=config.height, width=config.width)
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,
@@ -177,7 +173,7 @@ class Flux1InContextDev(nn.Module):
 
         # 3. Create noise with appropriate dimensions
         static_noise = mx.random.normal(shape=[1, 16, latent_height, latent_width], key=mx.random.key(seed))
-        latents = ArrayUtil.pack_latents(latents=static_noise, height=config.height, width=config.width)
+        latents = FluxLatentCreator.pack_latents(latents=static_noise, height=config.height, width=config.width)
         return latents
 
     @staticmethod
@@ -190,8 +186,10 @@ class Flux1InContextDev(nn.Module):
         sigmas: mx.array,
     ) -> mx.array:
         # 1. Unpack the latents
-        unpacked = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
-        unpacked_static_noise = ArrayUtil.unpack_latents(latents=static_noise, height=config.height, width=config.width)
+        unpacked = FluxLatentCreator.unpack_latents(latents=latents, height=config.height, width=config.width)
+        unpacked_static_noise = FluxLatentCreator.unpack_latents(
+            latents=static_noise, height=config.height, width=config.width
+        )
 
         # 2. Calculate latent_width from the config (original width is half of current width)
         latent_width = (config.width // 2) // 8
@@ -204,4 +202,4 @@ class Flux1InContextDev(nn.Module):
         )
 
         # 4. Repack the latents
-        return ArrayUtil.pack_latents(latents=unpacked, height=config.height, width=config.width)
+        return FluxLatentCreator.pack_latents(latents=unpacked, height=config.height, width=config.width)

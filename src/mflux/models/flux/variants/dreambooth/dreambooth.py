@@ -7,7 +7,6 @@ from mflux.models.flux.variants.dreambooth.state.training_spec import TrainingSp
 from mflux.models.flux.variants.dreambooth.state.training_state import TrainingState
 from mflux.models.flux.variants.dreambooth.statistics.plotter import Plotter
 from mflux.models.flux.variants.txt2img.flux import Flux1
-from mflux.models.flux.weights.weight_handler_lora import WeightHandlerLoRA
 
 
 class DreamBooth:
@@ -18,12 +17,8 @@ class DreamBooth:
         training_spec: TrainingSpec,
         training_state: TrainingState,
     ):
-        # Freeze the model and assign the LoRA layers to the model
+        # Freeze the model (LoRA layers are already applied to transformer in from_spec)
         flux.freeze()
-        WeightHandlerLoRA.set_lora_layers(
-            transformer_module=flux.transformer,
-            lora_layers=training_state.lora_layers,
-        )
 
         # Define loss computation as a function of a batch 'b'
         train_step_function = nn.value_and_grad(
@@ -66,7 +61,7 @@ class DreamBooth:
 
             # Save checkpoint periodically
             if training_state.should_save(training_spec):
-                training_state.save(training_spec)
+                training_state.save(flux, training_spec)
 
         # Save the final state
-        training_state.save(training_spec)
+        training_state.save(flux, training_spec)

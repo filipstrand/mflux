@@ -1,7 +1,7 @@
 import mlx.core as mx
 
 from mflux.models.common.latent_creator.latent_creator import LatentCreator
-from mflux.utils.array_util import ArrayUtil
+from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 
 
 class KontextUtil:
@@ -21,7 +21,7 @@ class KontextUtil:
         )
 
         # Pack image latents for conditioning
-        image_latents = ArrayUtil.pack_latents(
+        image_latents = FluxLatentCreator.pack_latents(
             latents=input_image,
             height=height,
             width=width,

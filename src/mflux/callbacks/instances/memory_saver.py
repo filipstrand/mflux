@@ -9,11 +9,6 @@ from mflux.config.runtime_config import RuntimeConfig
 
 
 class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
-    """
-    Optimizes memory usage by clearing caches and removing unused model
-    components at strategic points in the execution cycle.
-    """
-
     def __init__(self, model, keep_transformer: bool = True, cache_limit_bytes: int = 1000**3):
         self.model = model
         self.keep_transformer = keep_transformer

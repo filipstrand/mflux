@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from huggingface_hub import snapshot_download
 from transformers import Qwen2TokenizerFast
 
 from mflux.config.model_config import ModelConfig
@@ -7,7 +8,6 @@ from mflux.models.qwen.model.qwen_text_encoder.qwen_vision_language_encoder impo
 from mflux.models.qwen.qwen_initializer import QwenImageInitializer
 from mflux.models.qwen.tokenizer.qwen_vision_language_processor import QwenVisionLanguageProcessor
 from mflux.models.qwen.tokenizer.qwen_vision_language_tokenizer import QwenVisionLanguageTokenizer
-from mflux.utils.download import snapshot_download
 
 
 class QwenImageEditInitializer:
@@ -19,8 +19,6 @@ class QwenImageEditInitializer:
         local_path: str | None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
-        lora_names: list[str] | None = None,
-        lora_repo_id: str | None = None,
     ) -> None:
         # 1. Initialize the base Qwen Image model (VAE, transformer, text encoder, etc.)
         QwenImageInitializer.init(
@@ -30,8 +28,6 @@ class QwenImageEditInitializer:
             local_path=local_path,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
-            lora_names=lora_names,
-            lora_repo_id=lora_repo_id,
         )
 
         # 2. Add vision-language components for edit functionality
@@ -70,7 +66,6 @@ class QwenImageEditInitializer:
 
     @staticmethod
     def _load_tokenizer(root_path: Path, repo_id: str) -> Qwen2TokenizerFast:
-        """Load the tokenizer from local path or download from HuggingFace."""
         tokenizer_path = root_path / "tokenizer"
         if not tokenizer_path.exists():
             tokenizer_path = root_path

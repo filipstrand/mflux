@@ -14,7 +14,6 @@ class ZImageLoRAMapping(LoRAMapping):
 
     @staticmethod
     def _get_layer_targets(layer_type: str) -> list[LoRATarget]:
-        """Generate LoRA targets for a specific layer type."""
         return [
             LoRATarget(
                 model_path=f"{layer_type}.{{block}}.adaLN_modulation.0",

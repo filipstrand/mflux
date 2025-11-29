@@ -13,6 +13,7 @@ class CallbackManager:
     def register_callbacks(
         args: Namespace,
         model,
+        latent_creator,
         enable_canny_saver: bool = False,
         enable_depth_saver: bool = False,
     ) -> MemorySaver | None:
@@ -30,7 +31,7 @@ class CallbackManager:
             CallbackManager._register_depth_saver(args)
 
         # Stepwise handler (if requested)
-        CallbackManager._register_stepwise_handler(args, model)
+        CallbackManager._register_stepwise_handler(args, model, latent_creator)
 
         # Memory saver (if requested)
         return CallbackManager._register_memory_saver(args, model)
@@ -59,9 +60,11 @@ class CallbackManager:
             CallbackRegistry.register_before_loop(depth_image_saver)
 
     @staticmethod
-    def _register_stepwise_handler(args: Namespace, model) -> None:
+    def _register_stepwise_handler(args: Namespace, model, latent_creator) -> None:
         if args.stepwise_image_output_dir:
-            handler = StepwiseHandler(model=model, output_dir=args.stepwise_image_output_dir)
+            handler = StepwiseHandler(
+                model=model, output_dir=args.stepwise_image_output_dir, latent_creator=latent_creator
+            )
             CallbackRegistry.register_before_loop(handler)
             CallbackRegistry.register_in_loop(handler)
             CallbackRegistry.register_interrupt(handler)

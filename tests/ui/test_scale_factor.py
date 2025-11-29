@@ -1,6 +1,6 @@
 import pytest
 
-from mflux.ui.scale_factor import ScaleFactor, parse_scale_factor
+from mflux.utils.scale_factor import ScaleFactor
 
 
 def test_scale_factor_init():
@@ -45,59 +45,59 @@ def test_scale_factor_get_scaled_value():
     assert sf.get_scaled_value(100) == 0  # 0.1 * 100 - (0.1 * 100) % 16 = 10 - 10 = 0
 
 
-def test_parse_scale_factor_valid():
+def test_scale_factor_parse_valid():
     """Test parsing valid scale factor strings"""
     # Integer scale factors
-    sf = parse_scale_factor("1x")
+    sf = ScaleFactor.parse("1x")
     assert sf.value == 1
 
-    sf = parse_scale_factor("2x")
+    sf = ScaleFactor.parse("2x")
     assert sf.value == 2
 
-    sf = parse_scale_factor("10x")
+    sf = ScaleFactor.parse("10x")
     assert sf.value == 10
 
     # Float scale factors
-    sf = parse_scale_factor("1.5x")
+    sf = ScaleFactor.parse("1.5x")
     assert sf.value == 1.5
 
-    sf = parse_scale_factor("2.75X")
+    sf = ScaleFactor.parse("2.75X")
     assert sf.value == 2.75
 
     # With whitespace
-    sf = parse_scale_factor("  2x  ")
+    sf = ScaleFactor.parse("  2x  ")
     assert sf.value == 2
 
 
-def test_parse_scale_factor_invalid():
+def test_scale_factor_parse_invalid():
     """Test parsing invalid scale factor strings"""
     # Missing 'x'
     with pytest.raises(ValueError, match="Invalid scale factor format"):
-        parse_scale_factor("2")
+        ScaleFactor.parse("2")
 
     # Multiple 'x'
     with pytest.raises(ValueError, match="Invalid scale factor format"):
-        parse_scale_factor("2xx")
+        ScaleFactor.parse("2xx")
 
     # Non-numeric value
     with pytest.raises(ValueError, match="Invalid scale factor format"):
-        parse_scale_factor("abcx")
+        ScaleFactor.parse("abcx")
 
     # Empty before 'x'
     with pytest.raises(ValueError, match="Invalid scale factor format"):
-        parse_scale_factor("x")
+        ScaleFactor.parse("x")
 
     # Invalid format
     with pytest.raises(ValueError, match="Invalid scale factor format"):
-        parse_scale_factor("2.5.5x")
+        ScaleFactor.parse("2.5.5x")
 
     # Negative values should fail at parsing
     with pytest.raises(ValueError, match="Invalid scale factor format"):
-        parse_scale_factor("-1x")
+        ScaleFactor.parse("-1x")
 
     # Zero should parse but fail in ScaleFactor init
     with pytest.raises(ValueError, match="Scale factor must be positive"):
-        parse_scale_factor("0x")
+        ScaleFactor.parse("0x")
 
 
 def test_scale_factor_realistic_dimensions():
