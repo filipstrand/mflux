@@ -1,7 +1,7 @@
 from mlx import nn
 from tqdm import tqdm
 
-from mflux.models.common.config.runtime_config import RuntimeConfig
+from mflux.models.common.config.config import Config
 from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
 from mflux.models.flux.variants.dreambooth.optimization.dreambooth_loss import DreamBoothLoss
 from mflux.models.flux.variants.dreambooth.state.training_spec import TrainingSpec
@@ -14,7 +14,7 @@ class DreamBooth:
     @staticmethod
     def train(
         flux: Flux1,
-        config: RuntimeConfig,
+        config: Config,
         training_spec: TrainingSpec,
         training_state: TrainingState,
     ):

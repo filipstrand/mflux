@@ -11,7 +11,7 @@ from mflux.models.common.schedulers.linear_scheduler import LinearScheduler
 logger = logging.getLogger(__name__)
 
 
-class RuntimeConfig:
+class Config:
     def __init__(
         self,
         model_config: ModelConfig,

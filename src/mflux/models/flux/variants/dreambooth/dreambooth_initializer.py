@@ -1,7 +1,7 @@
 import mlx.core.random as random
 
+from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
-from mflux.models.common.config.runtime_config import RuntimeConfig
 from mflux.models.flux.variants.dreambooth.dataset.dataset import Dataset
 from mflux.models.flux.variants.dreambooth.dataset.iterator import Iterator
 from mflux.models.flux.variants.dreambooth.lora_layers.lora_layers import LoRALayers
@@ -17,7 +17,7 @@ class DreamBoothInitializer:
     def initialize(
         config_path: str | None,
         checkpoint_path: str | None,
-    ) -> tuple[Flux1, RuntimeConfig, TrainingSpec, TrainingState]:
+    ) -> tuple[Flux1, Config, TrainingSpec, TrainingState]:
         # The training specification describing the details of the training process. It is resolved
         # differently depending on if training starts from scratch or resumes from checkpoint.
         training_spec = TrainingSpec.resolve(
@@ -34,7 +34,7 @@ class DreamBoothInitializer:
             model_config=model_config,
             quantize=training_spec.quantize,
         )
-        config = RuntimeConfig(
+        config = Config(
             model_config=model_config,
             num_inference_steps=training_spec.steps,
             width=training_spec.width,
