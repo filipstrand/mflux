@@ -159,7 +159,7 @@ class TestMetadata:
             # =================================================================
             # Test 11: mflux-info command output
             # =================================================================
-            from mflux.info import format_metadata
+            from mflux.cli.commands.info import format_metadata
 
             output = format_metadata(metadata)
             assert "A simple test image" in output, "Prompt should be in output"

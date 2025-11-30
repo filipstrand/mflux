@@ -1,4 +1,4 @@
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -22,21 +22,23 @@ def test_upscale_passes_correct_dimensions_to_generate_image(
     args_height, args_width, orig_height, orig_width, expected_height, expected_width
 ):
     """Test that upscale.py passes the correct dimensions to generate_image"""
-    # Mock the image that will be opened
-    mock_image = Mock()
+    # Mock the image that will be opened - needs to support context manager protocol
+    mock_image = MagicMock()
     mock_image.size = (orig_width, orig_height)
     mock_image.height = orig_height
     mock_image.width = orig_width
+    mock_image.__enter__ = Mock(return_value=mock_image)
+    mock_image.__exit__ = Mock(return_value=False)
 
     # Mock the flux object
     mock_flux = Mock()
 
     # Import and patch the actual upscale module
     with patch("PIL.Image.open", return_value=mock_image):
-        with patch("mflux.upscale.Flux1Controlnet", return_value=mock_flux):
-            with patch("mflux.upscale.ModelConfig"):
-                with patch("mflux.upscale.CallbackManager"):
-                    from mflux.upscale import main
+        with patch("mflux.cli.commands.upscale.Flux1Controlnet", return_value=mock_flux):
+            with patch("mflux.cli.commands.upscale.ModelConfig"):
+                with patch("mflux.cli.commands.upscale.CallbackManager"):
+                    from mflux.cli.commands.upscale import main
 
                     # Mock command line args
                     mock_args = Mock()
@@ -52,12 +54,14 @@ def test_upscale_passes_correct_dimensions_to_generate_image(
                     mock_args.lora_paths = None
                     mock_args.lora_scales = None
 
-                    with patch("mflux.upscale.CommandLineParser") as mock_parser_class:
+                    with patch("mflux.cli.commands.upscale.CommandLineParser") as mock_parser_class:
                         mock_parser = Mock()
                         mock_parser.parse_args.return_value = mock_args
                         mock_parser_class.return_value = mock_parser
 
-                        with patch("mflux.upscale.PromptUtil.get_effective_prompt", return_value="test prompt"):
+                        with patch(
+                            "mflux.cli.commands.upscale.PromptUtil.get_effective_prompt", return_value="test prompt"
+                        ):
                             # Call the main function
                             main()
 

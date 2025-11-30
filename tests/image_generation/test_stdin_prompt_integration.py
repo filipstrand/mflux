@@ -17,11 +17,11 @@ def test_stdin_prompt_with_actual_generation(temp_output_dir):
     output_image = temp_output_dir / "test_stdin.png"
     metadata_file = temp_output_dir / "test_stdin.json"
 
-    # Run the actual mflux.generate module with stdin
+    # Run the actual mflux.cli.commands.generate module with stdin
     cmd = [
         sys.executable,
         "-m",
-        "mflux.generate",
+        "mflux.cli.commands.generate",
         "--prompt",
         "-",
         "--model",
@@ -77,7 +77,7 @@ def test_stdin_prompt_multiline_with_actual_generation(temp_output_dir):
     cmd = [
         sys.executable,
         "-m",
-        "mflux.generate",
+        "mflux.cli.commands.generate",
         "--prompt",
         "-",
         "--model",
@@ -116,7 +116,7 @@ def test_empty_stdin_fails_generation(temp_output_dir):
     cmd = [
         sys.executable,
         "-m",
-        "mflux.generate",
+        "mflux.cli.commands.generate",
         "--prompt",
         "-",
         "--model",
@@ -153,7 +153,7 @@ def test_pipe_from_echo_command(temp_output_dir):
     metadata_file = temp_output_dir / "test_echo.json"
 
     # Simulate: echo "prompt" | mflux-generate --prompt - ...
-    echo_cmd = f'echo "{prompt}" | {sys.executable} -m mflux.generate --prompt - --model dev --steps 1 --height 256 --width 256 -q 4 --output {output_image} --metadata'
+    echo_cmd = f'echo "{prompt}" | {sys.executable} -m mflux.cli.commands.generate --prompt - --model dev --steps 1 --height 256 --width 256 -q 4 --output {output_image} --metadata'
 
     process = subprocess.run(echo_cmd, shell=True, capture_output=True, text=True)
 

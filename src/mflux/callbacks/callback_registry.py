@@ -8,6 +8,13 @@ class CallbackRegistry:
     after_loop = []
 
     @staticmethod
+    def clear() -> None:
+        CallbackRegistry.in_loop = []
+        CallbackRegistry.before_loop = []
+        CallbackRegistry.interrupt = []
+        CallbackRegistry.after_loop = []
+
+    @staticmethod
     def register_in_loop(callback: InLoopCallback) -> None:
         CallbackRegistry.in_loop.append(callback)
 

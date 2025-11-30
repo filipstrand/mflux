@@ -2,6 +2,7 @@ from mlx import nn
 from tqdm import tqdm
 
 from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
 from mflux.models.flux.variants.dreambooth.optimization.dreambooth_loss import DreamBoothLoss
 from mflux.models.flux.variants.dreambooth.state.training_spec import TrainingSpec
 from mflux.models.flux.variants.dreambooth.state.training_state import TrainingState
@@ -19,6 +20,9 @@ class DreamBooth:
     ):
         # Freeze the model (LoRA layers are already applied to transformer in from_spec)
         flux.freeze()
+
+        # Unfreeze LoRA layers so they can be trained
+        DreamBooth._unfreeze_lora_layers(flux.transformer)
 
         # Define loss computation as a function of a batch 'b'
         train_step_function = nn.value_and_grad(
@@ -65,3 +69,9 @@ class DreamBooth:
 
         # Save the final state
         training_state.save(flux, training_spec)
+
+    @staticmethod
+    def _unfreeze_lora_layers(module: nn.Module) -> None:
+        for name, child in module.named_modules():
+            if isinstance(child, LoRALinear):
+                child.unfreeze(keys=["lora_A", "lora_B"], strict=False)
