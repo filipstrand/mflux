@@ -176,73 +176,97 @@ class DepthProWeightMapping(WeightMapping):
 
     @staticmethod
     def _get_decoder_mapping() -> List[WeightTarget]:
-        targets = [
+        return (
+            DepthProWeightMapping._get_decoder_convs_mapping()
+            + DepthProWeightMapping._get_fusion_block_mapping(0)
+            + DepthProWeightMapping._get_fusion_block_mapping(1)
+            + DepthProWeightMapping._get_fusion_block_mapping(2)
+            + DepthProWeightMapping._get_fusion_block_mapping(3)
+            + DepthProWeightMapping._get_fusion_block_mapping(4)
+        )
+
+    @staticmethod
+    def _get_decoder_convs_mapping() -> List[WeightTarget]:
+        return [
             WeightTarget(
-                to_pattern=f"decoder.convs.{i}.weight",
-                from_pattern=[f"decoder.convs.{i}.weight"],
+                to_pattern="decoder.convs.1.weight",
+                from_pattern=["decoder.convs.1.weight"],
                 transform=transpose_conv2d_weight,
-            )
-            for i in range(1, 5)
+            ),
+            WeightTarget(
+                to_pattern="decoder.convs.2.weight",
+                from_pattern=["decoder.convs.2.weight"],
+                transform=transpose_conv2d_weight,
+            ),
+            WeightTarget(
+                to_pattern="decoder.convs.3.weight",
+                from_pattern=["decoder.convs.3.weight"],
+                transform=transpose_conv2d_weight,
+            ),
+            WeightTarget(
+                to_pattern="decoder.convs.4.weight",
+                from_pattern=["decoder.convs.4.weight"],
+                transform=transpose_conv2d_weight,
+            ),
         ]
 
-        for i in range(5):
-            targets.extend(
-                [
-                    WeightTarget(
-                        to_pattern=f"decoder.fusions.{i}.resnet1.residual.1.weight",
-                        from_pattern=[f"decoder.fusions.{i}.resnet1.residual.1.weight"],
-                        transform=transpose_conv2d_weight,
-                    ),
-                    WeightTarget(
-                        to_pattern=f"decoder.fusions.{i}.resnet1.residual.1.bias",
-                        from_pattern=[f"decoder.fusions.{i}.resnet1.residual.1.bias"],
-                    ),
-                    WeightTarget(
-                        to_pattern=f"decoder.fusions.{i}.resnet1.residual.3.weight",
-                        from_pattern=[f"decoder.fusions.{i}.resnet1.residual.3.weight"],
-                        transform=transpose_conv2d_weight,
-                    ),
-                    WeightTarget(
-                        to_pattern=f"decoder.fusions.{i}.resnet1.residual.3.bias",
-                        from_pattern=[f"decoder.fusions.{i}.resnet1.residual.3.bias"],
-                    ),
-                    WeightTarget(
-                        to_pattern=f"decoder.fusions.{i}.resnet2.residual.1.weight",
-                        from_pattern=[f"decoder.fusions.{i}.resnet2.residual.1.weight"],
-                        transform=transpose_conv2d_weight,
-                    ),
-                    WeightTarget(
-                        to_pattern=f"decoder.fusions.{i}.resnet2.residual.1.bias",
-                        from_pattern=[f"decoder.fusions.{i}.resnet2.residual.1.bias"],
-                    ),
-                    WeightTarget(
-                        to_pattern=f"decoder.fusions.{i}.resnet2.residual.3.weight",
-                        from_pattern=[f"decoder.fusions.{i}.resnet2.residual.3.weight"],
-                        transform=transpose_conv2d_weight,
-                    ),
-                    WeightTarget(
-                        to_pattern=f"decoder.fusions.{i}.resnet2.residual.3.bias",
-                        from_pattern=[f"decoder.fusions.{i}.resnet2.residual.3.bias"],
-                    ),
-                    WeightTarget(
-                        to_pattern=f"decoder.fusions.{i}.out_conv.weight",
-                        from_pattern=[f"decoder.fusions.{i}.out_conv.weight"],
-                        transform=transpose_conv2d_weight,
-                    ),
-                    WeightTarget(
-                        to_pattern=f"decoder.fusions.{i}.out_conv.bias",
-                        from_pattern=[f"decoder.fusions.{i}.out_conv.bias"],
-                    ),
-                ]
-            )
-        targets.extend(
+    @staticmethod
+    def _get_fusion_block_mapping(i: int) -> List[WeightTarget]:
+        targets = [
             WeightTarget(
-                to_pattern=f"decoder.fusions.{i}.deconv.weight",
-                from_pattern=[f"decoder.fusions.{i}.deconv.weight"],
-                transform=transpose_conv_transpose2d_weight,
+                to_pattern=f"decoder.fusions.{i}.resnet1.residual.1.weight",
+                from_pattern=[f"decoder.fusions.{i}.resnet1.residual.1.weight"],
+                transform=transpose_conv2d_weight,
+            ),
+            WeightTarget(
+                to_pattern=f"decoder.fusions.{i}.resnet1.residual.1.bias",
+                from_pattern=[f"decoder.fusions.{i}.resnet1.residual.1.bias"],
+            ),
+            WeightTarget(
+                to_pattern=f"decoder.fusions.{i}.resnet1.residual.3.weight",
+                from_pattern=[f"decoder.fusions.{i}.resnet1.residual.3.weight"],
+                transform=transpose_conv2d_weight,
+            ),
+            WeightTarget(
+                to_pattern=f"decoder.fusions.{i}.resnet1.residual.3.bias",
+                from_pattern=[f"decoder.fusions.{i}.resnet1.residual.3.bias"],
+            ),
+            WeightTarget(
+                to_pattern=f"decoder.fusions.{i}.resnet2.residual.1.weight",
+                from_pattern=[f"decoder.fusions.{i}.resnet2.residual.1.weight"],
+                transform=transpose_conv2d_weight,
+            ),
+            WeightTarget(
+                to_pattern=f"decoder.fusions.{i}.resnet2.residual.1.bias",
+                from_pattern=[f"decoder.fusions.{i}.resnet2.residual.1.bias"],
+            ),
+            WeightTarget(
+                to_pattern=f"decoder.fusions.{i}.resnet2.residual.3.weight",
+                from_pattern=[f"decoder.fusions.{i}.resnet2.residual.3.weight"],
+                transform=transpose_conv2d_weight,
+            ),
+            WeightTarget(
+                to_pattern=f"decoder.fusions.{i}.resnet2.residual.3.bias",
+                from_pattern=[f"decoder.fusions.{i}.resnet2.residual.3.bias"],
+            ),
+            WeightTarget(
+                to_pattern=f"decoder.fusions.{i}.out_conv.weight",
+                from_pattern=[f"decoder.fusions.{i}.out_conv.weight"],
+                transform=transpose_conv2d_weight,
+            ),
+            WeightTarget(
+                to_pattern=f"decoder.fusions.{i}.out_conv.bias",
+                from_pattern=[f"decoder.fusions.{i}.out_conv.bias"],
+            ),
+        ]
+        if i > 0:
+            targets.append(
+                WeightTarget(
+                    to_pattern=f"decoder.fusions.{i}.deconv.weight",
+                    from_pattern=[f"decoder.fusions.{i}.deconv.weight"],
+                    transform=transpose_conv_transpose2d_weight,
+                )
             )
-            for i in range(1, 5)
-        )
         return targets
 
     @staticmethod
