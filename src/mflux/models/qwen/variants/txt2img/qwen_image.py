@@ -2,7 +2,6 @@ from pathlib import Path
 
 import mlx.core as mx
 from mlx import nn
-from tqdm import tqdm
 
 from mflux.callbacks.callbacks import Callbacks
 from mflux.config.model_config import ModelConfig
@@ -67,7 +66,6 @@ class QwenImage(nn.Module):
             image_strength=image_strength,
             scheduler=scheduler,
         )
-        time_steps = tqdm(range(runtime_config.init_time_step, runtime_config.num_inference_steps))
 
         # 1. Create the initial latents
         latents = LatentCreator.create_for_txt2img_or_img2img(
@@ -100,7 +98,7 @@ class QwenImage(nn.Module):
             config=runtime_config,
         )
 
-        for t in time_steps:
+        for t in runtime_config.time_steps:
             try:
                 # Scale model input if needed by the scheduler
                 latents = runtime_config.scheduler.scale_model_input(latents, t)
@@ -136,7 +134,7 @@ class QwenImage(nn.Module):
                     prompt=prompt,
                     latents=latents,
                     config=runtime_config,
-                    time_steps=time_steps,
+                    time_steps=runtime_config.time_steps,
                 )
 
                 # (Optional) Evaluate to enable progress tracking
@@ -149,9 +147,11 @@ class QwenImage(nn.Module):
                     prompt=prompt,
                     latents=latents,
                     config=runtime_config,
-                    time_steps=time_steps,
+                    time_steps=runtime_config.time_steps,
                 )
-                raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(time_steps)}")
+                raise StopImageGenerationException(
+                    f"Stopping image generation at step {t + 1}/{runtime_config.num_inference_steps}"
+                )
 
         # (Optional) Call subscribers after loop
         Callbacks.after_loop(
@@ -161,10 +161,8 @@ class QwenImage(nn.Module):
             config=runtime_config,
         )
 
-        # 7. Decode the latent array and return the image
-        latents = QwenLatentCreator.unpack_latents(
-            latents=latents, height=runtime_config.height, width=runtime_config.width
-        )
+        # 5. Decode the latent array and return the image
+        latents = QwenLatentCreator.unpack_latents(latents=latents, height=runtime_config.height, width=runtime_config.width)  # fmt: off
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,
@@ -176,7 +174,7 @@ class QwenImage(nn.Module):
             lora_scales=self.lora_scales,
             image_path=runtime_config.image_path,
             image_strength=runtime_config.image_strength,
-            generation_time=time_steps.format_dict["elapsed"],
+            generation_time=runtime_config.time_steps.format_dict["elapsed"],
             negative_prompt=negative_prompt,
         )
 

@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 
 import mlx.core as mx
+from tqdm import tqdm
 
 from mflux.config.model_config import ModelConfig
 from mflux.models.common.schedulers import SCHEDULER_REGISTRY, try_import_external_scheduler
@@ -47,6 +48,7 @@ class RuntimeConfig:
         self._controlnet_strength = controlnet_strength
         self._scheduler_str = scheduler
         self._scheduler = None
+        self._time_steps = None
 
     @property
     def height(self) -> int:
@@ -116,6 +118,12 @@ class RuntimeConfig:
             return max(1, int(self._num_inference_steps * strength))  # type: ignore
         else:
             return 0
+
+    @property
+    def time_steps(self) -> tqdm:
+        if self._time_steps is None:
+            self._time_steps = tqdm(range(self.init_time_step, self.num_inference_steps))
+        return self._time_steps
 
     @property
     def controlnet_strength(self) -> float | None:

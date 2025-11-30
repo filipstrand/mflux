@@ -2,7 +2,6 @@ from pathlib import Path
 
 import mlx.core as mx
 from mlx import nn
-from tqdm import tqdm
 
 from mflux.callbacks.callbacks import Callbacks
 from mflux.config.model_config import ModelConfig
@@ -69,7 +68,6 @@ class Flux1(nn.Module):
             image_strength=image_strength,
             scheduler=scheduler,
         )
-        time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
 
         # 1. Create the initial latents
         latents = LatentCreator.create_for_txt2img_or_img2img(
@@ -103,7 +101,7 @@ class Flux1(nn.Module):
             config=config,
         )
 
-        for t in time_steps:
+        for t in config.time_steps:
             try:
                 # Scale model input if needed by the scheduler
                 latents = config.scheduler.scale_model_input(latents, t)
@@ -131,7 +129,7 @@ class Flux1(nn.Module):
                     prompt=prompt,
                     latents=latents,
                     config=config,
-                    time_steps=time_steps,
+                    time_steps=config.time_steps,
                 )
 
                 # (Optional) Evaluate to enable progress tracking
@@ -144,9 +142,11 @@ class Flux1(nn.Module):
                     prompt=prompt,
                     latents=latents,
                     config=config,
-                    time_steps=time_steps,
+                    time_steps=config.time_steps,
                 )
-                raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(time_steps)}")
+                raise StopImageGenerationException(
+                    f"Stopping image generation at step {t + 1}/{config.num_inference_steps}"
+                )
 
         # (Optional) Call subscribers after loop
         Callbacks.after_loop(
@@ -156,7 +156,7 @@ class Flux1(nn.Module):
             config=config,
         )
 
-        # 7. Decode the latent array and return the image
+        # 5. Decode the latent array and return the image
         latents = FluxLatentCreator.unpack_latents(latents=latents, height=config.height, width=config.width)
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
@@ -169,7 +169,7 @@ class Flux1(nn.Module):
             lora_scales=self.lora_scales,
             image_path=config.image_path,
             image_strength=config.image_strength,
-            generation_time=time_steps.format_dict["elapsed"],
+            generation_time=config.time_steps.format_dict["elapsed"],
         )
 
     @staticmethod

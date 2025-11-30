@@ -3,7 +3,6 @@ from pathlib import Path
 import mlx.core as mx
 from mlx import nn
 from PIL import Image
-from tqdm import tqdm
 
 from mflux.callbacks.callbacks import Callbacks
 from mflux.config.model_config import ModelConfig
@@ -67,7 +66,6 @@ class ZImageTurbo(nn.Module):
             image_strength=image_strength,
             scheduler=scheduler,
         )
-        time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
 
         # 1. Create the initial latents
         latents = LatentCreator.create_for_txt2img_or_img2img(
@@ -98,7 +96,7 @@ class ZImageTurbo(nn.Module):
             config=config,
         )
 
-        for t in time_steps:
+        for t in config.time_steps:
             try:
                 # 3.t Predict the noise
                 noise_pred = -self.transformer(
@@ -122,7 +120,7 @@ class ZImageTurbo(nn.Module):
                     prompt=prompt,
                     latents=latents,
                     config=config,
-                    time_steps=time_steps,
+                    time_steps=config.time_steps,
                 )
 
                 # (Optional) Evaluate to enable progress tracking
@@ -135,9 +133,11 @@ class ZImageTurbo(nn.Module):
                     prompt=prompt,
                     latents=latents,
                     config=config,
-                    time_steps=time_steps,
+                    time_steps=config.time_steps,
                 )
-                raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(time_steps)}")
+                raise StopImageGenerationException(
+                    f"Stopping image generation at step {t + 1}/{config.num_inference_steps}"
+                )
 
         # (Optional) Call subscribers after loop
         Callbacks.after_loop(
@@ -159,7 +159,7 @@ class ZImageTurbo(nn.Module):
             quantization=self.bits,
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
-            generation_time=time_steps.format_dict["elapsed"],
+            generation_time=config.time_steps.format_dict["elapsed"],
         )
 
     def save_model(self, base_path: str) -> None:
