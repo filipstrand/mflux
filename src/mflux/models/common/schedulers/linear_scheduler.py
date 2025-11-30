@@ -3,13 +3,13 @@ from typing import TYPE_CHECKING
 import mlx.core as mx
 
 if TYPE_CHECKING:
-    from mflux.models.common.config import RuntimeConfig
+    from mflux.models.common.config.config import Config
 
 from mflux.models.common.schedulers.base_scheduler import BaseScheduler
 
 
 class LinearScheduler(BaseScheduler):
-    def __init__(self, config: "RuntimeConfig"):
+    def __init__(self, config: "Config"):
         self.config = config
         self._sigmas = self._get_sigmas()
         self._timesteps = self._get_timesteps()

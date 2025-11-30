@@ -9,7 +9,7 @@ import PIL.Image
 import PIL.ImageDraw
 from PIL._typing import StrOrBytesPath
 
-from mflux.models.common.config import RuntimeConfig
+from mflux.models.common.config.config import Config
 from mflux.models.flux.variants.concept_attention.attention_data import ConceptHeatmap
 from mflux.utils.box_values import AbsoluteBoxValues, BoxValues
 from mflux.utils.generated_image import GeneratedImage
@@ -22,7 +22,7 @@ class ImageUtil:
     @staticmethod
     def to_image(
         decoded_latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         seed: int,
         prompt: str,
         quantization: int,

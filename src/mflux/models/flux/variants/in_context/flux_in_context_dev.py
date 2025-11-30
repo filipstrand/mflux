@@ -4,8 +4,8 @@ import mlx.core as mx
 from mlx import nn
 
 from mflux.callbacks.callbacks import Callbacks
-from mflux.models.common.config import ModelConfig, RuntimeConfig
 from mflux.models.common.config.config import Config
+from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.latent_creator.latent_creator import LatentCreator
 from mflux.models.flux.flux_initializer import FluxInitializer
 from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
@@ -175,7 +175,7 @@ class Flux1InContextDev(nn.Module):
         )
 
     @staticmethod
-    def _create_in_context_latents(seed: int, config: RuntimeConfig):
+    def _create_in_context_latents(seed: int, config: Config):
         # 1. Double the width for side-by-side generation
         config.width = 2 * config.width
 
@@ -191,7 +191,7 @@ class Flux1InContextDev(nn.Module):
     @staticmethod
     def _update_latents(
         t: int,
-        config: RuntimeConfig,
+        config: Config,
         latents: mx.array,
         encoded_image: mx.array,
         static_noise: mx.array,

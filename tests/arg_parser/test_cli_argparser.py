@@ -681,11 +681,11 @@ def test_scheduler_by_name(mflux_generate_parser, mflux_generate_minimal_model_a
         assert args.scheduler == "linear"
 
     with patch("sys.argv", mflux_generate_minimal_model_argv + ["--scheduler", "foobar"]):
-        # let the CLI will accept "foobar" - later RuntimeConfig will validate
+        # let the CLI will accept "foobar" - later Config will validate
         args = mflux_generate_parser.parse_args()
 
     with patch("sys.argv", mflux_generate_minimal_model_argv + ["--scheduler", "mflux.someplugin.SchedulerBaz"]):
-        # let the CLI will accept external import paths - later RuntimeConfig will validate
+        # let the CLI will accept external import paths - later Config will validate
         args = mflux_generate_parser.parse_args()
 
 

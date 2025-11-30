@@ -5,7 +5,7 @@ import PIL.Image
 import tqdm
 
 from mflux.callbacks.callback import BeforeLoopCallback, InLoopCallback, InterruptCallback
-from mflux.models.common.config import RuntimeConfig
+from mflux.models.common.config.config import Config
 from mflux.utils.image_util import ImageUtil
 
 
@@ -29,7 +29,7 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         canny_image: PIL.Image.Image | None = None,
         depth_image: PIL.Image.Image | None = None,
     ) -> None:
@@ -48,7 +48,7 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         time_steps: tqdm,
     ) -> None:
         self._save_image(
@@ -66,7 +66,7 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         time_steps: tqdm,
     ) -> None:
         self._save_composite(seed=seed)
@@ -77,7 +77,7 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         time_steps: tqdm,
     ) -> None:
         unpack_latents = self.latent_creator.unpack_latents(latents=latents, height=config.height, width=config.width)

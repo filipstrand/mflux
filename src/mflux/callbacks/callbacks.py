@@ -3,7 +3,7 @@ import PIL.Image
 import tqdm
 
 from mflux.callbacks.callback_registry import CallbackRegistry
-from mflux.models.common.config import RuntimeConfig
+from mflux.models.common.config.config import Config
 
 
 class Callbacks:
@@ -12,7 +12,7 @@ class Callbacks:
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         canny_image: PIL.Image.Image | None = None,
         depth_image: PIL.Image.Image | None = None,
     ):
@@ -32,7 +32,7 @@ class Callbacks:
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         time_steps: tqdm,
     ):
         for subscriber in CallbackRegistry.in_loop_callbacks():
@@ -50,7 +50,7 @@ class Callbacks:
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
     ):
         for subscriber in CallbackRegistry.after_loop_callbacks():
             subscriber.call_after_loop(seed=seed, prompt=prompt, latents=latents, config=config)
@@ -61,7 +61,7 @@ class Callbacks:
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         time_steps: tqdm,
     ):
         for subscriber in CallbackRegistry.interrupt_callbacks():
