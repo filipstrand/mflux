@@ -3,9 +3,9 @@ import math
 import mlx.core as mx
 import mlx.nn as nn
 
-from mflux.models.depth_pro.model.conv_utils import ConvUtils
+from mflux.models.depth_pro.model.depth_pro_util import DepthProUtil
 from mflux.models.depth_pro.model.dino_v2.dino_vision_transformer import DinoVisionTransformer
-from mflux.models.depth_pro.model.upsample_block import UpSampleBlock
+from mflux.models.depth_pro.model.encoder.upsample_block import UpSampleBlock
 
 
 class DepthProEncoder(nn.Module):
@@ -56,9 +56,9 @@ class DepthProEncoder(nn.Module):
         # 4. Apply the image encoder model.
         x_global_features, _, _ = self.image_encoder(x2)
         x_global_features = DepthProEncoder._reshape_feature(embeddings=x_global_features, width=24, height=24)
-        x_global_features = ConvUtils.apply_conv(x_global_features, self.upsample_lowres)
+        x_global_features = DepthProUtil.apply_conv(x_global_features, self.upsample_lowres)
         x_global_features = mx.concatenate((x2_features, x_global_features), axis=1)
-        x_global_features = ConvUtils.apply_conv(x_global_features, self.fuse_lowres)
+        x_global_features = DepthProUtil.apply_conv(x_global_features, self.fuse_lowres)
 
         return (
             x_latent0_features,

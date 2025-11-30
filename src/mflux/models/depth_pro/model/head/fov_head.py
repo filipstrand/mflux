@@ -1,7 +1,7 @@
 import mlx.core as mx
 import mlx.nn as nn
 
-from mflux.models.depth_pro.model.conv_utils import ConvUtils
+from mflux.models.depth_pro.model.depth_pro_util import DepthProUtil
 
 
 class FOVHead(nn.Module):
@@ -16,10 +16,10 @@ class FOVHead(nn.Module):
         ]
 
     def __call__(self, x: mx.array) -> mx.array:
-        x = ConvUtils.apply_conv(x, self.convs[0])
-        x = ConvUtils.apply_conv(x, self.convs[1])
-        x = ConvUtils.apply_conv(x, self.convs[2])
+        x = DepthProUtil.apply_conv(x, self.convs[0])
+        x = DepthProUtil.apply_conv(x, self.convs[1])
+        x = DepthProUtil.apply_conv(x, self.convs[2])
         x = nn.relu(x)
-        x = ConvUtils.apply_conv(x, self.convs[4])
+        x = DepthProUtil.apply_conv(x, self.convs[4])
         x = nn.relu(x)
         return x

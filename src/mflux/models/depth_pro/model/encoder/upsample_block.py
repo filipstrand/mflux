@@ -1,7 +1,7 @@
 import mlx.core as mx
 import mlx.nn as nn
 
-from mflux.models.depth_pro.model.conv_utils import ConvUtils
+from mflux.models.depth_pro.model.depth_pro_util import DepthProUtil
 
 
 class UpSampleBlock(nn.Module):
@@ -47,5 +47,5 @@ class UpSampleBlock(nn.Module):
 
     def __call__(self, x: mx.array) -> mx.array:
         for layer in self.layers:
-            x = ConvUtils.apply_conv(x, layer)
+            x = DepthProUtil.apply_conv(x, layer)
         return x

@@ -1,8 +1,8 @@
 import mlx.core as mx
 import mlx.nn as nn
 
-from mflux.models.depth_pro.model.conv_utils import ConvUtils
-from mflux.models.depth_pro.model.residual_block import ResidualBlock
+from mflux.models.depth_pro.model.decoder.residual_block import ResidualBlock
+from mflux.models.depth_pro.model.depth_pro_util import DepthProUtil
 
 
 class FeatureFusionBlock2d(nn.Module):
@@ -21,6 +21,6 @@ class FeatureFusionBlock2d(nn.Module):
             x = x + res
         x = self.resnet2(x)
         if self.use_deconv:
-            x = ConvUtils.apply_conv(x, self.deconv)
-        x = ConvUtils.apply_conv(x, self.out_conv)
+            x = DepthProUtil.apply_conv(x, self.deconv)
+        x = DepthProUtil.apply_conv(x, self.out_conv)
         return x
