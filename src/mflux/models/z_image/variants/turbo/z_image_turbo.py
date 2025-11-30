@@ -29,7 +29,6 @@ class ZImageTurbo(nn.Module):
         model_config: ModelConfig | None = None,
         quantize: int | None = None,
         local_path: str | None = None,
-        load_text_encoder: bool = True,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
     ):
@@ -39,7 +38,6 @@ class ZImageTurbo(nn.Module):
             model_config=model_config or ModelConfig.z_image_turbo(),
             quantize=quantize,
             local_path=local_path,
-            load_text_encoder=load_text_encoder,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
         )
