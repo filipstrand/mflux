@@ -112,11 +112,7 @@ class FIBO(nn.Module):
                 noise = FIBO._apply_classifier_free_guidance(noise, runtime_config.guidance)
 
                 # 4.t Take one denoise step
-                latents = runtime_config.scheduler.step(
-                    model_output=noise,
-                    timestep=t,
-                    sample=latents,
-                )
+                latents = runtime_config.scheduler.step(noise=noise, timestep=t, latents=latents)
 
                 # (Optional) Call subscribers in-loop
                 Callbacks.in_loop(

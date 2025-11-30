@@ -112,11 +112,7 @@ class Flux1InContextDev(nn.Module):
                 )
 
                 # 5.t Take one denoise step and update latents
-                latents = config.scheduler.step(
-                    model_output=noise,
-                    timestep=t,
-                    sample=latents,
-                )
+                latents = config.scheduler.step(noise=noise, timestep=t, latents=latents)
 
                 # 6.t Override the left-hand side of latents by linearly interpolating between latents and static noise
                 latents = Flux1InContextDev._update_latents(

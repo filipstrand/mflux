@@ -66,10 +66,9 @@ class FlowMatchEulerDiscreteScheduler(BaseScheduler):
         timesteps_arr = mx.array(timesteps, dtype=mx.float32)
         return sigmas_arr, timesteps_arr
 
-    def step(self, model_output: mx.array, timestep: int, sample: mx.array, **kwargs) -> mx.array:
+    def step(self, noise: mx.array, timestep: int, latents: mx.array, **kwargs) -> mx.array:
         dt = self._sigmas[timestep + 1] - self._sigmas[timestep]
-        prev_sample = sample + dt * model_output
-        return prev_sample
+        return latents + dt * noise
 
     def scale_model_input(self, latents: mx.array, t: int) -> mx.array:
         return latents

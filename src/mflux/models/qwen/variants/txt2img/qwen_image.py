@@ -121,11 +121,7 @@ class QwenImage(nn.Module):
                 guided_noise = QwenImage.compute_guided_noise(noise, noise_negative, runtime_config.guidance)
 
                 # 4.t Take one denoise step
-                latents = runtime_config.scheduler.step(
-                    model_output=guided_noise,
-                    timestep=t,
-                    sample=latents,
-                )
+                latents = runtime_config.scheduler.step(noise=guided_noise, timestep=t, latents=latents)
 
                 # (Optional) Call subscribers in-loop
                 Callbacks.in_loop(

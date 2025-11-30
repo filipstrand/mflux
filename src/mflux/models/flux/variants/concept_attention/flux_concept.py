@@ -133,11 +133,7 @@ class Flux1Concept(nn.Module):
                 attention_data.append(attention)
 
                 # 5.t Take one denoise step
-                latents = config.scheduler.step(
-                    model_output=noise,
-                    timestep=t,
-                    sample=latents,
-                )
+                latents = config.scheduler.step(noise=noise, timestep=t, latents=latents)
 
                 # (Optional) Call subscribers in-loop
                 Callbacks.in_loop(

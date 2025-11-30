@@ -108,7 +108,7 @@ class ZImageTransformer(nn.Module):
 
         # Final layer and unpatchify
         unified = self.all_final_layer[key](unified, t_emb)
-        return self._unpatchify(unified[0, :x_len], x_size)
+        return -self._unpatchify(unified[0, :x_len], x_size)
 
     @staticmethod
     def _create_coordinate_grid(size: Tuple[int, ...], start: Tuple[int, ...] | None = None) -> mx.array:
