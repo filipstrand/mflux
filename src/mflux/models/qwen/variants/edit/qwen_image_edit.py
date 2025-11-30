@@ -1,13 +1,13 @@
 import math
+from pathlib import Path
 
 import mlx.core as mx
 from mlx import nn
 from tqdm import tqdm
 
 from mflux.callbacks.callbacks import Callbacks
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config.config import Config
+from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
 from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer
@@ -15,7 +15,6 @@ from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
 from mflux.models.qwen.qwen_edit_initializer import QwenImageEditInitializer
 from mflux.models.qwen.variants.edit.utils.qwen_edit_util import QwenEditUtil
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
-from mflux.utils.array_util import ArrayUtil
 from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
@@ -32,8 +31,6 @@ class QwenImageEdit(nn.Module):
         local_path: str | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
-        lora_names: list[str] | None = None,
-        lora_repo_id: str | None = None,
     ):
         super().__init__()
         QwenImageEditInitializer.init(
@@ -43,30 +40,38 @@ class QwenImageEdit(nn.Module):
             local_path=local_path,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
-            lora_names=lora_names,
-            lora_repo_id=lora_repo_id,
         )
 
     def generate_image(
         self,
         seed: int,
         prompt: str,
-        config: Config,
+        image_paths: list[str],
+        num_inference_steps: int = 4,
+        height: int | None = None,
+        width: int | None = None,
+        guidance: float = 4.0,
+        image_path: Path | str | None = None,
+        scheduler: str = "linear",
         negative_prompt: str | None = None,
-        image_paths: list[str] | None = None,
     ) -> GeneratedImage:
-        if image_paths is None:
-            image_paths = [str(config.image_path)]
-
-        runtime_config, vl_width, vl_height, vae_width, vae_height = self._compute_dimensions(config, image_paths)
-        timesteps = runtime_config.scheduler.timesteps
+        config, vl_width, vl_height, vae_width, vae_height = self._compute_dimensions(
+            image_paths=image_paths,
+            num_inference_steps=num_inference_steps,
+            height=height,
+            width=width,
+            guidance=guidance,
+            image_path=image_path,
+            scheduler=scheduler,
+        )
+        timesteps = config.scheduler.timesteps
         time_steps = tqdm(range(len(timesteps)))
 
         # 1. Create initial latents
         latents = QwenLatentCreator.create_noise(
             seed=seed,
-            height=runtime_config.height,
-            width=runtime_config.width,
+            height=config.height,
+            width=config.width,
         )
 
         # 2. Encode the prompt
@@ -74,7 +79,7 @@ class QwenImageEdit(nn.Module):
             prompt=prompt,
             negative_prompt=negative_prompt,
             image_paths=image_paths,
-            runtime_config=runtime_config,
+            config=config,
             vl_width=vl_width,
             vl_height=vl_height,
         )
@@ -96,7 +101,7 @@ class QwenImageEdit(nn.Module):
             seed=seed,
             prompt=prompt,
             latents=latents,
-            config=runtime_config,
+            config=config,
         )
 
         for t in time_steps:
@@ -113,7 +118,7 @@ class QwenImageEdit(nn.Module):
 
                 noise = self.transformer(
                     t=t,
-                    config=runtime_config,
+                    config=config,
                     hidden_states=hidden_states,
                     encoder_hidden_states=prompt_embeds,
                     encoder_hidden_states_mask=prompt_mask,
@@ -122,21 +127,17 @@ class QwenImageEdit(nn.Module):
                 )[:, : latents.shape[1]]
                 noise_negative = self.transformer(
                     t=t,
-                    config=runtime_config,
+                    config=config,
                     hidden_states=hidden_states_neg,
                     encoder_hidden_states=negative_prompt_embeds,
                     encoder_hidden_states_mask=negative_prompt_mask,
                     qwen_image_ids=qwen_image_ids,
                     cond_image_grid=cond_image_grid,
                 )[:, : latents.shape[1]]
-                guided_noise = QwenImage.compute_guided_noise(noise, noise_negative, runtime_config.guidance)
+                guided_noise = QwenImage.compute_guided_noise(noise, noise_negative, config.guidance)
 
                 # 6.t Take one denoise step
-                latents = runtime_config.scheduler.step(
-                    model_output=guided_noise,
-                    timestep=t,
-                    sample=latents,
-                )
+                latents = config.scheduler.step(noise=guided_noise, timestep=t, latents=latents)
 
                 # (Optional) Call subscribers in-loop
                 Callbacks.in_loop(
@@ -144,7 +145,7 @@ class QwenImageEdit(nn.Module):
                     seed=seed,
                     prompt=prompt,
                     latents=latents,
-                    config=runtime_config,
+                    config=config,
                     time_steps=time_steps,
                 )
 
@@ -157,7 +158,7 @@ class QwenImageEdit(nn.Module):
                     seed=seed,
                     prompt=prompt,
                     latents=latents,
-                    config=runtime_config,
+                    config=config,
                     time_steps=time_steps,
                 )
                 raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(timesteps)}")
@@ -167,21 +168,21 @@ class QwenImageEdit(nn.Module):
             seed=seed,
             prompt=prompt,
             latents=latents,
-            config=runtime_config,
+            config=config,
         )
 
         # 7. Decode the latent array and return the image
-        latents = ArrayUtil.unpack_latents(latents=latents, height=runtime_config.height, width=runtime_config.width)
+        latents = QwenLatentCreator.unpack_latents(latents=latents, height=config.height, width=config.width)
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,
-            config=runtime_config,
+            config=config,
             seed=seed,
             prompt=prompt,
             quantization=self.bits,
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
-            image_path=runtime_config.image_path,
+            image_path=config.image_path,
             image_paths=image_paths,
             generation_time=time_steps.format_dict["elapsed"],
             negative_prompt=negative_prompt,
@@ -192,7 +193,7 @@ class QwenImageEdit(nn.Module):
         prompt: str,
         negative_prompt: str,
         image_paths: list[str],
-        runtime_config,
+        config,
         vl_width: int | None = None,
         vl_height: int | None = None,
     ) -> tuple[mx.array, mx.array, mx.array, mx.array]:
@@ -238,9 +239,14 @@ class QwenImageEdit(nn.Module):
 
     def _compute_dimensions(
         self,
-        config: Config,
         image_paths: list[str],
-    ) -> tuple[RuntimeConfig, int, int, int, int]:
+        num_inference_steps: int,
+        height: int | None,
+        width: int | None,
+        guidance: float,
+        image_path: Path | str | None,
+        scheduler: str,
+    ) -> tuple[Config, int, int, int, int]:
         last_image = ImageUtil.load_image(image_paths[-1]).convert("RGB")
         image_size = last_image.size
 
@@ -251,23 +257,23 @@ class QwenImageEdit(nn.Module):
         calculated_width = round(calculated_width / 32) * 32
         calculated_height = round(calculated_height / 32) * 32
 
-        use_height = config.height or calculated_height
-        use_width = config.width or calculated_width
+        use_height = height or int(calculated_height)
+        use_width = width or int(calculated_width)
 
         vae_scale_factor = 8
         multiple_of = vae_scale_factor * 2
         use_width = use_width // multiple_of * multiple_of
         use_height = use_height // multiple_of * multiple_of
 
-        final_config = Config(
+        config = Config(
+            model_config=self.model_config,
+            num_inference_steps=num_inference_steps,
             height=use_height,
             width=use_width,
-            image_path=config.image_path,
-            num_inference_steps=config.num_inference_steps,
-            guidance=config.guidance,
-            scheduler=config.scheduler_str,
+            guidance=guidance,
+            image_path=image_path,
+            scheduler=scheduler,
         )
-        runtime_config = RuntimeConfig(final_config, self.model_config)
 
         CONDITION_IMAGE_SIZE = 384 * 384
         condition_ratio = image_size[0] / image_size[1]
@@ -283,4 +289,4 @@ class QwenImageEdit(nn.Module):
         vae_width = round(vae_width / 32) * 32
         vae_height = round(vae_height / 32) * 32
 
-        return runtime_config, int(vl_width), int(vl_height), int(vae_width), int(vae_height)
+        return config, int(vl_width), int(vl_height), int(vae_width), int(vae_height)

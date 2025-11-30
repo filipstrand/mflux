@@ -1,7 +1,7 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.config.config import Config
+from mflux.models.common.config import ModelConfig
 
 
 class AdaLayerNormContinuous(nn.Module):
@@ -12,7 +12,7 @@ class AdaLayerNormContinuous(nn.Module):
         self.norm = nn.LayerNorm(dims=embedding_dim, eps=1e-6, affine=False)
 
     def __call__(self, x: mx.array, text_embeddings: mx.array) -> mx.array:
-        text_embeddings = self.linear(nn.silu(text_embeddings).astype(Config.precision))
+        text_embeddings = self.linear(nn.silu(text_embeddings).astype(ModelConfig.precision))
         chunk_size = self.embedding_dim
         scale = text_embeddings[:, 0 * chunk_size : 1 * chunk_size]
         shift = text_embeddings[:, 1 * chunk_size : 2 * chunk_size]

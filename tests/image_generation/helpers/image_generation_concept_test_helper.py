@@ -1,8 +1,7 @@
 import os
 from pathlib import Path
 
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.concept_attention.flux_concept import Flux1Concept
 from mflux.models.flux.variants.concept_attention.flux_concept_from_image import Flux1ConceptFromImage
 from mflux.utils.image_compare import ImageCompare
@@ -43,13 +42,11 @@ class ImageGenerationConceptTestHelper:
                 seed=seed,
                 prompt=prompt,
                 concept=concept,
+                num_inference_steps=steps,
+                height=height or 1024,
+                width=width or 1024,
                 heatmap_layer_indices=heatmap_layer_indices,
                 heatmap_timesteps=heatmap_timesteps,
-                config=Config(
-                    num_inference_steps=steps,
-                    height=height,
-                    width=width,
-                ),
             )
             # Save only the heatmap (we don't need the original image for testing)
             image.save_concept_heatmap(path=output_heatmap_path, overwrite=True)
@@ -104,13 +101,11 @@ class ImageGenerationConceptTestHelper:
                 prompt=prompt,
                 concept=concept,
                 image_path=str(input_image_path),
+                num_inference_steps=steps,
+                height=height or 1024,
+                width=width or 1024,
                 heatmap_layer_indices=heatmap_layer_indices,
                 heatmap_timesteps=heatmap_timesteps,
-                config=Config(
-                    num_inference_steps=steps,
-                    height=height,
-                    width=width,
-                ),
             )
             # Save only the heatmap (we don't need the original image for testing)
             image.save_concept_heatmap(path=output_heatmap_path, overwrite=True)

@@ -1,13 +1,13 @@
+from pathlib import Path
+
 import mlx.core as mx
 from mlx import nn
-from tqdm import tqdm
 
 from mflux.callbacks.callbacks import Callbacks
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config.config import Config
+from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.latent_creator.latent_creator import Img2Img, LatentCreator
-from mflux.models.common.weights.model_saver import ModelSaver
+from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.fibo.fibo_initializer import FIBOInitializer
 from mflux.models.fibo.latent_creator.fibo_latent_creator import FiboLatentCreator
 from mflux.models.fibo.model.fibo_text_encoder.prompt_encoder import PromptEncoder
@@ -48,24 +48,38 @@ class FIBO(nn.Module):
         self,
         seed: int,
         prompt: str,
-        config: Config,
+        num_inference_steps: int = 4,
+        height: int = 1024,
+        width: int = 1024,
+        guidance: float = 4.0,
+        image_path: Path | str | None = None,
+        image_strength: float | None = None,
+        scheduler: str = "linear",
         negative_prompt: str | None = None,
     ) -> GeneratedImage:
-        # 0. Create a new runtime config based on the model type and input parameters
-        runtime_config = RuntimeConfig(config, self.model_config)
-        time_steps = tqdm(range(runtime_config.init_time_step, runtime_config.num_inference_steps))
+        # 0. Create a new config based on the model type and input parameters
+        config = Config(
+            model_config=self.model_config,
+            num_inference_steps=num_inference_steps,
+            height=height,
+            width=width,
+            guidance=guidance,
+            image_path=image_path,
+            image_strength=image_strength,
+            scheduler=scheduler,
+        )
 
         # 1. Create the initial latents
         latents = LatentCreator.create_for_txt2img_or_img2img(
             seed=seed,
-            height=runtime_config.height,
-            width=runtime_config.width,
+            width=config.width,
+            height=config.height,
             img2img=Img2Img(
                 vae=self.vae,
                 latent_creator=FiboLatentCreator,
-                image_path=runtime_config.image_path,
-                sigmas=runtime_config.scheduler.sigmas,
-                init_time_step=runtime_config.init_time_step,
+                image_path=config.image_path,
+                sigmas=config.scheduler.sigmas,
+                init_time_step=config.init_time_step,
             ),
         )
 
@@ -82,27 +96,23 @@ class FIBO(nn.Module):
             seed=seed,
             prompt=json_prompt,
             latents=latents,
-            config=runtime_config,
+            config=config,
         )
 
-        for t in time_steps:
+        for t in config.time_steps:
             try:
                 # 3.t Predict the noise
                 noise = self.transformer(
                     t=t,
-                    config=runtime_config,
+                    config=config,
                     hidden_states=latents,
                     encoder_hidden_states=encoder_hidden_states,
                     text_encoder_layers=text_encoder_layers,
                 )
-                noise = FIBO._apply_classifier_free_guidance(noise, runtime_config.guidance)
+                noise = FIBO._apply_classifier_free_guidance(noise, config.guidance)
 
                 # 4.t Take one denoise step
-                latents = runtime_config.scheduler.step(
-                    model_output=noise,
-                    timestep=t,
-                    sample=latents,
-                )
+                latents = config.scheduler.step(noise=noise, timestep=t, latents=latents)
 
                 # (Optional) Call subscribers in-loop
                 Callbacks.in_loop(
@@ -110,8 +120,8 @@ class FIBO(nn.Module):
                     seed=seed,
                     prompt=json_prompt,
                     latents=latents,
-                    config=runtime_config,
-                    time_steps=time_steps,
+                    config=config,
+                    time_steps=config.time_steps,
                 )
 
                 # (Optional) Evaluate to enable progress tracking
@@ -123,11 +133,11 @@ class FIBO(nn.Module):
                     seed=seed,
                     prompt=json_prompt,
                     latents=latents,
-                    config=runtime_config,
-                    time_steps=time_steps,
+                    config=config,
+                    time_steps=config.time_steps,
                 )
                 raise StopImageGenerationException(
-                    f"Stopping image generation at step {t + 1}/{runtime_config.num_inference_steps}"
+                    f"Stopping image generation at step {t + 1}/{config.num_inference_steps}"
                 )
 
         # (Optional) Call subscribers after loop
@@ -135,23 +145,23 @@ class FIBO(nn.Module):
             seed=seed,
             prompt=json_prompt,
             latents=latents,
-            config=runtime_config,
+            config=config,
         )
 
         # 5. Decode the latent array and return the image
-        latents = FIBO._unpack_latents(latents, runtime_config.height, runtime_config.width)
+        latents = FiboLatentCreator.unpack_latents(latents, config.height, config.width)
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,
-            config=runtime_config,
+            config=config,
             seed=seed,
             prompt=json_prompt,
             quantization=self.bits,
             lora_paths=None,
             lora_scales=None,
-            image_path=runtime_config.image_path,
-            image_strength=runtime_config.image_strength,
-            generation_time=time_steps.format_dict["elapsed"],
+            image_path=config.image_path,
+            image_strength=config.image_strength,
+            generation_time=config.time_steps.format_dict["elapsed"],
         )
 
     @staticmethod
@@ -160,16 +170,6 @@ class FIBO(nn.Module):
         noise_uncond = noise[:half]
         noise_text = noise[half:]
         return noise_uncond + guidance * (noise_text - noise_uncond)
-
-    @staticmethod
-    def _unpack_latents(latents: mx.array, height: int, width: int) -> mx.array:
-        batch_size, seq_len, channels = latents.shape
-        vae_scale_factor = 16
-        latent_height = height // vae_scale_factor
-        latent_width = width // vae_scale_factor
-        latents = mx.reshape(latents, (batch_size, latent_height, latent_width, channels))
-        latents = mx.transpose(latents, (0, 3, 1, 2))
-        return latents
 
     def save_model(self, base_path: str) -> None:
         ModelSaver.save_model(

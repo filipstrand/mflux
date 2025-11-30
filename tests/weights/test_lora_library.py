@@ -5,17 +5,17 @@ from unittest import mock
 
 import pytest
 
-from mflux.models.common.lora.download import lora_library
+from mflux.models.common.lora.download.lora_library import LoRALibrary
 
 
 @pytest.fixture(autouse=True)
 def reset_lora_registry():
     """Reset the global registry before and after each test."""
-    original = lora_library._LORA_REGISTRY.copy()
-    lora_library._LORA_REGISTRY.clear()
+    original = LoRALibrary._registry.copy()
+    LoRALibrary._registry.clear()
     yield
-    lora_library._LORA_REGISTRY.clear()
-    lora_library._LORA_REGISTRY.update(original)
+    LoRALibrary._registry.clear()
+    LoRALibrary._registry.update(original)
 
 
 @pytest.fixture
@@ -50,7 +50,7 @@ def test_discover_lora_files_single_path(temp_lora_dirs):
     """Test discovering files in a single library path."""
     lib1, lib2 = temp_lora_dirs
 
-    result = lora_library._discover_lora_files([lib1])
+    result = LoRALibrary.discover_files([lib1])
 
     assert len(result) == 4  # Should not include digit-named files in transformer/
     assert "style_a" in result
@@ -69,7 +69,7 @@ def test_discover_lora_files_multiple_paths_precedence(temp_lora_dirs):
     lib1, lib2 = temp_lora_dirs
 
     # lib1 should take precedence over lib2
-    result = lora_library._discover_lora_files([lib1, lib2])
+    result = LoRALibrary.discover_files([lib1, lib2])
 
     assert len(result) == 5  # style_a, style_b, style_c, style_valid, style_d
     assert "style_a" in result
@@ -87,7 +87,7 @@ def test_discover_lora_files_multiple_paths_precedence(temp_lora_dirs):
 
 def test_discover_lora_files_nonexistent_path():
     """Test handling of nonexistent paths."""
-    result = lora_library._discover_lora_files([Path("/nonexistent/path")])
+    result = LoRALibrary.discover_files([Path("/nonexistent/path")])
     assert result == {}
 
 
@@ -96,7 +96,7 @@ def test_get_lora_path_existing_file(temp_lora_dirs):
     lib1, _ = temp_lora_dirs
     existing_file = lib1 / "style_a.safetensors"
 
-    result = lora_library.get_lora_path(str(existing_file))
+    result = LoRALibrary.get_path(str(existing_file))
     assert result == str(existing_file)
 
 
@@ -106,20 +106,20 @@ def test_get_lora_path_from_registry(temp_lora_dirs):
 
     # Mock the registry
     with mock.patch.object(
-        lora_library,
-        "_LORA_REGISTRY",
+        LoRALibrary,
+        "_registry",
         {
             "style_a": lib1 / "style_a.safetensors",
             "style_b": lib1 / "style_b.safetensors",
         },
     ):
         # Should resolve from registry
-        assert lora_library.get_lora_path("style_a") == str(lib1 / "style_a.safetensors")
-        assert lora_library.get_lora_path("style_b") == str(lib1 / "style_b.safetensors")
+        assert LoRALibrary.get_path("style_a") == str(lib1 / "style_a.safetensors")
+        assert LoRALibrary.get_path("style_b") == str(lib1 / "style_b.safetensors")
 
         # Should raise FileNotFoundError if not in registry
         with pytest.raises(FileNotFoundError, match="LoRA file not found: 'unknown_style'"):
-            lora_library.get_lora_path("unknown_style")
+            LoRALibrary.get_path("unknown_style")
 
 
 def test_initialize_registry_from_env(temp_lora_dirs):
@@ -131,8 +131,8 @@ def test_initialize_registry_from_env(temp_lora_dirs):
 
     with mock.patch.dict(os.environ, {"LORA_LIBRARY_PATH": env_path}):
         # Re-initialize the registry
-        lora_library._initialize_registry()
-        registry = lora_library.get_registry()
+        LoRALibrary._initialize_registry()
+        registry = LoRALibrary.get_registry()
 
         assert len(registry) == 5  # Includes style_valid from transformer/
         assert "style_a" in registry
@@ -150,22 +150,22 @@ def test_initialize_registry_from_env(temp_lora_dirs):
 def test_initialize_registry_empty_env():
     """Test that registry is empty when env var is not set."""
     # Save the original registry
-    original_registry = lora_library._LORA_REGISTRY.copy()
+    original_registry = LoRALibrary._registry.copy()
     try:
         with mock.patch.dict(os.environ, {}, clear=True):
-            lora_library._initialize_registry()
-            registry = lora_library.get_registry()
+            LoRALibrary._initialize_registry()
+            registry = LoRALibrary.get_registry()
             assert registry == {}
     finally:
         # Restore the original registry
-        lora_library._LORA_REGISTRY = original_registry
+        LoRALibrary._registry = original_registry
 
 
 def test_get_registry_returns_copy():
     """Test that get_registry returns a copy, not the original."""
-    with mock.patch.object(lora_library, "_LORA_REGISTRY", {"test": Path("/test")}):
-        registry1 = lora_library.get_registry()
-        registry2 = lora_library.get_registry()
+    with mock.patch.object(LoRALibrary, "_registry", {"test": Path("/test")}):
+        registry1 = LoRALibrary.get_registry()
+        registry2 = LoRALibrary.get_registry()
 
         # Should be equal but different objects
         assert registry1 == registry2
@@ -173,7 +173,7 @@ def test_get_registry_returns_copy():
 
         # Modifying the copy shouldn't affect the original
         registry1["new"] = Path("/new")
-        assert "new" not in lora_library._LORA_REGISTRY
+        assert "new" not in LoRALibrary._registry
 
 
 def test_transformer_digit_filtering(temp_lora_dirs):
@@ -185,7 +185,7 @@ def test_transformer_digit_filtering(temp_lora_dirs):
     (lib1 / "other_dir").mkdir()
     (lib1 / "other_dir" / "5.safetensors").touch()  # Should be included (not in transformer/)
 
-    result = lora_library._discover_lora_files([lib1])
+    result = LoRALibrary.discover_files([lib1])
 
     # Digit files NOT in transformer/ should be included
     assert "9" in result
@@ -197,3 +197,191 @@ def test_transformer_digit_filtering(temp_lora_dirs):
 
     # Non-digit files in transformer/ should be included
     assert "style_valid" in result
+
+
+# =============================================================================
+# Tests for LoRA path format detection
+# =============================================================================
+
+
+def test_local_file_resolution():
+    """Test that local file paths are resolved directly."""
+    with tempfile.NamedTemporaryFile(suffix=".safetensors", delete=False) as f:
+        temp_path = f.name
+        f.write(b"test")
+
+    try:
+        result = LoRALibrary.get_path(temp_path)
+        assert result == temp_path
+    finally:
+        os.unlink(temp_path)
+
+
+def test_huggingface_repo_format_detection():
+    """Test that HuggingFace repo format (org/model) is correctly detected."""
+    # These should be recognized as HF repos (contain exactly one /)
+    hf_repos = [
+        "XLabs-AI/flux-RealismLora",
+        "author/model",
+        "org/lora-weights",
+    ]
+
+    for repo in hf_repos:
+        # Should have exactly one / and no :
+        assert repo.count("/") == 1
+        assert ":" not in repo
+
+
+def test_huggingface_collection_format_detection():
+    """Test that HuggingFace collection format (repo:filename) is correctly detected."""
+    # These should be recognized as HF collections (contain : and /)
+    collections = [
+        (
+            "ali-vilab/In-Context-LoRA:film-storyboard.safetensors",
+            "ali-vilab/In-Context-LoRA",
+            "film-storyboard.safetensors",
+        ),
+        (
+            "RiverZ/normal-lora:pytorch_lora_weights.safetensors",
+            "RiverZ/normal-lora",
+            "pytorch_lora_weights.safetensors",
+        ),
+        ("author/collection:my-lora.safetensors", "author/collection", "my-lora.safetensors"),
+    ]
+
+    for full_path, expected_repo, expected_file in collections:
+        assert ":" in full_path
+        assert "/" in full_path
+        repo_id, filename = full_path.split(":", 1)
+        assert repo_id == expected_repo
+        assert filename == expected_file
+
+
+def test_resolve_paths_with_none():
+    """Test that resolve_paths handles None input."""
+    result = LoRALibrary.resolve_paths(None)
+    assert result == []
+
+
+def test_resolve_paths_with_empty_list():
+    """Test that resolve_paths handles empty list input."""
+    result = LoRALibrary.resolve_paths([])
+    assert result == []
+
+
+def test_resolve_scales_with_none():
+    """Test that resolve_scales handles None input."""
+    result = LoRALibrary.resolve_scales(None)
+    assert result == []
+
+
+def test_resolve_scales_with_empty_list():
+    """Test that resolve_scales handles empty list input."""
+    result = LoRALibrary.resolve_scales([])
+    assert result == []
+
+
+def test_resolve_scales_with_values():
+    """Test that resolve_scales returns the input when provided."""
+    result = LoRALibrary.resolve_scales([0.5, 1.0, 0.8])
+    assert result == [0.5, 1.0, 0.8]
+
+
+def test_resolve_paths_with_local_files():
+    """Test that resolve_paths correctly resolves local files."""
+    with tempfile.NamedTemporaryFile(suffix=".safetensors", delete=False) as f1:
+        path1 = f1.name
+        f1.write(b"test1")
+
+    with tempfile.NamedTemporaryFile(suffix=".safetensors", delete=False) as f2:
+        path2 = f2.name
+        f2.write(b"test2")
+
+    try:
+        result = LoRALibrary.resolve_paths([path1, path2])
+        assert len(result) == 2
+        assert path1 in result
+        assert path2 in result
+    finally:
+        os.unlink(path1)
+        os.unlink(path2)
+
+
+def test_resolve_paths_filters_nonexistent():
+    """Test that resolve_paths filters out nonexistent paths gracefully."""
+    with tempfile.NamedTemporaryFile(suffix=".safetensors", delete=False) as f:
+        existing_path = f.name
+        f.write(b"test")
+
+    try:
+        # Mix of existing and nonexistent paths
+        result = LoRALibrary.resolve_paths([existing_path, "/nonexistent/lora.safetensors"])
+        # Should only contain the existing file
+        assert len(result) == 1
+        assert existing_path in result
+    finally:
+        os.unlink(existing_path)
+
+
+def test_get_path_raises_for_unknown():
+    """Test that get_path raises FileNotFoundError for unknown paths."""
+    with pytest.raises(FileNotFoundError, match="LoRA file not found"):
+        LoRALibrary.get_path("completely_unknown_lora_that_does_not_exist")
+
+
+# =============================================================================
+# Integration tests for HuggingFace downloads (require network)
+# =============================================================================
+
+
+@pytest.mark.integration
+def test_huggingface_collection_download():
+    """Test downloading a LoRA from a HuggingFace collection using repo:filename format."""
+    from mflux.cli.defaults.defaults import MFLUX_LORA_CACHE_DIR
+
+    test_lora = "ali-vilab/In-Context-LoRA:film-storyboard.safetensors"
+    expected_filename = "film-storyboard.safetensors"
+    cached_path = MFLUX_LORA_CACHE_DIR / expected_filename
+
+    # 1. Delete cached file to ensure fresh download
+    if cached_path.exists():
+        cached_path.unlink()
+    assert not cached_path.exists(), "Cache should be cleared before test"
+
+    # 2. Download the LoRA
+    result = LoRALibrary.get_path(test_lora)
+
+    # 3. Verify download succeeded
+    assert result is not None
+    result_path = Path(result)
+    assert result_path.exists(), "Downloaded file should exist"
+    assert result_path.suffix == ".safetensors"
+
+    # 4. Verify file has reasonable size (> 1MB for a real LoRA)
+    file_size_mb = result_path.stat().st_size / (1024 * 1024)
+    assert file_size_mb > 1, f"LoRA file should be > 1MB, got {file_size_mb:.1f}MB"
+
+
+@pytest.mark.integration
+def test_huggingface_collection_cache_hit():
+    """Test that cached LoRAs are reused without re-downloading."""
+    from mflux.cli.defaults.defaults import MFLUX_LORA_CACHE_DIR
+
+    test_lora = "ali-vilab/In-Context-LoRA:film-storyboard.safetensors"
+    expected_filename = "film-storyboard.safetensors"
+    cached_path = MFLUX_LORA_CACHE_DIR / expected_filename
+
+    # Ensure file exists (from previous test or download it)
+    if not cached_path.exists():
+        LoRALibrary.get_path(test_lora)
+
+    # Record modification time before second call
+    mtime_before = cached_path.stat().st_mtime
+
+    # Second call should use cache (no download)
+    result = LoRALibrary.get_path(test_lora)
+
+    # File should not have been modified (cache hit)
+    mtime_after = cached_path.stat().st_mtime
+    assert mtime_before == mtime_after, "File should not be re-downloaded on cache hit"
+    assert result == str(cached_path)

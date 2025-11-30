@@ -5,8 +5,7 @@ import PIL.Image
 import tqdm
 
 from mflux.callbacks.callback import BeforeLoopCallback, InLoopCallback, InterruptCallback
-from mflux.config.runtime_config import RuntimeConfig
-from mflux.utils.array_util import ArrayUtil
+from mflux.models.common.config.config import Config
 from mflux.utils.image_util import ImageUtil
 
 
@@ -15,9 +14,11 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
         self,
         model,
         output_dir: str,
+        latent_creator,
     ):
         self.model = model
         self.output_dir = Path(output_dir)
+        self.latent_creator = latent_creator
         self.step_wise_images = []
 
         if self.output_dir:
@@ -28,7 +29,7 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         canny_image: PIL.Image.Image | None = None,
         depth_image: PIL.Image.Image | None = None,
     ) -> None:
@@ -47,7 +48,7 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         time_steps: tqdm,
     ) -> None:
         self._save_image(
@@ -65,7 +66,7 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         time_steps: tqdm,
     ) -> None:
         self._save_composite(seed=seed)
@@ -76,10 +77,10 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         time_steps: tqdm,
     ) -> None:
-        unpack_latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
+        unpack_latents = self.latent_creator.unpack_latents(latents=latents, height=config.height, width=config.width)
         stepwise_decoded = self.model.vae.decode(unpack_latents)
         generation_time = time_steps.format_dict["elapsed"] if time_steps is not None else 0
         stepwise_img = ImageUtil.to_image(

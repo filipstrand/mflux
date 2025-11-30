@@ -1,7 +1,7 @@
 import mlx.core as mx
 import mlx.nn as nn
 
-from mflux.config.config import Config
+from mflux.models.common.config import ModelConfig
 
 
 class ConvNormOut(nn.Module):
@@ -17,5 +17,5 @@ class ConvNormOut(nn.Module):
 
     def __call__(self, input_array: mx.array) -> mx.array:
         input_array = mx.transpose(input_array, (0, 2, 3, 1))
-        hidden_states = self.norm(input_array.astype(mx.float32)).astype(Config.precision)
+        hidden_states = self.norm(input_array.astype(mx.float32)).astype(ModelConfig.precision)
         return mx.transpose(hidden_states, (0, 3, 1, 2))

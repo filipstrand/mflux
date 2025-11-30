@@ -1,8 +1,7 @@
 import mlx.core.random as random
 
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config.config import Config
+from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.flux.variants.dreambooth.dataset.dataset import Dataset
 from mflux.models.flux.variants.dreambooth.dataset.iterator import Iterator
 from mflux.models.flux.variants.dreambooth.lora_layers.lora_layers import LoRALayers
@@ -18,7 +17,7 @@ class DreamBoothInitializer:
     def initialize(
         config_path: str | None,
         checkpoint_path: str | None,
-    ) -> tuple[Flux1, RuntimeConfig, TrainingSpec, TrainingState]:
+    ) -> tuple[Flux1, Config, TrainingSpec, TrainingState]:
         # The training specification describing the details of the training process. It is resolved
         # differently depending on if training starts from scratch or resumes from checkpoint.
         training_spec = TrainingSpec.resolve(
@@ -35,21 +34,19 @@ class DreamBoothInitializer:
             model_config=model_config,
             quantize=training_spec.quantize,
         )
-        runtime_config = RuntimeConfig(
+        config = Config(
             model_config=model_config,
-            config=Config(
-                num_inference_steps=training_spec.steps,
-                width=training_spec.width,
-                height=training_spec.height,
-                guidance=training_spec.guidance,
-            ),
+            num_inference_steps=training_spec.steps,
+            width=training_spec.width,
+            height=training_spec.height,
+            guidance=training_spec.guidance,
         )
 
         # Create the optimizer
         optimizer = Optimizer.from_spec(training_spec)
 
-        # Create the LoRA layers by matching them against the corresponding Flux layers
-        lora_layers = LoRALayers.from_spec(flux=flux, training_spec=training_spec)
+        # Create and apply the LoRA layers directly to the transformer
+        LoRALayers.from_spec(flux=flux, training_spec=training_spec)
 
         # Prepare the fine-tuning dataset and create the iterator
         dataset = Dataset.prepare_dataset(
@@ -69,9 +66,8 @@ class DreamBoothInitializer:
         # The training state consisting of everything that moves during training
         training_state = TrainingState(
             optimizer=optimizer,
-            lora_layers=lora_layers,
             iterator=iterator,
             statistics=statistics,
         )
 
-        return flux, runtime_config, training_spec, training_state
+        return flux, config, training_spec, training_state

@@ -4,7 +4,7 @@ import mlx.core as mx
 import mlx.nn as nn
 from mlx.utils import tree_flatten  # noqa: F401
 
-from mflux.config.config import Config
+from mflux.models.common.config import ModelConfig
 from mflux.models.common.quantization.quantization_util import QuantizationUtil
 from mflux.models.qwen.model.qwen_text_encoder.qwen_vision_transformer import VisionTransformer
 
@@ -23,7 +23,7 @@ class QwenWeightUtil:
             value = value.transpose(0, 2, 3, 1)
         elif len(value.shape) == 5:
             value = value.transpose(0, 2, 3, 4, 1)
-        value = value.reshape(-1).reshape(value.shape).astype(Config.precision)
+        value = value.reshape(-1).reshape(value.shape).astype(ModelConfig.precision)
         return [(key, value)]
 
     @staticmethod
@@ -54,11 +54,6 @@ class QwenWeightUtil:
 
     @staticmethod
     def _convert_weights_to_bf16(weights_dict: dict):
-        """
-        Recursively convert all weight tensors to BF16.
-        This matches PyTorch's behavior where the text encoder model is loaded in BF16.
-        """
-
         def convert_recursive(obj):
             if isinstance(obj, mx.array):
                 return obj.astype(mx.bfloat16)

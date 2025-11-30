@@ -4,7 +4,7 @@ import mlx.core as mx
 import numpy as np
 from mlx import nn
 
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config.config import Config
 from mflux.models.flux.model.flux_transformer.ada_layer_norm_continuous import AdaLayerNormContinuous
 from mflux.models.qwen.model.qwen_transformer.qwen_rope import QwenEmbedRopeMLX
 from mflux.models.qwen.model.qwen_transformer.qwen_time_text_embed import QwenTimeTextEmbed
@@ -37,7 +37,7 @@ class QwenTransformer(nn.Module):
     def __call__(
         self,
         t: int,
-        config: RuntimeConfig,
+        config: Config,
         hidden_states: mx.array,
         encoder_hidden_states: mx.array,
         encoder_hidden_states_mask: mx.array,
@@ -93,11 +93,8 @@ class QwenTransformer(nn.Module):
     @staticmethod
     def _compute_timestep(
         t: int | float,
-        config: RuntimeConfig,
+        config: Config,
     ) -> mx.array:
-        """
-        Compute timestep tensor from step index or value.
-        """
         if isinstance(t, int):
             if t < len(config.scheduler.sigmas):
                 timestep_idx = t
@@ -123,7 +120,7 @@ class QwenTransformer(nn.Module):
     def _compute_rotary_embeddings(
         encoder_hidden_states_mask: mx.array,
         pos_embed: QwenEmbedRopeMLX,
-        config: RuntimeConfig,
+        config: Config,
         cond_image_grid: tuple[int, int, int] | list[tuple[int, int, int]] | None = None,
     ) -> tuple[mx.array, mx.array]:
         latent_height = config.height // 16

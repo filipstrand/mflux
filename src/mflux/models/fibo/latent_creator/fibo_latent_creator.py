@@ -17,3 +17,13 @@ class FiboLatentCreator:
         batch_size, channels, latent_height, latent_width = latents.shape
         latents = mx.transpose(latents, (0, 2, 3, 1))
         return mx.reshape(latents, (batch_size, latent_height * latent_width, channels))
+
+    @staticmethod
+    def unpack_latents(latents: mx.array, height: int, width: int) -> mx.array:
+        batch_size, seq_len, channels = latents.shape
+        vae_scale_factor = 16
+        latent_height = height // vae_scale_factor
+        latent_width = width // vae_scale_factor
+        latents = mx.reshape(latents, (batch_size, latent_height, latent_width, channels))
+        latents = mx.transpose(latents, (0, 3, 1, 2))
+        return latents

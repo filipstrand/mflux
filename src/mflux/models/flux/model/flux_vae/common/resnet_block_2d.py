@@ -1,7 +1,7 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.config.config import Config
+from mflux.models.common.config import ModelConfig
 
 
 class ResnetBlock2D(nn.Module):
@@ -60,10 +60,10 @@ class ResnetBlock2D(nn.Module):
 
     def __call__(self, input_array: mx.array) -> mx.array:
         input_array = mx.transpose(input_array, (0, 2, 3, 1))
-        hidden_states = self.norm1(input_array.astype(mx.float32)).astype(Config.precision)
+        hidden_states = self.norm1(input_array.astype(mx.float32)).astype(ModelConfig.precision)
         hidden_states = nn.silu(hidden_states)
         hidden_states = self.conv1(hidden_states)
-        hidden_states = self.norm2(hidden_states.astype(mx.float32)).astype(Config.precision)
+        hidden_states = self.norm2(hidden_states.astype(mx.float32)).astype(ModelConfig.precision)
         hidden_states = nn.silu(hidden_states)
         hidden_states = self.conv2(hidden_states)
         if self.conv_shortcut is not None:

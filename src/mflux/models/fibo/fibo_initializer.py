@@ -1,10 +1,11 @@
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
+from mflux.models.common.weights.weight_applier import WeightApplier
+from mflux.models.common.weights.weight_loader import WeightLoader
 from mflux.models.fibo.model.fibo_text_encoder import SmolLM3_3B_TextEncoder
 from mflux.models.fibo.model.fibo_transformer import FiboTransformer
 from mflux.models.fibo.model.fibo_vae.wan_2_2_vae import Wan2_2_VAE
 from mflux.models.fibo.tokenizer import FiboTokenizerHandler
-from mflux.models.fibo.weights.fibo_weight_handler import FIBOWeightHandler
-from mflux.models.fibo.weights.fibo_weight_util import FIBOWeightUtil
+from mflux.models.fibo.weights.fibo_weight_definition import FIBOWeightDefinition
 
 
 class FIBOInitializer:
@@ -15,8 +16,9 @@ class FIBOInitializer:
         quantize: int | None = None,
         local_path: str | None = None,
     ) -> None:
-        # 1. Load VAE weights
-        weights = FIBOWeightHandler.load_regular_weights(
+        # 1. Load weights using generic loader
+        weights = WeightLoader.load(
+            weight_definition=FIBOWeightDefinition,
             repo_id=model_config.model_name,
             local_path=local_path,
         )
@@ -37,11 +39,14 @@ class FIBOInitializer:
             num_single_layers=38,
         )
 
-        # 4. Apply weights and quantize VAE, transformer, and text encoder
-        fibo_model.bits = FIBOWeightUtil.set_weights_and_quantize(
-            quantize_arg=quantize,
+        # 4. Apply weights and quantize
+        fibo_model.bits = WeightApplier.apply_and_quantize(
             weights=weights,
-            vae=fibo_model.vae,
-            transformer=fibo_model.transformer,
-            text_encoder=fibo_model.text_encoder,
+            models={
+                "vae": fibo_model.vae,
+                "transformer": fibo_model.transformer,
+                "text_encoder": fibo_model.text_encoder,
+            },
+            quantize_arg=quantize,
+            weight_definition=FIBOWeightDefinition,
         )

@@ -4,8 +4,7 @@ from pathlib import Path
 
 import numpy as np
 
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.models.flux.weights.weight_handler import WeightHandler
 from mflux.utils.version_util import VersionUtil
@@ -27,11 +26,9 @@ class TestModelSaving:
             image1 = fluxA.generate_image(
                 seed=42,
                 prompt="Luxury food photograph",
-                config=Config(
-                    num_inference_steps=15,
-                    height=341,
-                    width=768,
-                ),
+                num_inference_steps=15,
+                height=341,
+                width=768,
             )
             fluxA.save_model(PATH)
             del fluxA
@@ -51,11 +48,9 @@ class TestModelSaving:
             image2 = fluxB.generate_image(
                 seed=42,
                 prompt="Luxury food photograph",
-                config=Config(
-                    num_inference_steps=15,
-                    height=341,
-                    width=768,
-                ),
+                num_inference_steps=15,
+                height=341,
+                width=768,
             )
             np.testing.assert_array_equal(
                 np.array(image1.image),

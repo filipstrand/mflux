@@ -5,11 +5,11 @@ import PIL.Image
 from mlx import nn
 from tqdm import tqdm
 
+from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 from mflux.models.flux.variants.dreambooth.dataset.batch import Example
 from mflux.models.flux.variants.dreambooth.dataset.dreambooth_preprocessing import DreamBoothPreProcessing
 from mflux.models.flux.variants.dreambooth.state.training_spec import ExampleSpec
 from mflux.models.flux.variants.txt2img.flux import Flux1
-from mflux.utils.array_util import ArrayUtil
 from mflux.utils.image_util import ImageUtil
 
 
@@ -76,5 +76,5 @@ class Dataset:
         image = PIL.Image.open(image_path.resolve()).convert("RGB")
         scaled_user_image = ImageUtil.scale_to_dimensions(image, target_width=width, target_height=height)
         encoded = vae.encode(ImageUtil.to_array(scaled_user_image))
-        latents = ArrayUtil.pack_latents(encoded, width=width, height=height)
+        latents = FluxLatentCreator.pack_latents(encoded, width=width, height=height)
         return latents

@@ -1,6 +1,6 @@
 import pytest
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.utils.exceptions import InvalidBaseModel, ModelConfigError
 
 

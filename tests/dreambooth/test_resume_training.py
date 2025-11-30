@@ -4,8 +4,7 @@ import shutil
 import mlx.core as mx
 import numpy as np
 
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.dreambooth.dreambooth import DreamBooth
 from mflux.models.flux.variants.dreambooth.dreambooth_initializer import DreamBoothInitializer
 from mflux.models.flux.variants.dreambooth.state.zip_util import ZipUtil
@@ -25,17 +24,17 @@ class TestResumeTraining:
 
         try:
             # Given: A small training run from scratch for 5 steps (as described in the config)...
-            fluxA, runtime_config, training_spec, training_state = DreamBoothInitializer.initialize(
+            fluxA, config, training_spec, training_state = DreamBoothInitializer.initialize(
                 config_path="tests/dreambooth/config/train.json",
                 checkpoint_path=None,
             )
             DreamBooth.train(
                 flux=fluxA,
-                runtime_config=runtime_config,
+                config=config,
                 training_spec=training_spec,
                 training_state=training_state,
             )
-            del fluxA, runtime_config, training_spec, training_state
+            del fluxA, config, training_spec, training_state
             # ...where we can inspect the training state after 5 runs...
             adapter_after_5_steps = ZipUtil.unzip(
                 zip_path=CHECKPOINT_5,
@@ -47,17 +46,17 @@ class TestResumeTraining:
             TestResumeTraining.delete_file(CHECKPOINT_5)
 
             # When: Resuming the training from step 3...
-            fluxB, runtime_config, training_spec, training_state = DreamBoothInitializer.initialize(
+            fluxB, config, training_spec, training_state = DreamBoothInitializer.initialize(
                 config_path=None,
                 checkpoint_path=CHECKPOINT_3,
             )
             DreamBooth.train(
                 flux=fluxB,
-                runtime_config=runtime_config,
+                config=config,
                 training_spec=training_spec,
                 training_state=training_state,
             )
-            del fluxB, runtime_config, training_spec, training_state
+            del fluxB, config, training_spec, training_state
             # ...where we can inspect the training state after 2 additional runs...
             adapter_after_5_steps_resumed = ZipUtil.unzip(
                 zip_path=CHECKPOINT_5,
@@ -86,11 +85,9 @@ class TestResumeTraining:
             image = flux_with_resumed_lora.generate_image(
                 seed=42,
                 prompt="test",
-                config=Config(
-                    num_inference_steps=1,
-                    height=128,
-                    width=128,
-                ),
+                num_inference_steps=1,
+                height=128,
+                width=128,
             )
 
             # Basic sanity check that we got a valid image

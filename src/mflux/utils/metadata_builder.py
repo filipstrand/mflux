@@ -1,5 +1,3 @@
-"""Metadata builder for XMP and IPTC formats."""
-
 import logging
 from pathlib import Path
 
@@ -9,21 +7,8 @@ log = logging.getLogger(__name__)
 
 
 class MetadataBuilder:
-    """Builds XMP and IPTC metadata packets for image embedding."""
-
     @staticmethod
     def embed_metadata(metadata: dict, path: str | Path) -> None:
-        """
-        Embed XMP and IPTC metadata into an image file without touching existing EXIF.
-        Only supports PNG format.
-
-        Args:
-            metadata: Dictionary containing image generation metadata
-            path: Path to the image file to embed metadata into
-
-        Raises:
-            Exception: If there's an error during metadata embedding
-        """
         # Check if file is PNG format
         path_obj = Path(path) if isinstance(path, str) else path
         if path_obj.suffix.lower() != ".png":
@@ -71,15 +56,6 @@ class MetadataBuilder:
 
     @staticmethod
     def build_xmp_packet(metadata: dict) -> str:
-        """
-        Build an XMP metadata packet from the provided metadata dictionary.
-
-        Args:
-            metadata: Dictionary containing image generation metadata
-
-        Returns:
-            XMP packet as a string
-        """
         # Escape prompt for XML
         prompt_escaped = metadata.get("prompt", "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
@@ -128,15 +104,6 @@ class MetadataBuilder:
 
     @staticmethod
     def build_iptc_binary(metadata: dict) -> bytes:
-        """
-        Build IPTC metadata in binary format from the provided metadata dictionary.
-
-        Args:
-            metadata: Dictionary containing image generation metadata
-
-        Returns:
-            IPTC binary data
-        """
         # Build LoRA info for IPTC
         lora_info = MetadataBuilder._build_lora_string(metadata)
 
@@ -205,15 +172,6 @@ class MetadataBuilder:
 
     @staticmethod
     def _build_lora_string(metadata: dict) -> str:
-        """
-        Build a LoRA information string from metadata.
-
-        Args:
-            metadata: Dictionary containing lora_paths and lora_scales
-
-        Returns:
-            Comma-separated string of LoRA names and scales, or empty string
-        """
         # Check if lora_paths exists and is not None/empty
         if "lora_paths" not in metadata or metadata["lora_paths"] is None or not metadata["lora_paths"]:
             return ""

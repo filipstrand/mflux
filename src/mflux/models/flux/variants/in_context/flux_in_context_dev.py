@@ -1,19 +1,19 @@
+from pathlib import Path
+
 import mlx.core as mx
 from mlx import nn
-from tqdm import tqdm
 
 from mflux.callbacks.callbacks import Callbacks
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config.config import Config
+from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.latent_creator.latent_creator import LatentCreator
 from mflux.models.flux.flux_initializer import FluxInitializer
+from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 from mflux.models.flux.model.flux_text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.flux.model.flux_text_encoder.prompt_encoder import PromptEncoder
 from mflux.models.flux.model.flux_text_encoder.t5_encoder.t5_encoder import T5Encoder
 from mflux.models.flux.model.flux_transformer.transformer import Transformer
 from mflux.models.flux.model.flux_vae.vae import VAE
-from mflux.utils.array_util import ArrayUtil
 from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
@@ -32,8 +32,6 @@ class Flux1InContextDev(nn.Module):
         local_path: str | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
-        lora_names: list[str] | None = None,
-        lora_repo_id: str | None = None,
     ):
         super().__init__()
         FluxInitializer.init(
@@ -43,19 +41,31 @@ class Flux1InContextDev(nn.Module):
             local_path=local_path,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
-            lora_names=lora_names,
-            lora_repo_id=lora_repo_id,
         )
 
     def generate_image(
         self,
         seed: int,
         prompt: str,
-        config: Config,
+        num_inference_steps: int = 4,
+        height: int = 1024,
+        width: int = 1024,
+        guidance: float = 4.0,
+        image_path: Path | str | None = None,
+        image_strength: float | None = None,
+        scheduler: str = "linear",
     ) -> GeneratedImage:
-        # 0. Create a new runtime config based on the model type and input parameters
-        config = RuntimeConfig(config, self.model_config)
-        time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
+        # 0. Create a new config based on the model type and input parameters
+        config = Config(
+            model_config=self.model_config,
+            num_inference_steps=num_inference_steps,
+            height=height,
+            width=width,
+            guidance=guidance,
+            image_path=image_path,
+            image_strength=image_strength,
+            scheduler=scheduler,
+        )
 
         # 1. Encode the reference image
         encoded_image = LatentCreator.encode_image(
@@ -87,7 +97,7 @@ class Flux1InContextDev(nn.Module):
             config=config,
         )
 
-        for t in time_steps:
+        for t in config.time_steps:
             try:
                 # Scale model input if needed by the scheduler
                 latents = config.scheduler.scale_model_input(latents, t)
@@ -102,11 +112,7 @@ class Flux1InContextDev(nn.Module):
                 )
 
                 # 5.t Take one denoise step and update latents
-                latents = config.scheduler.step(
-                    model_output=noise,
-                    timestep=t,
-                    sample=latents,
-                )
+                latents = config.scheduler.step(noise=noise, timestep=t, latents=latents)
 
                 # 6.t Override the left-hand side of latents by linearly interpolating between latents and static noise
                 latents = Flux1InContextDev._update_latents(
@@ -125,7 +131,7 @@ class Flux1InContextDev(nn.Module):
                     prompt=prompt,
                     latents=latents,
                     config=config,
-                    time_steps=time_steps,
+                    time_steps=config.time_steps,
                 )
 
                 # (Optional) Evaluate to enable progress tracking
@@ -138,9 +144,11 @@ class Flux1InContextDev(nn.Module):
                     prompt=prompt,
                     latents=latents,
                     config=config,
-                    time_steps=time_steps,
+                    time_steps=config.time_steps,
                 )
-                raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(time_steps)}")
+                raise StopImageGenerationException(
+                    f"Stopping image generation at step {t + 1}/{config.num_inference_steps}"
+                )
 
         # (Optional) Call subscribers after loop
         Callbacks.after_loop(
@@ -150,8 +158,8 @@ class Flux1InContextDev(nn.Module):
             config=config,
         )
 
-        # 6. Decode the latent array and return the image
-        latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
+        # 7. Decode the latent array and return the image
+        latents = FluxLatentCreator.unpack_latents(latents=latents, height=config.height, width=config.width)
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,
@@ -163,11 +171,11 @@ class Flux1InContextDev(nn.Module):
             lora_scales=self.lora_scales,
             image_path=config.image_path,
             image_strength=config.image_strength,
-            generation_time=time_steps.format_dict["elapsed"],
+            generation_time=config.time_steps.format_dict["elapsed"],
         )
 
     @staticmethod
-    def _create_in_context_latents(seed: int, config: RuntimeConfig):
+    def _create_in_context_latents(seed: int, config: Config):
         # 1. Double the width for side-by-side generation
         config.width = 2 * config.width
 
@@ -177,21 +185,21 @@ class Flux1InContextDev(nn.Module):
 
         # 3. Create noise with appropriate dimensions
         static_noise = mx.random.normal(shape=[1, 16, latent_height, latent_width], key=mx.random.key(seed))
-        latents = ArrayUtil.pack_latents(latents=static_noise, height=config.height, width=config.width)
+        latents = FluxLatentCreator.pack_latents(latents=static_noise, height=config.height, width=config.width)
         return latents
 
     @staticmethod
     def _update_latents(
         t: int,
-        config: RuntimeConfig,
+        config: Config,
         latents: mx.array,
         encoded_image: mx.array,
         static_noise: mx.array,
         sigmas: mx.array,
     ) -> mx.array:
         # 1. Unpack the latents
-        unpacked = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
-        unpacked_static_noise = ArrayUtil.unpack_latents(latents=static_noise, height=config.height, width=config.width)
+        unpacked = FluxLatentCreator.unpack_latents(latents=latents, height=config.height, width=config.width)
+        unpacked_static_noise = FluxLatentCreator.unpack_latents(latents=static_noise, height=config.height, width=config.width)  # fmt: off
 
         # 2. Calculate latent_width from the config (original width is half of current width)
         latent_width = (config.width // 2) // 8
@@ -204,4 +212,4 @@ class Flux1InContextDev(nn.Module):
         )
 
         # 4. Repack the latents
-        return ArrayUtil.pack_latents(latents=unpacked, height=config.height, width=config.width)
+        return FluxLatentCreator.pack_latents(latents=unpacked, height=config.height, width=config.width)

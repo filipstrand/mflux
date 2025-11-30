@@ -1,8 +1,11 @@
 from pathlib import Path
 
-from mflux.config.model_config import ModelConfig
+from huggingface_hub import snapshot_download
+from mlx.utils import tree_unflatten
+
+from mflux.models.common.config import ModelConfig
+from mflux.models.common.weights.mapping.weight_transforms import transpose_conv2d_weight
 from mflux.models.flux.weights.weight_handler import MetaData, WeightHandler
-from mflux.utils.download import snapshot_download
 
 
 class WeightHandlerRedux:
@@ -26,10 +29,15 @@ class WeightHandlerRedux:
 
     @staticmethod
     def _load_siglip_weights(root_path: Path) -> tuple[dict, int, str | None]:
-        weights, _, _ = WeightHandler.get_weights("image_encoder", root_path)
-        return weights, _, _
+        weights, quantization_level, mflux_version = WeightHandler.get_weights("image_encoder", root_path)
+        if quantization_level is None and mflux_version is None:
+            weights = {k: transpose_conv2d_weight(v) for k, v in weights.items()}
+            weights = tree_unflatten(list(weights.items()))
+        return weights, quantization_level, mflux_version
 
     @staticmethod
     def _load_redux_encoder_weights(root_path: Path) -> tuple[dict, int, str | None]:
-        weights, _, _ = WeightHandler.get_weights("image_embedder", root_path)
-        return weights, _, _
+        weights, quantization_level, mflux_version = WeightHandler.get_weights("image_embedder", root_path)
+        if quantization_level is None and mflux_version is None:
+            weights = tree_unflatten(list(weights.items()))
+        return weights, quantization_level, mflux_version

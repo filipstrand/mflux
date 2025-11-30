@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 import mlx.nn as nn
 
-from mflux.config.config import Config
+from mflux.models.common.config import ModelConfig
 from mflux.models.common.quantization.quantization_util import QuantizationUtil
 
 if TYPE_CHECKING:
@@ -20,7 +20,7 @@ class WeightUtil:
     def reshape_weights(key, value):
         if len(value.shape) == 4:
             value = value.transpose(0, 2, 3, 1)
-        value = value.reshape(-1).reshape(value.shape).astype(Config.precision)
+        value = value.reshape(-1).reshape(value.shape).astype(ModelConfig.precision)
         return [(key, value)]
 
     @staticmethod

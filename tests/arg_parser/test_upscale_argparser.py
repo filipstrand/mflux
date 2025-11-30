@@ -3,8 +3,8 @@ from unittest.mock import patch
 
 import pytest
 
-from mflux.ui.cli.parsers import CommandLineParser, int_or_special_value
-from mflux.ui.scale_factor import ScaleFactor
+from mflux.cli.parser.parsers import CommandLineParser, int_or_special_value
+from mflux.utils.scale_factor import ScaleFactor
 
 
 def _create_custom_upscale_parser() -> CommandLineParser:

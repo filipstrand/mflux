@@ -32,5 +32,5 @@ class TestDepthPro:
 
         finally:
             # Cleanup
-            if os.path.exists(output_image_path):
+            if os.path.exists(output_image_path) and "MFLUX_PRESERVE_TEST_OUTPUT" not in os.environ:
                 os.remove(output_image_path)

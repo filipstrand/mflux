@@ -1,10 +1,9 @@
 import os
 from pathlib import Path
 
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.in_context.flux_in_context_dev import Flux1InContextDev
-from mflux.models.flux.variants.in_context.utils.in_context_loras import LORA_REPO_ID, get_lora_filename
+from mflux.models.flux.variants.in_context.utils.in_context_loras import get_lora_path
 from mflux.utils.image_compare import ImageCompare
 
 
@@ -32,26 +31,32 @@ class ImageGeneratorInContextTestHelper:
             [str(ImageGeneratorInContextTestHelper.resolve_path(p)) for p in lora_paths] if lora_paths else None
         )
 
+        # Build lora_paths: style LoRA (if specified) + user-provided LoRAs
+        all_lora_paths = []
+        all_lora_scales = []
+        if lora_style:
+            all_lora_paths.append(get_lora_path(lora_style))
+            all_lora_scales.append(1.0)
+        if lora_paths:
+            all_lora_paths.extend(lora_paths)
+            all_lora_scales.extend(lora_scales or [1.0] * len(lora_paths))
+
         try:
             # given
             flux = Flux1InContextDev(
                 model_config=model_config,
                 quantize=8,
-                lora_names=[get_lora_filename(lora_style)] if lora_style else None,
-                lora_repo_id=LORA_REPO_ID if lora_style else None,
-                lora_paths=lora_paths,
-                lora_scales=lora_scales,
+                lora_paths=all_lora_paths or None,
+                lora_scales=all_lora_scales or None,
             )
             # when
             image = flux.generate_image(
                 seed=seed,
                 prompt=prompt,
-                config=Config(
-                    num_inference_steps=steps,
-                    image_path=image_path,
-                    height=height,
-                    width=width,
-                ),
+                num_inference_steps=steps,
+                image_path=image_path,
+                height=height or 1024,
+                width=width or 1024,
             )
             # Save only the right half of the image (the generated part)
             image.get_right_half().save(path=output_image_path, overwrite=True)

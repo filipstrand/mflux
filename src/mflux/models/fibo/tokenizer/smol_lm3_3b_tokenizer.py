@@ -1,9 +1,9 @@
 from pathlib import Path
 
 import transformers
+from huggingface_hub import snapshot_download
 
 from mflux.models.fibo.tokenizer.fibo_tokenizer import TokenizerFibo
-from mflux.utils.download import snapshot_download
 
 
 class FiboTokenizerHandler:

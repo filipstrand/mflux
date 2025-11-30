@@ -1,8 +1,8 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.config.model_config import ModelConfig
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config.config import Config
+from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.flux.model.flux_transformer.embed_nd import EmbedND
 from mflux.models.flux.model.flux_transformer.joint_transformer_block import JointTransformerBlock
 from mflux.models.flux.model.flux_transformer.single_transformer_block import SingleTransformerBlock
@@ -32,7 +32,7 @@ class TransformerControlnet(nn.Module):
     def __call__(
         self,
         t: int,
-        config: RuntimeConfig,
+        config: Config,
         hidden_states: mx.array,
         prompt_embeds: mx.array,
         pooled_prompt_embeds: mx.array,
@@ -80,7 +80,7 @@ class TransformerControlnet(nn.Module):
     def _apply_single_transformer_block(
         self,
         idx: int,
-        config: RuntimeConfig,
+        config: Config,
         block: SingleTransformerBlock,
         hidden_states: mx.array,
         encoder_hidden_states: mx.array,
@@ -106,7 +106,7 @@ class TransformerControlnet(nn.Module):
     def _apply_joint_transformer_block(
         self,
         idx: int,
-        config: RuntimeConfig,
+        config: Config,
         block: JointTransformerBlock,
         hidden_states: mx.array,
         encoder_hidden_states: mx.array,

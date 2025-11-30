@@ -1,7 +1,7 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config.config import Config
 from mflux.models.fibo.model.fibo_transformer.fibo_embed_nd import FiboEmbedND
 from mflux.models.fibo.model.fibo_transformer.joint_transformer_block import FiboJointTransformerBlock
 from mflux.models.fibo.model.fibo_transformer.single_transformer_block import FiboSingleTransformerBlock
@@ -31,7 +31,7 @@ class FiboTransformer(nn.Module):
     def __call__(
         self,
         t: int,
-        config: RuntimeConfig,
+        config: Config,
         hidden_states: mx.array,
         encoder_hidden_states: mx.array,
         text_encoder_layers: list[mx.array],
@@ -150,7 +150,7 @@ class FiboTransformer(nn.Module):
     @staticmethod
     def _compute_time_embeddings(
         t: int,
-        config: RuntimeConfig,
+        config: Config,
         batch_size: int,
         dtype: mx.Dtype,
         time_embed: BriaFiboTimestepProjEmbeddings,
@@ -163,7 +163,7 @@ class FiboTransformer(nn.Module):
     def _compute_rotary_embeddings(
         encoder_hidden_states: mx.array,
         pos_embed: FiboEmbedND,
-        config: RuntimeConfig,
+        config: Config,
         dtype: mx.Dtype,
     ) -> mx.array:
         max_tokens = encoder_hidden_states.shape[1]
@@ -209,7 +209,7 @@ class FiboTransformer(nn.Module):
     @staticmethod
     def _compute_attention_mask(
         batch_size: int,
-        config: RuntimeConfig,
+        config: Config,
         encoder_hidden_states: mx.array,
         max_tokens: int,
     ) -> mx.array:

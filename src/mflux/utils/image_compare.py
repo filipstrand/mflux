@@ -7,10 +7,7 @@ from PIL import Image
 
 
 class ImageCompare:
-    # How we determined DEFAULT_MISMATCH_THRESHOLD value: by eye test
-    # successive mlx/mflux versions have generated images that are visually close enough
-    # to consider as a valid upgrade. Minor visual differences are attributable to mlx updates
-    DEFAULT_MISMATCH_THRESHOLD = 0.15
+    DEFAULT_MISMATCH_THRESHOLD = 0.15  # Set by eye test
     ENV_MISMATCH_THRESHOLD = float(os.environ.get("MFLUX_IMAGE_MISMATCH_THRESHOLD", DEFAULT_MISMATCH_THRESHOLD))
 
     @staticmethod

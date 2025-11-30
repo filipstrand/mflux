@@ -1,7 +1,6 @@
 import os
 
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.controlnet.flux_controlnet import Flux1Controlnet
 from mflux.utils.image_compare import ImageCompare
 from tests.image_generation.helpers.image_generation_test_helper import ImageGeneratorTestHelper
@@ -43,12 +42,10 @@ class ImageGeneratorControlnetTestHelper:
                 seed=seed,
                 prompt=prompt,
                 controlnet_image_path=controlnet_image_path,
-                config=Config(
-                    num_inference_steps=steps,
-                    height=height,
-                    width=width,
-                    controlnet_strength=controlnet_strength,
-                ),
+                num_inference_steps=steps,
+                height=height,
+                width=width,
+                controlnet_strength=controlnet_strength,
             )
             image.save(path=output_image_path, overwrite=True)
 

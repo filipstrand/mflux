@@ -3,8 +3,7 @@ import shutil
 
 import numpy as np
 
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.dreambooth.dreambooth import DreamBooth
 from mflux.models.flux.variants.dreambooth.dreambooth_initializer import DreamBoothInitializer
 from mflux.models.flux.variants.dreambooth.state.zip_util import ZipUtil
@@ -22,13 +21,13 @@ class TestTrainAndLoadWeights:
 
         try:
             # Given: A small training run from scratch for 5 steps (as described in the config)...
-            fluxA, runtime_config, training_spec, training_state = DreamBoothInitializer.initialize(
+            fluxA, config, training_spec, training_state = DreamBoothInitializer.initialize(
                 config_path="tests/dreambooth/config/train.json",
                 checkpoint_path=None,
             )
             DreamBooth.train(
                 flux=fluxA,
-                runtime_config=runtime_config,
+                config=config,
                 training_spec=training_spec,
                 training_state=training_state,
             )
@@ -36,13 +35,11 @@ class TestTrainAndLoadWeights:
             image1 = fluxA.generate_image(
                 seed=42,
                 prompt="test",
-                config=Config(
-                    num_inference_steps=20,
-                    height=128,
-                    width=128,
-                ),
+                num_inference_steps=20,
+                height=128,
+                width=128,
             )
-            del fluxA, runtime_config, training_spec, training_state
+            del fluxA, config, training_spec, training_state
             # unzip so that LoRA adapter can be read later...
             ZipUtil.extract_all(zip_path=CHECKPOINT, output_dir=OUTPUT_DIR)
 
@@ -58,11 +55,9 @@ class TestTrainAndLoadWeights:
             image2 = fluxB.generate_image(
                 seed=42,
                 prompt="test",
-                config=Config(
-                    num_inference_steps=20,
-                    height=128,
-                    width=128,
-                ),
+                num_inference_steps=20,
+                height=128,
+                width=128,
             )
 
             # Then: We want to confirm that the images *exactly* match

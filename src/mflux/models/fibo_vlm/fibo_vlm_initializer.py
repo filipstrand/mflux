@@ -1,13 +1,13 @@
 import os
 from pathlib import Path
 
+from huggingface_hub import snapshot_download
 from transformers import Qwen2Tokenizer
 
 from mflux.models.fibo.tokenizer.qwen2vl_processor import Qwen2VLProcessor
 from mflux.models.fibo_vlm.model.qwen3_vl_decoder import Qwen3VLDecoder
 from mflux.models.fibo_vlm.model.qwen3_vl_vision_model import Qwen3VLVisionModel
 from mflux.models.fibo_vlm.weights.fibo_vlm_weight_handler import FIBOVLMWeightHandler
-from mflux.utils.download import snapshot_download
 
 
 class FIBOVLMInitializer:

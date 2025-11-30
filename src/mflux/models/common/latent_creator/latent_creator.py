@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeAlias
 
 import mlx.core as mx
 from mlx import nn
@@ -10,13 +10,16 @@ if TYPE_CHECKING:
     from mflux.models.fibo.latent_creator.fibo_latent_creator import FiboLatentCreator
     from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
     from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
+    from mflux.models.z_image.latent_creator.z_image_latent_creator import ZImageLatentCreator
+
+    LatentCreatorType: TypeAlias = type[FiboLatentCreator | FluxLatentCreator | QwenLatentCreator | ZImageLatentCreator]
 
 
 class Img2Img:
     def __init__(
         self,
         vae: nn.Module,
-        latent_creator: type["FiboLatentCreator"] | type["FluxLatentCreator"] | type["QwenLatentCreator"],
+        latent_creator: "LatentCreatorType",
         sigmas: mx.array,
         init_time_step: int,
         image_path: str | Path | None,

@@ -5,6 +5,101 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2025-11-29
+
+# MFLUX v.0.13.0 Release Notes
+
+### 🎨 New Model Support
+
+- **Z-Image Turbo Support**: Added support for [Z-Image Turbo](https://huggingface.co/Zheng-Peng-Zhi/FLUX.1-Z-Image-Turbo), a fast distilled FLUX variant optimized for speed
+- **New command**: `mflux-generate-z-image-turbo` for rapid image generation
+- **LoRA support**: Full LoRA compatibility with Z-Image Turbo
+- **Image-to-image**: Supports img2img workflows with `--image-path`
+
+### ✨ New Features
+
+- **Scale Factor Dimensions for Img2Img**: Generalized the scale factor feature (e.g., `2x`, `0.5x`, `auto`) from upscaling to all img2img commands
+  - Specify output dimensions relative to input image: `--width 2x --height 2x`
+  - Use `auto` to match input image dimensions: `--width auto --height auto`
+  - Mix scale factors with absolute values: `--width 2x --height 512`
+  - Supported in: `mflux-generate`, `mflux-generate-z-image-turbo`, `mflux-generate-fibo`, `mflux-generate-kontext`, `mflux-generate-qwen`
+- **DimensionResolver utility**: New `DimensionResolver.resolve()` for consistent dimension handling across commands
+
+### 🔧 Architecture Improvements
+
+- **Unified LoRA API**: Simplified LoRA loading to a single `lora_paths` parameter
+  - All LoRA formats now resolved through `LoRALibrary.resolve_paths()`:
+    - Local paths: `/path/to/lora.safetensors`
+    - Registry names: `my-lora` (from `LORA_LIBRARY_PATH`)
+    - HuggingFace repos: `author/model`
+    - **New**: HuggingFace collections: `repo_id:filename.safetensors`
+  - Simplified model initialization: just pass `lora_paths` and everything resolves automatically
+- **Unified Latent Creator Interface**: Standardized `unpack_latents(latents, height, width)` signature across all model families
+  - `FluxLatentCreator`, `ZImageLatentCreator`, `FiboLatentCreator`, and `QwenLatentCreator` now share the same interface
+  - Moved `FIBO._unpack_latents` to `FiboLatentCreator.unpack_latents` for consistency
+- **StepwiseHandler Refactor**: Fixed `StepwiseHandler` to work with all model types by accepting a `latent_creator` parameter
+  - Previously hardcoded to `FluxLatentCreator`, now model-agnostic
+  - Each command passes its appropriate latent creator to `CallbackManager.register_callbacks()`
+
+### 🔄 Breaking Changes
+
+- **Simplified `generate_image()` API** (programmatic users only):
+  - Removed `Config` class - parameters are now passed directly to `generate_image()`
+  - Added `Flux1` export to main `mflux` module for cleaner imports
+  - **Migration**:
+    ```python
+    # Before (0.12.x):
+    from mflux.flux.flux import Flux1
+    from mflux.models.common.config import Config
+    
+    flux = Flux1.from_name(model_name="schnell", quantize=8)
+    image = flux.generate_image(
+        seed=2,
+        prompt="Luxury food photograph",
+        config=Config(
+            num_inference_steps=2,
+            height=1024,
+            width=1024,
+        )
+    )
+    
+    # After (0.13.0):
+    from mflux import Flux1
+    
+    flux = Flux1.from_name(model_name="schnell", quantize=8)
+    image = flux.generate_image(
+        seed=2,
+        prompt="Luxury food photograph",
+        num_inference_steps=2,
+        height=1024,
+        width=1024,
+    )
+    ```
+
+- **LoRA API simplified** (programmatic users only):
+  - Removed `lora_names` and `lora_repo_id` parameters from all model classes (`Flux1`, `QwenImage`, `QwenImageEdit`, etc.)
+  - Removed `--lora-name` and `--lora-repo-id` CLI arguments
+  - Removed `LoRAHuggingFaceDownloader` class
+  - **Migration**: Use the new `repo_id:filename` format in `lora_paths` instead:
+    ```python
+    # Before (0.12.x):
+    model = Flux1(
+        lora_names=["storyboard.safetensors"],
+        lora_repo_id="ali-vilab/In-Context-LoRA"
+    )
+    
+    # After (0.13.0):
+    model = Flux1(
+        lora_paths=["ali-vilab/In-Context-LoRA:storyboard.safetensors"]
+    )
+    ```
+
+### 👩‍💻 Contributors
+
+- **Filip Strand (@filipstrand)**: Z-Image Turbo support, architecture improvements, core development
+
+---
+
 ## [0.12.1] - 2025-11-27
 
 ### 🐛 Bug Fixes

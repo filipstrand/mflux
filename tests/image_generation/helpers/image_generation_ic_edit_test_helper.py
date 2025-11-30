@@ -1,10 +1,9 @@
 import os
 from pathlib import Path
 
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.in_context.flux_in_context_fill import Flux1InContextFill
-from mflux.models.flux.variants.in_context.utils.in_context_loras import prepare_ic_edit_loras
+from mflux.models.flux.variants.in_context.utils.in_context_loras import IC_EDIT_LORA_SCALE, get_ic_edit_lora_path
 from mflux.utils.image_compare import ImageCompare
 
 
@@ -28,13 +27,20 @@ class ImageGeneratorICEditTestHelper:
         reference_image = ImageGeneratorICEditTestHelper.resolve_path(reference_image)
         lora_paths = [str(ImageGeneratorICEditTestHelper.resolve_path(p)) for p in lora_paths] if lora_paths else None
 
+        # Build lora_paths: IC-Edit LoRA (required) + user-provided LoRAs
+        all_lora_paths = [get_ic_edit_lora_path()]
+        all_lora_scales = [IC_EDIT_LORA_SCALE]
+        if lora_paths:
+            all_lora_paths.extend(lora_paths)
+            all_lora_scales.extend(lora_scales or [1.0] * len(lora_paths))
+
         try:
             # given
             flux = Flux1InContextFill(
                 model_config=ModelConfig.dev_fill(),
                 quantize=8,
-                lora_paths=prepare_ic_edit_loras(lora_paths),
-                lora_scales=lora_scales,
+                lora_paths=all_lora_paths,
+                lora_scales=all_lora_scales,
             )
 
             # when
@@ -42,12 +48,10 @@ class ImageGeneratorICEditTestHelper:
                 seed=seed,
                 prompt=prompt,
                 left_image_path=str(reference_image),
+                num_inference_steps=steps,
+                height=height or 1024,
+                width=width or 1024,
                 right_image_path=None,
-                config=Config(
-                    num_inference_steps=steps,
-                    height=height,
-                    width=width,
-                ),
             )
 
             # Save the result

@@ -2,11 +2,11 @@ import json
 from pathlib import Path
 
 import mlx.core as mx
+from huggingface_hub import snapshot_download
 from mlx.utils import tree_unflatten
 
 from mflux.models.flux.weights.weight_handler import MetaData
 from mflux.models.flux.weights.weight_util import WeightUtil
-from mflux.utils.download import snapshot_download
 
 
 class WeightHandlerControlnet:

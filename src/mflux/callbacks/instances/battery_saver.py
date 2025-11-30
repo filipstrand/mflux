@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 def _get_machine_model() -> str:
-    """Get the Mac machine model using system_profiler."""
     try:
         result = subprocess.run(
             ["system_profiler", "-json", "SPHardwareDataType"], capture_output=True, text=True, check=True
@@ -31,8 +30,6 @@ MACHINE_IS_BATTERY_POWERED = "MacBook" in MACHINE_MODEL
 
 
 def get_battery_percentage() -> int | None:
-    """Get the current battery percentage of a battery-powered Mac.
-    Returns None if Mac is not a battery-powered machine."""
     if not MACHINE_IS_BATTERY_POWERED:
         return None
     percentage = None
