@@ -1,16 +1,23 @@
 import logging
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 
 import mlx.core as mx
 import torch
-from mlx.utils import tree_unflatten
 
 from mflux.cli.defaults.defaults import MFLUX_CACHE_DIR
-from mflux.models.flux.weights.weight_handler import MetaData
-from mflux.models.flux.weights.weight_util import WeightUtil
+from mflux.models.common.weights.mapping.weight_mapper import WeightMapper
+from mflux.models.depth_pro.weights.depth_pro_weight_mapping import DepthProWeightMapping
 
 logger = logging.getLogger(__name__)
+
+APPLE_MODEL_URL = "https://ml-site.cdn-apple.com/models/depth-pro/depth_pro.pt"
+
+
+@dataclass
+class MetaData:
+    quantization_level: int | None
 
 
 class WeightHandlerDepthPro:
@@ -20,16 +27,21 @@ class WeightHandlerDepthPro:
 
     @staticmethod
     def load_weights() -> "WeightHandlerDepthPro":
+        # 1. Download or get cached weights
         model_path = WeightHandlerDepthPro._download_or_get_cached_weights()
+
+        # 2. Load PyTorch weights and convert to MLX arrays
         pt_weights = torch.load(model_path, map_location="cpu")
-        weights = WeightHandlerDepthPro._to_mlx_weights(pt_weights)
-        weights = [WeightUtil.reshape_weights(k, v) for k, v in weights.items()]
-        weights = WeightUtil.flatten(weights)
-        weights = tree_unflatten(weights)
+        raw_weights = WeightHandlerDepthPro._to_mlx_weights(pt_weights)
+
+        # 3. Apply declarative weight mapping
+        mapping = DepthProWeightMapping.get_mapping()
+        mapped_weights = WeightMapper.apply_mapping(raw_weights, mapping)
+
         return WeightHandlerDepthPro(
-            weights=weights,
-            meta_data=MetaData(quantization_level=None)
-        )  # fmt:off
+            weights=mapped_weights,
+            meta_data=MetaData(quantization_level=None),
+        )
 
     @staticmethod
     def _to_mlx_weights(pt_weights) -> dict:
@@ -43,8 +55,6 @@ class WeightHandlerDepthPro:
 
     @staticmethod
     def _download_or_get_cached_weights():
-        APPLE_MODEL_URL = "https://ml-site.cdn-apple.com/models/depth-pro/depth_pro.pt"
-
         # 1. Create cache directory for the model
         cache_dir = MFLUX_CACHE_DIR / "depth_pro"
 
@@ -64,68 +74,3 @@ class WeightHandlerDepthPro:
                     raise FileNotFoundError(f"Model file not found at {model_path}")
 
         return model_path
-
-    @staticmethod
-    def reposition_encoder_weights(depth_pro_weights, name):
-        tmp = depth_pro_weights.weights["encoder"][name]
-        depth_pro_weights.weights["encoder"][name] = {}
-        depth_pro_weights.weights["encoder"][name]["layers"] = tmp
-
-    @staticmethod
-    def reposition_head_weights(depth_pro_weights):
-        tmp = depth_pro_weights.weights["head"]
-        depth_pro_weights.weights["head"] = {}
-        depth_pro_weights.weights["head"]["convs"] = tmp
-
-    @staticmethod
-    def reshape_transposed_convolution_weights(depth_pro_weights):
-        WeightHandlerDepthPro._reshape_upsample(depth_pro_weights, "upsample_latent0", 1)
-        WeightHandlerDepthPro._reshape_upsample(depth_pro_weights, "upsample_latent0", 2)
-        WeightHandlerDepthPro._reshape_upsample(depth_pro_weights, "upsample_latent0", 3)
-
-        WeightHandlerDepthPro._reshape_upsample(depth_pro_weights, "upsample_latent1", 1)
-        WeightHandlerDepthPro._reshape_upsample(depth_pro_weights, "upsample_latent1", 2)
-
-        WeightHandlerDepthPro._reshape_upsample(depth_pro_weights, "upsample0", 1)
-        WeightHandlerDepthPro._reshape_upsample(depth_pro_weights, "upsample1", 1)
-        WeightHandlerDepthPro._reshape_upsample(depth_pro_weights, "upsample2", 1)
-
-        WeightHandlerDepthPro._reshape_upsample_lowres(depth_pro_weights)
-
-        WeightHandlerDepthPro._reshape_deconv(depth_pro_weights, 1)
-        WeightHandlerDepthPro._reshape_deconv(depth_pro_weights, 2)
-        WeightHandlerDepthPro._reshape_deconv(depth_pro_weights, 3)
-        WeightHandlerDepthPro._reshape_deconv(depth_pro_weights, 4)
-
-        WeightHandlerDepthPro._reshape_head(depth_pro_weights, 1)
-
-    @staticmethod
-    def _reshape_upsample(depth_pro_weights, name, layer):
-        tmp = depth_pro_weights.weights["encoder"][name]["layers"][layer]["weight"]
-        tmp = WeightHandlerDepthPro._reshape(tmp)
-        depth_pro_weights.weights["encoder"][name]["layers"][layer]["weight"] = tmp
-
-    @staticmethod
-    def _reshape_upsample_lowres(depth_pro_weights):
-        tmp = depth_pro_weights.weights["encoder"]["upsample_lowres"]["weight"]
-        tmp = WeightHandlerDepthPro._reshape(tmp)
-        depth_pro_weights.weights["encoder"]["upsample_lowres"]["weight"] = tmp
-
-    @staticmethod
-    def _reshape_deconv(depth_pro_weights, layer):
-        tmp = depth_pro_weights.weights["decoder"]["fusions"][layer]["deconv"]["weight"]
-        tmp = WeightHandlerDepthPro._reshape(tmp)
-        depth_pro_weights.weights["decoder"]["fusions"][layer]["deconv"]["weight"] = tmp
-
-    @staticmethod
-    def _reshape_head(depth_pro_weights, layer):
-        tmp = depth_pro_weights.weights["head"]["convs"][layer]["weight"]
-        tmp = WeightHandlerDepthPro._reshape(tmp)
-        depth_pro_weights.weights["head"]["convs"][layer]["weight"] = tmp
-
-    @staticmethod
-    def _reshape(tensor):
-        tensor = tensor.transpose(0, 3, 1, 2)
-        tensor = tensor.transpose(1, 0, 2, 3)
-        tensor = tensor.transpose(0, 2, 3, 1)
-        return tensor

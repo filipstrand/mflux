@@ -23,3 +23,9 @@ def transpose_conv2d_weight(tensor: mx.array) -> mx.array:
     if len(tensor.shape) == 4:
         return tensor.transpose(0, 2, 3, 1)
     return tensor
+
+
+def transpose_conv_transpose2d_weight(tensor: mx.array) -> mx.array:
+    if len(tensor.shape) == 4:
+        return tensor.transpose(1, 2, 3, 0)
+    return tensor
