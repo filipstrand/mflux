@@ -34,7 +34,11 @@ def main():
     )
 
     # 2. Register callbacks
-    memory_saver = CallbackManager.register_callbacks(args=args, model=flux, latent_creator=FluxLatentCreator)
+    memory_saver = CallbackManager.register_callbacks(
+        args=args,
+        model=flux,
+        latent_creator=FluxLatentCreator,
+    )
 
     try:
         for seed in args.seed:
@@ -42,9 +46,9 @@ def main():
             image = flux.generate_image(
                 seed=seed,
                 prompt=PromptUtil.read_prompt(args),
-                concept=args.concept,
-                height=args.height,
                 width=args.width,
+                height=args.height,
+                concept=args.concept,
                 guidance=args.guidance,
                 image_path=args.image_path,
                 num_inference_steps=args.steps,

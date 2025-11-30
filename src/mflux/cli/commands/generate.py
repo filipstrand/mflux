@@ -53,13 +53,13 @@ def main():
             image = model.generate_image(
                 seed=seed,
                 prompt=PromptUtil.read_prompt(args),
-                num_inference_steps=args.steps,
-                height=height,
                 width=width,
+                height=height,
                 guidance=args.guidance,
-                image_path=args.image_path,
-                image_strength=args.image_strength,
                 scheduler=args.scheduler,
+                image_path=args.image_path,
+                num_inference_steps=args.steps,
+                image_strength=args.image_strength,
                 negative_prompt=PromptUtil.read_negative_prompt(args),
             )
             # 4. Save the image

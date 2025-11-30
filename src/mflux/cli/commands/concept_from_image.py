@@ -47,11 +47,11 @@ def main():
                 seed=seed,
                 prompt=PromptUtil.read_prompt(args),
                 concept=args.concept,
-                image_path=str(args.input_image_path),
-                num_inference_steps=args.steps,
                 height=args.height,
                 width=args.width,
                 guidance=args.guidance,
+                num_inference_steps=args.steps,
+                image_path=str(args.input_image_path),
                 heatmap_timesteps=args.heatmap_timesteps,
                 heatmap_layer_indices=args.heatmap_layer_indices,
             )

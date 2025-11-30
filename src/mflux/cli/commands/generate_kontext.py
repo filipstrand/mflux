@@ -53,12 +53,12 @@ def main():
             image = flux.generate_image(
                 seed=seed,
                 prompt=PromptUtil.read_prompt(args),
-                num_inference_steps=args.steps,
-                height=height,
                 width=width,
+                height=height,
                 guidance=args.guidance,
-                image_path=args.image_path,
                 scheduler=args.scheduler,
+                image_path=args.image_path,
+                num_inference_steps=args.steps,
             )
 
             # 4. Save the image

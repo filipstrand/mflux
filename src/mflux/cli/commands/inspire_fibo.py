@@ -30,12 +30,12 @@ def main():
         # 2. Generate JSON prompt from image
         vlm = FiboVLM(local_path=args.path)
         inspired_json = vlm.inspire(
+            seed=args.seed,
             image=image,
             prompt=args.prompt,
             top_p=args.top_p,
             temperature=args.temperature,
             max_tokens=args.max_tokens,
-            seed=args.seed,
         )
 
         # 3. Parse and save generated JSON prompt

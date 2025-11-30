@@ -65,13 +65,13 @@ def main():
             image = flux.generate_image(
                 seed=seed,
                 prompt=_get_effective_ic_edit_prompt(args),
-                left_image_path=args.reference_image,
-                num_inference_steps=args.steps,
-                height=height,
                 width=width,
+                height=height,
                 guidance=args.guidance,
-                right_image_path=None,
                 scheduler=args.scheduler,
+                num_inference_steps=args.steps,
+                left_image_path=args.reference_image,
+                right_image_path=None,
             )
 
             # 4. Save the image(s)

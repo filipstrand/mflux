@@ -27,7 +27,7 @@ def main():
             training_state=training_state,
         )
     except StopTrainingException as stop_exc:
-        training_state.save(training_spec)
+        training_state.save(flux, training_spec)
         print(stop_exc)
 
 

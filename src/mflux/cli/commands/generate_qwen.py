@@ -53,14 +53,14 @@ def main():
             image = qwen.generate_image(
                 seed=seed,
                 prompt=PromptUtil.read_prompt(args),
-                num_inference_steps=args.steps,
-                height=height,
-                width=width,
-                guidance=args.guidance,
-                image_path=args.image_path,
-                image_strength=args.image_strength,
-                scheduler=args.scheduler,
                 negative_prompt=PromptUtil.read_negative_prompt(args),
+                width=width,
+                height=height,
+                guidance=args.guidance,
+                scheduler=args.scheduler,
+                image_path=args.image_path,
+                num_inference_steps=args.steps,
+                image_strength=args.image_strength,
             )
             # 4. Save the image
             image.save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)

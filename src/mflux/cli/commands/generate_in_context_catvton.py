@@ -56,14 +56,14 @@ def main():
             image = flux.generate_image(
                 seed=seed,
                 prompt=PromptUtil.read_prompt(args),
-                left_image_path=args.garment_image,
-                num_inference_steps=args.steps,
-                height=args.height,
                 width=args.width,
+                height=args.height,
                 guidance=args.guidance,
+                scheduler=args.scheduler,
+                num_inference_steps=args.steps,
+                left_image_path=args.garment_image,
                 right_image_path=args.person_image,
                 masked_image_path=args.person_mask,
-                scheduler=args.scheduler,
             )
 
             # 4. Save the image(s)

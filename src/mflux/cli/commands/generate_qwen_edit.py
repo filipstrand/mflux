@@ -48,13 +48,13 @@ def main():
             image = qwen.generate_image(
                 seed=seed,
                 prompt=PromptUtil.read_prompt(args),
-                image_paths=image_paths,
-                num_inference_steps=args.steps,
-                height=args.height,
-                width=args.width,
-                guidance=args.guidance,
-                image_path=image_paths[0],  # Use first image for metadata
                 negative_prompt=PromptUtil.read_negative_prompt(args),
+                width=args.width,
+                height=args.height,
+                image_path=image_paths[0],  # Use first image for metadata
+                image_paths=image_paths,
+                guidance=args.guidance,
+                num_inference_steps=args.steps,
             )
 
             # 5. Save the image

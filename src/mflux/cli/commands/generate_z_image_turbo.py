@@ -48,10 +48,10 @@ def main():
             image = model.generate_image(
                 seed=seed,
                 prompt=PromptUtil.read_prompt(args),
-                num_inference_steps=args.steps,
-                height=height,
                 width=width,
+                height=height,
                 image_path=args.image_path,
+                num_inference_steps=args.steps,
                 image_strength=args.image_strength,
             )
             # 4. Save the image

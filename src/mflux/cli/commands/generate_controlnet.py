@@ -46,13 +46,13 @@ def main():
             image = flux.generate_image(
                 seed=seed,
                 prompt=PromptUtil.read_prompt(args),
-                controlnet_image_path=args.controlnet_image_path,
-                num_inference_steps=args.steps,
-                height=args.height,
                 width=args.width,
+                height=args.height,
                 guidance=args.guidance,
-                controlnet_strength=args.controlnet_strength,
                 scheduler=args.scheduler,
+                num_inference_steps=args.steps,
+                controlnet_strength=args.controlnet_strength,
+                controlnet_image_path=args.controlnet_image_path,
             )
 
             # 4. Save the image

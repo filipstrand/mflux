@@ -59,11 +59,11 @@ def main():
             image = fibo.generate_image(
                 seed=seed,
                 prompt=json_prompt,
-                num_inference_steps=args.steps,
-                height=height,
                 width=width,
+                height=height,
                 guidance=args.guidance,
                 image_path=args.image_path,
+                num_inference_steps=args.steps,
                 image_strength=args.image_strength,
                 scheduler="flow_match_euler_discrete",
                 negative_prompt=PromptUtil.read_negative_prompt(args),

@@ -26,12 +26,12 @@ def main():
         vlm = FiboVLM(local_path=args.path)
 
         refined_json = vlm.refine(
+            seed=args.seed,
             structured_prompt=_get_structured_prompt(args),
             editing_instructions=args.instructions,
             top_p=args.top_p,
             temperature=args.temperature,
             max_tokens=args.max_tokens,
-            seed=args.seed,
         )
 
         # 2. Parse and save refined JSON prompt

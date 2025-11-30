@@ -53,13 +53,13 @@ def main():
             image = flux.generate_image(
                 seed=seed,
                 prompt=PromptUtil.read_prompt(args),
-                redux_image_paths=args.redux_image_paths,
-                num_inference_steps=args.steps,
-                height=args.height,
                 width=args.width,
+                height=args.height,
                 guidance=args.guidance,
-                redux_image_strengths=redux_image_strengths,
                 scheduler=args.scheduler,
+                num_inference_steps=args.steps,
+                redux_image_paths=args.redux_image_paths,
+                redux_image_strengths=redux_image_strengths,
             )
 
             # 4. Save the image
