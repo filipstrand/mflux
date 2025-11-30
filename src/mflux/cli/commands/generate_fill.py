@@ -42,7 +42,7 @@ def main():
             # 3. Generate an image for each seed value
             image = flux.generate_image(
                 seed=seed,
-                prompt=PromptUtil.get_effective_prompt(args),
+                prompt=PromptUtil.read_prompt(args),
                 image_path=args.image_path,
                 masked_image_path=args.masked_image_path,
                 num_inference_steps=args.steps,

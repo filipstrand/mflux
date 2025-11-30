@@ -91,7 +91,7 @@ def _get_effective_ic_edit_prompt(args):
     if hasattr(args, "instruction") and args.instruction:
         return f"A diptych with two side-by-side images of the same scene. On the right, the scene is exactly the same as on the left but {args.instruction}"
     else:
-        return PromptUtil.get_effective_prompt(args)
+        return PromptUtil.read_prompt(args)
 
 
 def _resize_for_ic_edit_optimal_width(args):

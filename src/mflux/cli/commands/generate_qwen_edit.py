@@ -47,14 +47,14 @@ def main():
             # 4. Generate an image for each seed value
             image = qwen.generate_image(
                 seed=seed,
-                prompt=PromptUtil.get_effective_prompt(args),
+                prompt=PromptUtil.read_prompt(args),
                 image_paths=image_paths,
                 num_inference_steps=args.steps,
                 height=args.height,
                 width=args.width,
                 guidance=args.guidance,
                 image_path=image_paths[0],  # Use first image for metadata
-                negative_prompt=PromptUtil.get_effective_negative_prompt(args),
+                negative_prompt=PromptUtil.read_negative_prompt(args),
             )
 
             # 5. Save the image

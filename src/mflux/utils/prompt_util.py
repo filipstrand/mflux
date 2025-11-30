@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class PromptUtil:
     @staticmethod
-    def get_effective_prompt(args: Namespace) -> str:
+    def read_prompt(args: Namespace) -> str:
         # Handle stdin input when prompt is "-"
         if args.prompt == "-":
             try:
@@ -31,7 +31,7 @@ class PromptUtil:
         return args.prompt
 
     @staticmethod
-    def get_effective_negative_prompt(args: Namespace) -> str:
+    def read_negative_prompt(args: Namespace) -> str:
         # Return negative prompt or empty string if not provided
         return getattr(args, "negative_prompt", "")
 

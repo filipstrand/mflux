@@ -66,7 +66,7 @@ def main():
                 image_path=args.image_path,
                 image_strength=args.image_strength,
                 scheduler="flow_match_euler_discrete",
-                negative_prompt=PromptUtil.get_effective_negative_prompt(args),
+                negative_prompt=PromptUtil.read_negative_prompt(args),
             )
 
             # 4. Save the image
@@ -79,7 +79,7 @@ def main():
 
 
 def _get_json_prompt(args):
-    prompt = PromptUtil.get_effective_prompt(args)
+    prompt = PromptUtil.read_prompt(args)
 
     try:
         json.loads(prompt)

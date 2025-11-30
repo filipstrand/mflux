@@ -41,13 +41,13 @@ def main():
             # 3. Generate an image for each seed value
             image = flux.generate_image(
                 seed=seed,
-                prompt=PromptUtil.get_effective_prompt(args),
+                prompt=PromptUtil.read_prompt(args),
                 concept=args.concept,
-                num_inference_steps=args.steps,
                 height=args.height,
                 width=args.width,
                 guidance=args.guidance,
                 image_path=args.image_path,
+                num_inference_steps=args.steps,
                 image_strength=args.image_strength,
                 heatmap_timesteps=args.heatmap_timesteps,
                 heatmap_layer_indices=args.heatmap_layer_indices,

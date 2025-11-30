@@ -55,7 +55,7 @@ def main():
             # 3. Generate an image for each seed value
             image = flux.generate_image(
                 seed=seed,
-                prompt=PromptUtil.get_effective_prompt(args),
+                prompt=PromptUtil.read_prompt(args),
                 left_image_path=args.garment_image,
                 num_inference_steps=args.steps,
                 height=args.height,
