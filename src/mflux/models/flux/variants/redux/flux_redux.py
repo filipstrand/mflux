@@ -61,7 +61,7 @@ class Flux1Redux(nn.Module):
         scheduler: str = "linear",
     ) -> GeneratedImage:
         # 0. Create a new runtime config based on the model type and input parameters
-        runtime_config = RuntimeConfig(
+        config = RuntimeConfig(
             model_config=self.model_config,
             num_inference_steps=num_inference_steps,
             height=height,
@@ -76,8 +76,8 @@ class Flux1Redux(nn.Module):
         # 1. Create the initial latents
         latents = FluxLatentCreator.create_noise(
             seed=seed,
-            height=runtime_config.height,
-            width=runtime_config.width,
+            width=config.width,
+            height=config.height,
         )
 
         # 2. Get prompt embeddings by fusing the prompt and image embeddings
@@ -88,10 +88,10 @@ class Flux1Redux(nn.Module):
             clip_tokenizer=self.clip_tokenizer,
             t5_text_encoder=self.t5_text_encoder,
             clip_text_encoder=self.clip_text_encoder,
-            image_paths=runtime_config.redux_image_paths,
+            image_paths=config.redux_image_paths,
             image_encoder=self.image_encoder,
             image_embedder=self.image_embedder,
-            image_strengths=runtime_config.redux_image_strengths,
+            image_strengths=config.redux_image_strengths,
         )  # fmt: off
 
         # (Optional) Call subscribers for beginning of loop
@@ -99,25 +99,25 @@ class Flux1Redux(nn.Module):
             seed=seed,
             prompt=prompt,
             latents=latents,
-            config=runtime_config,
+            config=config,
         )  # fmt: off
 
-        for t in runtime_config.time_steps:
+        for t in config.time_steps:
             try:
                 # Scale model input if needed by the scheduler
-                latents = runtime_config.scheduler.scale_model_input(latents, t)
+                latents = config.scheduler.scale_model_input(latents, t)
 
                 # 3.t Predict the noise
                 noise = self.transformer(
                     t=t,
-                    config=runtime_config,
+                    config=config,
                     hidden_states=latents,
                     prompt_embeds=prompt_embeds,
                     pooled_prompt_embeds=pooled_prompt_embeds,
                 )
 
                 # 4.t Take one denoise step
-                latents = runtime_config.scheduler.step(noise=noise, timestep=t, latents=latents)
+                latents = config.scheduler.step(noise=noise, timestep=t, latents=latents)
 
                 # (Optional) Call subscribers in-loop
                 Callbacks.in_loop(
@@ -125,8 +125,8 @@ class Flux1Redux(nn.Module):
                     seed=seed,
                     prompt=prompt,
                     latents=latents,
-                    config=runtime_config,
-                    time_steps=runtime_config.time_steps,
+                    config=config,
+                    time_steps=config.time_steps,
                 )  # fmt: off
 
                 # (Optional) Evaluate to enable progress tracking
@@ -138,11 +138,11 @@ class Flux1Redux(nn.Module):
                     seed=seed,
                     prompt=prompt,
                     latents=latents,
-                    config=runtime_config,
-                    time_steps=runtime_config.time_steps,
+                    config=config,
+                    time_steps=config.time_steps,
                 )
                 raise StopImageGenerationException(
-                    f"Stopping image generation at step {t + 1}/{runtime_config.num_inference_steps}"
+                    f"Stopping image generation at step {t + 1}/{config.num_inference_steps}"
                 )
 
         # (Optional) Call subscribers after loop
@@ -150,24 +150,24 @@ class Flux1Redux(nn.Module):
             seed=seed,
             prompt=prompt,
             latents=latents,
-            config=runtime_config,
+            config=config,
         )  # fmt: off
 
         # 5. Decode the latent array and return the image
-        latents = FluxLatentCreator.unpack_latents(latents=latents, height=runtime_config.height, width=runtime_config.width)  # fmt: off
+        latents = FluxLatentCreator.unpack_latents(latents=latents, height=config.height, width=config.width)  # fmt: off
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,
-            config=runtime_config,
+            config=config,
             seed=seed,
             prompt=prompt,
             quantization=self.bits,
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
-            redux_image_paths=runtime_config.redux_image_paths,
-            redux_image_strengths=runtime_config.redux_image_strengths,
-            image_strength=runtime_config.image_strength,
-            generation_time=runtime_config.time_steps.format_dict["elapsed"],
+            redux_image_paths=config.redux_image_paths,
+            redux_image_strengths=config.redux_image_strengths,
+            image_strength=config.image_strength,
+            generation_time=config.time_steps.format_dict["elapsed"],
         )
 
     @staticmethod

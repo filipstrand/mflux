@@ -14,7 +14,7 @@ class DreamBooth:
     @staticmethod
     def train(
         flux: Flux1,
-        runtime_config: RuntimeConfig,
+        config: RuntimeConfig,
         training_spec: TrainingSpec,
         training_state: TrainingState,
     ):
@@ -27,7 +27,7 @@ class DreamBooth:
         # Define loss computation as a function of a batch 'b'
         train_step_function = nn.value_and_grad(
             model=flux,
-            fn=lambda b: DreamBoothLoss.compute_loss(flux, runtime_config, b),
+            fn=lambda b: DreamBoothLoss.compute_loss(flux, config, b),
         )
 
         # Setup progress bar
@@ -47,7 +47,7 @@ class DreamBooth:
             # Plot loss progress periodically
             if training_state.should_plot_loss(training_spec):
                 validation_batch = training_state.iterator.get_validation_batch()
-                validation_loss = DreamBoothLoss.compute_loss(flux, runtime_config, validation_batch)
+                validation_loss = DreamBoothLoss.compute_loss(flux, config, validation_batch)
                 training_state.statistics.append_values(step=training_state.iterator.num_iterations, loss=validation_loss)  # fmt: off
                 Plotter.update_loss_plot(training_spec=training_spec, training_state=training_state)
                 del validation_loss

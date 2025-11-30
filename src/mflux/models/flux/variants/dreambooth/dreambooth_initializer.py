@@ -1,6 +1,7 @@
 import mlx.core.random as random
 
-from mflux.models.common.config import ModelConfig, RuntimeConfig
+from mflux.models.common.config.model_config import ModelConfig
+from mflux.models.common.config.runtime_config import RuntimeConfig
 from mflux.models.flux.variants.dreambooth.dataset.dataset import Dataset
 from mflux.models.flux.variants.dreambooth.dataset.iterator import Iterator
 from mflux.models.flux.variants.dreambooth.lora_layers.lora_layers import LoRALayers
@@ -33,7 +34,7 @@ class DreamBoothInitializer:
             model_config=model_config,
             quantize=training_spec.quantize,
         )
-        runtime_config = RuntimeConfig(
+        config = RuntimeConfig(
             model_config=model_config,
             num_inference_steps=training_spec.steps,
             width=training_spec.width,
@@ -69,4 +70,4 @@ class DreamBoothInitializer:
             statistics=statistics,
         )
 
-        return flux, runtime_config, training_spec, training_state
+        return flux, config, training_spec, training_state

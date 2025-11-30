@@ -57,7 +57,7 @@ class FIBO(nn.Module):
         negative_prompt: str | None = None,
     ) -> GeneratedImage:
         # 0. Create a new runtime config based on the model type and input parameters
-        runtime_config = RuntimeConfig(
+        config = RuntimeConfig(
             model_config=self.model_config,
             num_inference_steps=num_inference_steps,
             height=height,
@@ -71,14 +71,14 @@ class FIBO(nn.Module):
         # 1. Create the initial latents
         latents = LatentCreator.create_for_txt2img_or_img2img(
             seed=seed,
-            height=runtime_config.height,
-            width=runtime_config.width,
+            width=config.width,
+            height=config.height,
             img2img=Img2Img(
                 vae=self.vae,
                 latent_creator=FiboLatentCreator,
-                image_path=runtime_config.image_path,
-                sigmas=runtime_config.scheduler.sigmas,
-                init_time_step=runtime_config.init_time_step,
+                image_path=config.image_path,
+                sigmas=config.scheduler.sigmas,
+                init_time_step=config.init_time_step,
             ),
         )
 
@@ -95,23 +95,23 @@ class FIBO(nn.Module):
             seed=seed,
             prompt=json_prompt,
             latents=latents,
-            config=runtime_config,
+            config=config,
         )
 
-        for t in runtime_config.time_steps:
+        for t in config.time_steps:
             try:
                 # 3.t Predict the noise
                 noise = self.transformer(
                     t=t,
-                    config=runtime_config,
+                    config=config,
                     hidden_states=latents,
                     encoder_hidden_states=encoder_hidden_states,
                     text_encoder_layers=text_encoder_layers,
                 )
-                noise = FIBO._apply_classifier_free_guidance(noise, runtime_config.guidance)
+                noise = FIBO._apply_classifier_free_guidance(noise, config.guidance)
 
                 # 4.t Take one denoise step
-                latents = runtime_config.scheduler.step(noise=noise, timestep=t, latents=latents)
+                latents = config.scheduler.step(noise=noise, timestep=t, latents=latents)
 
                 # (Optional) Call subscribers in-loop
                 Callbacks.in_loop(
@@ -119,8 +119,8 @@ class FIBO(nn.Module):
                     seed=seed,
                     prompt=json_prompt,
                     latents=latents,
-                    config=runtime_config,
-                    time_steps=runtime_config.time_steps,
+                    config=config,
+                    time_steps=config.time_steps,
                 )
 
                 # (Optional) Evaluate to enable progress tracking
@@ -132,11 +132,11 @@ class FIBO(nn.Module):
                     seed=seed,
                     prompt=json_prompt,
                     latents=latents,
-                    config=runtime_config,
-                    time_steps=runtime_config.time_steps,
+                    config=config,
+                    time_steps=config.time_steps,
                 )
                 raise StopImageGenerationException(
-                    f"Stopping image generation at step {t + 1}/{runtime_config.num_inference_steps}"
+                    f"Stopping image generation at step {t + 1}/{config.num_inference_steps}"
                 )
 
         # (Optional) Call subscribers after loop
@@ -144,23 +144,23 @@ class FIBO(nn.Module):
             seed=seed,
             prompt=json_prompt,
             latents=latents,
-            config=runtime_config,
+            config=config,
         )
 
         # 5. Decode the latent array and return the image
-        latents = FiboLatentCreator.unpack_latents(latents, runtime_config.height, runtime_config.width)
+        latents = FiboLatentCreator.unpack_latents(latents, config.height, config.width)
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,
-            config=runtime_config,
+            config=config,
             seed=seed,
             prompt=json_prompt,
             quantization=self.bits,
             lora_paths=None,
             lora_scales=None,
-            image_path=runtime_config.image_path,
-            image_strength=runtime_config.image_strength,
-            generation_time=runtime_config.time_steps.format_dict["elapsed"],
+            image_path=config.image_path,
+            image_strength=config.image_strength,
+            generation_time=config.time_steps.format_dict["elapsed"],
         )
 
     @staticmethod

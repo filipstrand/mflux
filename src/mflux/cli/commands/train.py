@@ -13,7 +13,7 @@ def main():
     args = parser.parse_args()
 
     # 1. Initialize the required resources
-    flux, runtime_config, training_spec, training_state = DreamBoothInitializer.initialize(
+    flux, config, training_spec, training_state = DreamBoothInitializer.initialize(
         config_path=args.train_config,
         checkpoint_path=args.train_checkpoint,
     )
@@ -22,7 +22,7 @@ def main():
     try:
         DreamBooth.train(
             flux=flux,
-            runtime_config=runtime_config,
+            config=config,
             training_spec=training_spec,
             training_state=training_state,
         )

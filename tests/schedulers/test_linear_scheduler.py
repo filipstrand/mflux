@@ -17,7 +17,7 @@ def test_linear_scheduler_import_by_name():
 
 
 @pytest.fixture
-def test_runtime_config():
+def test_config():
     return RuntimeConfig(
         model_config=ModelConfig.dev(),  # requires_sigma_shift=True
         num_inference_steps=14,
@@ -27,21 +27,21 @@ def test_runtime_config():
     )
 
 
-def test_linear_scheduler_initialization(test_runtime_config):
+def test_linear_scheduler_initialization(test_config):
     """
     Test the initialization of the LinearScheduler.
     """
-    scheduler = LinearScheduler(runtime_config=test_runtime_config)
+    scheduler = LinearScheduler(config=test_config)
     assert scheduler.sigmas is not None
     assert isinstance(scheduler.sigmas, mx.array)
     assert len(scheduler.sigmas) > 0
 
 
-def test_linear_scheduler_sigmas_property_no_shift(test_runtime_config):
+def test_linear_scheduler_sigmas_property_no_shift(test_config):
     """
     Test the sigmas property of the LinearScheduler without sigma shift.
     """
-    scheduler = LinearScheduler(runtime_config=test_runtime_config)
+    scheduler = LinearScheduler(config=test_config)
     expected_sigmas_from_mflux_0_9_0 = mx.array(
         np.load(
             io.BytesIO(
@@ -54,15 +54,15 @@ def test_linear_scheduler_sigmas_property_no_shift(test_runtime_config):
     )
 
     assert mx.allclose(scheduler.sigmas, expected_sigmas_from_mflux_0_9_0)
-    assert scheduler.sigmas.shape == (test_runtime_config.num_inference_steps + 1,)
+    assert scheduler.sigmas.shape == (test_config.num_inference_steps + 1,)
 
 
-def test_linear_scheduler_sigmas_property_with_shift(test_runtime_config):
+def test_linear_scheduler_sigmas_property_with_shift(test_config):
     """
     Test the sigmas property of the LinearScheduler with sigma shift.
     """
-    test_runtime_config.model_config = ModelConfig.schnell()  # requires_sigma_shift=True
-    scheduler = LinearScheduler(runtime_config=test_runtime_config)
+    test_config.model_config = ModelConfig.schnell()  # requires_sigma_shift=True
+    scheduler = LinearScheduler(config=test_config)
     expected_sigmas_from_mflux_0_9_0 = mx.array(
         np.load(
             io.BytesIO(
@@ -74,4 +74,4 @@ def test_linear_scheduler_sigmas_property_with_shift(test_runtime_config):
         )
     )
     assert mx.allclose(scheduler.sigmas, expected_sigmas_from_mflux_0_9_0)
-    assert scheduler.sigmas.shape == (test_runtime_config.num_inference_steps + 1,)
+    assert scheduler.sigmas.shape == (test_config.num_inference_steps + 1,)

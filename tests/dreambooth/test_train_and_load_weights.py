@@ -21,13 +21,13 @@ class TestTrainAndLoadWeights:
 
         try:
             # Given: A small training run from scratch for 5 steps (as described in the config)...
-            fluxA, runtime_config, training_spec, training_state = DreamBoothInitializer.initialize(
+            fluxA, config, training_spec, training_state = DreamBoothInitializer.initialize(
                 config_path="tests/dreambooth/config/train.json",
                 checkpoint_path=None,
             )
             DreamBooth.train(
                 flux=fluxA,
-                runtime_config=runtime_config,
+                config=config,
                 training_spec=training_spec,
                 training_state=training_state,
             )
@@ -39,7 +39,7 @@ class TestTrainAndLoadWeights:
                 height=128,
                 width=128,
             )
-            del fluxA, runtime_config, training_spec, training_state
+            del fluxA, config, training_spec, training_state
             # unzip so that LoRA adapter can be read later...
             ZipUtil.extract_all(zip_path=CHECKPOINT, output_dir=OUTPUT_DIR)
 

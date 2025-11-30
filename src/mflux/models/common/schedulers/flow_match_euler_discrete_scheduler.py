@@ -10,9 +10,9 @@ from mflux.models.common.schedulers.base_scheduler import BaseScheduler
 
 
 class FlowMatchEulerDiscreteScheduler(BaseScheduler):
-    def __init__(self, runtime_config: "RuntimeConfig"):
-        self.runtime_config = runtime_config
-        self.model_config = runtime_config.model_config
+    def __init__(self, config: "RuntimeConfig"):
+        self.config = config
+        self.model_config = config.model_config
         self.num_train_timesteps = 1000
         self.shift_terminal = 0.02
         self.base_shift = 0.5
@@ -30,8 +30,8 @@ class FlowMatchEulerDiscreteScheduler(BaseScheduler):
         return self._timesteps
 
     def _compute_mu(self) -> float:
-        h_patches = self.runtime_config.height // 16
-        w_patches = self.runtime_config.width // 16
+        h_patches = self.config.height // 16
+        w_patches = self.config.width // 16
         seq_len = h_patches * w_patches
         m = (self.max_shift - self.base_shift) / (self.max_image_seq_len - self.base_image_seq_len)
         b = self.base_shift - m * self.base_image_seq_len
@@ -49,7 +49,7 @@ class FlowMatchEulerDiscreteScheduler(BaseScheduler):
         return stretched
 
     def _compute_timesteps_and_sigmas(self) -> tuple[mx.array, mx.array]:
-        num_steps = self.runtime_config.num_inference_steps
+        num_steps = self.config.num_inference_steps
         sigma_min = 1.0 / self.num_train_timesteps
         sigma_max = 1.0
         timesteps_linear = [

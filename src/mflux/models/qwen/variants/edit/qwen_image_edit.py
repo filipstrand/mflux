@@ -54,7 +54,7 @@ class QwenImageEdit(nn.Module):
         scheduler: str = "linear",
         negative_prompt: str | None = None,
     ) -> GeneratedImage:
-        runtime_config, vl_width, vl_height, vae_width, vae_height = self._compute_dimensions(
+        config, vl_width, vl_height, vae_width, vae_height = self._compute_dimensions(
             image_paths=image_paths,
             num_inference_steps=num_inference_steps,
             height=height,
@@ -63,14 +63,14 @@ class QwenImageEdit(nn.Module):
             image_path=image_path,
             scheduler=scheduler,
         )
-        timesteps = runtime_config.scheduler.timesteps
+        timesteps = config.scheduler.timesteps
         time_steps = tqdm(range(len(timesteps)))
 
         # 1. Create initial latents
         latents = QwenLatentCreator.create_noise(
             seed=seed,
-            height=runtime_config.height,
-            width=runtime_config.width,
+            height=config.height,
+            width=config.width,
         )
 
         # 2. Encode the prompt
@@ -78,7 +78,7 @@ class QwenImageEdit(nn.Module):
             prompt=prompt,
             negative_prompt=negative_prompt,
             image_paths=image_paths,
-            runtime_config=runtime_config,
+            config=config,
             vl_width=vl_width,
             vl_height=vl_height,
         )
@@ -100,7 +100,7 @@ class QwenImageEdit(nn.Module):
             seed=seed,
             prompt=prompt,
             latents=latents,
-            config=runtime_config,
+            config=config,
         )
 
         for t in time_steps:
@@ -117,7 +117,7 @@ class QwenImageEdit(nn.Module):
 
                 noise = self.transformer(
                     t=t,
-                    config=runtime_config,
+                    config=config,
                     hidden_states=hidden_states,
                     encoder_hidden_states=prompt_embeds,
                     encoder_hidden_states_mask=prompt_mask,
@@ -126,17 +126,17 @@ class QwenImageEdit(nn.Module):
                 )[:, : latents.shape[1]]
                 noise_negative = self.transformer(
                     t=t,
-                    config=runtime_config,
+                    config=config,
                     hidden_states=hidden_states_neg,
                     encoder_hidden_states=negative_prompt_embeds,
                     encoder_hidden_states_mask=negative_prompt_mask,
                     qwen_image_ids=qwen_image_ids,
                     cond_image_grid=cond_image_grid,
                 )[:, : latents.shape[1]]
-                guided_noise = QwenImage.compute_guided_noise(noise, noise_negative, runtime_config.guidance)
+                guided_noise = QwenImage.compute_guided_noise(noise, noise_negative, config.guidance)
 
                 # 6.t Take one denoise step
-                latents = runtime_config.scheduler.step(noise=guided_noise, timestep=t, latents=latents)
+                latents = config.scheduler.step(noise=guided_noise, timestep=t, latents=latents)
 
                 # (Optional) Call subscribers in-loop
                 Callbacks.in_loop(
@@ -144,7 +144,7 @@ class QwenImageEdit(nn.Module):
                     seed=seed,
                     prompt=prompt,
                     latents=latents,
-                    config=runtime_config,
+                    config=config,
                     time_steps=time_steps,
                 )
 
@@ -157,7 +157,7 @@ class QwenImageEdit(nn.Module):
                     seed=seed,
                     prompt=prompt,
                     latents=latents,
-                    config=runtime_config,
+                    config=config,
                     time_steps=time_steps,
                 )
                 raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(timesteps)}")
@@ -167,23 +167,21 @@ class QwenImageEdit(nn.Module):
             seed=seed,
             prompt=prompt,
             latents=latents,
-            config=runtime_config,
+            config=config,
         )
 
         # 7. Decode the latent array and return the image
-        latents = QwenLatentCreator.unpack_latents(
-            latents=latents, height=runtime_config.height, width=runtime_config.width
-        )
+        latents = QwenLatentCreator.unpack_latents(latents=latents, height=config.height, width=config.width)
         decoded = self.vae.decode(latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,
-            config=runtime_config,
+            config=config,
             seed=seed,
             prompt=prompt,
             quantization=self.bits,
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
-            image_path=runtime_config.image_path,
+            image_path=config.image_path,
             image_paths=image_paths,
             generation_time=time_steps.format_dict["elapsed"],
             negative_prompt=negative_prompt,
@@ -194,7 +192,7 @@ class QwenImageEdit(nn.Module):
         prompt: str,
         negative_prompt: str,
         image_paths: list[str],
-        runtime_config,
+        config,
         vl_width: int | None = None,
         vl_height: int | None = None,
     ) -> tuple[mx.array, mx.array, mx.array, mx.array]:
@@ -266,7 +264,7 @@ class QwenImageEdit(nn.Module):
         use_width = use_width // multiple_of * multiple_of
         use_height = use_height // multiple_of * multiple_of
 
-        runtime_config = RuntimeConfig(
+        config = RuntimeConfig(
             model_config=self.model_config,
             num_inference_steps=num_inference_steps,
             height=use_height,
@@ -290,4 +288,4 @@ class QwenImageEdit(nn.Module):
         vae_width = round(vae_width / 32) * 32
         vae_height = round(vae_height / 32) * 32
 
-        return runtime_config, int(vl_width), int(vl_height), int(vae_width), int(vae_height)
+        return config, int(vl_width), int(vl_height), int(vae_width), int(vae_height)
