@@ -99,7 +99,7 @@ class ZImageTurbo(nn.Module):
         for t in config.time_steps:
             try:
                 # 3.t Predict the noise
-                noise_pred = -self.transformer(
+                noise = -self.transformer(
                     t=t,
                     x=latents,
                     cap_feats=text_encodings,
@@ -108,7 +108,7 @@ class ZImageTurbo(nn.Module):
 
                 # 4.t Take one denoise step
                 latents = config.scheduler.step(
-                    model_output=noise_pred,
+                    model_output=noise,
                     timestep=t,
                     sample=latents,
                 )
