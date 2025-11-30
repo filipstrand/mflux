@@ -6,8 +6,7 @@ from mlx import nn
 from tqdm import tqdm
 
 from mflux.callbacks.callbacks import Callbacks
-from mflux.config.model_config import ModelConfig
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config import ModelConfig, RuntimeConfig
 from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
 from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer

@@ -1,7 +1,7 @@
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.defaults import defaults as ui_defaults
 from mflux.cli.parser.parsers import CommandLineParser
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
 from mflux.utils.dimension_resolver import DimensionResolver

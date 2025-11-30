@@ -11,7 +11,7 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.utils.metadata_reader import MetadataReader
 

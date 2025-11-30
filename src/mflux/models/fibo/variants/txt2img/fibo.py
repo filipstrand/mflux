@@ -4,8 +4,7 @@ import mlx.core as mx
 from mlx import nn
 
 from mflux.callbacks.callbacks import Callbacks
-from mflux.config.model_config import ModelConfig
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config import ModelConfig, RuntimeConfig
 from mflux.models.common.latent_creator.latent_creator import Img2Img, LatentCreator
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.fibo.fibo_initializer import FIBOInitializer

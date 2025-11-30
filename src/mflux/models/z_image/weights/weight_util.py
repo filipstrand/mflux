@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 import mlx.core as mx
 import mlx.nn as nn
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 
 if TYPE_CHECKING:
     from mflux.models.z_image.weights.weight_handler import WeightHandler

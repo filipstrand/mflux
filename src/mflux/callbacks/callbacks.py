@@ -3,7 +3,7 @@ import PIL.Image
 import tqdm
 
 from mflux.callbacks.callback_registry import CallbackRegistry
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config import RuntimeConfig
 
 
 class Callbacks:

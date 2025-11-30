@@ -1,4 +1,4 @@
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.common.lora.mapping.lora_loader import LoRALoader
 from mflux.models.depth_pro.depth_pro import DepthPro
 from mflux.models.flux.model.flux_text_encoder.clip_encoder.clip_encoder import CLIPEncoder

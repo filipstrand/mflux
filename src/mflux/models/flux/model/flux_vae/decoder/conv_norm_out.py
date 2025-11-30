@@ -1,7 +1,7 @@
 import mlx.core as mx
 import mlx.nn as nn
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 
 
 class ConvNormOut(nn.Module):

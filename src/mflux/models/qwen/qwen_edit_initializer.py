@@ -3,7 +3,7 @@ from pathlib import Path
 from huggingface_hub import snapshot_download
 from transformers import Qwen2TokenizerFast
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.qwen.model.qwen_text_encoder.qwen_vision_language_encoder import QwenVisionLanguageEncoder
 from mflux.models.qwen.qwen_initializer import QwenImageInitializer
 from mflux.models.qwen.tokenizer.qwen_vision_language_processor import QwenVisionLanguageProcessor

@@ -6,7 +6,7 @@ import mlx.core as mx
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.defaults import defaults as ui_defaults
 from mflux.cli.parser.parsers import CommandLineParser
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.fibo.latent_creator.fibo_latent_creator import FiboLatentCreator
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
 from mflux.models.fibo_vlm.model.fibo_vlm import FiboVLM

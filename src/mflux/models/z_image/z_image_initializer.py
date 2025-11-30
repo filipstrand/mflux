@@ -1,4 +1,4 @@
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.common.lora.mapping.lora_loader import LoRALoader
 from mflux.models.z_image.model.z_image_text_encoder.text_encoder import TextEncoder
 from mflux.models.z_image.model.z_image_transformer.transformer import ZImageTransformer

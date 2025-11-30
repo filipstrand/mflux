@@ -1,6 +1,6 @@
 import os
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.controlnet.flux_controlnet import Flux1Controlnet
 from mflux.utils.image_compare import ImageCompare
 from tests.image_generation.helpers.image_generation_test_helper import ImageGeneratorTestHelper

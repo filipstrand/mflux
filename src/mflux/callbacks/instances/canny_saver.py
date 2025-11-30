@@ -5,7 +5,7 @@ import mlx.core as mx
 import PIL.Image
 
 from mflux.callbacks.callback import BeforeLoopCallback
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config import RuntimeConfig
 from mflux.utils.image_util import ImageUtil
 
 

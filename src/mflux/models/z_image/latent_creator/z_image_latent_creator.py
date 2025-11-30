@@ -1,6 +1,6 @@
 import mlx.core as mx
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 
 
 class ZImageLatentCreator:

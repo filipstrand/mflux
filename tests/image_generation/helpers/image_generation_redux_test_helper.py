@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.redux.flux_redux import Flux1Redux
 from mflux.utils.image_compare import ImageCompare
 

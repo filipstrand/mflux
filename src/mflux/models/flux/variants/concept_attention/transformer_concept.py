@@ -1,8 +1,7 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.config.model_config import ModelConfig
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config import ModelConfig, RuntimeConfig
 from mflux.models.flux.model.flux_transformer.ada_layer_norm_continuous import AdaLayerNormContinuous
 from mflux.models.flux.model.flux_transformer.embed_nd import EmbedND
 from mflux.models.flux.model.flux_transformer.single_transformer_block import SingleTransformerBlock

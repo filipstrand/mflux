@@ -1,7 +1,7 @@
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.defaults import defaults as ui_defaults
 from mflux.cli.parser.parsers import CommandLineParser
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 from mflux.models.flux.variants.concept_attention.flux_concept_from_image import Flux1ConceptFromImage
 from mflux.utils.exceptions import PromptFileReadError, StopImageGenerationException

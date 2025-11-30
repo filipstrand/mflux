@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 import mlx.core as mx
 
 if TYPE_CHECKING:
-    from mflux.config.runtime_config import RuntimeConfig
+    from mflux.models.common.config import RuntimeConfig
 
 from mflux.models.common.schedulers.base_scheduler import BaseScheduler
 

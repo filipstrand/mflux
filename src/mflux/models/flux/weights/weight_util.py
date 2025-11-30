@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 import mlx.nn as nn
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.common.quantization.quantization_util import QuantizationUtil
 
 if TYPE_CHECKING:

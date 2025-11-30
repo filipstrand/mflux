@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import Type, Union
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
 from mflux.utils.image_compare import ImageCompare

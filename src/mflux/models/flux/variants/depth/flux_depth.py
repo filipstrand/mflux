@@ -4,8 +4,7 @@ import mlx.core as mx
 from mlx import nn
 
 from mflux.callbacks.callbacks import Callbacks
-from mflux.config.model_config import ModelConfig
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config import ModelConfig, RuntimeConfig
 from mflux.models.depth_pro.depth_pro import DepthPro
 from mflux.models.flux.flux_initializer import FluxInitializer
 from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator

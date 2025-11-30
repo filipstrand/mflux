@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.models.flux.weights.weight_handler import WeightHandler
 from mflux.utils.version_util import VersionUtil

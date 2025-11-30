@@ -4,8 +4,7 @@ import mlx.core as mx
 import numpy as np
 import pytest
 
-from mflux.config.model_config import ModelConfig
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config import ModelConfig, RuntimeConfig
 from mflux.models.common.schedulers import try_import_external_scheduler
 from mflux.models.common.schedulers.linear_scheduler import LinearScheduler
 

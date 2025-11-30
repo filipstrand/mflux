@@ -1,4 +1,4 @@
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.common.lora.mapping.lora_loader import LoRALoader
 from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer

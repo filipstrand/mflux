@@ -1,7 +1,7 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.z_image.model.z_image_text_encoder.encoder_layer import EncoderLayer
 from mflux.models.z_image.model.z_image_text_encoder.rms_norm import RMSNorm
 from mflux.models.z_image.model.z_image_text_encoder.rope import RotaryEmbedding

@@ -5,7 +5,7 @@ import PIL.Image
 from tqdm import tqdm
 
 from mflux.callbacks.callback import AfterLoopCallback, BeforeLoopCallback, InLoopCallback
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config import RuntimeConfig
 
 
 class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):

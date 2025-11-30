@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.in_context.flux_in_context_fill import Flux1InContextFill
 from mflux.models.flux.variants.in_context.utils.in_context_loras import IC_EDIT_LORA_SCALE, get_ic_edit_lora_path
 from mflux.utils.image_compare import ImageCompare

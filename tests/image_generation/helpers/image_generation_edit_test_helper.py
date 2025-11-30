@@ -4,7 +4,7 @@ from typing import Any, Type
 
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
 from mflux.utils.image_compare import ImageCompare
 

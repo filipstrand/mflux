@@ -1,4 +1,4 @@
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.fibo.model.fibo_text_encoder import SmolLM3_3B_TextEncoder
 from mflux.models.fibo.model.fibo_transformer import FiboTransformer
 from mflux.models.fibo.model.fibo_vae.wan_2_2_vae import Wan2_2_VAE

@@ -1,7 +1,6 @@
 import mlx.core.random as random
 
-from mflux.config.model_config import ModelConfig
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config import ModelConfig, RuntimeConfig
 from mflux.models.flux.variants.dreambooth.dataset.dataset import Dataset
 from mflux.models.flux.variants.dreambooth.dataset.iterator import Iterator
 from mflux.models.flux.variants.dreambooth.lora_layers.lora_layers import LoRALayers

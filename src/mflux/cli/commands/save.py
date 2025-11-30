@@ -1,5 +1,5 @@
 from mflux.cli.parser.parsers import CommandLineParser
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
 from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage

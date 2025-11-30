@@ -1,7 +1,7 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config import RuntimeConfig
 from mflux.models.fibo.model.fibo_transformer.fibo_embed_nd import FiboEmbedND
 from mflux.models.fibo.model.fibo_transformer.joint_transformer_block import FiboJointTransformerBlock
 from mflux.models.fibo.model.fibo_transformer.single_transformer_block import FiboSingleTransformerBlock

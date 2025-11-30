@@ -5,7 +5,7 @@ from pathlib import Path
 import mlx.core as mx
 import PIL.Image
 
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config import RuntimeConfig
 from mflux.models.depth_pro.depth_pro import DepthPro
 from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 from mflux.models.flux.model.flux_vae.vae import VAE

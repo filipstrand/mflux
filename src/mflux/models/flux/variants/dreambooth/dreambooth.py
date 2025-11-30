@@ -1,7 +1,7 @@
 from mlx import nn
 from tqdm import tqdm
 
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config.runtime_config import RuntimeConfig
 from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
 from mflux.models.flux.variants.dreambooth.optimization.dreambooth_loss import DreamBoothLoss
 from mflux.models.flux.variants.dreambooth.state.training_spec import TrainingSpec
@@ -56,7 +56,6 @@ class DreamBooth:
             if training_state.should_generate_image(training_spec):
                 image = flux.generate_image(
                     seed=training_spec.seed,
-                    config=runtime_config.config,
                     prompt=training_spec.instrumentation.validation_prompt,
                 )
                 image.save(path=training_state.get_current_validation_image_path(training_spec))

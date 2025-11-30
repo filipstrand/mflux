@@ -50,7 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     ```python
     # Before (0.12.x):
     from mflux.flux.flux import Flux1
-    from mflux.config.config import Config
+    from mflux.models.common.config import Config
     
     flux = Flux1.from_name(model_name="schnell", quantize=8)
     image = flux.generate_image(

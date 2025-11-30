@@ -5,7 +5,7 @@ import PIL.Image
 import tqdm
 
 from mflux.callbacks.callback import BeforeLoopCallback, InLoopCallback, InterruptCallback
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config import RuntimeConfig
 from mflux.utils.image_util import ImageUtil
 
 

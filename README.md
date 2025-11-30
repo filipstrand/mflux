@@ -698,7 +698,7 @@ However, if we were to import a fixed instance of this latent array saved from t
 The images below illustrate this equivalence.
 In all cases the Schnell model was run for 2 time steps.
 The Diffusers implementation ran in CPU mode.
-The precision for MFLUX can be set in the [Config](src/mflux/config/config.py) class.
+The precision for MFLUX can be set in the [Config](src/mflux/models/common/config/config.py) class.
 There is typically a noticeable but very small difference in the final image when switching between 16bit and 32bit precision.
 
 ---

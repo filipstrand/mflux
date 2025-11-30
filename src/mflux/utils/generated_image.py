@@ -6,7 +6,7 @@ from pathlib import Path
 import mlx.core as mx
 import PIL.Image
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.concept_attention.attention_data import ConceptHeatmap
 from mflux.utils.version_util import VersionUtil
 

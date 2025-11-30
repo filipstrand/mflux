@@ -1,6 +1,6 @@
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.parser.parsers import CommandLineParser
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.z_image.latent_creator import ZImageLatentCreator
 from mflux.models.z_image.variants.turbo.z_image_turbo import ZImageTurbo
 from mflux.utils.dimension_resolver import DimensionResolver

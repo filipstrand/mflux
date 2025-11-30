@@ -1,4 +1,4 @@
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
 from tests.image_generation.helpers.image_generation_test_helper import ImageGeneratorTestHelper
 

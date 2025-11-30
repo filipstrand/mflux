@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
 from mflux.utils.image_compare import ImageCompare
 

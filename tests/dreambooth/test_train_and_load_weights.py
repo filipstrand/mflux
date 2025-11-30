@@ -3,7 +3,7 @@ import shutil
 
 import numpy as np
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.dreambooth.dreambooth import DreamBooth
 from mflux.models.flux.variants.dreambooth.dreambooth_initializer import DreamBoothInitializer
 from mflux.models.flux.variants.dreambooth.state.zip_util import ZipUtil

@@ -3,7 +3,7 @@ import math
 import mlx.core as mx
 from mlx import nn
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.model.flux_transformer.guidance_embedder import GuidanceEmbedder
 from mflux.models.flux.model.flux_transformer.text_embedder import TextEmbedder
 from mflux.models.flux.model.flux_transformer.timestep_embedder import TimestepEmbedder

@@ -3,7 +3,7 @@ from pathlib import Path
 from huggingface_hub import snapshot_download
 from mlx.utils import tree_unflatten
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.common.weights.mapping.weight_transforms import transpose_conv2d_weight
 from mflux.models.flux.weights.weight_handler import MetaData, WeightHandler
 

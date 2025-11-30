@@ -4,7 +4,7 @@ import mlx.core as mx
 import mlx.nn as nn
 from mlx.utils import tree_flatten  # noqa: F401
 
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.common.quantization.quantization_util import QuantizationUtil
 from mflux.models.qwen.model.qwen_text_encoder.qwen_vision_transformer import VisionTransformer
 

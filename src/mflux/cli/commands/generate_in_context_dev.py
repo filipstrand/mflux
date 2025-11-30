@@ -3,7 +3,7 @@ from pathlib import Path
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.defaults import defaults as ui_defaults
 from mflux.cli.parser.parsers import CommandLineParser
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 from mflux.models.flux.variants.in_context.flux_in_context_dev import Flux1InContextDev
 from mflux.models.flux.variants.in_context.utils.in_context_loras import get_lora_path
