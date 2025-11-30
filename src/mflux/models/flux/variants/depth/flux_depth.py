@@ -4,7 +4,8 @@ import mlx.core as mx
 from mlx import nn
 
 from mflux.callbacks.callbacks import Callbacks
-from mflux.models.common.config import ModelConfig, RuntimeConfig
+from mflux.models.common.config.config import Config
+from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.depth_pro.depth_pro import DepthPro
 from mflux.models.flux.flux_initializer import FluxInitializer
 from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
@@ -56,8 +57,8 @@ class Flux1Depth(nn.Module):
         depth_image_path: Path | str | None = None,
         scheduler: str = "linear",
     ) -> GeneratedImage:
-        # 0. Create a new runtime config based on the model type and input parameters
-        config = RuntimeConfig(
+        # 0. Create a new config based on the model type and input parameters
+        config = Config(
             model_config=self.model_config,
             num_inference_steps=num_inference_steps,
             height=height,

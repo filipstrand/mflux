@@ -5,6 +5,7 @@ from mlx import nn
 
 from mflux.callbacks.callbacks import Callbacks
 from mflux.models.common.config import ModelConfig, RuntimeConfig
+from mflux.models.common.config.config import Config
 from mflux.models.common.latent_creator.latent_creator import LatentCreator
 from mflux.models.flux.flux_initializer import FluxInitializer
 from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
@@ -54,8 +55,8 @@ class Flux1InContextDev(nn.Module):
         image_strength: float | None = None,
         scheduler: str = "linear",
     ) -> GeneratedImage:
-        # 0. Create a new runtime config based on the model type and input parameters
-        config = RuntimeConfig(
+        # 0. Create a new config based on the model type and input parameters
+        config = Config(
             model_config=self.model_config,
             num_inference_steps=num_inference_steps,
             height=height,

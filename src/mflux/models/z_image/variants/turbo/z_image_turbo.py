@@ -5,7 +5,8 @@ from mlx import nn
 from PIL import Image
 
 from mflux.callbacks.callbacks import Callbacks
-from mflux.models.common.config import ModelConfig, RuntimeConfig
+from mflux.models.common.config.config import Config
+from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.latent_creator.latent_creator import Img2Img, LatentCreator
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.z_image.latent_creator import ZImageLatentCreator
@@ -54,8 +55,8 @@ class ZImageTurbo(nn.Module):
         image_strength: float | None = None,
         scheduler: str = "linear",
     ) -> Image.Image:
-        # 0. Create a new runtime config based on the model type and input parameters
-        config = RuntimeConfig(
+        # 0. Create a new config based on the model type and input parameters
+        config = Config(
             model_config=self.model_config,
             num_inference_steps=num_inference_steps,
             height=height,

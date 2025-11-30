@@ -6,7 +6,8 @@ from mlx import nn
 from tqdm import tqdm
 
 from mflux.callbacks.callbacks import Callbacks
-from mflux.models.common.config import ModelConfig, RuntimeConfig
+from mflux.models.common.config.config import Config
+from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
 from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer
@@ -245,7 +246,7 @@ class QwenImageEdit(nn.Module):
         guidance: float,
         image_path: Path | str | None,
         scheduler: str,
-    ) -> tuple[RuntimeConfig, int, int, int, int]:
+    ) -> tuple[Config, int, int, int, int]:
         last_image = ImageUtil.load_image(image_paths[-1]).convert("RGB")
         image_size = last_image.size
 
@@ -264,7 +265,7 @@ class QwenImageEdit(nn.Module):
         use_width = use_width // multiple_of * multiple_of
         use_height = use_height // multiple_of * multiple_of
 
-        config = RuntimeConfig(
+        config = Config(
             model_config=self.model_config,
             num_inference_steps=num_inference_steps,
             height=use_height,

@@ -5,7 +5,7 @@ import PIL.Image
 from tqdm import tqdm
 
 from mflux.callbacks.callback import AfterLoopCallback, BeforeLoopCallback, InLoopCallback
-from mflux.models.common.config import RuntimeConfig
+from mflux.models.common.config.config import Config
 
 
 class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
@@ -22,7 +22,7 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         canny_image: PIL.Image.Image | None = None,
         depth_image: PIL.Image.Image | None = None,
     ) -> None:
@@ -35,7 +35,7 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         time_steps: tqdm,
     ) -> None:
         self.peak_memory = mx.get_peak_memory()
@@ -45,7 +45,7 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
     ) -> None:
         self.peak_memory = mx.get_peak_memory()
         if not self.keep_transformer:
