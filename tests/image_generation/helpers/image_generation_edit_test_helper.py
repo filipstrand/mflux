@@ -4,7 +4,6 @@ from typing import Any, Type
 
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
-from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
 from mflux.utils.image_compare import ImageCompare
@@ -56,19 +55,16 @@ class ImageGeneratorEditTestHelper:
             model = model_class(**model_kwargs)
 
             # when
-            config_kwargs = {
+            generate_kwargs = {
+                "seed": seed,
+                "prompt": prompt,
                 "num_inference_steps": steps,
                 "height": height,
                 "width": width,
                 "guidance": guidance,
                 "image_path": image_path,
                 "scheduler": "flow_match_euler_discrete",  # Match debug script
-            }
-            generate_kwargs = {
-                "seed": seed,
-                "prompt": prompt,
                 "negative_prompt": negative_prompt,
-                "config": Config(**config_kwargs),
             }
 
             # Qwen Edit uses image_paths instead of image_path in config

@@ -5,7 +5,7 @@ import mlx.core as mx
 from huggingface_hub import snapshot_download
 from mlx.utils import tree_unflatten
 
-from mflux.config.config import Config
+from mflux.config.model_config import ModelConfig
 from mflux.models.common.weights.mapping.weight_mapper import WeightMapper
 from mflux.models.flux.weights.flux_weight_mapping import FluxWeightMapping
 
@@ -169,7 +169,7 @@ class WeightHandler:
             return tree_unflatten(weights), quantization_level, mflux_version
 
         # HuggingFace weights: cast to precision (transforms like transpose are handled by declarative mapping)
-        weights = [(k, v.astype(Config.precision)) for k, v in weights]
+        weights = [(k, v.astype(ModelConfig.precision)) for k, v in weights]
         return dict(weights), quantization_level, mflux_version
 
     @staticmethod

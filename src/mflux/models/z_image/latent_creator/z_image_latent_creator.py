@@ -1,6 +1,6 @@
 import mlx.core as mx
 
-from mflux.config.config import Config
+from mflux.config.model_config import ModelConfig
 
 
 class ZImageLatentCreator:
@@ -14,7 +14,7 @@ class ZImageLatentCreator:
                 width // 8,
             ],
             key=mx.random.key(seed),
-        ).astype(Config.precision)
+        ).astype(ModelConfig.precision)
 
     @staticmethod
     def pack_latents(latents: mx.array, height: int, width: int) -> mx.array:

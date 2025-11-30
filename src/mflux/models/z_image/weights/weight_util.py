@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 import mlx.core as mx
 import mlx.nn as nn
 
-from mflux.config.config import Config
+from mflux.config.model_config import ModelConfig
 
 if TYPE_CHECKING:
     from mflux.models.z_image.weights.weight_handler import WeightHandler
@@ -47,7 +47,7 @@ class WeightUtil:
         def convert_dict(d: dict) -> dict:
             for key, value in d.items():
                 if isinstance(value, mx.array):
-                    d[key] = value.astype(Config.precision)
+                    d[key] = value.astype(ModelConfig.precision)
                 elif isinstance(value, dict):
                     convert_dict(value)
                 elif isinstance(value, list):

@@ -1,7 +1,7 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.config.config import Config
+from mflux.config.model_config import ModelConfig
 from mflux.models.z_image.model.z_image_text_encoder.encoder_layer import EncoderLayer
 from mflux.models.z_image.model.z_image_text_encoder.rms_norm import RMSNorm
 from mflux.models.z_image.model.z_image_text_encoder.rope import RotaryEmbedding
@@ -60,7 +60,7 @@ class TextEncoder(nn.Module):
             )
             all_hidden_states.append(hidden_states)
 
-        return all_hidden_states[-2].astype(Config.precision)
+        return all_hidden_states[-2].astype(ModelConfig.precision)
 
     @staticmethod
     def _get_causal_mask(attention_mask, batch_size, hidden_states, seq_len):

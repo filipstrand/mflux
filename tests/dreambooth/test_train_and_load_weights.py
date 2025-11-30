@@ -3,7 +3,6 @@ import shutil
 
 import numpy as np
 
-from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.models.flux.variants.dreambooth.dreambooth import DreamBooth
 from mflux.models.flux.variants.dreambooth.dreambooth_initializer import DreamBoothInitializer
@@ -36,11 +35,9 @@ class TestTrainAndLoadWeights:
             image1 = fluxA.generate_image(
                 seed=42,
                 prompt="test",
-                config=Config(
-                    num_inference_steps=20,
-                    height=128,
-                    width=128,
-                ),
+                num_inference_steps=20,
+                height=128,
+                width=128,
             )
             del fluxA, runtime_config, training_spec, training_state
             # unzip so that LoRA adapter can be read later...
@@ -58,11 +55,9 @@ class TestTrainAndLoadWeights:
             image2 = fluxB.generate_image(
                 seed=42,
                 prompt="test",
-                config=Config(
-                    num_inference_steps=20,
-                    height=128,
-                    width=128,
-                ),
+                num_inference_steps=20,
+                height=128,
+                width=128,
             )
 
             # Then: We want to confirm that the images *exactly* match

@@ -4,7 +4,6 @@ import mlx.core as mx
 import numpy as np
 import pytest
 
-from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.common.schedulers import try_import_external_scheduler
@@ -21,14 +20,11 @@ def test_linear_scheduler_import_by_name():
 @pytest.fixture
 def test_runtime_config():
     return RuntimeConfig(
-        Config(
-            # these are the only attributes relevant to schedulers
-            num_inference_steps=14,
-            width=1024,
-            height=1024,
-            scheduler="linear",
-        ),
-        ModelConfig.dev(),  # requires_sigma_shift=True
+        model_config=ModelConfig.dev(),  # requires_sigma_shift=True
+        num_inference_steps=14,
+        width=1024,
+        height=1024,
+        scheduler="linear",
     )
 
 

@@ -4,7 +4,6 @@ import shutil
 import mlx.core as mx
 import numpy as np
 
-from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.models.flux.variants.dreambooth.dreambooth import DreamBooth
 from mflux.models.flux.variants.dreambooth.dreambooth_initializer import DreamBoothInitializer
@@ -86,11 +85,9 @@ class TestResumeTraining:
             image = flux_with_resumed_lora.generate_image(
                 seed=42,
                 prompt="test",
-                config=Config(
-                    num_inference_steps=1,
-                    height=128,
-                    width=128,
-                ),
+                num_inference_steps=1,
+                height=128,
+                width=128,
             )
 
             # Basic sanity check that we got a valid image

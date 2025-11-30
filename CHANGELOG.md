@@ -43,6 +43,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🔄 Breaking Changes
 
+- **Simplified `generate_image()` API** (programmatic users only):
+  - Removed `Config` class - parameters are now passed directly to `generate_image()`
+  - Added `Flux1` export to main `mflux` module for cleaner imports
+  - **Migration**:
+    ```python
+    # Before (0.12.x):
+    from mflux.flux.flux import Flux1
+    from mflux.config.config import Config
+    
+    flux = Flux1.from_name(model_name="schnell", quantize=8)
+    image = flux.generate_image(
+        seed=2,
+        prompt="Luxury food photograph",
+        config=Config(
+            num_inference_steps=2,
+            height=1024,
+            width=1024,
+        )
+    )
+    
+    # After (0.13.0):
+    from mflux import Flux1
+    
+    flux = Flux1.from_name(model_name="schnell", quantize=8)
+    image = flux.generate_image(
+        seed=2,
+        prompt="Luxury food photograph",
+        num_inference_steps=2,
+        height=1024,
+        width=1024,
+    )
+    ```
+
 - **LoRA API simplified** (programmatic users only):
   - Removed `lora_names` and `lora_repo_id` parameters from all model classes (`Flux1`, `QwenImage`, `QwenImageEdit`, etc.)
   - Removed `--lora-name` and `--lora-repo-id` CLI arguments

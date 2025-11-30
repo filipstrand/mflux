@@ -2,7 +2,7 @@ import mlx.core as mx
 from mlx import nn
 from mlx.core.fast import scaled_dot_product_attention
 
-from mflux.config.config import Config
+from mflux.config.model_config import ModelConfig
 
 
 class Attention(nn.Module):
@@ -29,7 +29,7 @@ class Attention(nn.Module):
         B, H, W, C = input_array.shape
 
         # Group norm
-        hidden_states = self.group_norm(input_array.astype(mx.float32)).astype(Config.precision)
+        hidden_states = self.group_norm(input_array.astype(mx.float32)).astype(ModelConfig.precision)
 
         # QKV projections - reshape for attention
         queries = self.to_q(hidden_states).reshape(B, H * W, 1, C)

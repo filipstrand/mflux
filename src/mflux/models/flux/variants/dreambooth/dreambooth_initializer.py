@@ -1,6 +1,5 @@
 import mlx.core.random as random
 
-from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.flux.variants.dreambooth.dataset.dataset import Dataset
@@ -37,12 +36,10 @@ class DreamBoothInitializer:
         )
         runtime_config = RuntimeConfig(
             model_config=model_config,
-            config=Config(
-                num_inference_steps=training_spec.steps,
-                width=training_spec.width,
-                height=training_spec.height,
-                guidance=training_spec.guidance,
-            ),
+            num_inference_steps=training_spec.steps,
+            width=training_spec.width,
+            height=training_spec.height,
+            guidance=training_spec.guidance,
         )
 
         # Create the optimizer

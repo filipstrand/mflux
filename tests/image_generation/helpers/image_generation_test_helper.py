@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 from typing import Type, Union
 
-from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
@@ -45,23 +44,20 @@ class ImageGeneratorTestHelper:
             }
 
             model = model_class(**model_kwargs)
-            config_kwargs = {
-                "num_inference_steps": steps,
-                "image_path": ImageGeneratorTestHelper.resolve_path(image_path),
-                "image_strength": image_strength,
-                "height": height,
-                "width": width,
-            }
-
-            # Add guidance if provided
-            if guidance is not None:
-                config_kwargs["guidance"] = guidance
 
             generate_kwargs = {
                 "seed": seed,
                 "prompt": prompt,
-                "config": Config(**config_kwargs),
+                "num_inference_steps": steps,
+                "image_path": ImageGeneratorTestHelper.resolve_path(image_path),
+                "image_strength": image_strength,
+                "height": height or 1024,
+                "width": width or 1024,
             }
+
+            # Add guidance if provided
+            if guidance is not None:
+                generate_kwargs["guidance"] = guidance
 
             # Add negative_prompt for Qwen models
             if model_class == QwenImage and negative_prompt is not None:

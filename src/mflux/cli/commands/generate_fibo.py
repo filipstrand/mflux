@@ -6,7 +6,6 @@ import mlx.core as mx
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.defaults import defaults as ui_defaults
 from mflux.cli.parser.parsers import CommandLineParser
-from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.models.fibo.latent_creator.fibo_latent_creator import FiboLatentCreator
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
@@ -60,16 +59,14 @@ def main():
             image = fibo.generate_image(
                 seed=seed,
                 prompt=json_prompt,
+                num_inference_steps=args.steps,
+                height=height,
+                width=width,
+                guidance=args.guidance,
+                image_path=args.image_path,
+                image_strength=args.image_strength,
+                scheduler="flow_match_euler_discrete",
                 negative_prompt=PromptUtil.get_effective_negative_prompt(args),
-                config=Config(
-                    num_inference_steps=args.steps,
-                    height=height,
-                    width=width,
-                    guidance=args.guidance,
-                    image_path=args.image_path,
-                    image_strength=args.image_strength,
-                    scheduler="flow_match_euler_discrete",
-                ),
             )
 
             # 4. Save the image

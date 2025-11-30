@@ -4,7 +4,7 @@ import mlx.core as mx
 import mlx.nn as nn
 from mlx.utils import tree_flatten  # noqa: F401
 
-from mflux.config.config import Config
+from mflux.config.model_config import ModelConfig
 from mflux.models.common.quantization.quantization_util import QuantizationUtil
 from mflux.models.qwen.model.qwen_text_encoder.qwen_vision_transformer import VisionTransformer
 
@@ -23,7 +23,7 @@ class QwenWeightUtil:
             value = value.transpose(0, 2, 3, 1)
         elif len(value.shape) == 5:
             value = value.transpose(0, 2, 3, 4, 1)
-        value = value.reshape(-1).reshape(value.shape).astype(Config.precision)
+        value = value.reshape(-1).reshape(value.shape).astype(ModelConfig.precision)
         return [(key, value)]
 
     @staticmethod

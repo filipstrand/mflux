@@ -11,7 +11,6 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
-from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.utils.metadata_reader import MetadataReader
@@ -44,18 +43,14 @@ class TestMetadata:
                 quantize=8,
             )
 
-            config = Config(
+            image = flux.generate_image(
+                seed=42,
+                prompt="A simple test image",
                 num_inference_steps=2,
                 height=256,
                 width=256,
                 image_path=reference_image,
                 image_strength=0.3,
-            )
-
-            image = flux.generate_image(
-                seed=42,
-                prompt="A simple test image",
-                config=config,
             )
 
             # Save with metadata (overwrite=True since mkstemp creates an empty file)

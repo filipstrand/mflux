@@ -68,7 +68,6 @@ def test_upscale_passes_correct_dimensions_to_generate_image(
                     # Verify generate_image was called with correct dimensions
                     mock_flux.generate_image.assert_called()
                     call_args = mock_flux.generate_image.call_args
-                    config = call_args.kwargs["config"]
 
-                    assert config.height == expected_height
-                    assert config.width == expected_width
+                    assert call_args.kwargs["height"] == expected_height
+                    assert call_args.kwargs["width"] == expected_width

@@ -1,11 +1,11 @@
 import math
+from pathlib import Path
 
 import mlx.core as mx
 from mlx import nn
 from tqdm import tqdm
 
 from mflux.callbacks.callbacks import Callbacks
-from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
@@ -46,14 +46,24 @@ class QwenImageEdit(nn.Module):
         self,
         seed: int,
         prompt: str,
-        config: Config,
+        image_paths: list[str],
+        num_inference_steps: int = 4,
+        height: int | None = None,
+        width: int | None = None,
+        guidance: float = 4.0,
+        image_path: Path | str | None = None,
+        scheduler: str = "linear",
         negative_prompt: str | None = None,
-        image_paths: list[str] | None = None,
     ) -> GeneratedImage:
-        if image_paths is None:
-            image_paths = [str(config.image_path)]
-
-        runtime_config, vl_width, vl_height, vae_width, vae_height = self._compute_dimensions(config, image_paths)
+        runtime_config, vl_width, vl_height, vae_width, vae_height = self._compute_dimensions(
+            image_paths=image_paths,
+            num_inference_steps=num_inference_steps,
+            height=height,
+            width=width,
+            guidance=guidance,
+            image_path=image_path,
+            scheduler=scheduler,
+        )
         timesteps = runtime_config.scheduler.timesteps
         time_steps = tqdm(range(len(timesteps)))
 
@@ -235,8 +245,13 @@ class QwenImageEdit(nn.Module):
 
     def _compute_dimensions(
         self,
-        config: Config,
         image_paths: list[str],
+        num_inference_steps: int,
+        height: int | None,
+        width: int | None,
+        guidance: float,
+        image_path: Path | str | None,
+        scheduler: str,
     ) -> tuple[RuntimeConfig, int, int, int, int]:
         last_image = ImageUtil.load_image(image_paths[-1]).convert("RGB")
         image_size = last_image.size
@@ -248,23 +263,23 @@ class QwenImageEdit(nn.Module):
         calculated_width = round(calculated_width / 32) * 32
         calculated_height = round(calculated_height / 32) * 32
 
-        use_height = config.height or calculated_height
-        use_width = config.width or calculated_width
+        use_height = height or int(calculated_height)
+        use_width = width or int(calculated_width)
 
         vae_scale_factor = 8
         multiple_of = vae_scale_factor * 2
         use_width = use_width // multiple_of * multiple_of
         use_height = use_height // multiple_of * multiple_of
 
-        final_config = Config(
+        runtime_config = RuntimeConfig(
+            model_config=self.model_config,
+            num_inference_steps=num_inference_steps,
             height=use_height,
             width=use_width,
-            image_path=config.image_path,
-            num_inference_steps=config.num_inference_steps,
-            guidance=config.guidance,
-            scheduler=config.scheduler_str,
+            guidance=guidance,
+            image_path=image_path,
+            scheduler=scheduler,
         )
-        runtime_config = RuntimeConfig(final_config, self.model_config)
 
         CONDITION_IMAGE_SIZE = 384 * 384
         condition_ratio = image_size[0] / image_size[1]

@@ -1,10 +1,14 @@
 from functools import lru_cache
 from typing import Literal
 
+import mlx.core as mx
+
 from mflux.utils.exceptions import InvalidBaseModel, ModelConfigError
 
 
 class ModelConfig:
+    precision: mx.Dtype = mx.bfloat16
+
     def __init__(
         self,
         aliases: list[str],

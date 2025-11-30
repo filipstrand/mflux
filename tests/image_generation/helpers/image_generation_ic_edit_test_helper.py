@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 
-from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.models.flux.variants.in_context.flux_in_context_fill import Flux1InContextFill
 from mflux.models.flux.variants.in_context.utils.in_context_loras import IC_EDIT_LORA_SCALE, get_ic_edit_lora_path
@@ -49,12 +48,10 @@ class ImageGeneratorICEditTestHelper:
                 seed=seed,
                 prompt=prompt,
                 left_image_path=str(reference_image),
+                num_inference_steps=steps,
+                height=height or 1024,
+                width=width or 1024,
                 right_image_path=None,
-                config=Config(
-                    num_inference_steps=steps,
-                    height=height,
-                    width=width,
-                ),
             )
 
             # Save the result

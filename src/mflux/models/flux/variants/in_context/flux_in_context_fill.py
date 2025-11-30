@@ -1,9 +1,10 @@
+from pathlib import Path
+
 import mlx.core as mx
 from mlx import nn
 from tqdm import tqdm
 
 from mflux.callbacks.callbacks import Callbacks
-from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.flux.flux_initializer import FluxInitializer
@@ -47,17 +48,31 @@ class Flux1InContextFill(nn.Module):
         self,
         seed: int,
         prompt: str,
-        config: Config,
         left_image_path: str,
+        num_inference_steps: int = 4,
+        height: int = 1024,
+        width: int = 1024,
+        guidance: float = 4.0,
         right_image_path: str | None = None,
+        masked_image_path: Path | str | None = None,
+        image_strength: float | None = None,
+        scheduler: str = "linear",
     ) -> GeneratedImage:
-        # 0. Create a new runtime config based on the model type and input parameters
-        config = RuntimeConfig(config, self.model_config)
-
         # For in-context learning with side-by-side approach, double the width
-        original_width = config.width
-        config.width = original_width * 2
+        original_width = width
+        doubled_width = original_width * 2
 
+        # 0. Create a new runtime config based on the model type and input parameters
+        config = RuntimeConfig(
+            model_config=self.model_config,
+            num_inference_steps=num_inference_steps,
+            height=height,
+            width=doubled_width,  # Use doubled width for in-context
+            guidance=guidance,
+            masked_image_path=masked_image_path,
+            image_strength=image_strength,
+            scheduler=scheduler,
+        )
         time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
 
         # 1. Create the initial latents
@@ -81,7 +96,7 @@ class Flux1InContextFill(nn.Module):
         static_masked_latents = InContextMaskUtil.create_masked_latents(
             vae=self.vae,
             height=config.height,
-            width=config.width,
+            width=doubled_width,
             original_width=original_width,
             left_image_path=left_image_path,
             right_image_path=right_image_path,

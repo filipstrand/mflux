@@ -171,8 +171,7 @@ This is useful for integrating MFLUX into shell scripts or dynamically generatin
 Alternatively, you can use MFLUX directly in Python:
 
 ```python
-from mflux.flux.flux import Flux1
-from mflux.config.config import Config
+from mflux import Flux1
 
 # Load the model
 flux = Flux1.from_name(
@@ -184,11 +183,9 @@ flux = Flux1.from_name(
 image = flux.generate_image(
    seed=2,
    prompt="Luxury food photograph",
-   config=Config(
-      num_inference_steps=2,  # "schnell" works well with 2-4 steps, "dev" and "krea-dev" work well with 20-25 steps
-      height=1024,
-      width=1024,
-   )
+   num_inference_steps=2,  # "schnell" works well with 2-4 steps, "dev" and "krea-dev" work well with 20-25 steps
+   height=1024,
+   width=1024,
 )
 
 image.save(path="image.png")

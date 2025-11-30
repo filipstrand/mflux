@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 
-from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.models.flux.variants.in_context.flux_in_context_dev import Flux1InContextDev
 from mflux.models.flux.variants.in_context.utils.in_context_loras import get_lora_path
@@ -54,12 +53,10 @@ class ImageGeneratorInContextTestHelper:
             image = flux.generate_image(
                 seed=seed,
                 prompt=prompt,
-                config=Config(
-                    num_inference_steps=steps,
-                    image_path=image_path,
-                    height=height,
-                    width=width,
-                ),
+                num_inference_steps=steps,
+                image_path=image_path,
+                height=height or 1024,
+                width=width or 1024,
             )
             # Save only the right half of the image (the generated part)
             image.get_right_half().save(path=output_image_path, overwrite=True)

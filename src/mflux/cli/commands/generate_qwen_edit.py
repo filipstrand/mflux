@@ -3,7 +3,6 @@ from pathlib import Path
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.defaults import defaults as ui_defaults
 from mflux.cli.parser.parsers import CommandLineParser
-from mflux.config.config import Config
 from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
 from mflux.models.qwen.variants.edit.qwen_image_edit import QwenImageEdit
 from mflux.utils.exceptions import PromptFileReadError, StopImageGenerationException
@@ -45,23 +44,17 @@ def main():
             # 3. Prepare image paths
             image_paths = [str(p) for p in args.image_paths]
 
-            # Use first image path for config.image_path (for backward compatibility with Config)
-            # All image paths are passed to generate_image and stored in metadata
-            config_image_path = image_paths[0]
-
             # 4. Generate an image for each seed value
             image = qwen.generate_image(
                 seed=seed,
                 prompt=PromptUtil.get_effective_prompt(args),
-                config=Config(
-                    num_inference_steps=args.steps,
-                    height=args.height,
-                    width=args.width,
-                    guidance=args.guidance,
-                    image_path=config_image_path,
-                ),
-                negative_prompt=PromptUtil.get_effective_negative_prompt(args),
                 image_paths=image_paths,
+                num_inference_steps=args.steps,
+                height=args.height,
+                width=args.width,
+                guidance=args.guidance,
+                image_path=image_paths[0],  # Use first image for metadata
+                negative_prompt=PromptUtil.get_effective_negative_prompt(args),
             )
 
             # 5. Save the image

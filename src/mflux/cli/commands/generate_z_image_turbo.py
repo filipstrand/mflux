@@ -1,6 +1,5 @@
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.parser.parsers import CommandLineParser
-from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.models.z_image.latent_creator import ZImageLatentCreator
 from mflux.models.z_image.variants.turbo.z_image_turbo import ZImageTurbo
@@ -49,14 +48,11 @@ def main():
             image = model.generate_image(
                 seed=seed,
                 prompt=PromptUtil.get_effective_prompt(args),
-                config=Config(
-                    num_inference_steps=args.steps,
-                    height=height,
-                    width=width,
-                    guidance=None,  # Z-Image Turbo doesn't use guidance
-                    image_path=args.image_path,
-                    image_strength=args.image_strength,
-                ),
+                num_inference_steps=args.steps,
+                height=height,
+                width=width,
+                image_path=args.image_path,
+                image_strength=args.image_strength,
             )
             # 4. Save the image
             image.save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)

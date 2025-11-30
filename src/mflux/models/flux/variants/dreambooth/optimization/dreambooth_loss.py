@@ -2,7 +2,7 @@ import random
 
 import mlx.core as mx
 
-from mflux.config.config import Config
+from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.common.latent_creator.latent_creator import LatentCreator
 from mflux.models.flux.variants.dreambooth.dataset.batch import Batch, Example
@@ -41,7 +41,7 @@ class DreamBoothLoss:
         # Generate pure noise
         pure_noise = mx.random.normal(
             shape=clean_image.shape,
-            dtype=Config.precision,
+            dtype=ModelConfig.precision,
             key=mx.random.key(noise_seed),
         )
 

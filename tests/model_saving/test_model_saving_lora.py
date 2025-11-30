@@ -4,7 +4,6 @@ from pathlib import Path
 
 import numpy as np
 
-from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.models.flux.variants.txt2img.flux import Flux1
 
@@ -35,11 +34,9 @@ class TestModelSavingLora:
             image1 = fluxB.generate_image(
                 seed=44,
                 prompt="mkym this is made of wool, pizza",
-                config=Config(
-                    num_inference_steps=2,
-                    height=341,
-                    width=768,
-                ),
+                num_inference_steps=2,
+                height=341,
+                width=768,
             )
             del fluxB
 
@@ -55,11 +52,9 @@ class TestModelSavingLora:
             image2 = fluxC.generate_image(
                 seed=44,
                 prompt="mkym this is made of wool, pizza",
-                config=Config(
-                    num_inference_steps=2,
-                    height=341,
-                    width=768,
-                ),
+                num_inference_steps=2,
+                height=341,
+                width=768,
             )
 
             # then we confirm that we get the exact *identical* image in both cases

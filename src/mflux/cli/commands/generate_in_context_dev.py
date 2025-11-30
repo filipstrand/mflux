@@ -3,7 +3,6 @@ from pathlib import Path
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.defaults import defaults as ui_defaults
 from mflux.cli.parser.parsers import CommandLineParser
-from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 from mflux.models.flux.variants.in_context.flux_in_context_dev import Flux1InContextDev
@@ -63,14 +62,12 @@ def main():
             image = flux.generate_image(
                 seed=seed,
                 prompt=PromptUtil.get_effective_prompt(args),
-                config=Config(
-                    num_inference_steps=args.steps,
-                    height=args.height,
-                    width=args.width,
-                    guidance=args.guidance,
-                    image_path=args.image_path,
-                    scheduler=args.scheduler,
-                ),
+                num_inference_steps=args.steps,
+                height=args.height,
+                width=args.width,
+                guidance=args.guidance,
+                image_path=args.image_path,
+                scheduler=args.scheduler,
             )
             # 4. Save the image
             output_path = Path(args.output.format(seed=seed))

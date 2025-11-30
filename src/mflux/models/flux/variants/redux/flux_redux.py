@@ -5,7 +5,6 @@ from mlx import nn
 from tqdm import tqdm
 
 from mflux.callbacks.callbacks import Callbacks
-from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.config.runtime_config import RuntimeConfig
 from mflux.models.flux.flux_initializer import FluxInitializer
@@ -54,10 +53,27 @@ class Flux1Redux(nn.Module):
         self,
         seed: int,
         prompt: str,
-        config: Config,
+        redux_image_paths: list[Path | str],
+        num_inference_steps: int = 4,
+        height: int = 1024,
+        width: int = 1024,
+        guidance: float = 4.0,
+        redux_image_strengths: list[float] | None = None,
+        image_strength: float | None = None,
+        scheduler: str = "linear",
     ) -> GeneratedImage:
         # 0. Create a new runtime config based on the model type and input parameters
-        runtime_config = RuntimeConfig(config, self.model_config)
+        runtime_config = RuntimeConfig(
+            model_config=self.model_config,
+            num_inference_steps=num_inference_steps,
+            height=height,
+            width=width,
+            guidance=guidance,
+            redux_image_paths=redux_image_paths,
+            redux_image_strengths=redux_image_strengths,
+            image_strength=image_strength,
+            scheduler=scheduler,
+        )
         time_steps = tqdm(range(runtime_config.init_time_step, runtime_config.num_inference_steps))
 
         # 1. Create the initial latents

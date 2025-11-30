@@ -3,7 +3,6 @@ import sys
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.defaults import defaults as ui_defaults
 from mflux.cli.parser.parsers import CommandLineParser
-from mflux.config.config import Config
 from mflux.config.model_config import ModelConfig
 from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 from mflux.models.flux.variants.controlnet.flux_controlnet import Flux1Controlnet
@@ -45,12 +44,10 @@ def main():
                 seed=seed,
                 prompt=PromptUtil.get_effective_prompt(args),
                 controlnet_image_path=args.controlnet_image_path,
-                config=Config(
-                    num_inference_steps=args.steps,
-                    height=height,
-                    width=width,
-                    controlnet_strength=args.controlnet_strength,
-                ),
+                num_inference_steps=args.steps,
+                height=height,
+                width=width,
+                controlnet_strength=args.controlnet_strength,
             )
 
             # 4. Save the image
