@@ -26,6 +26,7 @@ dependencies = [
     "filelock>=3.20.1",
     "fonttools>=4.60.2",
     "huggingface-hub>=1.1.6,<2.0",
+    "hf-transfer>=0.1.9,<1.0",
     "matplotlib>=3.9.2,<4.0",
     "mlx>=0.27.0,<0.31.0; sys_platform=='darwin'",
     "mlx[cuda13]>=0.30.3,<0.31.0; sys_platform=='linux'",
