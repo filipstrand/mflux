@@ -99,6 +99,11 @@ class ModelConfig:
     def fibo() -> "ModelConfig":
         return AVAILABLE_MODELS["fibo"]
 
+    @staticmethod
+    @lru_cache
+    def zimage_turbo() -> "ModelConfig":
+        return AVAILABLE_MODELS["zimage-turbo"]
+
     def x_embedder_input_dim(self) -> int:
         if "Fill" in self.model_name:
             return 384
@@ -335,5 +340,17 @@ AVAILABLE_MODELS = {
         supports_guidance=True,
         requires_sigma_shift=False,
         priority=13,
+    ),
+    "zimage-turbo": ModelConfig(
+        aliases=["zimage-turbo", "turbo"],
+        model_name="Tongyi-MAI/Z-Image-Turbo",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=False,  # CFG baked into distilled weights
+        requires_sigma_shift=False,
+        priority=14,
     ),
 }

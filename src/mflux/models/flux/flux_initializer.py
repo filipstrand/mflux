@@ -1,4 +1,5 @@
 from mflux.config.model_config import ModelConfig
+from mflux.models.common.lora.download.lora_huggingface_downloader import LoRAHuggingFaceDownloader
 from mflux.models.depth_pro.depth_pro import DepthPro
 from mflux.models.flux.model.flux_text_encoder.clip_encoder.clip_encoder import CLIPEncoder
 from mflux.models.flux.model.flux_text_encoder.t5_encoder.t5_encoder import T5Encoder
@@ -12,7 +13,6 @@ from mflux.models.flux.tokenizer.tokenizer_handler import TokenizerHandler
 from mflux.models.flux.variants.controlnet.transformer_controlnet import TransformerControlnet
 from mflux.models.flux.variants.controlnet.weight_handler_controlnet import WeightHandlerControlnet
 from mflux.models.flux.variants.redux.weight_handler_redux import WeightHandlerRedux
-from mflux.models.common.lora.download.lora_huggingface_downloader import LoRAHuggingFaceDownloader
 from mflux.models.flux.weights.weight_handler import WeightHandler
 from mflux.models.flux.weights.weight_handler_lora import WeightHandlerLoRA
 from mflux.models.flux.weights.weight_util import WeightUtil

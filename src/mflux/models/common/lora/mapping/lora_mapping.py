@@ -11,7 +11,6 @@ class LoRATarget:
 
 
 class LoRAMapping(Protocol):
-
     @staticmethod
     def get_mapping() -> List[LoRATarget]:
         return

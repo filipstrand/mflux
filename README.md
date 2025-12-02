@@ -4,7 +4,7 @@
 
 ### About
 
-Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux), [Qwen Image](https://github.com/QwenLM/Qwen-Image) and [FIBO](https://huggingface.co/briaai/FIBO) models locally on your Mac!
+Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux), [Qwen Image](https://github.com/QwenLM/Qwen-Image), [FIBO](https://huggingface.co/briaai/FIBO), and [Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo) models locally on your Mac!
 
 ### Table of contents
 
@@ -24,6 +24,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux), [Qwen Image](http
   * [🖼️ Qwen Image](#%EF%B8%8F-qwen-image)
   * [✏️ Qwen Image Edit](#%EF%B8%8F-qwen-image-edit)
 - [🌀 FIBO](#-fibo)
+- [⚡ Z-Image-Turbo](#-z-image-turbo)
 - [🔌 LoRA](#-lora)
 - [🎭 In-Context Generation](#-in-context-generation)
   * [📸 Kontext](#-kontext)
@@ -51,7 +52,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux), [Qwen Image](http
 
 ### Philosophy
 
-MFLUX is a line-by-line port of the FLUX, Qwen and Bria models implementations in the [Huggingface Diffusers](https://github.com/huggingface/diffusers) and [Huggingface Transformers](https://github.com/huggingface/transformers) libraries to [Apple MLX](https://github.com/ml-explore/mlx).
+MFLUX is a line-by-line port of the FLUX, Qwen, Bria, and Tongyi MAI model implementations in the [Huggingface Diffusers](https://github.com/huggingface/diffusers) and [Huggingface Transformers](https://github.com/huggingface/transformers) libraries to [Apple MLX](https://github.com/ml-explore/mlx).
 MFLUX is purposefully kept minimal and explicit - Network architectures are hardcoded and no config files are used
 except for the tokenizers. The aim is to have a tiny codebase with the single purpose of expressing these models
 (thereby avoiding too many abstractions). While MFLUX priorities readability over generality and performance, [it can still be quite fast](#%EF%B8%8F-image-generation-speed-updated), [and even faster quantized](#%EF%B8%8F-quantization).
@@ -1423,6 +1424,88 @@ The inspire command is particularly useful when you want to:
 Note: The optional `--prompt` parameter allows you to guide the VLM's interpretation of the image. For example, you might use `--prompt "futuristic cityscape"` to influence how the image is analyzed and structured.
 
 ⚠️ *Note: FIBO requires downloading the `briaai/FIBO` model weights (~24GB) and the `briaai/FIBO-vlm` vision-language model (~8GB), totaling ~32GB for the full model, or use quantization for smaller sizes.*
+
+---
+
+### ⚡ Z-Image-Turbo
+
+MFLUX supports [Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo), a 6B parameter text-to-image model from Tongyi MAI (Alibaba). Z-Image-Turbo uses a novel single-stream diffusion transformer architecture (S3-DiT) that concatenates text and image tokens into a unified sequence, enabling efficient cross-modal attention without separate text/image streams.
+
+#### Key Features
+
+- **Compact and Fast**: 6B parameters with only 8-9 inference steps needed (CFG is baked into distilled weights)
+- **S3-DiT Architecture**: Single-stream diffusion transformer for efficient generation
+- **Qwen3-4B Text Encoder**: Native support for the Qwen3-4B text encoder with 36 layers and grouped-query attention
+- **3D RoPE**: Rotary position embeddings across time, height, and width dimensions
+- **Full quantization support**: 3, 4, 5, 6, and 8-bit quantization for reduced memory usage
+- **Reuses FLUX VAE**: Compatible with the existing FLUX VAE decoder
+
+#### Example Usage
+
+Generate images using the `mflux-generate-zimage` command:
+
+```sh
+mflux-generate-zimage \
+  --prompt "A serene Japanese garden with cherry blossoms, koi pond reflection, traditional wooden bridge, soft morning light" \
+  --width 1024 \
+  --height 1024 \
+  --steps 9 \
+  --seed 42 \
+  -q 8
+```
+
+Z-Image-Turbo works well with detailed, descriptive prompts. The model is particularly good at photorealistic scenes, landscapes, and architectural subjects.
+
+#### Python API
+
+```python
+from mflux.zimage import ZImage
+from mflux.config.config import Config
+from mflux.config.model_config import ModelConfig
+
+# Load the model
+zimage = ZImage(
+    model_config=ModelConfig.zimage_turbo(),
+    quantize=8,  # 3, 4, 5, 6, or 8
+)
+
+# Generate an image
+image = zimage.generate_image(
+    seed=42,
+    prompt="A serene Japanese garden with cherry blossoms",
+    config=Config(
+        num_inference_steps=9,
+        height=1024,
+        width=1024,
+    )
+)
+
+image.save(path="zimage_output.png")
+```
+
+#### Saving Quantized Models
+
+Save a quantized version of Z-Image-Turbo for faster loading:
+
+```sh
+mflux-save-zimage --path ./zimage-turbo-4bit -q 4
+```
+
+Then load the saved model:
+
+```sh
+mflux-generate-zimage --path ./zimage-turbo-4bit --prompt "Your prompt" --steps 9
+```
+
+#### Tips for Z-Image-Turbo
+
+1. **Steps**: The default 9 steps works well for most use cases. Going higher (12-15) can add minor refinements but with diminishing returns.
+2. **Guidance**: Z-Image-Turbo has classifier-free guidance baked into its distilled weights, so the `--guidance` parameter has no effect and is forced to 0.
+3. **Prompting**: Detailed, descriptive prompts work best. Include lighting, mood, and composition details for optimal results.
+4. **Quantization**: 8-bit quantization provides a good balance of quality and memory savings. 4-bit works well for experimentation.
+5. **Image-to-image**: Z-Image-Turbo supports img2img generation via `--image-path` and `--image-strength` parameters.
+
+⚠️ *Note: Z-Image-Turbo requires downloading the `Tongyi-MAI/Z-Image-Turbo` model weights (~31GB for the full model). Use quantization for smaller disk and memory footprint.*
 
 ---
 

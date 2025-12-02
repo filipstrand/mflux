@@ -3,6 +3,7 @@ from mflux.models.fibo.variants.txt2img.fibo import FIBO
 from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
 from mflux.ui.cli.parsers import CommandLineParser
+from mflux.zimage import ZImage
 
 
 def main():
@@ -18,6 +19,8 @@ def main():
         model_class = QwenImage
     elif "fibo" in model_name_lower:
         model_class = FIBO
+    elif "zimage" in model_name_lower or model_name_lower == "turbo":
+        model_class = ZImage
     else:
         model_class = Flux1
 
@@ -26,7 +29,8 @@ def main():
         "model_config": ModelConfig.from_name(args.model, base_model=args.base_model),
         "quantize": args.quantize,
     }
-    if args.lora_paths and model_class != FIBO:
+    # LoRA support (not available for FIBO or ZImage)
+    if args.lora_paths and model_class not in (FIBO, ZImage):
         model_kwargs["lora_paths"] = args.lora_paths
         model_kwargs["lora_scales"] = args.lora_scales
 

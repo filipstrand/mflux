@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2025-11-30
+
+# MFLUX v.0.13.0 Release Notes
+
+### 🎨 New Model Support
+
+- **Z-Image-Turbo Support**: Added support for [Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo), a 6B parameter text-to-image model from Tongyi MAI (Alibaba)
+- **S3-DiT Architecture**: Single-stream diffusion transformer (S3-DiT) that concatenates text and image tokens into a unified sequence
+- **Qwen3-4B Text Encoder**: Native support for Qwen3-4B text encoder with 36 layers and grouped-query attention
+- **Fast Inference**: 8-9 step generation with CFG baked into distilled weights
+- **New commands**:
+  - `mflux-generate-zimage` - Generate images from text prompts
+  - `mflux-save-zimage` - Save quantized Z-Image-Turbo models to disk
+- **Full quantization support**: 3, 4, 5, 6, and 8-bit quantization for reduced memory usage
+- **Image-to-image support**: Transform existing images with text guidance
+
+### 🔧 Technical Details
+
+- **3D RoPE**: Rotary position embeddings for time, height, and width dimensions
+- **Context Refiner**: 2-layer attention module for caption feature refinement
+- **AdaLN Modulation**: Adaptive layer normalization with timestep conditioning
+- **Reuses FLUX VAE**: Compatible with existing FLUX VAE decoder
+
+
+---
+
 ## [0.12.1] - 2025-11-27
 
 ### 🐛 Bug Fixes

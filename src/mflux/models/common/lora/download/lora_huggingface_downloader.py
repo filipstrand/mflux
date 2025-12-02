@@ -6,7 +6,6 @@ from mflux.utils.download import snapshot_download
 
 
 class LoRAHuggingFaceDownloader:
-
     @staticmethod
     def download_loras(
         lora_names: list[str] | None = None,

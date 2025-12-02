@@ -15,6 +15,9 @@ class UpBlock4(nn.Module):
 
     def __call__(self, input_array: mx.array) -> mx.array:
         hidden_states = self.resnets[0](input_array)
+        mx.eval(hidden_states)  # Prevent graph explosion
         hidden_states = self.resnets[1](hidden_states)
+        mx.eval(hidden_states)  # Prevent graph explosion
         hidden_states = self.resnets[2](hidden_states)
+        mx.eval(hidden_states)  # Prevent graph explosion
         return hidden_states

@@ -16,7 +16,9 @@ class UpSampler(nn.Module):
     def __call__(self, input_array: mx.array) -> mx.array:
         input_array = mx.transpose(input_array, (0, 2, 3, 1))
         hidden_states = UpSampler.up_sample_nearest(input_array)
+        mx.eval(hidden_states)  # Prevent graph explosion after upsampling
         hidden_state = self.conv(hidden_states)
+        mx.eval(hidden_state)  # Prevent graph explosion after conv
         return mx.transpose(hidden_state, (0, 3, 1, 2))
 
     @staticmethod

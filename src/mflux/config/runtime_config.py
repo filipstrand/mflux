@@ -85,8 +85,11 @@ class RuntimeConfig:
             # 1. Clamp strength to [0, 1]
             strength = max(0.0, min(1.0, self.config.image_strength))  # type: ignore
 
-            # 2. Return start time in [1, floor(num_steps * strength)]
-            return max(1, int(self.num_inference_steps * strength))  # type: ignore
+            # 2. Higher strength = more influence from init image = skip more steps
+            # strength=1.0 → init_time_step=num_steps (preserve original)
+            # strength=0.0 → init_time_step=0 (full regeneration)
+            # Note: mflux convention is OPPOSITE of diffusers
+            return max(1, int(self.num_inference_steps * strength))  # type: ignore[operator]
         else:
             return 0
 
