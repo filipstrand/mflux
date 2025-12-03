@@ -5,6 +5,15 @@ from mflux.models.common.weights.loading.weight_definition import ComponentDefin
 from mflux.models.fibo_vlm.tokenizer.qwen2vl_processor import Qwen2VLProcessor
 from mflux.models.fibo_vlm.weights.fibo_vlm_weight_mapping import FIBOVLMWeightMapping
 
+# Qwen2VL chat template (required for apply_chat_template)
+QWEN2VL_CHAT_TEMPLATE = """{% set image_count = namespace(value=0) %}{% set video_count = namespace(value=0) %}{% for message in messages %}{% if loop.first and message['role'] != 'system' %}<|im_start|>system
+You are a helpful assistant.<|im_end|>
+{% endif %}<|im_start|>{{ message['role'] }}
+{% if message['content'] is string %}{{ message['content'] }}<|im_end|>
+{% else %}{% for content in message['content'] %}{% if content['type'] == 'image' or 'image' in content or 'image_url' in content %}{% set image_count.value = image_count.value + 1 %}{% if add_vision_id %}Picture {{ image_count.value }}: {% endif %}<|vision_start|><|image_pad|><|vision_end|>{% elif content['type'] == 'video' or 'video' in content %}{% set video_count.value = video_count.value + 1 %}{% if add_vision_id %}Video {{ video_count.value }}: {% endif %}<|vision_start|><|video_pad|><|vision_end|>{% elif 'text' in content %}{{ content['text'] }}{% endif %}{% endfor %}<|im_end|>
+{% endif %}{% endfor %}{% if add_generation_prompt %}<|im_start|>assistant
+{% endif %}"""  # noqa: E501
+
 
 class FIBOVLMWeightDefinition:
     @staticmethod
@@ -40,6 +49,7 @@ class FIBOVLMWeightDefinition:
                 max_length=1024,
                 fallback_subdirs=["tokenizer", "text_encoder"],
                 download_patterns=["vocab.json", "merges.txt", "tokenizer.json", "tokenizer_config.json"],
+                chat_template=QWEN2VL_CHAT_TEMPLATE,
             ),
         ]
 

@@ -57,3 +57,4 @@ class TokenizerDefinition:
     add_special_tokens: bool = True
     processor_class: type | None = None
     image_token: str = "<|image_pad|>"
+    chat_template: str | None = None  # Jinja2 template for apply_chat_template

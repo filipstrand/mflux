@@ -30,6 +30,7 @@ class TokenizerLoader:
         raw_tokenizer = TokenizerLoader._load_raw_tokenizer(
             tokenizer_path=tokenizer_path,
             tokenizer_class=definition.tokenizer_class,
+            chat_template=definition.chat_template,
         )
 
         return TokenizerLoader._create_tokenizer(
@@ -102,6 +103,7 @@ class TokenizerLoader:
     def _load_raw_tokenizer(
         tokenizer_path: Path,
         tokenizer_class: str,
+        chat_template: str | None = None,
     ):
         if hasattr(transformers, tokenizer_class):
             cls = getattr(transformers, tokenizer_class)
@@ -111,12 +113,18 @@ class TokenizerLoader:
         # Workaround for Qwen2Tokenizer bug in transformers 5.0.0rc0
         # The tokenizer doesn't properly load vocab/merges from files, need to pass them directly
         if tokenizer_class == "Qwen2Tokenizer":
-            return TokenizerLoader._load_qwen2_tokenizer_workaround(tokenizer_path, cls)
+            tokenizer = TokenizerLoader._load_qwen2_tokenizer_workaround(tokenizer_path, cls)
+        else:
+            tokenizer = cls.from_pretrained(
+                pretrained_model_name_or_path=str(tokenizer_path),
+                local_files_only=True,
+            )
 
-        return cls.from_pretrained(
-            pretrained_model_name_or_path=str(tokenizer_path),
-            local_files_only=True,
-        )
+        # Apply chat_template from definition if provided and not already set
+        if chat_template and not getattr(tokenizer, "chat_template", None):
+            tokenizer.chat_template = chat_template
+
+        return tokenizer
 
     @staticmethod
     def _load_qwen2_tokenizer_workaround(tokenizer_path: Path, cls):
@@ -162,8 +170,9 @@ class TokenizerLoader:
                 if len(parts) == 2:
                     merges.append((parts[0], parts[1]))
 
-        # Load tokenizer config for special tokens
+        # Load tokenizer config for special tokens and chat template
         config_kwargs = {}
+        chat_template = None
         if config_file.exists():
             with open(config_file, encoding="utf-8") as f:
                 config = json.load(f)
@@ -184,7 +193,16 @@ class TokenizerLoader:
                     for k, v in added_tokens_decoder.items()
                 }
 
-        return cls(vocab=vocab, merges=merges, **config_kwargs)
+            # Extract chat_template if present
+            chat_template = config.get("chat_template")
+
+        tokenizer = cls(vocab=vocab, merges=merges, **config_kwargs)
+
+        # Set chat_template after initialization (not a constructor param)
+        if chat_template:
+            tokenizer.chat_template = chat_template
+
+        return tokenizer
 
     @staticmethod
     def _create_tokenizer(
