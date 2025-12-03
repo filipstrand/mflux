@@ -314,4 +314,4 @@ class WeightLoader:
 
     @staticmethod
     def _convert_precision(weights: dict[str, mx.array], precision: mx.Dtype) -> dict[str, mx.array]:
-        return {k: v.astype(precision) for k, v in weights.items()}
+        return {k: v if v.dtype == precision else v.astype(precision) for k, v in weights.items()}
