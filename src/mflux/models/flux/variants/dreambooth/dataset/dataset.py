@@ -5,11 +5,11 @@ import PIL.Image
 from mlx import nn
 from tqdm import tqdm
 
+from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 from mflux.models.flux.variants.dreambooth.dataset.batch import Example
 from mflux.models.flux.variants.dreambooth.dataset.dreambooth_preprocessing import DreamBoothPreProcessing
 from mflux.models.flux.variants.dreambooth.state.training_spec import ExampleSpec
 from mflux.models.flux.variants.txt2img.flux import Flux1
-from mflux.utils.array_util import ArrayUtil
 from mflux.utils.image_util import ImageUtil
 
 
@@ -50,8 +50,10 @@ class Dataset:
             encoded_image = Dataset._encode_image(flux.vae, entry.image, width=width, height=height)
 
             # Encode the prompt
-            prompt_embeds = flux.t5_text_encoder(flux.t5_tokenizer.tokenize(entry.prompt))
-            pooled_prompt_embeds = flux.clip_text_encoder(flux.clip_tokenizer.tokenize(entry.prompt))
+            t5_output = flux.tokenizers["t5"].tokenize(entry.prompt)
+            clip_output = flux.tokenizers["clip"].tokenize(entry.prompt)
+            prompt_embeds = flux.t5_text_encoder(t5_output.input_ids)
+            pooled_prompt_embeds = flux.clip_text_encoder(clip_output.input_ids)
 
             # Create the example object
             example = Example(
@@ -65,9 +67,7 @@ class Dataset:
             examples.append(example)
 
             # Evaluate to enable progress tracking
-            mx.eval(encoded_image)
-            mx.eval(prompt_embeds)
-            mx.eval(pooled_prompt_embeds)
+            mx.eval(encoded_image, prompt_embeds, pooled_prompt_embeds)
 
         return examples
 
@@ -76,5 +76,5 @@ class Dataset:
         image = PIL.Image.open(image_path.resolve()).convert("RGB")
         scaled_user_image = ImageUtil.scale_to_dimensions(image, target_width=width, target_height=height)
         encoded = vae.encode(ImageUtil.to_array(scaled_user_image))
-        latents = ArrayUtil.pack_latents(encoded, width=width, height=height)
+        latents = FluxLatentCreator.pack_latents(encoded, width=width, height=height)
         return latents

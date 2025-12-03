@@ -1,9 +1,8 @@
 import os
 
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
+from mflux.cli.defaults import defaults as ui_defaults
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.fill.flux_fill import Flux1Fill
-from mflux.ui import defaults as ui_defaults
 from mflux.utils.image_compare import ImageCompare
 from tests.image_generation.helpers.image_generation_test_helper import ImageGeneratorTestHelper
 
@@ -43,14 +42,12 @@ class ImageGeneratorFillTestHelper:
             image = flux.generate_image(
                 seed=seed,
                 prompt=prompt,
-                config=Config(
-                    num_inference_steps=steps,
-                    height=height,
-                    width=width,
-                    image_path=image_path,
-                    masked_image_path=masked_image_path,
-                    guidance=ui_defaults.DEFAULT_DEV_FILL_GUIDANCE,
-                ),
+                image_path=image_path,
+                masked_image_path=masked_image_path,
+                num_inference_steps=steps,
+                height=height,
+                width=width,
+                guidance=ui_defaults.DEFAULT_DEV_FILL_GUIDANCE,
             )
             image.save(path=output_image_path, overwrite=True)
 

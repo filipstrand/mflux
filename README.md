@@ -4,7 +4,7 @@
 
 ### About
 
-Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux), [Qwen Image](https://github.com/QwenLM/Qwen-Image) and [FIBO](https://huggingface.co/briaai/FIBO) models locally on your Mac!
+Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux), [Qwen Image](https://github.com/QwenLM/Qwen-Image), [FIBO](https://huggingface.co/briaai/FIBO), and [Z-Image](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo) models locally on your Mac!
 
 ### Table of contents
 
@@ -17,13 +17,14 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux), [Qwen Image](http
 - [⏱️ Image generation speed (updated)](#%EF%B8%8F-image-generation-speed-updated)
 - [↔️ Equivalent to Diffusers implementation](#%EF%B8%8F-equivalent-to-diffusers-implementation)
 - [🗜️ Quantization](#%EF%B8%8F-quantization)
-- [💽 Running a non-quantized model directly from disk](#-running-a-non-quantized-model-directly-from-disk)
+- [💽 Running a model directly from disk](#-running-a-model-directly-from-disk)
 - [🌐 Third-Party HuggingFace Model Support](#-third-party-huggingface-model-support)
 - [🎨 Image-to-Image](#-image-to-image)
 - [🦙 Qwen Models](#-qwen-models)
   * [🖼️ Qwen Image](#%EF%B8%8F-qwen-image)
   * [✏️ Qwen Image Edit](#%EF%B8%8F-qwen-image-edit)
 - [🌀 FIBO](#-fibo)
+- [⚡ Z-Image](#-z-image)
 - [🔌 LoRA](#-lora)
 - [🎭 In-Context Generation](#-in-context-generation)
   * [📸 Kontext](#-kontext)
@@ -51,7 +52,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux), [Qwen Image](http
 
 ### Philosophy
 
-MFLUX is a line-by-line port of the FLUX, Qwen and Bria models implementations in the [Huggingface Diffusers](https://github.com/huggingface/diffusers) and [Huggingface Transformers](https://github.com/huggingface/transformers) libraries to [Apple MLX](https://github.com/ml-explore/mlx).
+MFLUX is a line-by-line port of the FLUX, Qwen, Bria and Z-Image models implementations in the [Huggingface Diffusers](https://github.com/huggingface/diffusers) and [Huggingface Transformers](https://github.com/huggingface/transformers) libraries to [Apple MLX](https://github.com/ml-explore/mlx).
 MFLUX is purposefully kept minimal and explicit - Network architectures are hardcoded and no config files are used
 except for the tokenizers. The aim is to have a tiny codebase with the single purpose of expressing these models
 (thereby avoiding too many abstractions). While MFLUX priorities readability over generality and performance, [it can still be quite fast](#%EF%B8%8F-image-generation-speed-updated), [and even faster quantized](#%EF%B8%8F-quantization).
@@ -171,8 +172,7 @@ This is useful for integrating MFLUX into shell scripts or dynamically generatin
 Alternatively, you can use MFLUX directly in Python:
 
 ```python
-from mflux.flux.flux import Flux1
-from mflux.config.config import Config
+from mflux import Flux1
 
 # Load the model
 flux = Flux1.from_name(
@@ -184,11 +184,9 @@ flux = Flux1.from_name(
 image = flux.generate_image(
    seed=2,
    prompt="Luxury food photograph",
-   config=Config(
-      num_inference_steps=2,  # "schnell" works well with 2-4 steps, "dev" and "krea-dev" work well with 20-25 steps
-      height=1024,
-      width=1024,
-   )
+   num_inference_steps=2,  # "schnell" works well with 2-4 steps, "dev" and "krea-dev" work well with 20-25 steps
+   height=1024,
+   width=1024,
 )
 
 image.save(path="image.png")
@@ -200,7 +198,7 @@ For more advanced Python usage and additional configuration options, you can exp
 
 *By default, mflux caches files in `~/Library/Caches/mflux/`. The Hugging Face model files themselves are cached separately in the Hugging Face cache directory (e.g., `~/.cache/huggingface/`).*
 
-*To change the mflux cache location, set the `MFLUX_CACHE_DIR` environment variable. To change the Hugging Face cache location, you can modify the `HF_HOME` environment variable. For more details on Hugging Face cache settings, please refer to the [Hugging Face documentation](https://huggingface.co/docs/huggingface_hub/en/package_reference/environment_variables)*.
+*To change the mflux cache location, set the `MFLUX_CACHE_DIR` environment variable. To change the Hugging Face cache location, you can modify the `HF_HOME` environment variable (e.g. to `HF_HOME=/Volumes/T7/.cache/huggingface`). For more details on Hugging Face cache settings, please refer to the [Hugging Face documentation](https://huggingface.co/docs/huggingface_hub/en/package_reference/environment_variables)*.
 
 🔒 [FLUX.1-dev currently requires granted access to its Huggingface repo. For troubleshooting, see the issue tracker](https://github.com/filipstrand/mflux/issues/14) 🔒
 
@@ -236,9 +234,12 @@ mflux-generate \
 
 - **`--prompt`** (required, `str`): Text description of the image to generate. Use `-` to read the prompt from stdin (e.g., `echo "A beautiful sunset" | mflux-generate --prompt -`).
 
-- **`--model`** or **`-m`** (required, `str`): Model to use for generation. Can be one of the official Flux models (`"schnell"`, `"dev"`, or `"krea-dev"`) or a HuggingFace repository ID for a compatible third-party model (e.g., `"Freepik/flux.1-lite-8B-alpha"`). For Qwen models, use `mflux-generate-qwen` instead.
+- **`--model`** or **`-m`** (required, `str`): Model to use for generation. Accepts:
+  - Predefined names: `"schnell"`, `"dev"`, `"krea-dev"`, `"fibo"`, `"z-image-turbo"`
+  - HuggingFace repos: `"Freepik/flux.1-lite-8B-alpha"`, `"briaai/Fibo-mlx-4bit"`
+  - Local paths: `"/Users/me/models/my-model"`, `"~/my-model"`
 
-- **`--base-model`** (optional, `str`, default: `None`): Specifies which base architecture a third-party model is derived from (`"schnell"`, `"dev"`, or `"krea-dev"`). Required when using third-party models from HuggingFace.
+- **`--base-model`** (optional, `str`, default: `None`): Specifies which base architecture a third-party model is derived from (`"schnell"`, `"dev"`, or `"krea-dev"`). Required when using third-party models from HuggingFace or local paths.
 
 - **`--output`** (optional, `str`, default: `"image.png"`): Output image filename. If `--seed` or `--auto-seeds` establishes multiple seed values, the output filename will automatically be modified to include the seed value (e.g., `image_seed_42.png`).
 
@@ -254,11 +255,15 @@ mflux-generate \
 
 - **`--guidance`** (optional, `float`, default: `3.5`): Guidance scale (only used for `"dev"` and `"krea-dev"` models).
 
-- **`--path`** (optional, `str`, default: `None`): Path to a local model on disk.
+- **`--path`** (optional, `str`, default: `None`): **[DEPRECATED: use `--model` instead]** Path to a local model on disk.
 
 - **`--quantize`** or **`-q`** (optional, `int`, default: `None`): [Quantization](#%EF%B8%8F-quantization) (choose between `3`, `4`, `5`, `6`, or `8` bits).
 
-- **`--lora-paths`** (optional, `[str]`, default: `None`): The paths to the [LoRA](#-LoRA) weights.
+- **`--lora-paths`** (optional, `[str]`, default: `None`): The paths to the [LoRA](#-LoRA) weights. Supports multiple formats:
+  - Local files: `/path/to/lora.safetensors`
+  - HuggingFace repos: `author/model` (auto-downloads)
+  - HuggingFace collections: `repo_id:filename.safetensors` (downloads specific file)
+  - Registry names: `my-lora` (via `LORA_LIBRARY_PATH`)
 
 - **`--lora-scales`** (optional, `[float]`, default: `None`): The scale for each respective [LoRA](#-LoRA) (will default to `1.0` if not specified and only one LoRA weight is loaded.)
 
@@ -273,10 +278,6 @@ mflux-generate \
 - **`--low-ram`** (optional): Reduces GPU memory usage by limiting the MLX cache size and releasing text encoders and transformer components after use (single image generation only). While this may slightly decrease performance, it helps prevent system memory swapping to disk, allowing image generation on systems with limited RAM.
 
 - **`--battery-percentage-stop-limit`** or **`-B`** (optional, `int`, default: `5`): On Mac laptops powered by battery, automatically stops image generation when battery percentage reaches this threshold. Prevents your Mac from shutting down and becoming unresponsive during long generation sessions.
-
-- **`--lora-name`** (optional, `str`, default: `None`): The name of the LoRA to download from Hugging Face.
-
-- **`--lora-repo-id`** (optional, `str`, default: `"ali-vilab/In-Context-LoRA"`): The Hugging Face repository ID for LoRAs.
 
 - **`--stepwise-image-output-dir`** (optional, `str`, default: `None`): [EXPERIMENTAL] Output directory to write step-wise images and their final composite image to. This feature may change in future versions. When specified, MFLUX will save an image for each denoising step, allowing you to visualize the generation process from noise to final image.
 
@@ -701,7 +702,7 @@ However, if we were to import a fixed instance of this latent array saved from t
 The images below illustrate this equivalence.
 In all cases the Schnell model was run for 2 time steps.
 The Diffusers implementation ran in CPU mode.
-The precision for MFLUX can be set in the [Config](src/mflux/config/config.py) class.
+The precision for MFLUX can be set in the [Config](src/mflux/models/common/config/config.py) class.
 There is typically a noticeable but very small difference in the final image when switching between 16bit and 32bit precision.
 
 ---
@@ -837,6 +838,9 @@ In other words, you can reclaim the 34GB diskspace (per model) by deleting the f
   - [akx/FLUX.1-Kontext-dev-mflux-4bit](https://huggingface.co/akx/FLUX.1-Kontext-dev-mflux-4bit)
   - [filipstrand/FLUX.1-Krea-dev-mflux-4bit](https://huggingface.co/filipstrand/FLUX.1-Krea-dev-mflux-4bit)
   - [filipstrand/Qwen-Image-mflux-6bit](https://huggingface.co/filipstrand/Qwen-Image-mflux-6bit)
+  - [filipstrand/Z-Image-Turbo-mflux-4bit](https://huggingface.co/filipstrand/Z-Image-Turbo-mflux-4bit)
+  - [briaai/Fibo-mlx-4bit](https://huggingface.co/briaai/Fibo-mlx-4bit)
+  - [briaai/Fibo-mlx-8bit](https://huggingface.co/briaai/Fibo-mlx-8bit)
 
 
 Using the [community model support](#-third-party-huggingface-model-support), the quantized weights can be also be automatically downloaded when running the generate command:
@@ -850,23 +854,33 @@ mflux-generate \
     --seed 2674888
 ```
 
+```sh
+mflux-generate-fibo \
+    --model briaai/Fibo-mlx-4bit \
+    --prompt-file ~/Desktop/bird.json \
+    --width 1024 \
+    --height 1024 \
+    --steps 20 \
+    --seed 42 \
+```
+
 ---
 
-### 💽 Running a non-quantized model directly from disk
+### 💽 Running a model directly from disk
 
-MFLUX also supports running a non-quantized model directly from a custom location.
+MFLUX supports running a model directly from a custom location using the `--model` flag with a local path.
 In the example below, the model is placed in `/Users/filipstrand/Desktop/schnell`:
 
 ```sh
 mflux-generate \
-    --path "/Users/filipstrand/Desktop/schnell" \
-    --model schnell \
+    --model "/Users/filipstrand/Desktop/schnell" \
+    --base-model schnell \
     --steps 2 \
     --seed 2 \
     --prompt "Luxury food photograph"
 ```
 
-Note that the `--model` flag must be set when loading a model from disk.
+When loading from a local path, use `--base-model` to specify the architecture (e.g., `schnell`, `dev`).
 
 Also note that unlike when using the typical `alias` way of initializing the model (which internally handles that the required resources are downloaded),
 when loading a model directly from disk, we require the downloaded models to look like the following:
@@ -909,13 +923,26 @@ processed a bit differently, which is why we require this structure above.*
 
 ### 🌐 Third-Party HuggingFace Model Support
 
-MFLUX now supports compatible third-party models from HuggingFace that follow the FLUX architecture. This opens up the ecosystem to community-created models that may offer different capabilities, sizes, or specializations.
+MFLUX supports compatible third-party models from HuggingFace that follow the FLUX architecture. The `--model` parameter accepts:
 
-To use a third-party model, specify the HuggingFace repository ID with the `--model` parameter and indicate which base architecture (dev or schnell) it's derived from using the `--base-model` parameter:
+- **Predefined names**: `dev`, `schnell`, `fibo`, `z-image-turbo`, etc.
+- **HuggingFace repos**: `Freepik/flux.1-lite-8B`, `briaai/Fibo-mlx-4bit`
+- **Local paths**: `/Users/me/models/my-model`, `~/my-model`
+
+This unified interface mirrors how LoRA paths work, making it easy to switch between local and remote models.
 
 ```sh
+# Using a HuggingFace repo
 mflux-generate \
     --model Freepik/flux.1-lite-8B \
+    --base-model schnell \
+    --steps 4 \
+    --seed 42 \
+    --prompt "A beautiful landscape with mountains and a lake"
+
+# Using a local path
+mflux-generate \
+    --model /Users/me/models/flux-lite \
     --base-model schnell \
     --steps 4 \
     --seed 42 \
@@ -1426,6 +1453,36 @@ Note: The optional `--prompt` parameter allows you to guide the VLM's interpreta
 
 ---
 
+### ⚡ Z-Image
+
+MFLUX supports [Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo) from Tongyi Lab (Alibaba), released in November 2025. Z-Image is an efficient 6B-parameter image generation model with a single-stream DiT architecture. Z-Image-Turbo delivers high-quality images in just 9 steps, making it one of the fastest open-source models available. All the standard modes such as, img2img, LoRA and quantizations are supported for this model. See the [technical paper](https://arxiv.org/abs/2511.22699) for more details. 
+
+![Z-Image-Turbo Example](src/mflux/assets/z_image_turbo_example.jpg)
+
+#### Example
+
+The following uses the pre-quantized 4-bit model from [filipstrand/Z-Image-Turbo-mflux-4bit](https://huggingface.co/filipstrand/Z-Image-Turbo-mflux-4bit) to generate a vibrant 1960s style image with a LoRA adapter [Technically Color](https://huggingface.co/renderartist/Technically-Color-Z-Image-Turbo) for enhanced film color:
+
+```sh
+mflux-generate-z-image-turbo \
+  --model filipstrand/Z-Image-Turbo-mflux-4bit \
+  --prompt "t3chnic4lly vibrant 1960s close-up of a woman sitting under a tree in a blue skirt and white blouse, she has blonde wavy short hair and a smile with green eyes lake scene by a garden with flowers in the foreground 1960s style film She's holding her hand out there is a small smooth frog in her palm, she's making eye contact with the toad." \
+  --width 1280 \
+  --height 720 \
+  --seed 456 \
+  --steps 9 \
+  --lora-paths renderartist/Technically-Color-Z-Image-Turbo \
+  --lora-scales 0.5
+```
+
+⚠️ *Note: Z-Image-Turbo requires downloading the `Tongyi-MAI/Z-Image-Turbo` model weights (~31GB), or use quantization for smaller sizes.* 
+
+*Dreambooth fine-tuning for Z-Image is not yet supported in MFLUX but is planned. In the meantime, you can train Z-Image-Turbo LoRAs using [AI Toolkit](https://github.com/ostris/ai-toolkit) - see [How to Train a Z-Image-Turbo LoRA with AI Toolkit](https://www.youtube.com/watch?v=Kmve1_jiDpQ) by Ostris AI.*
+
+*For a Swift MLX implementation of Z-Image, see [zimage.swift](https://github.com/mzbac/zimage.swift) by [@mzbac](https://github.com/mzbac).*
+
+---
+
 ### 🔌 LoRA
 
 MFLUX support loading trained [LoRA](https://huggingface.co/docs/diffusers/en/training/lora) adapters (actual training support is coming).
@@ -1468,6 +1525,28 @@ mflux-generate \
 
 Just to see the difference, this image displays the four cases: One of having both adapters fully active, partially active and no LoRA at all.
 The example above also show the usage of `--lora-scales` flag.
+
+#### HuggingFace LoRA Downloads
+
+MFLUX can automatically download LoRAs directly from HuggingFace. Simply pass the repository ID to `--lora-paths`:
+
+```sh
+# Download from a HuggingFace repo (auto-finds the .safetensors file)
+mflux-generate \
+    --prompt "a portrait" \
+    --lora-paths "author/lora-model"
+```
+
+For repositories with multiple LoRA files (collections), use the `repo_id:filename` format to specify which file to download:
+
+```sh
+# Download a specific file from a collection
+mflux-generate \
+    --prompt "film storyboard style, a cat" \
+    --lora-paths "ali-vilab/In-Context-LoRA:film-storyboard.safetensors"
+```
+
+Downloaded LoRAs are cached locally and reused on subsequent runs.
 
 #### LoRA Library Path
 

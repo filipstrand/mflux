@@ -1,8 +1,8 @@
 import sys
 from pathlib import Path
 
-from mflux.ui.box_values import AbsoluteBoxValues, BoxValues
-from mflux.ui.cli.parsers import CommandLineParser
+from mflux.cli.parser.parsers import CommandLineParser
+from mflux.utils.box_values import AbsoluteBoxValues, BoxValues
 from mflux.utils.image_util import ImageUtil
 
 

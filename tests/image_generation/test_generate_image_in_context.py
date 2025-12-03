@@ -1,9 +1,12 @@
-from mflux.config.model_config import ModelConfig
+import pytest
+
+from mflux.models.common.config import ModelConfig
 from tests.image_generation.helpers.image_generation_ic_edit_test_helper import ImageGeneratorICEditTestHelper
 from tests.image_generation.helpers.image_generation_in_context_test_helper import ImageGeneratorInContextTestHelper
 
 
 class TestImageGeneratorInContext:
+    @pytest.mark.slow
     def test_in_context_lora_identity(self):
         ImageGeneratorInContextTestHelper.assert_matches_reference_image(
             reference_image_path="reference_ic_lora_identity.png",
@@ -18,6 +21,7 @@ class TestImageGeneratorInContext:
             lora_style="identity",
         )
 
+    @pytest.mark.slow
     def test_ic_edit_with_instruction(self):
         ImageGeneratorICEditTestHelper.assert_matches_reference_image(
             reference_image_path="reference_ic_edit.png",

@@ -1,7 +1,7 @@
 import mlx.core as mx
 
+from mflux.models.common.tokenizer import Tokenizer
 from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
-from mflux.models.qwen.tokenizer.qwen_tokenizer import TokenizerQwen
 
 
 class QwenPromptEncoder:
@@ -10,7 +10,7 @@ class QwenPromptEncoder:
         prompt: str,
         negative_prompt: str,
         prompt_cache: dict[str, tuple[mx.array, mx.array, mx.array, mx.array]],
-        qwen_tokenizer: TokenizerQwen,
+        qwen_tokenizer: Tokenizer,
         qwen_text_encoder: QwenTextEncoder,
     ) -> tuple[mx.array, mx.array, mx.array, mx.array]:
         # 0. Create a cache key that combines both prompts
@@ -21,11 +21,13 @@ class QwenPromptEncoder:
             return prompt_cache[cache_key]
 
         # 2. Encode the positive prompt
-        input_ids, attention_mask = qwen_tokenizer.tokenize(prompt)
-        neg_input_ids, neg_attention_mask = qwen_tokenizer.tokenize(negative_prompt)
-        prompt_embeds, prompt_mask = qwen_text_encoder(input_ids=input_ids, attention_mask=attention_mask)
+        pos_output = qwen_tokenizer.tokenize(prompt)
+        neg_output = qwen_tokenizer.tokenize(negative_prompt)
+        prompt_embeds, prompt_mask = qwen_text_encoder(
+            input_ids=pos_output.input_ids, attention_mask=pos_output.attention_mask
+        )
         neg_prompt_embeds, neg_prompt_mask = qwen_text_encoder(
-            input_ids=neg_input_ids, attention_mask=neg_attention_mask
+            input_ids=neg_output.input_ids, attention_mask=neg_output.attention_mask
         )
 
         # 3. Cache the result (all 4 values)

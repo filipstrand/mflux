@@ -3,6 +3,7 @@ import json
 import tempfile
 import zipfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from mflux.models.flux.variants.dreambooth.dataset.iterator import Iterator
 from mflux.models.flux.variants.dreambooth.lora_layers.lora_layers import LoRALayers
@@ -10,6 +11,9 @@ from mflux.models.flux.variants.dreambooth.optimization.optimizer import Optimiz
 from mflux.models.flux.variants.dreambooth.state.training_spec import TrainingSpec
 from mflux.models.flux.variants.dreambooth.state.zip_util import ZipUtil
 from mflux.models.flux.variants.dreambooth.statistics.statistics import Statistics
+
+if TYPE_CHECKING:
+    from mflux.models.flux.variants.txt2img.flux import Flux1
 
 DREAMBOOTH_PATH_CHECKPOINTS = "_checkpoints"
 DREAMBOOTH_FILE_NAME_CHECKPOINT = "checkpoint"
@@ -31,16 +35,14 @@ class TrainingState:
     def __init__(
         self,
         iterator: Iterator,
-        lora_layers: LoRALayers,
         optimizer: Optimizer,
         statistics: Statistics,
     ):
         self.iterator = iterator
         self.optimizer = optimizer
-        self.lora_layers = lora_layers
         self.statistics = statistics
 
-    def save(self, training_spec: TrainingSpec) -> None:
+    def save(self, flux: "Flux1", training_spec: TrainingSpec) -> None:
         # Create a temporary directory to store files before zipping
         with tempfile.TemporaryDirectory() as temp_dir:
             # Save files to temporary directory
@@ -54,7 +56,7 @@ class TrainingState:
 
             # Save individual files to temporary directory
             self.optimizer.save(optimizer_path)
-            self.lora_layers.save(lora_path, training_spec)
+            LoRALayers.save(flux.transformer, lora_path, training_spec)
             self.iterator.save(iterator_path)
             self.statistics.save(loss_path)
             self._save_train_config(config_path, training_spec)  # For completeness, we also save the (initial) config

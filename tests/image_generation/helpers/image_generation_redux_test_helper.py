@@ -1,8 +1,7 @@
 import os
 from pathlib import Path
 
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.redux.flux_redux import Flux1Redux
 from mflux.utils.image_compare import ImageCompare
 
@@ -12,13 +11,13 @@ class ImageGeneratorReduxTestHelper:
     def assert_matches_reference_image(
         reference_image_path: str,
         output_image_path: str,
-        model_config: ModelConfig,
         steps: int,
         seed: int,
         height: int,
         width: int,
         prompt: str,
         redux_image_path: str,
+        model_config: ModelConfig = ModelConfig.dev(),
     ):
         # resolve paths
         reference_image_path = ImageGeneratorReduxTestHelper.resolve_path(reference_image_path)
@@ -36,12 +35,10 @@ class ImageGeneratorReduxTestHelper:
             image = flux.generate_image(
                 seed=seed,
                 prompt=prompt,
-                config=Config(
-                    num_inference_steps=steps,
-                    height=height,
-                    width=width,
-                    redux_image_paths=[redux_image_path],
-                ),
+                redux_image_paths=[redux_image_path],
+                num_inference_steps=steps,
+                height=height,
+                width=width,
             )
             image.save(path=output_image_path, overwrite=True)
 

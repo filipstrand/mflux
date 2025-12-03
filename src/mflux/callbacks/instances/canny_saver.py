@@ -5,7 +5,7 @@ import mlx.core as mx
 import PIL.Image
 
 from mflux.callbacks.callback import BeforeLoopCallback
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config.config import Config
 from mflux.utils.image_util import ImageUtil
 
 
@@ -18,7 +18,7 @@ class CannyImageSaver(BeforeLoopCallback):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         canny_image: PIL.Image.Image | None = None,
         depth_image: PIL.Image.Image | None = None,
     ) -> None:

@@ -97,6 +97,21 @@ test: ensure-pytest
 	$(PYTHON) -m pytest
 	# ✅ Tests completed
 
+# Run fast tests only (no image generation)
+.PHONY: test-fast
+test-fast: ensure-pytest
+	# 🏗️ Running fast tests (no image generation)...
+	$(PYTHON) -m pytest -m fast
+	# ✅ Fast tests completed
+
+# Run slow tests only (image generation tests)
+.PHONY: test-slow
+test-slow: ensure-pytest
+	# 🏗️ Running slow tests (image generation)...
+	uv pip install mlx==0.29.2  # Install pinned MLX version specifically for testing
+	$(PYTHON) -m pytest -m slow
+	# ✅ Slow tests completed
+
 
 # Run uv build and check dist sizes for optimized user installs
 .PHONY: build
@@ -129,7 +144,9 @@ help:
 	@echo "  make lint        - Run ruff python linter"
 	@echo "  make format      - Run ruff code formatter"
 	@echo "  make check       - Run linters auto fixes *and* style formatter via pre-commit hook"
-	@echo "  make test        - Run tests"
+	@echo "  make test        - Run all tests"
+	@echo "  make test-fast   - Run fast tests only (no image generation)"
+	@echo "  make test-slow   - Run slow tests only (image generation)"
 	@echo "  make build       - Build distribution packages and check sizes"
 	@echo "  make clean       - Remove the virtual environment"
 	@echo "  make help        - Show this help message"

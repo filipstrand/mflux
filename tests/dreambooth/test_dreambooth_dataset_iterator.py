@@ -34,8 +34,8 @@ def batch_size(request):
     return request.param
 
 
+@pytest.mark.fast
 def test_batch_size_consistency(dataset, batch_size):
-    """Test that batches are of the specified size except for the last one."""
     iterator = Iterator(dataset, batch_size)
 
     batch_sizes = []
@@ -55,8 +55,8 @@ def test_batch_size_consistency(dataset, batch_size):
     assert batch_sizes[-1] == dataset.size() % batch_size or batch_size
 
 
+@pytest.mark.fast
 def test_complete_coverage(dataset, batch_size):
-    """Test that all examples are seen exactly once before reset."""
     iterator = Iterator(dataset, batch_size)
     seen_examples: Set[int] = set()
 
@@ -70,8 +70,8 @@ def test_complete_coverage(dataset, batch_size):
     assert seen_examples == expected_examples
 
 
+@pytest.mark.fast
 def test_state_restoration(dataset, batch_size):
-    """Test that iterator can be saved and restored to the same state."""
     iterator1 = Iterator(dataset, batch_size)
 
     first_batches = []
@@ -91,8 +91,8 @@ def test_state_restoration(dataset, batch_size):
         assert ids1 == ids2
 
 
+@pytest.mark.fast
 def test_state_restoration_across_epochs(dataset, batch_size):
-    """Test that state restoration works when crossing epoch boundaries."""
     iterator1 = Iterator(dataset, batch_size)
 
     num_iterations = (dataset.size() + batch_size - 1) // batch_size + 1
@@ -109,8 +109,8 @@ def test_state_restoration_across_epochs(dataset, batch_size):
     assert ids1 == ids2
 
 
+@pytest.mark.fast
 def test_randomization(dataset, batch_size):
-    """Test that different seeds produce different sequences."""
     iterator1 = Iterator(dataset, batch_size=2, seed=1)
     iterator2 = Iterator(dataset, batch_size=2, seed=2)
 
@@ -123,8 +123,8 @@ def test_randomization(dataset, batch_size):
     assert ids1 != ids2
 
 
+@pytest.mark.fast
 def test_epoch_transition(dataset, batch_size):
-    """Test that epoch transition creates a new permutation."""
     iterator = Iterator(dataset, batch_size)
 
     num_batches_in_epoch = (dataset.size() + batch_size - 1) // batch_size
@@ -140,8 +140,8 @@ def test_epoch_transition(dataset, batch_size):
     assert len(second_epoch_ids) == min(batch_size, dataset.size())
 
 
+@pytest.mark.fast
 def test_state_consistency(dataset, batch_size):
-    """Test that state remains consistent across iterations within the same epoch."""
     iterator = Iterator(dataset, batch_size)
 
     initial_state = iterator.to_dict()
@@ -160,8 +160,8 @@ def test_state_consistency(dataset, batch_size):
     assert restored_state["current_permutation"] == new_state["current_permutation"]
 
 
+@pytest.mark.fast
 def test_fixed_num_epochs(dataset, batch_size):
-    """Test that iterator stops after specified number of epochs."""
     num_epochs = 100
     iterator = Iterator(dataset, batch_size, num_epochs=num_epochs)
 
@@ -188,8 +188,8 @@ def test_fixed_num_epochs(dataset, batch_size):
     assert total_examples_seen == dataset.size() * num_epochs
 
 
+@pytest.mark.fast
 def test_iteration_counting(dataset, batch_size):
-    """Test that iteration counting works correctly."""
     iterator = Iterator(dataset, batch_size)
 
     num_iterations = 5
@@ -199,8 +199,8 @@ def test_iteration_counting(dataset, batch_size):
     assert iterator.num_iterations == num_iterations
 
 
+@pytest.mark.fast
 def test_iteration_counting_across_epochs(dataset, batch_size):
-    """Test that iteration counting works correctly across epoch boundaries."""
     iterator = Iterator(dataset, batch_size)
 
     batches_per_epoch = (dataset.size() + batch_size - 1) // batch_size
@@ -212,8 +212,8 @@ def test_iteration_counting_across_epochs(dataset, batch_size):
     assert iterator.num_iterations == total_iterations
 
 
+@pytest.mark.fast
 def test_random_seed_consistency(dataset, batch_size):
-    """Test that the same seed produces the same sequence of batches."""
     seed = 42
     iterator1 = Iterator(dataset, batch_size, seed=seed)
     iterator2 = Iterator(dataset, batch_size, seed=seed)
@@ -227,8 +227,8 @@ def test_random_seed_consistency(dataset, batch_size):
         assert ids1 == ids2
 
 
+@pytest.mark.fast
 def test_state_serialization(dataset, batch_size):
-    """Test that the iterator state can be serialized and deserialized."""
     iterator = Iterator(dataset, batch_size)
     next(iterator)
 
@@ -239,8 +239,8 @@ def test_state_serialization(dataset, batch_size):
     assert len(batch.examples) > 0
 
 
+@pytest.mark.fast
 def test_state_restoration_after_exhaustion(dataset, batch_size):
-    """Test that state restoration works correctly after iterator exhaustion."""
     iterator = Iterator(dataset, batch_size, num_epochs=10)
     try:
         while True:

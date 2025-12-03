@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from mflux.ui.cli.parsers import CommandLineParser
-from mflux.ui.prompt_utils import PromptUtils
+from mflux.cli.parser.parsers import CommandLineParser
+from mflux.utils.prompt_util import PromptUtil
 
 
 @pytest.fixture
@@ -26,8 +26,8 @@ def temp_output_dir(tmp_path_factory) -> Path:
     return tmp_path_factory.mktemp("mflux_stdin_test")
 
 
+@pytest.mark.fast
 def test_prompt_from_stdin(mflux_generate_parser):
-    """Test that --prompt - reads from stdin correctly."""
     stdin_content = "A beautiful sunset over the ocean"
 
     # Simulate stdin input
@@ -35,35 +35,34 @@ def test_prompt_from_stdin(mflux_generate_parser):
         with patch("sys.argv", ["mflux-generate", "--prompt", "-", "--model", "dev"]):
             args = mflux_generate_parser.parse_args()
 
-            # The parser returns the raw args, get_effective_prompt handles stdin
+            # The parser returns the raw args, read_prompt handles stdin
             assert args.prompt == "-"
 
 
+@pytest.mark.fast
 def test_prompt_stdin_vs_regular(mflux_generate_parser):
-    """Test that regular prompt still works when not using stdin."""
     regular_prompt = "A regular prompt not from stdin"
 
     with patch("sys.argv", ["mflux-generate", "--prompt", regular_prompt, "--model", "dev"]):
         args = mflux_generate_parser.parse_args()
         assert args.prompt == regular_prompt
-        assert PromptUtils.get_effective_prompt(args) == regular_prompt
+        assert PromptUtil.read_prompt(args) == regular_prompt
 
 
+@pytest.mark.fast
 def test_prompt_stdin_with_whitespace(mflux_generate_parser):
-    """Test that stdin prompt with surrounding whitespace is properly stripped."""
     stdin_content = "\n\n   A prompt with whitespace   \n\n"
     expected_prompt = "A prompt with whitespace"
 
     with patch("sys.stdin", StringIO(stdin_content)):
         with patch("sys.argv", ["mflux-generate", "--prompt", "-", "--model", "dev"]):
             args = mflux_generate_parser.parse_args()
-            effective_prompt = PromptUtils.get_effective_prompt(args)
+            effective_prompt = PromptUtil.read_prompt(args)
             assert effective_prompt == expected_prompt
 
 
+@pytest.mark.fast
 def test_prompt_file_takes_precedence_over_stdin(mflux_generate_parser, temp_output_dir):
-    """Test that --prompt-file still works and takes precedence over stdin detection.
-    because --prompt is not used in this scenario."""
     # Create a prompt file
     prompt_file = temp_output_dir / "prompt.txt"
     file_prompt = "Prompt from file"
@@ -73,5 +72,5 @@ def test_prompt_file_takes_precedence_over_stdin(mflux_generate_parser, temp_out
     with patch("sys.stdin", StringIO(stdin_content)):
         with patch("sys.argv", ["mflux-generate", "--prompt-file", str(prompt_file), "--model", "dev"]):
             args = mflux_generate_parser.parse_args()
-            effective_prompt = PromptUtils.get_effective_prompt(args)
+            effective_prompt = PromptUtil.read_prompt(args)
             assert effective_prompt == file_prompt

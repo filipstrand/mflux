@@ -2,7 +2,7 @@ import mlx.core as mx
 from mlx import nn
 from mlx.core.fast import scaled_dot_product_attention
 
-from mflux.config.config import Config
+from mflux.models.common.config import ModelConfig
 
 
 class CLIPSdpaAttention(nn.Module):
@@ -18,7 +18,7 @@ class CLIPSdpaAttention(nn.Module):
         self.out_proj = nn.Linear(input_dims=768, output_dims=768)
 
     def __call__(self, hidden_states: mx.array, causal_attention_mask: mx.array) -> mx.array:
-        causal_attention_mask = causal_attention_mask.astype(Config.precision)
+        causal_attention_mask = causal_attention_mask.astype(ModelConfig.precision)
 
         query = self.q_proj(hidden_states)
         key = self.k_proj(hidden_states)

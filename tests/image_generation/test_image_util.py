@@ -12,6 +12,7 @@ def test_image():
     return PIL.Image.new("RGB", (100, 80), color="blue")
 
 
+@pytest.mark.fast
 def test_expand_image_with_pixels(test_image):
     # Test expanding with pixel values
     expanded = ImageUtil.expand_image(
@@ -37,6 +38,7 @@ def test_expand_image_with_pixels(test_image):
     assert expanded.getpixel((15, 25)) == (0, 0, 255)  # blue
 
 
+@pytest.mark.fast
 def test_expand_image_with_percentages(test_image):
     # Test expanding with percentage values
     expanded = ImageUtil.expand_image(
@@ -65,6 +67,7 @@ def test_expand_image_with_percentages(test_image):
     assert expanded.getpixel((0, 0)) == (0, 255, 0)
 
 
+@pytest.mark.fast
 def test_expand_image_with_invalid_values(test_image):
     # Test with invalid percentage string (a string that does not end with %"
     with pytest.raises(ValueError):
@@ -80,6 +83,7 @@ def test_expand_image_with_invalid_values(test_image):
         ImageUtil.expand_image(test_image, top="25", right="30", bottom="50#", left="10*")
 
 
+@pytest.mark.fast
 def test_create_outpaint_mask_image():
     # Test with various padding values
     orig_width = 100
@@ -136,6 +140,7 @@ def test_create_outpaint_mask_image():
     assert mask.getpixel((left_padding, top_padding + 10)) == (0, 0, 0)
 
 
+@pytest.mark.fast
 def test_binarize():
     # Create test data using numpy arrays and convert to mx arrays
     # Create a gradient array from 0 to 1
@@ -160,6 +165,7 @@ def test_binarize():
     assert np.all(result_np[:, :, :, 5:] == 1)
 
 
+@pytest.mark.fast
 def test_to_array_with_mask():
     # Create a test image with gradient colors
     from PIL import Image, ImageDraw

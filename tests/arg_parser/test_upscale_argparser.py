@@ -3,12 +3,11 @@ from unittest.mock import patch
 
 import pytest
 
-from mflux.ui.cli.parsers import CommandLineParser, int_or_special_value
-from mflux.ui.scale_factor import ScaleFactor
+from mflux.cli.parser.parsers import CommandLineParser, int_or_special_value
+from mflux.utils.scale_factor import ScaleFactor
 
 
 def _create_custom_upscale_parser() -> CommandLineParser:
-    """Create parser with custom dimension scale factor support"""
     parser = CommandLineParser(description="Generate an upscaled image from a source image")
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
@@ -48,8 +47,8 @@ def mflux_upscale_minimal_argv() -> list[str]:
     return ["mflux-upscale", "--prompt", "upscaled image", "--controlnet-image-path", "image.png"]
 
 
+@pytest.mark.fast
 def test_scale_factor_auto(mflux_upscale_parser, mflux_upscale_minimal_argv):
-    """Test that 'auto' gets parsed as a ScaleFactor with value 1"""
     with patch("sys.argv", mflux_upscale_minimal_argv + ["--height", "auto", "--width", "auto"]):
         args = mflux_upscale_parser.parse_args()
         assert isinstance(args.height, ScaleFactor)
@@ -58,8 +57,8 @@ def test_scale_factor_auto(mflux_upscale_parser, mflux_upscale_minimal_argv):
         assert args.width.value == 1
 
 
+@pytest.mark.fast
 def test_scale_factor_multiplier_format(mflux_upscale_parser, mflux_upscale_minimal_argv):
-    """Test scale factor formats like '1x', '2x', '3.5x'"""
     # Test integer scale factor
     with patch("sys.argv", mflux_upscale_minimal_argv + ["--height", "2x", "--width", "3x"]):
         args = mflux_upscale_parser.parse_args()
@@ -85,8 +84,8 @@ def test_scale_factor_multiplier_format(mflux_upscale_parser, mflux_upscale_mini
         assert args.width.value == 0.5
 
 
+@pytest.mark.fast
 def test_plain_integer_dimensions(mflux_upscale_parser, mflux_upscale_minimal_argv):
-    """Test plain integer values for dimensions"""
     with patch("sys.argv", mflux_upscale_minimal_argv + ["--height", "1024", "--width", "768"]):
         args = mflux_upscale_parser.parse_args()
         assert isinstance(args.height, int)
@@ -95,8 +94,8 @@ def test_plain_integer_dimensions(mflux_upscale_parser, mflux_upscale_minimal_ar
         assert args.width == 768
 
 
+@pytest.mark.fast
 def test_mixed_dimension_types(mflux_upscale_parser, mflux_upscale_minimal_argv):
-    """Test mixing scale factors and integers"""
     with patch("sys.argv", mflux_upscale_minimal_argv + ["--height", "2x", "--width", "1024"]):
         args = mflux_upscale_parser.parse_args()
         assert isinstance(args.height, ScaleFactor)
@@ -112,8 +111,8 @@ def test_mixed_dimension_types(mflux_upscale_parser, mflux_upscale_minimal_argv)
         assert args.width.value == 1.5
 
 
+@pytest.mark.fast
 def test_default_dimensions(mflux_upscale_parser, mflux_upscale_minimal_argv):
-    """Test default values are 'auto' for upscale parser"""
     with patch("sys.argv", mflux_upscale_minimal_argv):
         args = mflux_upscale_parser.parse_args()
         # Default "auto" gets parsed into ScaleFactor(value=1)
@@ -123,8 +122,8 @@ def test_default_dimensions(mflux_upscale_parser, mflux_upscale_minimal_argv):
         assert args.width.value == 1
 
 
+@pytest.mark.fast
 def test_invalid_scale_factor_format(mflux_upscale_parser, mflux_upscale_minimal_argv):
-    """Test invalid scale factor formats raise errors"""
     # Invalid format without 'x'
     with patch("sys.argv", mflux_upscale_minimal_argv + ["--height", "2.5"]):
         with pytest.raises(SystemExit):
@@ -146,8 +145,8 @@ def test_invalid_scale_factor_format(mflux_upscale_parser, mflux_upscale_minimal
             mflux_upscale_parser.parse_args()
 
 
+@pytest.mark.fast
 def test_case_insensitive_scale_factor(mflux_upscale_parser, mflux_upscale_minimal_argv):
-    """Test that scale factors are case insensitive"""
     with patch("sys.argv", mflux_upscale_minimal_argv + ["--height", "2X", "--width", "1.5X"]):
         args = mflux_upscale_parser.parse_args()
         assert isinstance(args.height, ScaleFactor)
@@ -156,8 +155,8 @@ def test_case_insensitive_scale_factor(mflux_upscale_parser, mflux_upscale_minim
         assert args.width.value == 1.5
 
 
+@pytest.mark.fast
 def test_upscale_with_all_arguments(mflux_upscale_parser):
-    """Test upscale parser with all arguments"""
     full_argv = [
         "mflux-upscale",
         "--prompt",

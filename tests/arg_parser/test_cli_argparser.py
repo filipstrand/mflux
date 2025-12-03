@@ -5,9 +5,9 @@ from unittest.mock import patch
 
 import pytest
 
-from mflux.ui import defaults as ui_defaults
-from mflux.ui.box_values import BoxValues
-from mflux.ui.cli.parsers import CommandLineParser
+from mflux.cli.defaults import defaults as ui_defaults
+from mflux.cli.parser.parsers import CommandLineParser
+from mflux.utils.box_values import BoxValues
 
 
 def _create_mflux_generate_parser(with_controlnet=False, require_model_arg=False) -> CommandLineParser:
@@ -214,12 +214,14 @@ def mflux_in_context_edit_minimal_argv() -> list[str]:
     ]
 
 
+@pytest.mark.fast
 def test_model_path_requires_model_arg(mflux_generate_parser):
     # when loading a model via --path, the model name still need to be specified
     with patch("sys.argv", "mflux-generate", "--path", "/some/saved/model"):
         assert pytest.raises(SystemExit, mflux_generate_parser.parse_args)
 
 
+@pytest.mark.fast
 def test_model_arg_not_in_file(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):
     metadata_file = temp_dir / "model.json"
     with metadata_file.open("wt") as m:
@@ -245,6 +247,7 @@ def test_model_arg_not_in_file(mflux_generate_parser, mflux_generate_minimal_arg
         assert args.base_model is None
 
 
+@pytest.mark.fast
 def test_model_arg_in_file(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):
     metadata_file = temp_dir / "model.json"
     with metadata_file.open("wt") as m:
@@ -260,6 +263,7 @@ def test_model_arg_in_file(mflux_generate_parser, mflux_generate_minimal_argv, b
         assert args.model == "schnell"
 
 
+@pytest.mark.fast
 def test_base_model_arg_in_file(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):
     metadata_file = temp_dir / "model.json"
     with metadata_file.open("wt") as m:
@@ -279,6 +283,7 @@ def test_base_model_arg_in_file(mflux_generate_parser, mflux_generate_minimal_ar
         assert args.base_model == "schnell"
 
 
+@pytest.mark.fast
 def test_prompt_arg(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):
     metadata_file = temp_dir / "prompt.json"
     file_prompt = "origin of the universe"
@@ -296,6 +301,7 @@ def test_prompt_arg(mflux_generate_parser, mflux_generate_minimal_argv, base_met
         assert args.prompt == cli_prompt
 
 
+@pytest.mark.fast
 def test_prompt_file_arg(mflux_generate_parser, mflux_generate_minimal_argv, temp_dir):
     # Create a prompt file
     prompt_content = "prompt from a file being re-read for each generation"
@@ -310,6 +316,7 @@ def test_prompt_file_arg(mflux_generate_parser, mflux_generate_minimal_argv, tem
         assert args.prompt is None  # prompt should be None since we're using prompt-file
 
 
+@pytest.mark.fast
 def test_prompt_and_prompt_file_mutually_exclusive(mflux_generate_parser, temp_dir):
     # Create a prompt file
     prompt_file = temp_dir / "prompt.txt"
@@ -322,6 +329,7 @@ def test_prompt_and_prompt_file_mutually_exclusive(mflux_generate_parser, temp_d
             mflux_generate_parser.parse_args()
 
 
+@pytest.mark.fast
 def test_guidance_arg(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off
     metadata_file = temp_dir / "guidance.json"
     with metadata_file.open("wt") as m:
@@ -337,6 +345,7 @@ def test_guidance_arg(mflux_generate_parser, mflux_generate_minimal_argv, base_m
         assert args.guidance == pytest.approx(5.0)
 
 
+@pytest.mark.fast
 def test_quantize_arg(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off
     metadata_file = temp_dir / "quantize.json"
     with metadata_file.open("wt") as m:
@@ -352,6 +361,7 @@ def test_quantize_arg(mflux_generate_parser, mflux_generate_minimal_argv, base_m
         assert args.quantize == 8
 
 
+@pytest.mark.fast
 def test_seed_arg(mflux_generate_parser, mflux_generate_minimal_model_argv, base_metadata_dict, temp_dir):  # fmt: off
     metadata_file = temp_dir / "seed.json"
     with metadata_file.open("wt") as m:
@@ -383,6 +393,7 @@ def test_seed_arg(mflux_generate_parser, mflux_generate_minimal_model_argv, base
         assert "_seed_{seed}" not in args.output
 
 
+@pytest.mark.fast
 def test_auto_seeds_arg(mflux_generate_parser, mflux_generate_minimal_model_argv):
     with patch("sys.argv", mflux_generate_minimal_model_argv + ["--seed", "24", "48", "--auto-seeds", "5"]):
         args = mflux_generate_parser.parse_args()
@@ -401,6 +412,7 @@ def test_auto_seeds_arg(mflux_generate_parser, mflux_generate_minimal_model_argv
                 assert isinstance(_, int)
 
 
+@pytest.mark.fast
 def test_steps_arg(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off
     metadata_file = temp_dir / "steps.json"
     with metadata_file.open("wt") as m:
@@ -428,6 +440,7 @@ def test_steps_arg(mflux_generate_parser, mflux_generate_minimal_argv, base_meta
         assert args.steps == 12
 
 
+@pytest.mark.fast
 def test_lora_args(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off
     test_paths = ["/some/lora/1.safetensors", "/some/lora/2.safetensors"]
     metadata_file = temp_dir / "lora_args.json"
@@ -442,8 +455,8 @@ def test_lora_args(mflux_generate_parser, mflux_generate_minimal_argv, base_meta
         assert args.lora_paths is None
         assert args.lora_scales is None
 
-    # Mock get_lora_path to bypass file validation for test purposes
-    with patch("mflux.ui.cli.parsers.get_lora_path", side_effect=lambda x: x):
+    # Mock LoraResolution.resolve to bypass file validation for test purposes
+    with patch("mflux.cli.parser.parsers.LoraResolution.resolve", side_effect=lambda x: x):
         # test metadata config accepted
         with patch('sys.argv', mflux_generate_minimal_argv + ['--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
             args = mflux_generate_parser.parse_args()
@@ -467,6 +480,7 @@ def test_lora_args(mflux_generate_parser, mflux_generate_minimal_argv, base_meta
             assert args.lora_scales == [pytest.approx(v) for v in [0.3, 0.7, 0.1, 0.9]]
 
 
+@pytest.mark.fast
 def test_image_to_image_args(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off
     metadata_file = temp_dir / "image_to_image.json"
     test_path = "/some/awesome/image.png"
@@ -499,6 +513,7 @@ def test_image_to_image_args(mflux_generate_parser, mflux_generate_minimal_argv,
         assert args.image_strength == 0.4  # default
 
 
+@pytest.mark.fast
 def test_image_outpaint_args(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off
     metadata_file = temp_dir / "image_outpaint.json"
     test_padding = "10,20,30,40"
@@ -533,6 +548,7 @@ def test_image_outpaint_args(mflux_generate_parser, mflux_generate_minimal_argv,
         assert args.image_outpaint_padding == BoxValues("10%", 50, "20%", 50)
 
 
+@pytest.mark.fast
 def test_controlnet_args(mflux_generate_controlnet_parser, mflux_generate_controlnet_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off
     test_path = "/some/cnet/1.safetensors"
     metadata_file = temp_dir / "cnet_args.json"
@@ -572,6 +588,7 @@ def test_controlnet_args(mflux_generate_controlnet_parser, mflux_generate_contro
         assert args.controlnet_save_canny is False
 
 
+@pytest.mark.fast
 def test_save_args(mflux_save_parser):
     with patch("sys.argv", ["mflux-save", "--model", "dev"]):
         # required --path not provided, exits to error
@@ -582,6 +599,7 @@ def test_save_args(mflux_save_parser):
         assert args.path == "/some/model/folder"
 
 
+@pytest.mark.fast
 def test_fill_args(mflux_fill_parser, mflux_fill_minimal_argv):
     # Test required arguments
     with patch("sys.argv", mflux_fill_minimal_argv):
@@ -589,7 +607,7 @@ def test_fill_args(mflux_fill_parser, mflux_fill_minimal_argv):
         assert args.prompt == "meaning of life"
         assert args.image_path == Path("image.png")
         assert args.masked_image_path == Path("mask.png")
-        # Default guidance for fill should be None (will be set to 30 in generate_fill.py)
+        # Default guidance for fill should be None (will be set to 30 in flux_generate_fill.py)
         assert args.guidance is None  # Parser doesn't set default, app does
 
     # Test with missing required arguments
@@ -611,6 +629,7 @@ def test_fill_args(mflux_fill_parser, mflux_fill_minimal_argv):
         assert args.width == 512
 
 
+@pytest.mark.fast
 def test_fill_args_with_metadata(mflux_fill_parser, mflux_fill_minimal_argv, base_metadata_dict, temp_dir):
     metadata_file = temp_dir / "fill_metadata.json"
     # Set up metadata with fill-related values
@@ -647,8 +666,9 @@ def test_fill_args_with_metadata(mflux_fill_parser, mflux_fill_minimal_argv, bas
         assert args.masked_image_path == Path("cli_mask.png")  # From CLI
 
 
+@pytest.mark.fast
 def test_fill_default_guidance():
-    # Create a parser just like in generate_fill.py
+    # Create a parser just like in flux_generate_fill.py
     parser = CommandLineParser(description="Generate an image using the fill tool to complete masked areas.")
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
@@ -666,7 +686,7 @@ def test_fill_default_guidance():
         # Verify initial guidance value is None (no default set by parser)
         assert args.guidance is None
 
-        # Simulate what happens in generate_fill.py
+        # Simulate what happens in flux_generate_fill.py
         if args.guidance is None:
             args.guidance = ui_defaults.DEFAULT_DEV_FILL_GUIDANCE
 
@@ -674,6 +694,7 @@ def test_fill_default_guidance():
         assert args.guidance == ui_defaults.DEFAULT_DEV_FILL_GUIDANCE
 
 
+@pytest.mark.fast
 def test_scheduler_by_name(mflux_generate_parser, mflux_generate_minimal_model_argv):
     with patch("sys.argv", mflux_generate_minimal_model_argv + ["--scheduler", "linear"]):
         args = mflux_generate_parser.parse_args()
@@ -681,14 +702,15 @@ def test_scheduler_by_name(mflux_generate_parser, mflux_generate_minimal_model_a
         assert args.scheduler == "linear"
 
     with patch("sys.argv", mflux_generate_minimal_model_argv + ["--scheduler", "foobar"]):
-        # let the CLI will accept "foobar" - later RuntimeConfig will validate
+        # let the CLI will accept "foobar" - later Config will validate
         args = mflux_generate_parser.parse_args()
 
     with patch("sys.argv", mflux_generate_minimal_model_argv + ["--scheduler", "mflux.someplugin.SchedulerBaz"]):
-        # let the CLI will accept external import paths - later RuntimeConfig will validate
+        # let the CLI will accept external import paths - later Config will validate
         args = mflux_generate_parser.parse_args()
 
 
+@pytest.mark.fast
 def test_save_depth_args(mflux_save_depth_parser, mflux_save_depth_minimal_argv):
     # Test required arguments
     with patch("sys.argv", mflux_save_depth_minimal_argv):
@@ -709,6 +731,7 @@ def test_save_depth_args(mflux_save_depth_parser, mflux_save_depth_minimal_argv)
         assert args.output == "depth_map.png"
 
 
+@pytest.mark.fast
 def test_redux_args(mflux_redux_parser, mflux_redux_minimal_argv):
     # Test required arguments
     with patch("sys.argv", mflux_redux_minimal_argv):
@@ -754,6 +777,7 @@ def test_redux_args(mflux_redux_parser, mflux_redux_minimal_argv):
         assert args.output == "redux_result.png"
 
 
+@pytest.mark.fast
 def test_concept_attention_args(mflux_concept_parser, mflux_concept_minimal_argv):
     # Test required arguments
     with patch("sys.argv", mflux_concept_minimal_argv):
@@ -791,6 +815,7 @@ def test_concept_attention_args(mflux_concept_parser, mflux_concept_minimal_argv
         assert args.heatmap_timesteps == [0, 1, 2]
 
 
+@pytest.mark.fast
 def test_catvton_args(mflux_catvton_parser, mflux_catvton_minimal_argv):
     # Test required arguments
     with patch("sys.argv", mflux_catvton_minimal_argv):
@@ -826,6 +851,7 @@ def test_catvton_args(mflux_catvton_parser, mflux_catvton_minimal_argv):
         assert args.vae_tiling_split == "horizontal"  # Default value from parser
 
 
+@pytest.mark.fast
 def test_in_context_edit_args(mflux_in_context_edit_parser, mflux_in_context_edit_minimal_argv):
     # Test required arguments with instruction
     with patch("sys.argv", mflux_in_context_edit_minimal_argv):
@@ -879,6 +905,7 @@ def test_in_context_edit_args(mflux_in_context_edit_parser, mflux_in_context_edi
         assert args.vae_tiling_split == "horizontal"  # Default value from parser
 
 
+@pytest.mark.fast
 def test_in_context_args(mflux_catvton_parser, mflux_catvton_minimal_argv):
     # Test save_full_image flag
     with patch("sys.argv", mflux_catvton_minimal_argv):
@@ -888,3 +915,334 @@ def test_in_context_args(mflux_catvton_parser, mflux_catvton_minimal_argv):
     with patch("sys.argv", mflux_catvton_minimal_argv + ["--save-full-image"]):
         args = mflux_catvton_parser.parse_args()
         assert args.save_full_image is True
+
+
+# ============================================================================
+# Qwen Image Tests
+# ============================================================================
+
+
+@pytest.fixture
+def mflux_qwen_parser() -> CommandLineParser:
+    parser = CommandLineParser(description="Generate an image using Qwen Image model.")
+    parser.add_general_arguments()
+    parser.add_model_arguments(require_model_arg=False)
+    parser.add_lora_arguments()
+    parser.add_image_generator_arguments(supports_metadata_config=True)
+    parser.add_image_to_image_arguments(required=False)
+    parser.add_output_arguments()
+    return parser
+
+
+@pytest.fixture
+def mflux_qwen_minimal_argv() -> list[str]:
+    return ["mflux-generate-qwen", "--prompt", "a beautiful sunset"]
+
+
+@pytest.mark.fast
+def test_qwen_args(mflux_qwen_parser, mflux_qwen_minimal_argv):
+    # Test minimal arguments
+    with patch("sys.argv", mflux_qwen_minimal_argv):
+        args = mflux_qwen_parser.parse_args()
+        assert args.prompt == "a beautiful sunset"
+
+    # Test with image-to-image
+    with patch("sys.argv", mflux_qwen_minimal_argv + ["--image-path", "input.png", "--image-strength", "0.5"]):
+        args = mflux_qwen_parser.parse_args()
+        assert args.prompt == "a beautiful sunset"
+        assert args.image_path == Path("input.png")
+        assert args.image_strength == pytest.approx(0.5)
+
+    # Test with quantization
+    with patch("sys.argv", mflux_qwen_minimal_argv + ["--quantize", "8"]):
+        args = mflux_qwen_parser.parse_args()
+        assert args.quantize == 8
+
+
+# ============================================================================
+# Qwen Image Edit Tests
+# ============================================================================
+
+
+@pytest.fixture
+def mflux_qwen_edit_parser() -> CommandLineParser:
+    parser = CommandLineParser(description="Generate an image using Qwen Image Edit.")
+    parser.add_general_arguments()
+    parser.add_model_arguments(require_model_arg=False)
+    parser.add_lora_arguments()
+    parser.add_image_generator_arguments(supports_metadata_config=True)
+    parser.add_argument("--image-paths", type=Path, nargs="+", required=True, help="Local paths to init images")
+    parser.add_output_arguments()
+    return parser
+
+
+@pytest.fixture
+def mflux_qwen_edit_minimal_argv() -> list[str]:
+    return ["mflux-generate-qwen-edit", "--prompt", "make it blue", "--image-paths", "image1.png"]
+
+
+@pytest.mark.fast
+def test_qwen_edit_args(mflux_qwen_edit_parser, mflux_qwen_edit_minimal_argv):
+    # Test minimal arguments
+    with patch("sys.argv", mflux_qwen_edit_minimal_argv):
+        args = mflux_qwen_edit_parser.parse_args()
+        assert args.prompt == "make it blue"
+        assert len(args.image_paths) == 1
+        assert args.image_paths[0] == Path("image1.png")
+
+    # Test with multiple images
+    with patch(
+        "sys.argv",
+        ["mflux-generate-qwen-edit", "--prompt", "combine these", "--image-paths", "img1.png", "img2.png", "img3.png"],
+    ):
+        args = mflux_qwen_edit_parser.parse_args()
+        assert args.prompt == "combine these"
+        assert len(args.image_paths) == 3
+
+    # Test missing required image-paths
+    with patch("sys.argv", ["mflux-generate-qwen-edit", "--prompt", "test"]):
+        pytest.raises(SystemExit, mflux_qwen_edit_parser.parse_args)
+
+
+# ============================================================================
+# FIBO Tests
+# ============================================================================
+
+
+@pytest.fixture
+def mflux_fibo_parser() -> CommandLineParser:
+    parser = CommandLineParser(description="Generate an image using FIBO model.")
+    parser.add_general_arguments()
+    parser.add_model_arguments(require_model_arg=False)
+    parser.add_lora_arguments()
+    parser.add_image_generator_arguments(supports_metadata_config=True)
+    parser.add_image_to_image_arguments(required=False)
+    parser.add_output_arguments()
+    return parser
+
+
+@pytest.fixture
+def mflux_fibo_minimal_argv() -> list[str]:
+    return ["mflux-generate-fibo", "--prompt", '{"scene": "a forest"}']
+
+
+@pytest.mark.fast
+def test_fibo_args(mflux_fibo_parser, mflux_fibo_minimal_argv):
+    # Test minimal arguments
+    with patch("sys.argv", mflux_fibo_minimal_argv):
+        args = mflux_fibo_parser.parse_args()
+        assert args.prompt == '{"scene": "a forest"}'
+
+    # Test with negative prompt
+    with patch("sys.argv", mflux_fibo_minimal_argv + ["--negative-prompt", "blurry, low quality"]):
+        args = mflux_fibo_parser.parse_args()
+        assert args.negative_prompt == "blurry, low quality"
+
+    # Test with image-to-image
+    with patch("sys.argv", mflux_fibo_minimal_argv + ["--image-path", "input.png"]):
+        args = mflux_fibo_parser.parse_args()
+        assert args.image_path == Path("input.png")
+
+
+# ============================================================================
+# Z-Image Turbo Tests
+# ============================================================================
+
+
+@pytest.fixture
+def mflux_z_image_turbo_parser() -> CommandLineParser:
+    parser = CommandLineParser(description="Generate an image using Z-Image Turbo.")
+    parser.add_general_arguments()
+    parser.add_model_arguments(require_model_arg=False)
+    parser.add_lora_arguments()
+    parser.add_image_generator_arguments(supports_metadata_config=True)
+    parser.add_image_to_image_arguments(required=False)
+    parser.add_output_arguments()
+    return parser
+
+
+@pytest.fixture
+def mflux_z_image_turbo_minimal_argv() -> list[str]:
+    return ["mflux-generate-z-image-turbo", "--prompt", "a cat in space"]
+
+
+@pytest.mark.fast
+def test_z_image_turbo_args(mflux_z_image_turbo_parser, mflux_z_image_turbo_minimal_argv):
+    # Test minimal arguments
+    with patch("sys.argv", mflux_z_image_turbo_minimal_argv):
+        args = mflux_z_image_turbo_parser.parse_args()
+        assert args.prompt == "a cat in space"
+
+    # Test with quantization
+    with patch("sys.argv", mflux_z_image_turbo_minimal_argv + ["--quantize", "8"]):
+        args = mflux_z_image_turbo_parser.parse_args()
+        assert args.quantize == 8
+
+    # Test with image-to-image
+    with patch("sys.argv", mflux_z_image_turbo_minimal_argv + ["--image-path", "input.png", "--image-strength", "0.6"]):
+        args = mflux_z_image_turbo_parser.parse_args()
+        assert args.image_path == Path("input.png")
+        assert args.image_strength == pytest.approx(0.6)
+
+    # Mock LoraResolution.resolve to bypass file validation for test purposes
+    with patch("mflux.cli.parser.parsers.LoraResolution.resolve", side_effect=lambda x: x):
+        # Test with LoRA
+        with patch(
+            "sys.argv",
+            mflux_z_image_turbo_minimal_argv + ["--lora-paths", "some/lora.safetensors", "--lora-scales", "0.8"],
+        ):
+            args = mflux_z_image_turbo_parser.parse_args()
+            assert args.lora_paths == ["some/lora.safetensors"]
+            assert args.lora_scales == [pytest.approx(0.8)]
+
+
+# ============================================================================
+# Kontext Tests
+# ============================================================================
+
+
+@pytest.fixture
+def mflux_kontext_parser() -> CommandLineParser:
+    parser = CommandLineParser(description="Generate an image using Flux Kontext.")
+    parser.add_general_arguments()
+    parser.add_model_arguments(require_model_arg=False)
+    parser.add_lora_arguments()
+    parser.add_image_generator_arguments(supports_metadata_config=True)
+    parser.add_image_to_image_arguments(required=True)
+    parser.add_output_arguments()
+    return parser
+
+
+@pytest.fixture
+def mflux_kontext_minimal_argv() -> list[str]:
+    return ["mflux-generate-kontext", "--prompt", "make the background blue", "--image-path", "input.png"]
+
+
+@pytest.mark.fast
+def test_kontext_args(mflux_kontext_parser, mflux_kontext_minimal_argv):
+    # Test minimal arguments
+    with patch("sys.argv", mflux_kontext_minimal_argv):
+        args = mflux_kontext_parser.parse_args()
+        assert args.prompt == "make the background blue"
+        assert args.image_path == Path("input.png")
+
+    # Test missing required image-path
+    with patch("sys.argv", ["mflux-generate-kontext", "--prompt", "test"]):
+        pytest.raises(SystemExit, mflux_kontext_parser.parse_args)
+
+    # Test with custom parameters
+    with patch("sys.argv", mflux_kontext_minimal_argv + ["--steps", "15", "--guidance", "3.5"]):
+        args = mflux_kontext_parser.parse_args()
+        assert args.steps == 15
+        assert args.guidance == pytest.approx(3.5)
+
+
+# ============================================================================
+# Depth Tests
+# ============================================================================
+
+
+@pytest.fixture
+def mflux_depth_parser() -> CommandLineParser:
+    parser = CommandLineParser(description="Generate an image using Flux Depth.")
+    parser.add_general_arguments()
+    parser.add_model_arguments(require_model_arg=False)
+    parser.add_lora_arguments()
+    parser.add_image_generator_arguments(supports_metadata_config=False)
+    parser.add_depth_arguments()
+    parser.add_output_arguments()
+    return parser
+
+
+@pytest.fixture
+def mflux_depth_minimal_argv() -> list[str]:
+    return ["mflux-generate-depth", "--prompt", "a portrait", "--depth-image-path", "depth.png"]
+
+
+@pytest.mark.fast
+def test_depth_args(mflux_depth_parser, mflux_depth_minimal_argv):
+    # Test minimal arguments with depth image
+    with patch("sys.argv", mflux_depth_minimal_argv):
+        args = mflux_depth_parser.parse_args()
+        assert args.prompt == "a portrait"
+        assert args.depth_image_path == Path("depth.png")
+
+    # Test with source image (depth will be generated from it)
+    with patch("sys.argv", ["mflux-generate-depth", "--prompt", "test", "--image-path", "source.png"]):
+        args = mflux_depth_parser.parse_args()
+        assert args.image_path == Path("source.png")
+        assert args.depth_image_path is None
+
+    # Test with save-depth-map flag
+    with patch("sys.argv", mflux_depth_minimal_argv + ["--save-depth-map"]):
+        args = mflux_depth_parser.parse_args()
+        assert args.save_depth_map is True
+
+
+# ============================================================================
+# Info Tests
+# ============================================================================
+
+
+@pytest.fixture
+def mflux_info_parser() -> CommandLineParser:
+    parser = CommandLineParser(description="Show information about an image.")
+    parser.add_info_arguments()
+    return parser
+
+
+@pytest.fixture
+def mflux_info_minimal_argv() -> list[str]:
+    return ["mflux-info", "output.png"]  # positional argument, not --image-path
+
+
+@pytest.mark.fast
+def test_info_args(mflux_info_parser, mflux_info_minimal_argv):
+    # Test minimal arguments (positional image_path)
+    with patch("sys.argv", mflux_info_minimal_argv):
+        args = mflux_info_parser.parse_args()
+        assert args.image_path == "output.png"
+
+    # Test missing required positional argument
+    with patch("sys.argv", ["mflux-info"]):
+        pytest.raises(SystemExit, mflux_info_parser.parse_args)
+
+
+# ============================================================================
+# Upscale Tests
+# ============================================================================
+
+
+@pytest.fixture
+def mflux_upscale_parser() -> CommandLineParser:
+    parser = CommandLineParser(description="Upscale an image using Flux Controlnet.")
+    parser.add_general_arguments()
+    parser.add_model_arguments(require_model_arg=False)
+    parser.add_image_generator_arguments(supports_metadata_config=True)
+    parser.add_image_to_image_arguments(required=True)
+    parser.add_output_arguments()
+    return parser
+
+
+@pytest.fixture
+def mflux_upscale_minimal_argv() -> list[str]:
+    return ["mflux-upscale", "--prompt", "enhance details", "--image-path", "low_res.png"]
+
+
+@pytest.mark.fast
+def test_upscale_args(mflux_upscale_parser, mflux_upscale_minimal_argv):
+    # Test minimal arguments
+    with patch("sys.argv", mflux_upscale_minimal_argv):
+        args = mflux_upscale_parser.parse_args()
+        assert args.prompt == "enhance details"
+        assert args.image_path == Path("low_res.png")
+
+    # Test missing required image-path
+    with patch("sys.argv", ["mflux-upscale", "--prompt", "test"]):
+        pytest.raises(SystemExit, mflux_upscale_parser.parse_args)
+
+    # Test with custom dimensions
+    with patch("sys.argv", mflux_upscale_minimal_argv + ["--height", "1024", "--width", "1024"]):
+        args = mflux_upscale_parser.parse_args()
+        assert args.height == 1024
+        assert args.width == 1024

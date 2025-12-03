@@ -1,8 +1,7 @@
 import os
 from pathlib import Path
 
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.kontext.flux_kontext import Flux1Kontext
 from mflux.utils.image_compare import ImageCompare
 
@@ -36,13 +35,11 @@ class ImageGeneratorKontextTestHelper:
             image = flux.generate_image(
                 seed=seed,
                 prompt=prompt,
-                config=Config(
-                    num_inference_steps=steps,
-                    height=height,
-                    width=width,
-                    guidance=guidance,
-                    image_path=kontext_image_path,
-                ),
+                num_inference_steps=steps,
+                height=height,
+                width=width,
+                guidance=guidance,
+                image_path=kontext_image_path,
             )
             image.save(path=output_image_path, overwrite=True)
 

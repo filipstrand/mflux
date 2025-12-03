@@ -1,5 +1,3 @@
-"""FIBO VAE common/shared components."""
-
 from mflux.models.fibo.model.fibo_vae.common.wan_2_2_attention_block import Wan2_2_AttentionBlock
 from mflux.models.fibo.model.fibo_vae.common.wan_2_2_causal_conv_3d import Wan2_2_CausalConv3d
 from mflux.models.fibo.model.fibo_vae.common.wan_2_2_mid_block import Wan2_2_MidBlock

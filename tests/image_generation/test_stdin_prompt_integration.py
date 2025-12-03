@@ -11,17 +11,17 @@ def temp_output_dir(tmp_path) -> Path:
     return tmp_path
 
 
+@pytest.mark.slow
 def test_stdin_prompt_with_actual_generation(temp_output_dir):
-    """Test that stdin prompt is correctly used in actual image generation and saved in metadata."""
     stdin_prompt = "A beautiful mountain landscape with snow"
     output_image = temp_output_dir / "test_stdin.png"
     metadata_file = temp_output_dir / "test_stdin.json"
 
-    # Run the actual mflux.generate module with stdin
+    # Run the actual flux_generate module with stdin
     cmd = [
         sys.executable,
         "-m",
-        "mflux.generate",
+        "mflux.models.flux.cli.flux_generate",
         "--prompt",
         "-",
         "--model",
@@ -64,8 +64,8 @@ def test_stdin_prompt_with_actual_generation(temp_output_dir):
     assert metadata["prompt"] == stdin_prompt
 
 
+@pytest.mark.slow
 def test_stdin_prompt_multiline_with_actual_generation(temp_output_dir):
-    """Test that multiline stdin prompt is correctly preserved in metadata."""
     stdin_prompt = """A fantasy scene with:
 - Dragons flying in the sky
 - A castle on a mountain
@@ -77,7 +77,7 @@ def test_stdin_prompt_multiline_with_actual_generation(temp_output_dir):
     cmd = [
         sys.executable,
         "-m",
-        "mflux.generate",
+        "mflux.models.flux.cli.flux_generate",
         "--prompt",
         "-",
         "--model",
@@ -109,14 +109,14 @@ def test_stdin_prompt_multiline_with_actual_generation(temp_output_dir):
     assert metadata["prompt"] == stdin_prompt.strip()
 
 
+@pytest.mark.slow
 def test_empty_stdin_fails_generation(temp_output_dir):
-    """Test that empty stdin causes generation to fail with appropriate error."""
     output_image = temp_output_dir / "test_empty.png"
 
     cmd = [
         sys.executable,
         "-m",
-        "mflux.generate",
+        "mflux.models.flux.cli.flux_generate",
         "--prompt",
         "-",
         "--model",
@@ -146,14 +146,14 @@ def test_empty_stdin_fails_generation(temp_output_dir):
     assert "No prompt provided via stdin" in process.stdout
 
 
+@pytest.mark.slow
 def test_pipe_from_echo_command(temp_output_dir):
-    """Test using echo command to pipe prompt, simulating real usage."""
     prompt = "A serene lake at sunset"
     output_image = temp_output_dir / "test_echo.png"
     metadata_file = temp_output_dir / "test_echo.json"
 
     # Simulate: echo "prompt" | mflux-generate --prompt - ...
-    echo_cmd = f'echo "{prompt}" | {sys.executable} -m mflux.generate --prompt - --model dev --steps 1 --height 256 --width 256 -q 4 --output {output_image} --metadata'
+    echo_cmd = f'echo "{prompt}" | {sys.executable} -m mflux.models.flux.cli.flux_generate --prompt - --model dev --steps 1 --height 256 --width 256 -q 4 --output {output_image} --metadata'
 
     process = subprocess.run(echo_cmd, shell=True, capture_output=True, text=True)
 

@@ -1,9 +1,12 @@
-from mflux.config.model_config import ModelConfig
+import pytest
+
+from mflux.models.common.config import ModelConfig
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
 from tests.image_generation.helpers.image_generation_test_helper import ImageGeneratorTestHelper
 
 
 class TestImageGeneratorQwenImage:
+    @pytest.mark.slow
     def test_qwen_image_generation_text_to_image(self):
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_qwen_txt2img.png",
@@ -20,6 +23,7 @@ class TestImageGeneratorQwenImage:
             mismatch_threshold=0.35,  # Qwen models produce visually similar images with minor pixel differences
         )
 
+    @pytest.mark.slow
     def test_qwen_image_generation_image_to_image(self):
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_qwen_img2img.png",
@@ -38,6 +42,7 @@ class TestImageGeneratorQwenImage:
             mismatch_threshold=0.35,  # Qwen models produce visually similar images with minor pixel differences
         )
 
+    @pytest.mark.slow
     def test_qwen_image_generation_lora(self):
         ImageGeneratorTestHelper.assert_matches_reference_image(
             reference_image_path="reference_qwen_lora.png",
@@ -52,7 +57,7 @@ class TestImageGeneratorQwenImage:
             width=768,
             prompt="Luxury food photograph",
             negative_prompt="ugly, blurry, low quality",
-            lora_repo_id="lightx2v/Qwen-Image-Lightning",
-            lora_names=["Qwen-Image-Lightning-4steps-V2.0.safetensors"],
+            lora_paths=["lightx2v/Qwen-Image-Lightning:Qwen-Image-Lightning-4steps-V2.0.safetensors"],
+            lora_scales=[1.0],
             mismatch_threshold=0.65,  # LoRA tests have higher variance due to model updates
         )

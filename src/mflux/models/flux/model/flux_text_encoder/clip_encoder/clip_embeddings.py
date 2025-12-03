@@ -1,13 +1,11 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.flux.tokenizer.clip_tokenizer import TokenizerCLIP
-
 
 class CLIPEmbeddings(nn.Module):
     def __init__(self, dims: int):
         super().__init__()
-        self.position_embedding = nn.Embedding(num_embeddings=TokenizerCLIP.MAX_TOKEN_LENGTH, dims=dims)
+        self.position_embedding = nn.Embedding(num_embeddings=77, dims=dims)
         self.token_embedding = nn.Embedding(num_embeddings=49408, dims=dims)
 
     def __call__(self, tokens: mx.array) -> mx.array:

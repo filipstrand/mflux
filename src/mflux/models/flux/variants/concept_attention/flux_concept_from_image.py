@@ -1,11 +1,10 @@
+from pathlib import Path
+
 import mlx.core as mx
 from mlx import nn
-from tqdm import tqdm
 
-from mflux.callbacks.callbacks import Callbacks
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config.config import Config
+from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.latent_creator.latent_creator import LatentCreator
 from mflux.models.flux.flux_initializer import FluxInitializer
 from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
@@ -16,7 +15,6 @@ from mflux.models.flux.model.flux_vae.vae import VAE
 from mflux.models.flux.variants.concept_attention.attention_data import GenerationAttentionData
 from mflux.models.flux.variants.concept_attention.concept_util import ConceptUtil
 from mflux.models.flux.variants.concept_attention.transformer_concept import TransformerConcept
-from mflux.utils.array_util import ArrayUtil
 from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
@@ -30,20 +28,20 @@ class Flux1ConceptFromImage(nn.Module):
 
     def __init__(
         self,
-        model_config: ModelConfig,
         quantize: int | None = None,
-        local_path: str | None = None,
+        model_path: str | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
+        model_config: ModelConfig = ModelConfig.schnell(),
     ):
         super().__init__()
         FluxInitializer.init_concept(
-            flux_model=self,
-            model_config=model_config,
+            model=self,
             quantize=quantize,
-            local_path=local_path,
+            model_path=model_path,
             lora_paths=lora_paths,
             lora_scales=lora_scales,
+            model_config=model_config,
         )
 
     def generate_image(
@@ -51,33 +49,46 @@ class Flux1ConceptFromImage(nn.Module):
         seed: int,
         prompt: str,
         concept: str,
-        image_path: str,
-        config: Config,
+        image_path: Path | str,
+        num_inference_steps: int = 4,
+        height: int = 1024,
+        width: int = 1024,
+        guidance: float = 4.0,
+        image_strength: float | None = None,
+        scheduler: str = "linear",
         heatmap_layer_indices: list[int] | None = None,
         heatmap_timesteps: list[int] | None = None,
     ) -> GeneratedImage:
-        # 0. Create a new runtime config based on the model type and input parameters
-        config = RuntimeConfig(config, self.model_config)
-        time_steps = tqdm(range(config.init_time_step, config.num_inference_steps))
+        # 0. Create a new config based on the model type and input parameters
+        config = Config(
+            width=width,
+            height=height,
+            guidance=guidance,
+            scheduler=scheduler,
+            image_path=image_path,
+            image_strength=image_strength,
+            model_config=self.model_config,
+            num_inference_steps=num_inference_steps,
+        )
 
         # 1. Create the initial latents from the reference image
         encoded_image = LatentCreator.encode_image(
             vae=self.vae,
-            image_path=image_path,
-            height=config.height,
             width=config.width,
+            height=config.height,
+            image_path=image_path,
         )
 
         # Create static noise for blending at each timestep
         static_noise = FluxLatentCreator.create_noise(
             seed=seed,
-            height=config.height,
             width=config.width,
+            height=config.height,
         )
 
         # Start with an appropriately noised version of the encoded image
         latents = LatentCreator.add_noise_by_interpolation(
-            clean=ArrayUtil.pack_latents(latents=encoded_image, height=config.height, width=config.width),
+            clean=FluxLatentCreator.pack_latents(latents=encoded_image, height=config.height, width=config.width),
             noise=static_noise,
             sigma=config.scheduler.sigmas[config.init_time_step],
         )
@@ -86,8 +97,8 @@ class Flux1ConceptFromImage(nn.Module):
         prompt_embeds, pooled_prompt_embeds = PromptEncoder.encode_prompt(
             prompt=prompt,
             prompt_cache=self.prompt_cache,
-            t5_tokenizer=self.t5_tokenizer,
-            clip_tokenizer=self.clip_tokenizer,
+            t5_tokenizer=self.tokenizers["t5"],
+            clip_tokenizer=self.tokenizers["clip"],
             t5_text_encoder=self.t5_text_encoder,
             clip_text_encoder=self.clip_text_encoder,
         )
@@ -96,27 +107,23 @@ class Flux1ConceptFromImage(nn.Module):
         prompt_embeds_concept, pooled_prompt_embeds_concept = PromptEncoder.encode_prompt(
             prompt=concept,
             prompt_cache=self.prompt_cache,
-            t5_tokenizer=self.t5_tokenizer,
-            clip_tokenizer=self.clip_tokenizer,
+            t5_tokenizer=self.tokenizers["t5"],
+            clip_tokenizer=self.tokenizers["clip"],
             t5_text_encoder=self.t5_text_encoder,
             clip_text_encoder=self.clip_text_encoder,
         )
 
-        # (Optional) Call subscribers for beginning of loop
-        Callbacks.before_loop(
-            seed=seed,
-            prompt=prompt,
-            latents=latents,
-            config=config,
-        )
+        # 4. Create callback context and call before_loop
+        ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
+        ctx.before_loop(latents)
 
         attention_data = GenerationAttentionData()
-        for t in time_steps:
+        for t in config.time_steps:
             try:
                 # Scale model input if needed by the scheduler
                 latents = config.scheduler.scale_model_input(latents, t)
 
-                # 4.t Predict the noise (we don't use the noise, only the attention)
+                # 5.t Predict the noise (we don't use the noise, only the attention)
                 _, attention = self.transformer(
                     t=t,
                     config=config,
@@ -128,22 +135,17 @@ class Flux1ConceptFromImage(nn.Module):
                 )
                 attention_data.append(attention)
 
-                # 5.t Follow reverse diffusion trajectory
+                # 6.t Follow reverse diffusion trajectory
                 latents = LatentCreator.add_noise_by_interpolation(
-                    clean=ArrayUtil.pack_latents(latents=encoded_image, height=config.height, width=config.width),
+                    clean=FluxLatentCreator.pack_latents(
+                        latents=encoded_image, height=config.height, width=config.width
+                    ),
                     noise=static_noise,
                     sigma=config.scheduler.sigmas[t + 1],
                 )
 
-                # (Optional) Call subscribers in-loop
-                Callbacks.in_loop(
-                    t=t,
-                    seed=seed,
-                    prompt=prompt,
-                    latents=latents,
-                    config=config,
-                    time_steps=time_steps,
-                )
+                # 7.t Call subscribers in-loop
+                ctx.in_loop(t, latents)
 
                 # Evaluate attention data to force MLX computation for progress tracking
                 mx.eval(
@@ -152,25 +154,15 @@ class Flux1ConceptFromImage(nn.Module):
                 )
 
             except KeyboardInterrupt:  # noqa: PERF203
-                Callbacks.interruption(
-                    t=t,
-                    seed=seed,
-                    prompt=prompt,
-                    latents=latents,
-                    config=config,
-                    time_steps=time_steps,
+                ctx.interruption(t, latents)
+                raise StopImageGenerationException(
+                    f"Stopping image generation at step {t + 1}/{config.num_inference_steps}"
                 )
-                raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{len(time_steps)}")
 
-        # (Optional) Call subscribers after loop
-        Callbacks.after_loop(
-            seed=seed,
-            prompt=prompt,
-            latents=latents,
-            config=config,
-        )
+        # 8. Call subscribers after loop
+        ctx.after_loop(latents)
 
-        # 6. Generate concept attention heatmap
+        # 9. Generate concept attention heatmap
         concept_heatmap = ConceptUtil.create_heatmap(
             concept=concept,
             attention_data=attention_data,
@@ -180,8 +172,8 @@ class Flux1ConceptFromImage(nn.Module):
             timesteps=heatmap_timesteps or list(range(config.num_inference_steps)),
         )
 
-        # 7. Decode the latent array and return the image
-        latents = ArrayUtil.unpack_latents(latents=latents, height=config.height, width=config.width)
+        # 10. Decode the latent array and return the image
+        latents = FluxLatentCreator.unpack_latents(latents=latents, height=config.height, width=config.width)
         decoded = self.vae.decode(latents)
 
         return ImageUtil.to_image(
@@ -194,6 +186,6 @@ class Flux1ConceptFromImage(nn.Module):
             lora_scales=self.lora_scales,
             image_path=image_path,
             image_strength=config.image_strength,
-            generation_time=time_steps.format_dict["elapsed"],
+            generation_time=config.time_steps.format_dict["elapsed"],
             concept_heatmap=concept_heatmap,
         )

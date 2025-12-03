@@ -1,6 +1,7 @@
 import math
 
 import mlx.core as mx
+import mlx.nn as nn
 import numpy as np
 from PIL import Image
 
@@ -64,3 +65,9 @@ class DepthProUtil:
             final_result_np = result_proc
 
         return mx.array(final_result_np)
+
+    @staticmethod
+    def apply_conv(x: mx.array, conv_module: nn.Module) -> mx.array:
+        x = mx.transpose(x, (0, 2, 3, 1))
+        x = conv_module(x)
+        return mx.transpose(x, (0, 3, 1, 2))

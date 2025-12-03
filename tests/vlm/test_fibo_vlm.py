@@ -9,68 +9,78 @@ from tests.image_generation.test_generate_image_fibo import OWL_PROMPT, OWL_PROM
 
 INSPIRE_PROMPT = """
 {
-  "short_description": "A charming, stylized illustration of a young owl perched on a mossy tree stump in a dimly lit forest. The owl has large, expressive eyes and soft, feathered textures. The background is a blur of dark trees and foliage, creating a serene and mysterious atmosphere. The overall impression is one of innocence and nature's quiet beauty.",
+  "short_description": "A charming, stylized illustration of a young owl sitting on a mossy forest floor. The owl is facing forward with large, expressive eyes and fluffy ear tufts. It is surrounded by a softly blurred forest environment with tall trees and dappled moonlight. The overall impression is one of innocence and nocturnal wonder, rendered in a gentle, painterly style.",
   "objects": [
     {
-      "description": "A young owl with large, round, golden eyes and a small yellow beak. Its plumage is a mix of soft browns, creams, and subtle blues, with distinct feather patterns. It has prominent ear tufts and a fluffy chest.",
+      "description": "A young, anthropomorphic owl with large, round eyes and prominent ear tufts. Its plumage is a soft, mottled grey and beige, with distinct feather patterns.",
       "location": "center",
-      "relationship": "perched on a tree stump",
-      "relative_size": "medium within frame",
-      "shape_and_color": "Rounded body shape, predominantly brown and cream with blueish undertones. Large, round eyes with dark pupils.",
-      "texture": "soft, feathery, detailed",
-      "appearance_details": "Its eyes have a glossy sheen and appear to be looking directly at the viewer. The feathers have a layered, textured look.",
+      "relationship": "The owl is the sole prominent subject, resting on the ground.",
+      "relative_size": "medium-to-large within frame",
+      "shape_and_color": "Round body, large circular eyes, conical beak. Predominantly grey and beige.",
+      "texture": "soft, feathery",
+      "appearance_details": "Large, dark pupils in its eyes, a small yellow beak, and delicate talons.",
       "number_of_objects": 1,
-      "pose": "Sitting upright, with its body facing forward and its head slightly tilted.",
+      "pose": "Sitting upright, facing forward.",
       "expression": "curious and gentle",
-      "action": "perching",
-      "gender": "unknown",
+      "action": "resting",
+      "gender": "neutral",
+      "skin_tone_and_texture": "N/A (owl)",
       "orientation": "upright"
     },
     {
-      "description": "A weathered tree stump covered in lush green moss. It provides a natural perch for the owl.",
-      "location": "bottom-center foreground",
-      "relationship": "supports the owl",
+      "description": "A patch of vibrant green moss covering the ground in the foreground and around the owl.",
+      "location": "bottom foreground and midground",
+      "relationship": "The owl is perched on this mossy ground.",
       "relative_size": "medium",
-      "shape_and_color": "Irregular, rounded shape, dark brown wood with vibrant green moss.",
-      "texture": "rough wood, soft mossy texture",
-      "appearance_details": "The moss is thick and detailed, with small blades of grass growing around the base.",
-      "number_of_objects": 1,
-      "orientation": "lying on its side"
+      "shape_and_color": "Irregular, organic shapes, vibrant green.",
+      "texture": "soft, velvety, slightly uneven",
+      "appearance_details": "Appears lush and damp, with small variations in shade.",
+      "orientation": "horizontal"
     },
     {
-      "description": "Several slender tree trunks and branches, rendered in dark, muted tones.",
-      "location": "background and midground",
-      "relationship": "forms the forest environment",
-      "relative_size": "large, forming the environment",
-      "shape_and_color": "Vertical, elongated shapes in shades of dark brown and grey.",
-      "texture": "smooth, bark-like texture",
-      "appearance_details": "Some branches have sparse green leaves. The trees are out of focus, creating depth.",
+      "description": "Several tall, slender tree trunks forming the background.",
+      "location": "background",
+      "relationship": "They create the forest environment behind the owl.",
+      "relative_size": "large",
+      "shape_and_color": "Vertical, cylindrical shapes. Dark brown and grey.",
+      "texture": "rough bark",
+      "appearance_details": "Some trunks are covered in moss. They are out of focus.",
       "orientation": "vertical"
+    },
+    {
+      "description": "A few delicate, glowing orbs scattered in the background, resembling fireflies or distant lights.",
+      "location": "background, scattered",
+      "relationship": "They add a magical element to the forest scene.",
+      "relative_size": "small",
+      "shape_and_color": "Small, spherical, glowing yellow-white.",
+      "texture": "N/A",
+      "appearance_details": "Softly blurred, suggesting distance.",
+      "orientation": "N/A"
     }
   ],
-  "background_setting": "A dense, dark forest with tall trees and undergrowth. The atmosphere is slightly misty or foggy, softening the distant elements.",
+  "background_setting": "A mystical forest at night, with tall, ancient trees, a soft undergrowth of moss, and a hint of moonlight filtering through the canopy. The atmosphere is serene and enchanting.",
   "lighting": {
-    "conditions": "dim, atmospheric lighting",
-    "direction": "soft, diffused light from the front-left",
-    "shadows": "soft, subtle shadows that enhance the depth and mood"
+    "conditions": "soft, ambient moonlight",
+    "direction": "diffused from above and behind",
+    "shadows": "soft, elongated shadows cast by the trees, minimal on the owl"
   },
   "aesthetics": {
-    "composition": "centered composition with the owl as the primary focal point",
-    "color_scheme": "muted earth tones with pops of green and soft blues/greys",
-    "mood_atmosphere": "serene, mysterious, innocent",
-    "aesthetic_score": "high",
-    "preference_score": "high"
+    "composition": "centered framing with the owl as the main focal point",
+    "color_scheme": "cool, muted tones of blues, greys, and greens, with warm accents from the owl's eyes and beak",
+    "mood_atmosphere": "magical, serene, innocent",
+    "aesthetic_score": "very high",
+    "preference_score": "very high"
   },
   "photographic_characteristics": {
-    "depth_of_field": "shallow, with a blurred background",
+    "depth_of_field": "shallow, with a strong bokeh effect in the background",
     "focus": "sharp focus on the owl",
     "camera_angle": "eye-level",
     "lens_focal_length": "standard lens (e.g., 50mm)"
   },
   "style_medium": "digital illustration",
   "text_render": [],
-  "context": "This image is suitable for children's book illustrations, nature-themed art, or decorative prints.",
-  "artistic_style": "stylized, painterly, cute"
+  "context": "This image is suitable for children's book illustrations, fantasy-themed art, or decorative prints.",
+  "artistic_style": "stylized, painterly, whimsical"
 }
 """
 
@@ -79,44 +89,43 @@ SKYSCRAPERS_INSPIRE_PROMPT = """
   "short_description": "A dramatic, low-angle shot of several modern skyscrapers in black and white, emphasizing their towering height and geometric forms against a bright, overcast sky. The buildings feature repetitive window patterns and varying architectural details, creating a sense of urban grandeur and scale.",
   "objects": [
     {
-      "description": "A tall skyscraper with a facade of numerous rectangular windows, arranged in a grid pattern. The building has a slightly curved or angled design, giving it a dynamic appearance.",
+      "description": "A tall skyscraper with a facade of numerous rectangular windows, arranged in a grid pattern. The building has a slightly curved or angled top section.",
       "location": "center-right foreground",
-      "relationship": "This is the most prominent building, dominating the right side of the frame and serving as a primary focal point.",
+      "relationship": "It is the most prominent building, dominating the right side of the frame and appearing to recede into the background.",
       "relative_size": "large within frame",
-      "shape_and_color": "Rectangular and angular forms, dark grey to black with bright white window reflections.",
-      "texture": "Smooth concrete or glass, with visible mullions creating a textured grid.",
-      "appearance_details": "The windows reflect the bright sky, appearing as glowing rectangles. The building's structure is robust and imposing.",
+      "shape_and_color": "Rectangular with a complex, multi-faceted top; shades of gray and black.",
+      "texture": "Smooth concrete and glass, with visible window frames.",
+      "appearance_details": "The windows reflect the bright sky, appearing light gray or white. Some sections of the facade have decorative elements or protrusions.",
       "orientation": "vertical"
     },
     {
-      "description": "A large, flat-roofed skyscraper with a simpler, more rectilinear design compared to the central-right building. Its facade also features windows, but they are less prominent due to the building's angle and distance.",
-      "location": "left foreground",
-      "relationship": "It stands to the left of the central skyscraper, partially obscuring other buildings behind it and contributing to the layered effect.",
-      "relative_size": "large within frame",
-      "shape_and_color": "Large, flat, angular forms, dark grey to black.",
-      "texture": "Rough concrete texture on the upper sections, smoother on the windowed parts.",
-      "appearance_details": "The building has a distinct overhang or cantilevered section at the top-left, adding architectural interest.",
-      "orientation": "diagonal, leaning towards the right"
-    },
-    {
-      "description": "A cluster of mid-rise buildings, less distinct than the foreground structures, with visible window patterns.",
-      "location": "midground, behind the foreground buildings",
-      "relationship": "These buildings provide depth and context, suggesting a dense urban environment behind the prominent foreground structures.",
+      "description": "A long, rectangular skyscraper with a facade of regularly spaced, horizontal windows.",
+      "location": "left midground",
+      "relationship": "It stands to the left of the central skyscraper, appearing slightly further back and narrower.",
       "relative_size": "medium",
-      "shape_and_color": "Rectangular forms, dark grey with hints of white from windows.",
-      "texture": "Less defined, appearing smoother due to distance.",
-      "appearance_details": "Their details are softened by distance and atmospheric haze.",
-      "number_of_objects": 3,
+      "shape_and_color": "Tall, slender rectangle; shades of gray and black.",
+      "texture": "Smooth concrete and glass.",
+      "appearance_details": "The horizontal lines of windows create a strong sense of rhythm. Its top is flat and extends horizontally.",
       "orientation": "vertical"
     },
     {
-      "description": "A tall, slender skyscraper with a facade composed of many small, closely spaced rectangular windows, creating a dense, textured pattern.",
-      "location": "bottom-right midground",
-      "relationship": "It stands slightly behind and to the right of the main central skyscraper, adding to the overall height of the urban landscape.",
+      "description": "A skyscraper with a facade featuring larger, rectangular windows that are not perfectly uniform, giving a slightly more textured appearance.",
+      "location": "center-left midground",
+      "relationship": "It is positioned behind the left midground skyscraper and to the left of the central skyscraper, partially obscured by the foreground elements.",
       "relative_size": "medium",
-      "shape_and_color": "Tall, slender, rectangular, dark grey with bright white window reflections.",
-      "texture": "Densely packed, creating a fine-grained texture from the windows.",
-      "appearance_details": "Its vertical lines are emphasized by the window arrangement.",
+      "shape_and_color": "Tall, slender rectangle; shades of gray and black.",
+      "texture": "Smooth concrete and glass, with subtle variations in window size.",
+      "appearance_details": "Its upper section has a distinct, stepped design.",
+      "orientation": "vertical"
+    },
+    {
+      "description": "A building with a facade characterized by smaller, square-like windows, creating a more intricate pattern.",
+      "location": "bottom-right foreground",
+      "relationship": "It is partially visible at the bottom right, appearing to be closer to the viewer than the central skyscraper.",
+      "relative_size": "small",
+      "shape_and_color": "Rectangular base with a repeating pattern of small squares; shades of gray and black.",
+      "texture": "Smooth concrete and glass.",
+      "appearance_details": "The windows are arranged in a dense, grid-like pattern, almost appearing pixelated.",
       "orientation": "vertical"
     }
   ],
@@ -124,34 +133,35 @@ SKYSCRAPERS_INSPIRE_PROMPT = """
   "lighting": {
     "conditions": "overcast daylight",
     "direction": "diffused from above",
-    "shadows": "soft, subtle shadows on the buildings, mainly emphasizing their geometric forms rather than sharp lines"
+    "shadows": "soft, subtle shadows on the buildings, emphasizing their forms without harsh lines"
   },
   "aesthetics": {
-    "composition": "dynamic and asymmetrical, with buildings angled and overlapping, creating a sense of depth and scale. The low angle emphasizes the height of the structures.",
-    "color_scheme": "monochromatic (black and white) with a wide range of greys, emphasizing form and texture.",
-    "mood_atmosphere": "grand, imposing, architectural, and slightly dramatic.",
+    "composition": "dynamic low-angle composition, with leading lines from the buildings converging towards the top-center, creating a sense of immense height and perspective.",
+    "color_scheme": "monochromatic (black and white) with a wide range of grays, emphasizing texture and form.",
+    "mood_atmosphere": "grand, imposing, architectural, and slightly mysterious.",
     "aesthetic_score": "very high",
     "preference_score": "very high"
   },
   "photographic_characteristics": {
     "depth_of_field": "deep",
-    "focus": "sharp focus on the foreground and midground buildings, with slight softening towards the background.",
+    "focus": "sharp focus on all visible skyscrapers, maintaining clarity across the architectural details.",
     "camera_angle": "very low angle, looking upwards from ground level.",
-    "lens_focal_length": "wide-angle"
+    "lens_focal_length": "wide-angle lens, to capture the full height and breadth of the buildings."
   },
   "style_medium": "photograph",
   "text_render": [],
-  "context": "An architectural photograph, likely intended for art prints, urban exploration photography, or a design magazine, focusing on the abstract beauty of modern cityscapes.",
-  "artistic_style": "minimalist, high-contrast, geometric"
+  "context": "An architectural photograph, likely intended for art prints, urban exploration blogs, or promotional material for city tourism, focusing on the abstract beauty of modern cityscapes.",
+  "artistic_style": "minimalist, abstract, architectural"
 }
 """
 
 
 @pytest.fixture
 def vlm():
-    return FiboVLM(model_id="briaai/FIBO-vlm")
+    return FiboVLM(model_id="briaai/FIBO-vlm", quantize=8)
 
 
+@pytest.mark.slow
 def test_vlm_generate_json(vlm):
     # given
     input_prompt = "A hyper-detailed, ultra-fluffy owl sitting in the trees at night, looking directly at the camera with wide, adorable, expressive eyes. Its feathers are soft and voluminous, catching the cool moonlight with subtle silver highlights. The owl's gaze is curious and full of charm, giving it a whimsical, storybook-like personality."
@@ -164,6 +174,7 @@ def test_vlm_generate_json(vlm):
     assert isinstance(json.loads(json_output), dict), "Output should be a valid JSON object"
 
 
+@pytest.mark.slow
 def test_vlm_refine_json_text_only(vlm):
     # given
     editing_instructions = "make the owl white color but keep everything else exactly the same"
@@ -180,6 +191,7 @@ def test_vlm_refine_json_text_only(vlm):
     assert isinstance(json.loads(json_output), dict), "Output should be a valid JSON object"
 
 
+@pytest.mark.slow
 def test_vlm_inspire_json_from_image(vlm):
     # given
     resource_dir = Path(__file__).parent.parent / "resources"
@@ -194,6 +206,7 @@ def test_vlm_inspire_json_from_image(vlm):
     assert isinstance(json.loads(json_output), dict), "Output should be a valid JSON object"
 
 
+@pytest.mark.slow
 def test_vlm_inspire_json_from_image_with_prompt(vlm):
     # given
     resource_dir = Path(__file__).parent.parent / "resources"

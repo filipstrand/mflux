@@ -3,20 +3,21 @@ import PIL.Image
 import tqdm
 
 from mflux.callbacks.callback_registry import CallbackRegistry
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config.config import Config
 
 
 class Callbacks:
     @staticmethod
     def before_loop(
+        registry: CallbackRegistry,
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         canny_image: PIL.Image.Image | None = None,
         depth_image: PIL.Image.Image | None = None,
     ):
-        for subscriber in CallbackRegistry.before_loop_callbacks():
+        for subscriber in registry.before_loop_callbacks():
             subscriber.call_before_loop(
                 seed=seed,
                 prompt=prompt,
@@ -28,14 +29,15 @@ class Callbacks:
 
     @staticmethod
     def in_loop(
+        registry: CallbackRegistry,
         t: int,
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         time_steps: tqdm,
     ):
-        for subscriber in CallbackRegistry.in_loop_callbacks():
+        for subscriber in registry.in_loop_callbacks():
             subscriber.call_in_loop(
                 t=t,
                 seed=seed,
@@ -47,24 +49,26 @@ class Callbacks:
 
     @staticmethod
     def after_loop(
+        registry: CallbackRegistry,
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
     ):
-        for subscriber in CallbackRegistry.after_loop_callbacks():
+        for subscriber in registry.after_loop_callbacks():
             subscriber.call_after_loop(seed=seed, prompt=prompt, latents=latents, config=config)
 
     @staticmethod
     def interruption(
+        registry: CallbackRegistry,
         t: int,
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         time_steps: tqdm,
     ):
-        for subscriber in CallbackRegistry.interrupt_callbacks():
+        for subscriber in registry.interrupt_callbacks():
             subscriber.call_interrupt(
                 t=t,
                 seed=seed,

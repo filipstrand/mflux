@@ -3,8 +3,8 @@ from typing import List, Union
 
 import mlx.core as mx
 
+from mflux.models.common.tokenizer import Tokenizer
 from mflux.models.fibo.model.fibo_text_encoder.smol_lm3_3b_text_encoder import SmolLM3_3B_TextEncoder
-from mflux.models.fibo.tokenizer.fibo_tokenizer import TokenizerFibo
 
 
 class PromptEncoder:
@@ -12,7 +12,7 @@ class PromptEncoder:
     def encode_prompt(
         prompt: str,
         negative_prompt: str | None,
-        tokenizer: TokenizerFibo,
+        tokenizer: Tokenizer,
         text_encoder: SmolLM3_3B_TextEncoder,
     ) -> tuple[str, mx.array, List[mx.array]]:
         # 0. Set default negative prompt if not provided
@@ -87,7 +87,7 @@ class PromptEncoder:
     def _get_prompt_embeds(
         prompt: Union[str, List[str]],
         text_encoder: SmolLM3_3B_TextEncoder,
-        tokenizer: TokenizerFibo,
+        tokenizer: Tokenizer,
         num_images_per_prompt: int = 1,
         max_sequence_length: int = 2048,
         tokenization_prefix: str | None = None,
@@ -97,13 +97,9 @@ class PromptEncoder:
             raise ValueError("`prompt` must be a non-empty string or list of strings.")
 
         # 1) Tokenize and convert to MX
-        input_ids_mx, attention_mask_mx = tokenizer.tokenize(
-            prompts=prompts,
-            max_length=max_sequence_length,
-            padding="longest",
-            truncation=True,
-            add_special_tokens=True,
-        )
+        tokenizer_output = tokenizer.tokenize(prompt=prompts, max_length=max_sequence_length)
+        input_ids_mx = tokenizer_output.input_ids
+        attention_mask_mx = tokenizer_output.attention_mask
 
         # 2) Run MLX text encoder and collect hidden states
         hidden_states_list = text_encoder(

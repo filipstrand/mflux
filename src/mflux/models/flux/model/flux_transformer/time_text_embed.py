@@ -3,8 +3,7 @@ import math
 import mlx.core as mx
 from mlx import nn
 
-from mflux.config.config import Config
-from mflux.config.model_config import ModelConfig
+from mflux.models.common.config import ModelConfig
 from mflux.models.flux.model.flux_transformer.guidance_embedder import GuidanceEmbedder
 from mflux.models.flux.model.flux_transformer.text_embedder import TextEmbedder
 from mflux.models.flux.model.flux_transformer.timestep_embedder import TimestepEmbedder
@@ -29,7 +28,7 @@ class TimeTextEmbed(nn.Module):
             time_steps_emb += self.guidance_embedder(self._time_proj(guidance))
         pooled_projections = self.text_embedder(pooled_projection)
         conditioning = time_steps_emb + pooled_projections
-        return conditioning.astype(Config.precision)
+        return conditioning.astype(ModelConfig.precision)
 
     @staticmethod
     def _time_proj(time_steps: mx.array) -> mx.array:

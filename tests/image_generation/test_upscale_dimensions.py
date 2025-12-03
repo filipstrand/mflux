@@ -1,10 +1,11 @@
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from mflux.ui.scale_factor import ScaleFactor
+from mflux.utils.scale_factor import ScaleFactor
 
 
+@pytest.mark.fast
 @pytest.mark.parametrize(
     "args_height,args_width,orig_height,orig_width,expected_height,expected_width",
     [
@@ -21,22 +22,23 @@ from mflux.ui.scale_factor import ScaleFactor
 def test_upscale_passes_correct_dimensions_to_generate_image(
     args_height, args_width, orig_height, orig_width, expected_height, expected_width
 ):
-    """Test that upscale.py passes the correct dimensions to generate_image"""
-    # Mock the image that will be opened
-    mock_image = Mock()
+    # Mock the image that will be opened - needs to support context manager protocol
+    mock_image = MagicMock()
     mock_image.size = (orig_width, orig_height)
     mock_image.height = orig_height
     mock_image.width = orig_width
+    mock_image.__enter__ = Mock(return_value=mock_image)
+    mock_image.__exit__ = Mock(return_value=False)
 
     # Mock the flux object
     mock_flux = Mock()
 
     # Import and patch the actual upscale module
     with patch("PIL.Image.open", return_value=mock_image):
-        with patch("mflux.upscale.Flux1Controlnet", return_value=mock_flux):
-            with patch("mflux.upscale.ModelConfig"):
-                with patch("mflux.upscale.CallbackManager"):
-                    from mflux.upscale import main
+        with patch("mflux.models.flux.cli.flux_upscale.Flux1Controlnet", return_value=mock_flux):
+            with patch("mflux.models.flux.cli.flux_upscale.ModelConfig"):
+                with patch("mflux.models.flux.cli.flux_upscale.CallbackManager"):
+                    from mflux.models.flux.cli.flux_upscale import main
 
                     # Mock command line args
                     mock_args = Mock()
@@ -52,19 +54,20 @@ def test_upscale_passes_correct_dimensions_to_generate_image(
                     mock_args.lora_paths = None
                     mock_args.lora_scales = None
 
-                    with patch("mflux.upscale.CommandLineParser") as mock_parser_class:
+                    with patch("mflux.models.flux.cli.flux_upscale.CommandLineParser") as mock_parser_class:
                         mock_parser = Mock()
                         mock_parser.parse_args.return_value = mock_args
                         mock_parser_class.return_value = mock_parser
 
-                        with patch("mflux.upscale.PromptUtils.get_effective_prompt", return_value="test prompt"):
+                        with patch(
+                            "mflux.models.flux.cli.flux_upscale.PromptUtil.read_prompt", return_value="test prompt"
+                        ):
                             # Call the main function
                             main()
 
                     # Verify generate_image was called with correct dimensions
                     mock_flux.generate_image.assert_called()
                     call_args = mock_flux.generate_image.call_args
-                    config = call_args.kwargs["config"]
 
-                    assert config.height == expected_height
-                    assert config.width == expected_width
+                    assert call_args.kwargs["height"] == expected_height
+                    assert call_args.kwargs["width"] == expected_width

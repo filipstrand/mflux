@@ -4,7 +4,7 @@ import mlx.core as mx
 import PIL.Image
 import tqdm
 
-from mflux.config.runtime_config import RuntimeConfig
+from mflux.models.common.config.config import Config
 
 
 class BeforeLoopCallback(Protocol):
@@ -13,7 +13,7 @@ class BeforeLoopCallback(Protocol):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         canny_image: PIL.Image.Image | None = None,
         depth_image: PIL.Image.Image | None = None,
     ) -> None: ...
@@ -26,7 +26,7 @@ class InLoopCallback(Protocol):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         time_steps: tqdm,
     ) -> None: ...
 
@@ -37,7 +37,7 @@ class AfterLoopCallback(Protocol):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
     ) -> None: ...
 
 
@@ -48,6 +48,6 @@ class InterruptCallback(Protocol):
         seed: int,
         prompt: str,
         latents: mx.array,
-        config: RuntimeConfig,
+        config: Config,
         time_steps: tqdm,
     ) -> None: ...

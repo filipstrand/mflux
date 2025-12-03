@@ -1,5 +1,3 @@
-"""Metadata reader for extracting and parsing image metadata."""
-
 import json
 import logging
 from pathlib import Path
@@ -11,19 +9,8 @@ log = logging.getLogger(__name__)
 
 
 class MetadataReader:
-    """Reads and parses metadata from MFLUX generated images."""
-
     @staticmethod
     def read_exif_metadata(image_path: str | Path) -> dict | None:
-        """
-        Extract EXIF metadata from an image.
-
-        Args:
-            image_path: Path to the image file
-
-        Returns:
-            Dictionary containing parsed EXIF metadata, or None if not found
-        """
         try:
             img = PIL.Image.open(image_path)
             exif_bytes = img.info.get("exif")
@@ -50,15 +37,6 @@ class MetadataReader:
 
     @staticmethod
     def read_xmp_metadata(image_path: str | Path) -> dict | None:
-        """
-        Extract XMP metadata from an image.
-
-        Args:
-            image_path: Path to the image file
-
-        Returns:
-            Dictionary containing parsed XMP metadata, or None if not found
-        """
         try:
             img = PIL.Image.open(image_path)
             xmp_data = img.info.get("XML:com.adobe.xmp")
@@ -110,15 +88,6 @@ class MetadataReader:
 
     @staticmethod
     def read_all_metadata(image_path: str | Path) -> dict:
-        """
-        Read all available metadata from an image.
-
-        Args:
-            image_path: Path to the image file
-
-        Returns:
-            Dictionary with 'exif' and 'xmp' keys containing metadata
-        """
         return {
             "exif": MetadataReader.read_exif_metadata(image_path),
             "xmp": MetadataReader.read_xmp_metadata(image_path),
