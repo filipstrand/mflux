@@ -108,10 +108,83 @@ class TokenizerLoader:
         else:
             raise ValueError(f"Unknown tokenizer class: {tokenizer_class}")
 
+        # Workaround for Qwen2Tokenizer bug in transformers 5.0.0rc0
+        # The tokenizer doesn't properly load vocab/merges from files, need to pass them directly
+        if tokenizer_class == "Qwen2Tokenizer":
+            return TokenizerLoader._load_qwen2_tokenizer_workaround(tokenizer_path, cls)
+
         return cls.from_pretrained(
             pretrained_model_name_or_path=str(tokenizer_path),
             local_files_only=True,
         )
+
+    @staticmethod
+    def _load_qwen2_tokenizer_workaround(tokenizer_path: Path, cls):
+        """Load Qwen2Tokenizer with explicit vocab and merges data.
+
+        In transformers 5.0, Qwen2Tokenizer builds its internal BPE tokenizer from the
+        `vocab` and `merges` parameters BEFORE calling super().__init__(). The `vocab_file`
+        and `merges_file` parameters are only passed to the parent class for saving purposes
+        and are NOT automatically loaded. We must load and parse these files ourselves.
+
+        We also need to load special tokens from tokenizer_config.json to ensure tokens like
+        <|im_start|>, <|im_end|>, <|vision_start|>, etc. are properly registered.
+        """
+        import json
+
+        from tokenizers import AddedToken
+
+        vocab_file = tokenizer_path / "vocab.json"
+        merges_file = tokenizer_path / "merges.txt"
+        config_file = tokenizer_path / "tokenizer_config.json"
+
+        if not vocab_file.exists() or not merges_file.exists():
+            # Fall back to standard loading if files don't exist
+            return cls.from_pretrained(
+                pretrained_model_name_or_path=str(tokenizer_path),
+                local_files_only=True,
+            )
+
+        # Load vocab as dict[str, int]
+        with open(vocab_file, encoding="utf-8") as f:
+            vocab = json.load(f)
+
+        # Load merges as list of tuples (pair of strings)
+        # The merges.txt file has format: "token1 token2" per line (skip header if present)
+        merges = []
+        with open(merges_file, encoding="utf-8") as f:
+            for line in f:
+                line = line.rstrip()
+                # Skip empty lines and the optional version header (e.g., "#version: 0.2")
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split()
+                if len(parts) == 2:
+                    merges.append((parts[0], parts[1]))
+
+        # Load tokenizer config for special tokens
+        config_kwargs = {}
+        if config_file.exists():
+            with open(config_file, encoding="utf-8") as f:
+                config = json.load(f)
+
+            # Extract added_tokens_decoder to add special tokens
+            added_tokens_decoder = config.get("added_tokens_decoder", {})
+            if added_tokens_decoder:
+                # Convert to the format expected by the tokenizer
+                config_kwargs["added_tokens_decoder"] = {
+                    int(k): AddedToken(
+                        content=v["content"],
+                        lstrip=v.get("lstrip", False),
+                        rstrip=v.get("rstrip", False),
+                        single_word=v.get("single_word", False),
+                        normalized=v.get("normalized", False),
+                        special=v.get("special", True),
+                    )
+                    for k, v in added_tokens_decoder.items()
+                }
+
+        return cls(vocab=vocab, merges=merges, **config_kwargs)
 
     @staticmethod
     def _create_tokenizer(

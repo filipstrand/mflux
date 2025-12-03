@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from typing import Type, Union
 
+from mflux.callbacks.instances.memory_saver import MemorySaver
 from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
@@ -28,6 +29,7 @@ class ImageGeneratorTestHelper:
         negative_prompt: str | None = None,
         guidance: float | None = None,
         mismatch_threshold: float | None = None,
+        low_memory: bool = False,
     ):
         # resolve paths
         reference_image_path = ImageGeneratorTestHelper.resolve_path(reference_image_path)
@@ -62,6 +64,11 @@ class ImageGeneratorTestHelper:
             # Add negative_prompt for Qwen models
             if model_class == QwenImage and negative_prompt is not None:
                 generate_kwargs["negative_prompt"] = negative_prompt
+
+            # Register MemorySaver callback if low_memory mode is enabled
+            if low_memory:
+                memory_saver = MemorySaver(model=model)
+                model.callbacks.register(memory_saver)
 
             # when
             image = model.generate_image(**generate_kwargs)

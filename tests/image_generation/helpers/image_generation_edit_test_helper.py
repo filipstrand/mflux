@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from typing import Any, Type
 
+from mflux.callbacks.instances.memory_saver import MemorySaver
 from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
 from mflux.models.common.config import ModelConfig
 from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
@@ -28,6 +29,7 @@ class ImageGeneratorEditTestHelper:
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
         mismatch_threshold: float | None = None,
+        low_memory: bool = False,
     ):
         # resolve paths
         reference_image_path = ImageGeneratorEditTestHelper.resolve_path(reference_image_path)
@@ -80,6 +82,11 @@ class ImageGeneratorEditTestHelper:
             temp_dir = tempfile.mkdtemp()
             handler = StepwiseHandler(model=model, output_dir=temp_dir, latent_creator=QwenLatentCreator)
             model.callbacks.register(handler)
+
+            # Register MemorySaver callback if low_memory mode is enabled
+            if low_memory:
+                memory_saver = MemorySaver(model=model)
+                model.callbacks.register(memory_saver)
 
             image = model.generate_image(**generate_kwargs)
             image.save(path=output_image_path, overwrite=True)

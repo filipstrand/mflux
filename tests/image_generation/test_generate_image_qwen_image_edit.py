@@ -18,10 +18,11 @@ class TestImageGeneratorQwenImageEdit:
             height=384,
             width=640,
             guidance=2.5,
-            quantize=8,  # We should probably use at least 8-bit, but it doesn't run on 32GB machines
+            quantize=6,  # We should probably use at least 8-bit, but it doesn't run on 32GB machines
             prompt="Make the hand fistbump the camera instead of showing a flat palm",
             image_path="reference_upscaled.png",
             mismatch_threshold=0.25,
+            low_memory=True,
         )
 
     @pytest.mark.slow
