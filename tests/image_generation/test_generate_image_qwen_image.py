@@ -21,6 +21,7 @@ class TestImageGeneratorQwenImage:
             prompt="Luxury food photograph",
             negative_prompt="ugly, blurry, low quality",
             mismatch_threshold=0.35,  # Qwen models produce visually similar images with minor pixel differences
+            low_memory=True,
         )
 
     @pytest.mark.slow
@@ -40,6 +41,7 @@ class TestImageGeneratorQwenImage:
             prompt="Luxury food photograph of a burger",
             negative_prompt="ugly, blurry, low quality",
             mismatch_threshold=0.35,  # Qwen models produce visually similar images with minor pixel differences
+            low_memory=True,
         )
 
     @pytest.mark.slow
@@ -60,4 +62,5 @@ class TestImageGeneratorQwenImage:
             lora_paths=["lightx2v/Qwen-Image-Lightning:Qwen-Image-Lightning-4steps-V2.0.safetensors"],
             lora_scales=[1.0],
             mismatch_threshold=0.65,  # LoRA tests have higher variance due to model updates
+            low_memory=True,
         )
