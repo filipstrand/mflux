@@ -172,7 +172,7 @@ This is useful for integrating MFLUX into shell scripts or dynamically generatin
 Alternatively, you can use MFLUX directly in Python:
 
 ```python
-from mflux import Flux1
+from mflux.models.flux.variants.txt2img.flux import Flux1
 
 # Load the model
 flux = Flux1.from_name(
