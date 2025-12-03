@@ -65,7 +65,7 @@ All models are implemented from scratch in MLX and only the tokenizers are used 
 For users, the easiest way to install MFLUX is to use `uv tool`: If you have [installed `uv`](https://github.com/astral-sh/uv?tab=readme-ov-file#installation), simply:
 
 ```sh
-uv tool install --upgrade mflux
+uv tool install --upgrade mflux --prerelease=allow
 ```
 
 to get the `mflux-generate` and related command line executables. You can skip to the usage guides below.
