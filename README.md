@@ -1096,7 +1096,7 @@ mflux-generate-qwen-edit \
   --guidance 2.5 \
   --width 1024 \
   --height 1024 \
-  --lora-paths "/path/to/Qwen-Image-Lightning-4steps-V2.0.safetensors" "/path/to/镜头转换.safetensors" \
+  --lora-paths "lightx2v/Qwen-Image-Lightning" "dx8152/Qwen-Edit-2509-Multiple-angles" \
   --lora-scales 0.5 1.0
 ```
 
