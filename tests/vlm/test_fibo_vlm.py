@@ -9,67 +9,68 @@ from tests.image_generation.test_generate_image_fibo import OWL_PROMPT, OWL_PROM
 
 INSPIRE_PROMPT = """
 {
-  "short_description": "A charming, stylized illustration of a young owl sitting on a mossy forest floor. The owl is facing forward with large, expressive eyes and fluffy ear tufts. The background depicts a dark, atmospheric forest with tall trees and dappled moonlight, creating a mystical and serene environment. The overall impression is one of innocence and enchantment, suitable for children's literature or fantasy art.",
+  "short_description": "A charming, stylized illustration of a cute owl sitting on a mossy branch in a dimly lit forest. The owl has large, expressive eyes and fluffy feathers, rendered in soft, earthy tones. The background depicts a dense woodland with tall, dark trees and subtle foliage, creating a serene and slightly mysterious atmosphere. The overall impression is one of innocence and nature's tranquility, suitable for children's books or whimsical art.",
   "objects": [
     {
-      "description": "A small, fluffy owl with large, round, dark eyes and prominent ear tufts. Its plumage is a soft, mottled grey and white, with subtle patterns suggesting feathers. It has a small, yellow beak.",
+      "description": "A small, adorable owl with large, round, dark eyes that have bright white highlights, giving it an innocent and curious expression. Its body is round and plump, covered in detailed, layered feathers in shades of light brown, beige, and cream. It has small, pointed ear tufts and a small, light-colored beak.",
       "location": "center",
-      "relationship": "The owl is the sole subject, positioned centrally.",
+      "relationship": "The owl is the primary subject, perched on a branch.",
       "relative_size": "medium within frame",
-      "shape_and_color": "Round body, large circular eyes, grey and white coloration.",
-      "texture": "soft, fluffy feathers",
-      "appearance_details": "Its eyes have a glossy sheen, and its ear tufts are particularly bushy.",
+      "shape_and_color": "Round body, avian shape. Dominant colors are various shades of brown and beige.",
+      "texture": "feathery, soft, detailed",
+      "appearance_details": "The eyes are particularly striking, with a glossy finish. The feathers have a layered, almost sculpted appearance.",
       "number_of_objects": 1,
-      "pose": "Sitting upright, with its body facing forward and its head slightly tilted.",
+      "pose": "Sitting upright, facing forward.",
       "expression": "curious and innocent",
-      "action": "sitting and observing",
+      "action": "perching",
       "gender": "neutral",
       "orientation": "upright"
     },
     {
-      "description": "A patch of vibrant green moss covering the ground in the foreground and around the owl.",
-      "location": "bottom foreground and surrounding the owl's feet",
-      "relationship": "The moss serves as the ground on which the owl is perched.",
-      "relative_size": "small",
-      "shape_and_color": "Irregular patches, vibrant green.",
-      "texture": "soft, velvety, organic",
-      "appearance_details": "Individual blades of grass and small twigs are visible within the moss.",
-      "orientation": "horizontal"
+      "description": "A thick, gnarled tree branch covered in lush, vibrant green moss. The branch has a textured, organic surface, providing a natural perch for the owl.",
+      "location": "bottom-center foreground",
+      "relationship": "The owl is sitting on this branch.",
+      "relative_size": "medium",
+      "shape_and_color": "Curved, irregular branch shape. Dominant color is green, with brown undertones of the wood.",
+      "texture": "mossy, rough wood",
+      "appearance_details": "The moss is thick and appears soft, with small, detailed clumps.",
+      "number_of_objects": 1,
+      "orientation": "horizontal, slightly angled"
     },
     {
-      "description": "Several tall, dark tree trunks forming the background.",
-      "location": "background, left, right, and top edges",
-      "relationship": "These trees create the forest environment behind the owl.",
+      "description": "Tall, ancient trees with dark, textured bark, forming a dense forest backdrop. Their branches are silhouetted against a darker sky, with subtle hints of foliage.",
+      "location": "background",
+      "relationship": "They create the environment for the owl.",
       "relative_size": "large",
-      "shape_and_color": "Vertical, dark brown and grey.",
-      "texture": "rough bark",
-      "appearance_details": "Some trunks have patches of moss or lichen. The overall effect is dense and shadowy.",
+      "shape_and_color": "Vertical tree trunks, dark brown and grey. Branches are dark and intricate.",
+      "texture": "rough bark, subtle foliage",
+      "appearance_details": "The trees have a slightly stylized, painterly quality. Some branches have small, light-colored leaves or buds.",
       "orientation": "vertical"
     }
   ],
-  "background_setting": "A dense, mystical forest at night. Tall trees with dark bark dominate the scene, with a hint of moonlight filtering through the canopy. The ground is covered in lush green moss and scattered leaves, with faint glowing orbs suggesting magical elements.",
+  "background_setting": "A dense, atmospheric forest at dusk or night. Tall trees with dark bark and silhouetted branches fill the background, with patches of darker sky visible. The ground is covered in moss and fallen leaves, suggesting a natural, woodland environment.",
   "lighting": {
-    "conditions": "dim, atmospheric night lighting",
-    "direction": "diffused from above and behind the trees",
-    "shadows": "soft, elongated shadows cast by the trees, creating depth"
+    "conditions": "dim, atmospheric lighting",
+    "direction": "soft, diffused light from the front and slightly above",
+    "shadows": "soft, subtle shadows that enhance the depth and mood"
   },
   "aesthetics": {
-    "composition": "centered composition with the owl as the focal point",
-    "color_scheme": "muted earth tones with vibrant green accents and deep blues/greys in the background",
-    "mood_atmosphere": "enchanting, serene, mystical",
-    "aesthetic_score": "very high",
-    "preference_score": "very high"
+    "composition": "centered composition with the owl as the focal point, balanced by the branch and background trees.",
+    "color_scheme": "earthy tones of brown, beige, and cream for the owl and branch, contrasted with deep greens and blues of the forest background.",
+    "mood_atmosphere": "serene, whimsical, slightly mysterious",
+    "aesthetic_score": "high",
+    "preference_score": "high"
   },
   "photographic_characteristics": {
     "depth_of_field": "shallow, with the background softly blurred",
-    "focus": "sharp focus on the owl",
+    "focus": "sharp focus on the owl and the branch",
     "camera_angle": "eye-level",
     "lens_focal_length": "standard lens (e.g., 50mm)"
   },
   "style_medium": "digital illustration",
   "text_render": [],
-  "context": "This image is suitable for a children's book illustration, a fantasy-themed greeting card, or concept art for a magical game.",
-  "artistic_style": "stylized, whimsical, detailed"
+  "context": "This image is a piece of whimsical art, likely intended for children's books, greeting cards, or decorative prints, evoking a sense of nature and innocence.",
+  "artistic_style": "stylized, painterly, cute"
 }
 """
 
