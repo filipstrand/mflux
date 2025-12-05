@@ -309,7 +309,7 @@ class CommandLineParser(argparse.ArgumentParser):
                 try:
                     resolved_path = LoraResolution.resolve(lora_path)
                     resolved_paths.append(resolved_path)
-                except FileNotFoundError as e:  # noqa: PERF203
+                except (FileNotFoundError, ValueError) as e:  # noqa: PERF203
                     self.error(str(e))
             namespace.lora_paths = resolved_paths
 
