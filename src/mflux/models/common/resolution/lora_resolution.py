@@ -170,10 +170,10 @@ class LoraResolution:
             raise FileNotFoundError(f"No .safetensors file found in cached repo: {repo_id}")
 
         if len(safetensor_files) > 1:
-            file_names = [f.name for f in safetensor_files]
+            file_names = sorted([f.name for f in safetensor_files])
+            file_list = "\n".join(f"  - {repo_id}:{name}" for name in file_names)
             raise ValueError(
-                f"Multiple .safetensors files found in '{repo_id}': {file_names}. "
-                f"Please specify which file to use with the collection format: '{repo_id}:<filename>.safetensors'"
+                f"Multiple .safetensors files found in '{repo_id}'. Please specify which file to use:\n{file_list}"
             )
 
         return str(safetensor_files[0])
@@ -197,10 +197,10 @@ class LoraResolution:
             raise FileNotFoundError(f"No .safetensors file found in HuggingFace repo: {repo_id}")
 
         if len(safetensor_files) > 1:
-            file_names = [f.name for f in safetensor_files]
+            file_names = sorted([f.name for f in safetensor_files])
+            file_list = "\n".join(f"  - {repo_id}:{name}" for name in file_names)
             raise ValueError(
-                f"Multiple .safetensors files found in '{repo_id}': {file_names}. "
-                f"Please specify which file to use with the collection format: '{repo_id}:<filename>.safetensors'"
+                f"Multiple .safetensors files found in '{repo_id}'. Please specify which file to use:\n{file_list}"
             )
 
         return str(safetensor_files[0])

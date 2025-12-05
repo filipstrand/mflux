@@ -5,11 +5,8 @@ class ZImageLoRAMapping(LoRAMapping):
     @staticmethod
     def get_mapping() -> list[LoRATarget]:
         targets = []
-
-        # Generate mappings for all layer types
         for layer_type in ["layers", "noise_refiner", "context_refiner"]:
             targets.extend(ZImageLoRAMapping._get_layer_targets(layer_type))
-
         return targets
 
     @staticmethod
@@ -19,136 +16,181 @@ class ZImageLoRAMapping(LoRAMapping):
                 model_path=f"{layer_type}.{{block}}.adaLN_modulation.0",
                 possible_up_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.adaLN_modulation.0.lora_B.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.adaLN_modulation.0.lora_up.weight",
                     f"{layer_type}.{{block}}.adaLN_modulation.0.lora_B.weight",
                     f"{layer_type}.{{block}}.adaLN_modulation.0.lora_up.weight",
+                    f"lora_unet_{layer_type}_{{block}}_adaLN_modulation_0.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.adaLN_modulation.0.lora_A.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.adaLN_modulation.0.lora_down.weight",
                     f"{layer_type}.{{block}}.adaLN_modulation.0.lora_A.weight",
                     f"{layer_type}.{{block}}.adaLN_modulation.0.lora_down.weight",
+                    f"lora_unet_{layer_type}_{{block}}_adaLN_modulation_0.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.adaLN_modulation.0.alpha",
                     f"{layer_type}.{{block}}.adaLN_modulation.0.alpha",
+                    f"lora_unet_{layer_type}_{{block}}_adaLN_modulation_0.alpha",
                 ],
             ),
             LoRATarget(
                 model_path=f"{layer_type}.{{block}}.attention.to_q",
                 possible_up_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_q.lora_B.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.attention.to_q.lora_up.weight",
                     f"{layer_type}.{{block}}.attention.to_q.lora_B.weight",
                     f"{layer_type}.{{block}}.attention.to_q.lora_up.weight",
+                    f"lora_unet_{layer_type}_{{block}}_attention_to_q.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_q.lora_A.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.attention.to_q.lora_down.weight",
                     f"{layer_type}.{{block}}.attention.to_q.lora_A.weight",
                     f"{layer_type}.{{block}}.attention.to_q.lora_down.weight",
+                    f"lora_unet_{layer_type}_{{block}}_attention_to_q.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_q.alpha",
                     f"{layer_type}.{{block}}.attention.to_q.alpha",
+                    f"lora_unet_{layer_type}_{{block}}_attention_to_q.alpha",
                 ],
             ),
             LoRATarget(
                 model_path=f"{layer_type}.{{block}}.attention.to_k",
                 possible_up_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_k.lora_B.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.attention.to_k.lora_up.weight",
                     f"{layer_type}.{{block}}.attention.to_k.lora_B.weight",
                     f"{layer_type}.{{block}}.attention.to_k.lora_up.weight",
+                    f"lora_unet_{layer_type}_{{block}}_attention_to_k.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_k.lora_A.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.attention.to_k.lora_down.weight",
                     f"{layer_type}.{{block}}.attention.to_k.lora_A.weight",
                     f"{layer_type}.{{block}}.attention.to_k.lora_down.weight",
+                    f"lora_unet_{layer_type}_{{block}}_attention_to_k.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_k.alpha",
                     f"{layer_type}.{{block}}.attention.to_k.alpha",
+                    f"lora_unet_{layer_type}_{{block}}_attention_to_k.alpha",
                 ],
             ),
             LoRATarget(
                 model_path=f"{layer_type}.{{block}}.attention.to_v",
                 possible_up_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_v.lora_B.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.attention.to_v.lora_up.weight",
                     f"{layer_type}.{{block}}.attention.to_v.lora_B.weight",
                     f"{layer_type}.{{block}}.attention.to_v.lora_up.weight",
+                    f"lora_unet_{layer_type}_{{block}}_attention_to_v.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_v.lora_A.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.attention.to_v.lora_down.weight",
                     f"{layer_type}.{{block}}.attention.to_v.lora_A.weight",
                     f"{layer_type}.{{block}}.attention.to_v.lora_down.weight",
+                    f"lora_unet_{layer_type}_{{block}}_attention_to_v.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_v.alpha",
                     f"{layer_type}.{{block}}.attention.to_v.alpha",
+                    f"lora_unet_{layer_type}_{{block}}_attention_to_v.alpha",
                 ],
             ),
             LoRATarget(
                 model_path=f"{layer_type}.{{block}}.attention.to_out.0",
                 possible_up_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_out.0.lora_B.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.attention.to_out.0.lora_up.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.attention.out.lora_B.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.attention.out.lora_up.weight",
                     f"{layer_type}.{{block}}.attention.to_out.0.lora_B.weight",
                     f"{layer_type}.{{block}}.attention.to_out.0.lora_up.weight",
+                    f"lora_unet_{layer_type}_{{block}}_attention_to_out_0.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_out.0.lora_A.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.attention.to_out.0.lora_down.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.attention.out.lora_A.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.attention.out.lora_down.weight",
                     f"{layer_type}.{{block}}.attention.to_out.0.lora_A.weight",
                     f"{layer_type}.{{block}}.attention.to_out.0.lora_down.weight",
+                    f"lora_unet_{layer_type}_{{block}}_attention_to_out_0.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_out.0.alpha",
+                    f"diffusion_model.{layer_type}.{{block}}.attention.out.alpha",
                     f"{layer_type}.{{block}}.attention.to_out.0.alpha",
+                    f"lora_unet_{layer_type}_{{block}}_attention_to_out_0.alpha",
                 ],
             ),
             LoRATarget(
                 model_path=f"{layer_type}.{{block}}.feed_forward.w1",
                 possible_up_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w1.lora_B.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.feed_forward.w1.lora_up.weight",
                     f"{layer_type}.{{block}}.feed_forward.w1.lora_B.weight",
                     f"{layer_type}.{{block}}.feed_forward.w1.lora_up.weight",
+                    f"lora_unet_{layer_type}_{{block}}_feed_forward_w1.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w1.lora_A.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.feed_forward.w1.lora_down.weight",
                     f"{layer_type}.{{block}}.feed_forward.w1.lora_A.weight",
                     f"{layer_type}.{{block}}.feed_forward.w1.lora_down.weight",
+                    f"lora_unet_{layer_type}_{{block}}_feed_forward_w1.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w1.alpha",
                     f"{layer_type}.{{block}}.feed_forward.w1.alpha",
+                    f"lora_unet_{layer_type}_{{block}}_feed_forward_w1.alpha",
                 ],
             ),
             LoRATarget(
                 model_path=f"{layer_type}.{{block}}.feed_forward.w2",
                 possible_up_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w2.lora_B.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.feed_forward.w2.lora_up.weight",
                     f"{layer_type}.{{block}}.feed_forward.w2.lora_B.weight",
                     f"{layer_type}.{{block}}.feed_forward.w2.lora_up.weight",
+                    f"lora_unet_{layer_type}_{{block}}_feed_forward_w2.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w2.lora_A.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.feed_forward.w2.lora_down.weight",
                     f"{layer_type}.{{block}}.feed_forward.w2.lora_A.weight",
                     f"{layer_type}.{{block}}.feed_forward.w2.lora_down.weight",
+                    f"lora_unet_{layer_type}_{{block}}_feed_forward_w2.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w2.alpha",
                     f"{layer_type}.{{block}}.feed_forward.w2.alpha",
+                    f"lora_unet_{layer_type}_{{block}}_feed_forward_w2.alpha",
                 ],
             ),
             LoRATarget(
                 model_path=f"{layer_type}.{{block}}.feed_forward.w3",
                 possible_up_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w3.lora_B.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.feed_forward.w3.lora_up.weight",
                     f"{layer_type}.{{block}}.feed_forward.w3.lora_B.weight",
                     f"{layer_type}.{{block}}.feed_forward.w3.lora_up.weight",
+                    f"lora_unet_{layer_type}_{{block}}_feed_forward_w3.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w3.lora_A.weight",
+                    f"diffusion_model.{layer_type}.{{block}}.feed_forward.w3.lora_down.weight",
                     f"{layer_type}.{{block}}.feed_forward.w3.lora_A.weight",
                     f"{layer_type}.{{block}}.feed_forward.w3.lora_down.weight",
+                    f"lora_unet_{layer_type}_{{block}}_feed_forward_w3.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w3.alpha",
                     f"{layer_type}.{{block}}.feed_forward.w3.alpha",
+                    f"lora_unet_{layer_type}_{{block}}_feed_forward_w3.alpha",
                 ],
             ),
         ]

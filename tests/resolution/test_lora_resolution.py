@@ -95,9 +95,8 @@ class TestLoraResolutionHuggingFace:
 
         error_msg = str(exc_info.value)
         assert "Multiple .safetensors files found" in error_msg
-        assert "lora_v1.safetensors" in error_msg or "lora_v2.safetensors" in error_msg
-        assert "collection format" in error_msg
-        assert "org/multi-lora-repo:" in error_msg
+        assert "org/multi-lora-repo:lora_v1.safetensors" in error_msg
+        assert "org/multi-lora-repo:lora_v2.safetensors" in error_msg
 
     @pytest.mark.fast
     @patch("mflux.models.common.resolution.lora_resolution.snapshot_download")
