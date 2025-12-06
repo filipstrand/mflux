@@ -8,6 +8,7 @@ from mlx.utils import tree_flatten
 from tqdm import tqdm
 from transformers import PreTrainedTokenizer
 
+from mflux.models.common.lora.mapping.lora_saver import LoRASaver
 from mflux.utils.version_util import VersionUtil
 
 if TYPE_CHECKING:
@@ -35,6 +36,8 @@ class ModelSaver:
         for attr_name, subdir in tqdm(components, desc="Saving components", unit="component"):
             component = getattr(model, attr_name, None)
             if component is not None:
+                # Bake and strip any LoRA wrappers to avoid duplicating shared weights
+                LoRASaver.bake_and_strip_lora(component)
                 ModelSaver._save_weights(base_path, bits, component, subdir)
 
     @staticmethod
