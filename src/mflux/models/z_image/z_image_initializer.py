@@ -34,6 +34,7 @@ class ZImageInitializer:
     def _init_config(model, model_config: ModelConfig) -> None:
         model.model_config = model_config
         model.callbacks = CallbackRegistry()
+        model.tiling_config = None
 
     @staticmethod
     def _load_weights(model_path: str) -> LoadedWeights:

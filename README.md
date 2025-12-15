@@ -37,11 +37,12 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux), [Qwen Image](http
   * [🔄 Redux](#-redux)
 - [🕹️ Controlnet](#%EF%B8%8F-controlnet)
 - [🔎 Upscale](#-upscale)
+  * [🏎️ SeedVR2](#%EF%B8%8F-seedvr2)
+  * [🎨 ControlNet Upscale](#-controlnet-upscale)
 - [🎛️ Dreambooth fine-tuning](#%EF%B8%8F-dreambooth-fine-tuning)
 - [🧠 Concept Attention](#-concept-attention)
 - [🚧 Current limitations](#-current-limitations)
 - [💡Workflow tips](#workflow-tips)
-- [🔬 Cool research](#-cool-research)
 - [🌱‍ Related projects](#-related-projects)
 - [🙏 Acknowledgements](#-acknowledgements)
 - [⚖️ License](#%EF%B8%8F-license)
@@ -234,8 +235,14 @@ mflux-generate \
 
 - **`--prompt`** (required, `str`): Text description of the image to generate. Use `-` to read the prompt from stdin (e.g., `echo "A beautiful sunset" | mflux-generate --prompt -`).
 
+- **`--prompt-file`** (optional, `Path`): Path to a file containing the prompt text. The file is re-read before each generation, allowing you to edit the prompt between iterations when using multiple seeds without restarting the program.
+
+- **`--negative-prompt`** (optional, `str`, default: `""`): The negative prompt to guide what the model should not generate.
+
+- **`--scheduler`** (optional, `str`, default: `"linear"`): Choose from implemented schedulers (e.g., `"linear"`) or provide an external import path.
+
 - **`--model`** or **`-m`** (required, `str`): Model to use for generation. Accepts:
-  - Predefined names: `"schnell"`, `"dev"`, `"krea-dev"`, `"fibo"`, `"z-image-turbo"`
+  - Predefined names: `"schnell"`, `"dev"`, `"krea-dev"`, `"dev-krea"`, `"qwen"`, `"fibo"`, `"z-image-turbo"`
   - HuggingFace repos: `"Freepik/flux.1-lite-8B-alpha"`, `"briaai/Fibo-mlx-4bit"`
   - Local paths: `"/Users/me/models/my-model"`, `"~/my-model"`
 
@@ -253,7 +260,7 @@ mflux-generate \
 
 - **`--steps`** (optional, `int`, default: `4`): Number of inference steps.
 
-- **`--guidance`** (optional, `float`, default: `3.5`): Guidance scale (only used for `"dev"` and `"krea-dev"` models).
+- **`--guidance`** (optional, `float`, default: `3.5`): Guidance scale (used for models that support it, such as `"dev"`, `"krea-dev"`, `"fibo"`, and others). Default varies by tool.
 
 - **`--path`** (optional, `str`, default: `None`): **[DEPRECATED: use `--model` instead]** Path to a local model on disk.
 
@@ -280,10 +287,6 @@ mflux-generate \
 - **`--battery-percentage-stop-limit`** or **`-B`** (optional, `int`, default: `5`): On Mac laptops powered by battery, automatically stops image generation when battery percentage reaches this threshold. Prevents your Mac from shutting down and becoming unresponsive during long generation sessions.
 
 - **`--stepwise-image-output-dir`** (optional, `str`, default: `None`): [EXPERIMENTAL] Output directory to write step-wise images and their final composite image to. This feature may change in future versions. When specified, MFLUX will save an image for each denoising step, allowing you to visualize the generation process from noise to final image.
-
-- **`--vae-tiling`** (optional, flag): Enable VAE tiling to reduce memory usage during the decoding phase. This splits the image into smaller chunks for processing, which can prevent out-of-memory errors when generating high-resolution images. Note that this optimization may occasionally produce a subtle seam in the middle of the image, but it's often worth the tradeoff for being able to generate images that would otherwise cause your system to run out of memory.
-
-- **`--vae-tiling-split`** (optional, `str`, default: `"horizontal"`): When VAE tiling is enabled, this parameter controls the direction to split the latents. Options are `"horizontal"` (splits into top/bottom) or `"vertical"` (splits into left/right). Use this option to control where potential seams might appear in the final image.
 
 </details>
 
@@ -314,6 +317,8 @@ The `mflux-generate-in-context` command supports most of the same arguments as `
 - **`--image-path`** (required, `str`): Path to the reference image that will guide the style of the generated image.
 
 - **`--lora-style`** (optional, `str`, default: `None`): The style to use for In-Context LoRA generation. Choose from: `couple`, `storyboard`, `font`, `home`, `illustration`, `portrait`, `ppt`, `sandstorm`, `sparklers`, or `identity`.
+
+- **`--save-full-image`** (optional, flag): Additionally save the full side-by-side image containing both the reference and the result.
 
 See the [In-Context Generation](#-in-context-generation) section for more details on how to use this feature effectively.
 
@@ -455,11 +460,11 @@ The `mflux-generate-depth` command supports most of the same arguments as `mflux
 
 - **`--depth-image-path`** (optional, `str`, default: `None`): Path to a pre-generated depth map image. Either this or `--image-path` must be provided.
 
+- **`--save-depth-map`** (optional, flag): If set, saves the depth map extracted from the source image.
+
 The `mflux-save-depth` command for extracting depth maps without generating images has these arguments:
 
 - **`--image-path`** (required, `str`): Path to the image from which to extract a depth map.
-
-- **`--output`** (optional, `str`, default: Uses the input filename with "_depth" suffix): Path where the generated depth map will be saved.
 
 - **`--quantize`** or **`-q`** (optional, `int`, default: `None`): Quantization for the Depth Pro model.
 
@@ -484,12 +489,33 @@ See the [Controlnet](#%EF%B8%8F-controlnet) section for more details on how to u
 
 </details>
 
-#### Upscale Command-Line Arguments
+#### SeedVR2 Upscale Arguments
 
 <details>
-<summary>Click to expand Upscale arguments</summary>
+<summary>Click to expand SeedVR2 arguments</summary>
 
-The `mflux-upscale` command supports most of the same arguments as `mflux-generate`, with these specific parameters:
+The `mflux-upscale-seedvr2` command is a dedicated super-resolution tool. It is often faster and more faithful to the original image than the generative ControlNet upscaler.
+
+- **`--image-path`, `-i`** (required, `Path`): Path to the input image(s) to upscale.
+
+- **`--resolution`, `-r`** (optional, `int` or scale factor, default: `384`): Target resolution for the shortest edge (pixels) or scale factor (e.g., `2x`).
+
+- **`--quantize`, `-q`** (optional, `int`): Quantization bits (4 or 8).
+
+- **`--model`** or **`-m`** (optional, `str`): Path to model weights (HuggingFace repo or local path).
+
+- **`--seed`, `-s`** (optional, `int`): Random seed(s) for reproducibility.
+
+See the [SeedVR2 Upscale](#%EF%B8%8F-seedvr2) section for more details.
+
+</details>
+
+#### ControlNet Upscale Arguments
+
+<details>
+<summary>Click to expand ControlNet Upscale arguments</summary>
+
+The `mflux-upscale-controlnet` command (formerly `mflux-upscale`) uses a generative approach.
 
 - **`--height`** (optional, `int` or scale factor, default: `auto`): Image height. Can be specified as pixels (e.g., `1024`), scale factors (e.g., `2x`, `1.5x`), or `auto` to use the source image height.
 
@@ -497,24 +523,9 @@ The `mflux-upscale` command supports most of the same arguments as `mflux-genera
 
 - **`--controlnet-image-path`** (required, `str`): Path to the source image to upscale.
 
-- **`--controlnet-strength`** (optional, `float`, default: `0.4`): Degree of influence the control image has on the output. Ranges from `0.0` (no influence) to `1.0` (full influence).
+- **`--controlnet-strength`** (optional, `float`, default: `0.4`): Degree of influence the control image has on the output.
 
-**Scale Factor Examples:**
-```bash
-# Scale by 2x in both dimensions
-mflux-upscale --height 2x --width 2x --controlnet-image-path source.png
-
-# Scale height by 1.5x, set width to specific pixels
-mflux-upscale --height 1.5x --width 1920 --controlnet-image-path source.png
-
-# Use auto (keeps original dimensions)
-mflux-upscale --height auto --width auto --controlnet-image-path source.png
-
-# Mix scale factors and absolute values
-mflux-upscale --height 2x --width 1024 --controlnet-image-path source.png
-```
-
-See the [Upscale](#-upscale) section for more details on how to use this feature effectively.
+See the [ControlNet Upscale](#-controlnet-upscale) section for more details.
 
 </details>
 
@@ -526,6 +537,71 @@ See the [Upscale](#-upscale) section for more details on how to use this feature
 - **`--train-config`** (optional, `str`): Local path of the training configuration file. This file defines all aspects of the training process including model parameters, optimizer settings, and training data. See the [Training configuration](#training-configuration) section for details on the structure of this file.
 
 - **`--train-checkpoint`** (optional, `str`): Local path of the checkpoint file which specifies how to continue the training process. Used when resuming an interrupted training run.
+
+</details>
+
+#### Z-Image Turbo Command-Line Arguments
+
+<details>
+<summary>Click to expand Z-Image Turbo arguments</summary>
+
+The `mflux-generate-z-image-turbo` command supports most of the same arguments as `mflux-generate`, with these specific behaviors:
+
+- **`--model`** (optional, `str`, default: `"z-image-turbo"`): Model to use for generation. Defaults to `"z-image-turbo"` if not specified.
+- **`--guidance`**: This model uses a guidance scale of 0.0 by default, as it is a turbo model.
+
+See the [Z-Image](#-z-image) section for more details on this model and example usage.
+
+</details>
+
+#### FIBO Command-Line Arguments
+
+<details>
+<summary>Click to expand FIBO arguments</summary>
+
+The `mflux-generate-fibo` command supports most of the same arguments as `mflux-generate`. Additionally, the following FIBO-specific VLM tools are available:
+
+- **`mflux-refine-fibo`**: Use a VLM to refine a structured FIBO JSON prompt.
+  - **`--prompt-file`** (required): Path to the JSON prompt to refine.
+  - **`--instructions`** (required): Editing instructions (e.g., "add more clouds").
+  - **`--output`**: Path to save the refined JSON (default: `refined.json`).
+  - **`--quantize`, `-q`**: Quantization for the VLM model.
+  - **`--top-p`, `--temperature`, `--max-tokens`, `--seed`**: VLM generation parameters.
+
+- **`mflux-inspire-fibo`**: Generate a structured FIBO JSON prompt from an image.
+  - **`--image-path`** (required): Source image to analyze.
+  - **`--prompt`**: Optional text to blend with the image analysis.
+  - **`--output`**: Path to save the generated JSON (default: `inspired.json`).
+  - **`--quantize`, `-q`**: Quantization for the VLM model.
+  - **`--top-p`, `--temperature`, `--max-tokens`, `--seed`**: VLM generation parameters.
+
+</details>
+
+#### Utility and Management Arguments
+
+<details>
+<summary>Click to expand Utility arguments</summary>
+
+- **`mflux-save`**: Load, quantize, and save a model to disk for faster subsequent loads.
+  - **`--model`, `-m`** (required): The model to load and save.
+  - **`--path`** (required): Local directory where the model will be saved.
+  - **`--base-model`** (optional): Base architecture (`"schnell"` or `"dev"`).
+  - **`--quantize`, `-q`** (optional): Bits to quantize to (`3`, `4`, `5`, `6`, or `8`).
+  - **`--lora-paths`** (optional): LoRA weights to bake into the saved model.
+  - **`--lora-scales`** (optional): Scales for the LoRA weights.
+
+- **`mflux-info`**: Display metadata from MFLUX generated images.
+  - **`image_path`** (required, positional): Path to the image file to inspect.
+
+- **`mflux-completions`**: Install or generate ZSH completions for all mflux commands.
+  - **`--check`**: Check if completions are properly installed.
+  - **`--print`**: Print the completion script to stdout.
+  - **`--dir`**: Specify a custom installation directory.
+  - **`--update`**: Force update of existing completion file.
+
+- **`mflux-lora-library`**: Manage your local LoRA collection.
+  - **`list`**: List all discovered LoRA files in your library.
+  - **`--paths`**: Override `LORA_LIBRARY_PATH` with specific directories.
 
 </details>
 
@@ -2139,36 +2215,74 @@ with different prompts and LoRA adapters active.
 
 ### 🔎 Upscale
 
-The upscale tool allows you to increase the resolution of an existing image while maintaining or enhancing its quality and details. It uses a specialized ControlNet model that's trained to intelligently upscale images without introducing artifacts or losing image fidelity.
+MFLUX provides two different ways to upscale your images.
 
-Under the hood, this is simply the controlnet pipeline with [jasperai/Flux.1-dev-Controlnet-Upscaler](https://huggingface.co/jasperai/Flux.1-dev-Controlnet-Upscaler), with a small modification that we don't process the image with canny edge detection.
+#### 🏎️ SeedVR2
+
+SeedVR2 (3B) is a dedicated diffusion-based super-resolution model based on https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler. It is designed to be fast (often 1-step) and highly faithful to the original image. Unlike the ControlNet-based upscaler, it does not require a text prompt.
+SeedVR2 is more recent and the preferred method for high-fidelity upscaling and is much faster than the controlnet-based upscaler.
+
+![SeedVR2 Upscale Comparison](src/mflux/assets/upscale_seedvr2_comparison.png)
+
+```sh
+mflux-upscale-seedvr2 \
+  --image-path "input.png" \
+  --resolution 1800 \
+  --low-ram
+```
+
+This will upscale the image such that the shortest side is 1800 pixels while maintaining the aspect ratio.
+Instead of specifying a target resolution, you can also use `--resolution 2x` or `--resolution 3x` to upscale by a factor of 2 or 3 respectively.
+
+<details>
+<summary>🛠️ <strong>Example: Generating and Upscaling with Z-Image Turbo</strong></summary>
+
+The comparison image above was produced by first generating a base image using **Z-Image Turbo** and then upscaling it using **SeedVR2**.
+
+**1. Generate the base image**
+```sh
+mflux-generate-z-image-turbo \
+  --prompt "class1cpa1nt a prestigious candlelit banquet table in a high-ceilinged palace hall. The scene features a bottle of \"Z-Image Vintage Select\" beside a sparkling crystal decanter. The table is overflowing with luxury: golden plates, silk napkins, and a centerpiece of dark red roses. Fine details of the wood grain on the table and the reflection of a chandelier in the polished surfaces. The lighting is dramatic and warm, reminiscent of Rembrandt. Masterful oil painting with aged texture and crackle glaze." \
+  -q 8 \
+  --steps 9 \
+  --width 768 \
+  --height 336 \
+  --seed 42 \
+  --lora-paths renderartist/Classic-Painting-Z-Image-Turbo-LoRA \
+  --lora-scales 0.5 \
+  --output image.png
+```
+
+**2. Upscale 3x using SeedVR2**
+```sh
+mflux-upscale-seedvr2 \
+  --image-path image.png \
+  --resolution 3x \
+  --low-ram
+```
+</details>
+
+#### 🎨 ControlNet Upscale
+
+The ControlNet upscaler uses a generative approach by leveraging a specialized Flux ControlNet model. This allows for more "creative" upscaling where the model can hallucinate fine details based on a prompt.
+
+Under the hood, this is the [jasperai/Flux.1-dev-Controlnet-Upscaler](https://huggingface.co/jasperai/Flux.1-dev-Controlnet-Upscaler) model.
 
 ![upscale example](src/mflux/assets/upscale_example.jpg)
 *Image credit: [Kevin Mueller on Unsplash](https://unsplash.com/photos/gray-owl-on-black-background-xvwZJNaiRNo)*
 
-#### How to use
-
 ```sh
-mflux-upscale \
+mflux-upscale-controlnet \
   --prompt "A gray owl on black background" \
-  --steps 28 \
-  --seed 42 \
-  --height 1363 \
-  --width 908 \
-  -q 8 \
   --controlnet-image-path "low_res_image.png" \
-  --controlnet-strength 0.6 
+  --height 2x \
+  --width 2x \
+  --controlnet-strength 0.6
 ```
 
-This will upscale your input image to the specified dimensions. The upscaler works best when increasing the resolution by a factor of 2-4x.
+This will upscale your input image by a factor of 2x. The upscaler works best when increasing the resolution by a factor of 2-4x.
 
-⚠️ *Note: Depending on the capability of your machine, you might run out of memory when trying to export the image. Try the `--vae-tiling` flag to process the image in smaller chunks, which significantly reduces memory usage during the VAE decoding phase at a minimal cost to performance. This optimization may occasionally produce a subtle seam in the middle of the image, but it's often worth the tradeoff for being able to generate higher resolution images. You can also use `--vae-tiling-split vertical` to change the split direction from the default horizontal (top/bottom) to vertical (left/right).*
-
-#### Tips for Best Results
-
-- For optimal results, try to maintain the same aspect ratio as the original image
-- Prompting matters: Try to acculturate describe the image when upscaling
-- The recommended `--controlnet-strength` is in the range between 0.5 to 0.7
+⚠️ *Note: Depending on the capability of your machine, you might run out of memory when trying to export the image. If that happens, try reducing output resolution, using `--low-ram`, or closing other memory-heavy apps.*
 
 ---
 
@@ -2459,11 +2573,6 @@ See `uv run tools/rename_images.py --help` for full CLI usage help.
 - On battery-powered Macs, use `--battery-percentage-stop-limit` (or `-B`) to prevent your laptop from shutting down during long generation sessions
 - When generating multiple images with different seeds, use `--seed` with multiple values or `--auto-seeds` to automatically generate a series of random seeds
 - Use `--stepwise-image-output-dir` to save intermediate images at each denoising step, which can be useful for debugging or creating animations of the generation process
-
----
-
-### 🔬 Cool research
-- [ ] [PuLID](https://github.com/ToTheBeginning/PuLID)
 
 ---
 

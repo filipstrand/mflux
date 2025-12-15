@@ -5,6 +5,7 @@ from mlx import nn
 
 from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
+from mflux.models.common.vae.vae_util import VAEUtil
 from mflux.models.flux.flux_initializer import FluxInitializer
 from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 from mflux.models.flux.model.flux_text_encoder.clip_encoder.clip_encoder import CLIPEncoder
@@ -135,7 +136,7 @@ class Flux1Fill(nn.Module):
 
         # 10. Decode the latent array and return the image
         latents = FluxLatentCreator.unpack_latents(latents=latents, height=config.height, width=config.width)
-        decoded = self.vae.decode(latents)
+        decoded = VAEUtil.decode(vae=self.vae, latent=latents, tiling_config=self.tiling_config)
         return ImageUtil.to_image(
             decoded_latents=decoded,
             config=config,

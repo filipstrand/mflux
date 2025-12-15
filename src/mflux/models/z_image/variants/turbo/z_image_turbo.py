@@ -7,6 +7,7 @@ from PIL import Image
 from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.latent_creator.latent_creator import Img2Img, LatentCreator
+from mflux.models.common.vae.vae_util import VAEUtil
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.z_image.latent_creator import ZImageLatentCreator
 from mflux.models.z_image.model.z_image_text_encoder.prompt_encoder import PromptEncoder
@@ -76,6 +77,7 @@ class ZImageTurbo(nn.Module):
                 image_path=config.image_path,
                 sigmas=config.scheduler.sigmas,
                 init_time_step=config.init_time_step,
+                tiling_config=self.tiling_config,
             ),
         )
 
@@ -120,7 +122,7 @@ class ZImageTurbo(nn.Module):
 
         # 8. Decode the latents and return the image
         latents = ZImageLatentCreator.unpack_latents(latents, config.height, config.width)
-        decoded = self.vae.decode(latents)
+        decoded = VAEUtil.decode(vae=self.vae, latent=latents, tiling_config=self.tiling_config)
         return ImageUtil.to_image(
             decoded_latents=decoded,
             config=config,

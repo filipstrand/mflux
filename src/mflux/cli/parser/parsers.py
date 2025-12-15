@@ -13,11 +13,6 @@ from mflux.utils import box_values, scale_factor
 
 class ModelSpecAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
-        # Accept:
-        # 1. Predefined model names (dev, schnell, fibo, etc.)
-        # 2. HuggingFace repos (org/model format)
-        # 3. Local paths (/path/to/model, ./model, ~/model)
-        # The WeightLoader will determine if it's a local path or HuggingFace repo
         setattr(namespace, self.dest, values)
 
 
@@ -57,8 +52,14 @@ class CommandLineParser(argparse.ArgumentParser):
     def add_general_arguments(self) -> None:
         self.add_argument("--battery-percentage-stop-limit", "-B", type=lambda v: max(min(int(v), 99), 1), default=ui_defaults.BATTERY_PERCENTAGE_STOP_LIMIT, help=f"On Macs powered by battery, stop image generation when battery reaches this percentage. Default: {ui_defaults.BATTERY_PERCENTAGE_STOP_LIMIT}")
         self.add_argument("--low-ram", action="store_true", help="Enable low-RAM mode to reduce memory usage (may impact performance).")
-        self.add_argument("--vae-tiling", action="store_true", help="Enable VAE tiling to reduce memory usage at the cost of a potential seam")
-        self.add_argument("--vae-tiling-split", type=str, choices=["horizontal", "vertical"], default="horizontal", help="Direction to split the latents when using VAE tiling (horizontal = top/bottom, vertical = left/right). Default is horizontal.")
+
+    def add_seedvr2_upscale_arguments(self) -> None:
+        self.supports_image_generation = True
+        self.require_prompt = False
+        seedvr2_group = self.add_argument_group("SeedVR2 upscale configuration")
+        seedvr2_group.add_argument("--image-path", "-i", type=Path, required=True, nargs="+", help="Path to the input image(s) to upscale.")
+        seedvr2_group.add_argument("--seed", "-s", type=int, default=[42], nargs="+", help="Random seed(s) for reproducibility.")
+        seedvr2_group.add_argument("--resolution", "-r", type=int_or_special_value, default=384, help="Target resolution for the shortest edge (pixels) or scale factor (e.g., '2x').")
 
     def add_model_arguments(self, path_type: t.Literal["load", "save"] = "load", require_model_arg: bool = True) -> None:
         self.require_model_arg = require_model_arg
@@ -127,6 +128,9 @@ class CommandLineParser(argparse.ArgumentParser):
 
     def add_in_context_arguments(self) -> None:
         self.add_argument("--save-full-image", action="store_true", default=False, help="Additionally, save the full image containing the reference image. Useful for verifying the in-context usage of the reference image.")
+
+    def add_in_context_dev_arguments(self) -> None:
+        self.add_argument("--reference-image", type=Path, required=True, dest="image_path", help="Path to reference image")
 
     def add_depth_arguments(self) -> None:
         self.add_argument("--image-path", type=Path, required=False, help="Local path to the source image")
@@ -280,14 +284,20 @@ class CommandLineParser(argparse.ArgumentParser):
             output_path = Path(namespace.output)
             namespace.output = str(output_path.with_stem(output_path.stem + "_seed_{seed}"))
 
-        if self.supports_image_generation and namespace.prompt is None and namespace.prompt_file is None:
+        if hasattr(namespace, "image_path") and isinstance(namespace.image_path, list) and len(namespace.image_path) > 1:
+            # auto append image-$name to output names for multi image generations
+            output_path = Path(namespace.output)
+            namespace.output = str(output_path.with_stem(output_path.stem + "_{image_name}"))
+
+        if self.supports_image_generation and getattr(namespace, "prompt", None) is None and getattr(namespace, "prompt_file", None) is None:
             # when metadata config is supported but neither prompt nor prompt-file is provided
             # Only error if prompt is actually required
             if getattr(self, 'require_prompt', True):
                 self.error("Either --prompt or --prompt-file argument is required, or 'prompt' required in metadata config file")
 
-        if self.supports_image_generation and namespace.steps is None:
-            namespace.steps = ui_defaults.MODEL_INFERENCE_STEPS.get(namespace.model, 25)
+        if self.supports_image_generation and getattr(namespace, "steps", None) is None:
+            model_name = getattr(namespace, "model", None)
+            namespace.steps = ui_defaults.MODEL_INFERENCE_STEPS.get(model_name, 25)
 
         # In-context edit specific validations
         if getattr(self, 'supports_in_context_edit', False):

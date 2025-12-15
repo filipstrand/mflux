@@ -51,7 +51,7 @@ class WeightLoader:
         components = {}
         quantization_level = None
         mflux_version = None
-        raw_weights_cache: dict[tuple, dict] = {}  # Cache by (path, loading_mode)
+        raw_weights_cache: dict[tuple, dict] = {}  # Cache by (path, loading_mode, weight_files)
 
         for component in weight_definition.get_components():
             weights, q_level, version = WeightLoader._load_component(root_path, component, raw_weights_cache)
@@ -91,12 +91,14 @@ class WeightLoader:
                 return weights, q_level, version
 
             # Check cache for shared loading (e.g., FIBO VLM decoder + visual from same source)
-            cache_key = (str(component_path), component.loading_mode)
+            cache_key = (str(component_path), component.loading_mode, tuple(component.weight_files or []))
             if raw_weights_cache is not None and cache_key in raw_weights_cache:
                 raw_weights = raw_weights_cache[cache_key]
             else:
                 # Fall back to HuggingFace format with mapping
-                raw_weights = WeightLoader._load_safetensors(component_path, component.loading_mode)
+                raw_weights = WeightLoader._load_safetensors(
+                    component_path, component.loading_mode, component.weight_files
+                )
                 # Cache for potential reuse by other components
                 if raw_weights_cache is not None:
                     raw_weights_cache[cache_key] = raw_weights
@@ -198,11 +200,11 @@ class WeightLoader:
         return {k: mx.array(v.numpy()) for k, v in pt_weights.items() if isinstance(v, torch.Tensor)}
 
     @staticmethod
-    def _load_safetensors(path: Path, loading_mode: str) -> dict[str, mx.array]:
+    def _load_safetensors(path: Path, loading_mode: str, weight_files: list[str] | None = None) -> dict[str, mx.array]:
         if loading_mode == "mlx_native":
-            return WeightLoader._load_mlx_native(path)
+            return WeightLoader._load_mlx_native(path, weight_files)
         elif loading_mode == "torch_convert":
-            return WeightLoader._load_torch_convert(path)
+            return WeightLoader._load_torch_convert(path, weight_files)
         elif loading_mode == "multi_json":
             return WeightLoader._load_multi_json(path)
         elif loading_mode == "torch_bfloat16":
@@ -215,10 +217,18 @@ class WeightLoader:
             raise ValueError(f"Unknown loading mode: {loading_mode}")
 
     @staticmethod
-    def _load_mlx_native(path: Path) -> dict[str, mx.array]:
-        shard_files = sorted(f for f in path.glob("*.safetensors") if not f.name.startswith("._"))
-        if not shard_files:
-            raise FileNotFoundError(f"No safetensors files found in {path}")
+    def _load_mlx_native(path: Path, weight_files: list[str] | None = None) -> dict[str, mx.array]:
+        if weight_files:
+            # Load only specified files
+            missing = [f for f in weight_files if not (path / f).exists()]
+            if missing:
+                raise FileNotFoundError(f"Missing specified weight files in {path}: {missing}")
+            shard_files = [path / f for f in weight_files]
+        else:
+            # Fall back to loading all safetensors files
+            shard_files = sorted(f for f in path.glob("*.safetensors") if not f.name.startswith("._"))
+            if not shard_files:
+                raise FileNotFoundError(f"No safetensors files found in {path}")
 
         all_weights: dict[str, mx.array] = {}
         for shard in shard_files:
@@ -228,10 +238,18 @@ class WeightLoader:
         return all_weights
 
     @staticmethod
-    def _load_torch_convert(path: Path) -> dict[str, mx.array]:
-        shard_files = sorted(f for f in path.glob("*.safetensors") if not f.name.startswith("._"))
-        if not shard_files:
-            raise FileNotFoundError(f"No safetensors files found in {path}")
+    def _load_torch_convert(path: Path, weight_files: list[str] | None = None) -> dict[str, mx.array]:
+        if weight_files:
+            # Load only specified files
+            missing = [f for f in weight_files if not (path / f).exists()]
+            if missing:
+                raise FileNotFoundError(f"Missing specified weight files in {path}: {missing}")
+            shard_files = [path / f for f in weight_files]
+        else:
+            # Fall back to loading all safetensors files
+            shard_files = sorted(f for f in path.glob("*.safetensors") if not f.name.startswith("._"))
+            if not shard_files:
+                raise FileNotFoundError(f"No safetensors files found in {path}")
 
         all_weights: dict[str, mx.array] = {}
         for shard in shard_files:

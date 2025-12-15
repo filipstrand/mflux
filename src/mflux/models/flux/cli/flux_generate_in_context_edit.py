@@ -27,10 +27,6 @@ def main():
     if args.guidance is None:
         args.guidance = ui_defaults.DEFAULT_DEV_FILL_GUIDANCE
 
-    # Set sensible VAE tiling split for in-context generation (side-by-side images)
-    if args.vae_tiling:
-        args.vae_tiling_split = "vertical"
-
     # Auto-resize to optimal width for IC-Edit
     width, height = FluxInContextFillUtil.resize_for_ic_edit_optimal_width(args)
 

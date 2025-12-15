@@ -844,12 +844,6 @@ def test_catvton_args(mflux_catvton_parser, mflux_catvton_minimal_argv):
         args = mflux_catvton_parser.parse_args()
         assert args.prompt == "custom prompt"
 
-    # Test VAE tiling split argument
-    with patch("sys.argv", mflux_catvton_minimal_argv + ["--vae-tiling"]):
-        args = mflux_catvton_parser.parse_args()
-        assert args.vae_tiling is True
-        assert args.vae_tiling_split == "horizontal"  # Default value from parser
-
 
 @pytest.mark.fast
 def test_in_context_edit_args(mflux_in_context_edit_parser, mflux_in_context_edit_minimal_argv):
@@ -897,12 +891,6 @@ def test_in_context_edit_args(mflux_in_context_edit_parser, mflux_in_context_edi
         ],
     ):
         pytest.raises(SystemExit, mflux_in_context_edit_parser.parse_args)
-
-    # Test VAE tiling split argument
-    with patch("sys.argv", mflux_in_context_edit_minimal_argv + ["--vae-tiling"]):
-        args = mflux_in_context_edit_parser.parse_args()
-        assert args.vae_tiling is True
-        assert args.vae_tiling_split == "horizontal"  # Default value from parser
 
 
 @pytest.mark.fast
@@ -1226,7 +1214,7 @@ def mflux_upscale_parser() -> CommandLineParser:
 
 @pytest.fixture
 def mflux_upscale_minimal_argv() -> list[str]:
-    return ["mflux-upscale", "--prompt", "enhance details", "--image-path", "low_res.png"]
+    return ["mflux-upscale-controlnet", "--prompt", "enhance details", "--image-path", "low_res.png"]
 
 
 @pytest.mark.fast
@@ -1238,7 +1226,7 @@ def test_upscale_args(mflux_upscale_parser, mflux_upscale_minimal_argv):
         assert args.image_path == Path("low_res.png")
 
     # Test missing required image-path
-    with patch("sys.argv", ["mflux-upscale", "--prompt", "test"]):
+    with patch("sys.argv", ["mflux-upscale-controlnet", "--prompt", "test"]):
         pytest.raises(SystemExit, mflux_upscale_parser.parse_args)
 
     # Test with custom dimensions

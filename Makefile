@@ -101,6 +101,7 @@ test: ensure-pytest
 .PHONY: test-fast
 test-fast: ensure-pytest
 	# 🏗️ Running fast tests (no image generation)...
+	uv pip install mlx==0.29.2  # Install pinned MLX version specifically for testing
 	$(PYTHON) -m pytest -m fast
 	# ✅ Fast tests completed
 

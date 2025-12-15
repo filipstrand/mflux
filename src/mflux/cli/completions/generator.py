@@ -29,7 +29,8 @@ class CompletionGenerator:
             "mflux-save",
             "mflux-save-depth",
             "mflux-train",
-            "mflux-upscale",
+            "mflux-upscale-controlnet",
+            "mflux-upscale-seedvr2",
             "mflux-lora-library",
             "mflux-info",
             "mflux-completions",
@@ -190,12 +191,18 @@ class CompletionGenerator:
             parser.add_model_arguments(require_model_arg=False)
             parser.add_training_arguments()
 
-        elif command == "mflux-upscale":
+        elif command == "mflux-upscale-controlnet":
             parser.add_general_arguments()
             parser.add_model_arguments(require_model_arg=False)
             parser.add_lora_arguments()
+            parser.add_lora_arguments()
             parser.add_image_generator_arguments(supports_metadata_config=False, supports_dimension_scale_factor=True)
             parser.add_controlnet_arguments(require_image=True)
+            parser.add_output_arguments()
+
+        elif command == "mflux-upscale-seedvr2":
+            parser.add_general_arguments()
+            parser.add_seedvr2_upscale_arguments()
             parser.add_output_arguments()
 
         elif command == "mflux-lora-library":

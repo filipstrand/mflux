@@ -67,6 +67,7 @@ class QwenImageInitializer:
         model.prompt_cache = {}
         model.model_config = model_config
         model.callbacks = CallbackRegistry()
+        model.tiling_config = None
 
     @staticmethod
     def _load_weights(model_path: str) -> LoadedWeights:

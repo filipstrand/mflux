@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from mflux.models.fibo_vlm.weights.fibo_vlm_weight_definition import FIBOVLMWeightDefinition
     from mflux.models.flux.weights.flux_weight_definition import FluxWeightDefinition
     from mflux.models.qwen.weights.qwen_weight_definition import QwenWeightDefinition
+    from mflux.models.seedvr2.weights.seedvr2_weight_definition import SeedVR2WeightDefinition
     from mflux.models.z_image.weights.z_image_weight_definition import ZImageWeightDefinition
 
     WeightDefinitionType: TypeAlias = type[
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
         | FIBOVLMWeightDefinition
         | QwenWeightDefinition
         | ZImageWeightDefinition
+        | SeedVR2WeightDefinition
         | DepthProWeightDefinition
     ]
 
@@ -39,6 +41,7 @@ class ComponentDefinition:
     weight_subkey: str | None = None
     download_url: str | None = None
     weight_prefix_filters: List[str] | None = None
+    weight_files: List[str] | None = None  # Specific files to load (if None, loads all *.safetensors)
 
 
 @dataclass

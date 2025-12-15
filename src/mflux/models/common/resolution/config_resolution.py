@@ -71,7 +71,6 @@ class ConfigResolution:
         model_name = ctx["model_name"]
         base_model = ctx["base_model"]
         base_models = ctx["base_models"]
-        ModelConfig = ctx["ModelConfig"]
         InvalidBaseModel = ctx["InvalidBaseModel"]
         ModelConfigError = ctx["ModelConfigError"]
 
@@ -92,7 +91,7 @@ class ConfigResolution:
                 (b for b in base_models if base_model == b.model_name or base_model in b.aliases),
                 None,
             )
-            return ConfigResolution._create_config(model_name, default_base, ModelConfig)
+            return ConfigResolution._create_config(model_name, default_base)
 
         if action == ConfigAction.INFER_SUBSTRING:
             model_name_lower = model_name.lower()
@@ -103,7 +102,7 @@ class ConfigResolution:
                 raise ModelConfigError(f"Cannot infer base_model from {model_name}")
 
             default_base = sorted(matching_bases, key=lambda x: (-len(x[1]), x[0].priority))[0][0]
-            return ConfigResolution._create_config(model_name, default_base, ModelConfig)
+            return ConfigResolution._create_config(model_name, default_base)
 
         if action == ConfigAction.ERROR:
             raise ModelConfigError(f"Cannot infer base_model from {model_name}")
@@ -111,7 +110,9 @@ class ConfigResolution:
         raise ValueError(f"Unknown action: {action}")
 
     @staticmethod
-    def _create_config(model_name: str, base: "ModelConfig", ModelConfig: type) -> "ModelConfig":
+    def _create_config(model_name: str, base: "ModelConfig") -> "ModelConfig":
+        from mflux.models.common.config.model_config import ModelConfig
+
         return ModelConfig(
             aliases=base.aliases,
             model_name=model_name,

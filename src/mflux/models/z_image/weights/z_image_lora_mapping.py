@@ -7,7 +7,43 @@ class ZImageLoRAMapping(LoRAMapping):
         targets = []
         for layer_type in ["layers", "noise_refiner", "context_refiner"]:
             targets.extend(ZImageLoRAMapping._get_layer_targets(layer_type))
+        targets.extend(ZImageLoRAMapping._get_global_targets())
         return targets
+
+    @staticmethod
+    def _get_global_targets() -> list[LoRATarget]:
+        return [
+            LoRATarget(
+                model_path="all_x_embedder.2-1",
+                possible_up_patterns=["diffusion_model.all_x_embedder.2-1.lora_B.weight"],
+                possible_down_patterns=["diffusion_model.all_x_embedder.2-1.lora_A.weight"],
+            ),
+            LoRATarget(
+                model_path="all_final_layer.2-1.linear",
+                possible_up_patterns=["diffusion_model.all_final_layer.2-1.linear.lora_B.weight"],
+                possible_down_patterns=["diffusion_model.all_final_layer.2-1.linear.lora_A.weight"],
+            ),
+            LoRATarget(
+                model_path="all_final_layer.2-1.adaLN_modulation.0",
+                possible_up_patterns=["diffusion_model.all_final_layer.2-1.adaLN_modulation.1.lora_B.weight"],
+                possible_down_patterns=["diffusion_model.all_final_layer.2-1.adaLN_modulation.1.lora_A.weight"],
+            ),
+            LoRATarget(
+                model_path="cap_embedder.1",
+                possible_up_patterns=["diffusion_model.cap_embedder.1.lora_B.weight"],
+                possible_down_patterns=["diffusion_model.cap_embedder.1.lora_A.weight"],
+            ),
+            LoRATarget(
+                model_path="t_embedder.linear1",
+                possible_up_patterns=["diffusion_model.t_embedder.mlp.0.lora_B.weight"],
+                possible_down_patterns=["diffusion_model.t_embedder.mlp.0.lora_A.weight"],
+            ),
+            LoRATarget(
+                model_path="t_embedder.linear2",
+                possible_up_patterns=["diffusion_model.t_embedder.mlp.2.lora_B.weight"],
+                possible_down_patterns=["diffusion_model.t_embedder.mlp.2.lora_A.weight"],
+            ),
+        ]
 
     @staticmethod
     def _get_layer_targets(layer_type: str) -> list[LoRATarget]:
