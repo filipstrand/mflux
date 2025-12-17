@@ -861,8 +861,12 @@ mflux-generate-fibo \
     --width 1024 \
     --height 1024 \
     --steps 20 \
-    --seed 42 \
+    --seed 42
 ```
+
+⚠️ * Note: As of MFLUX v.0.13, some internal changes have been made which breaks compatibility with older pre-quantized models.
+Newer ones will be uploaded, but in the meantime, you can always save a new quantized version from the original weights using the [mflux-save](#-saving-a-quantized-version-to-disk) command.*
+To save disk space, you can delete the original full 16-bit model from the Huggingface cache after saving the quantized version.
 
 ---
 
