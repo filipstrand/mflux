@@ -135,7 +135,7 @@ If you encounter issues (ZSH completion setup can vary by system), check your in
 mflux-completions --check
 ```
 
-For more details and troubleshooting, see the [completions documentation](src/mflux/completions/README.md).
+For more details and troubleshooting, see the [completions documentation](src/mflux/cli/completions/README.md).
 
 </details>
 
@@ -192,7 +192,7 @@ image = flux.generate_image(
 image.save(path="image.png")
 ```
 
-For more advanced Python usage and additional configuration options, you can explore the entry point files in the source code, such as [`generate.py`](src/mflux/generate.py), [`generate_controlnet.py`](src/mflux/generate_controlnet.py), [`generate_fill.py`](src/mflux/generate_fill.py), and others in the [`src/mflux/`](src/mflux/) directory. These files demonstrate how to use the Python API for various features and provide examples of advanced configurations.
+For more advanced Python usage and additional configuration options, you can explore the entry point files in the source code, such as [`flux_generate.py`](src/mflux/models/flux/cli/flux_generate.py), [`flux_generate_controlnet.py`](src/mflux/models/flux/cli/flux_generate_controlnet.py), [`flux_generate_fill.py`](src/mflux/models/flux/cli/flux_generate_fill.py), and others in the [`src/mflux/models/flux/cli/`](src/mflux/models/flux/cli/) directory. These files demonstrate how to use the Python API for various features and provide examples of advanced configurations.
 
 ⚠️ *If the specific model is not already downloaded on your machine, it will start the download process and fetch the model weights (~34GB for Schnell/Dev models, ~58GB for Qwen). See the [quantization](#%EF%B8%8F-quantization) section for running compressed versions of the model.* ⚠️
 
@@ -259,13 +259,13 @@ mflux-generate \
 
 - **`--quantize`** or **`-q`** (optional, `int`, default: `None`): [Quantization](#%EF%B8%8F-quantization) (choose between `3`, `4`, `5`, `6`, or `8` bits).
 
-- **`--lora-paths`** (optional, `[str]`, default: `None`): The paths to the [LoRA](#-LoRA) weights. Supports multiple formats:
+- **`--lora-paths`** (optional, `[str]`, default: `None`): The paths to the [LoRA](#-lora) weights. Supports multiple formats:
   - Local files: `/path/to/lora.safetensors`
   - HuggingFace repos: `author/model` (auto-downloads)
   - HuggingFace collections: `repo_id:filename.safetensors` (downloads specific file)
   - Registry names: `my-lora` (via `LORA_LIBRARY_PATH`)
 
-- **`--lora-scales`** (optional, `[float]`, default: `None`): The scale for each respective [LoRA](#-LoRA) (will default to `1.0` if not specified and only one LoRA weight is loaded.)
+- **`--lora-scales`** (optional, `[float]`, default: `None`): The scale for each respective [LoRA](#-lora) (will default to `1.0` if not specified and only one LoRA weight is loaded.)
 
 - **`--metadata`** (optional): Exports a `.json` file containing the metadata for the image with the same name. (Even without this flag, the image metadata is saved and can be viewed using `mflux-info image.png` or `exiftool image.png`)
 
@@ -353,7 +353,7 @@ The `mflux-generate-in-context-edit` command supports most of the same arguments
 
 **Note**: The IC-Edit tool automatically downloads and applies the required LoRA, and optimizes the resolution to 512px width for best results.
 
-See the [IC-Edit (In-Context Editing)](#-ic-edit-in-context-editing) section for more details on this feature.
+See the [IC-Edit (In-Context Editing)](#%EF%B8%8F-ic-edit-in-context-editing) section for more details on this feature.
 
 </details>
 
@@ -370,7 +370,7 @@ The `mflux-generate-qwen` command supports most of the same arguments as `mflux-
 
 **Note**: The Qwen Image tool automatically uses the Qwen Image model, so you typically don't need to specify `--model`.
 
-See the [Qwen Image](#-qwen-image) section for more details on this feature.
+See the [Qwen Image](#%EF%B8%8F-qwen-image) section for more details on this feature.
 
 </details>
 
@@ -387,7 +387,7 @@ The `mflux-generate-qwen-edit` command supports most of the same arguments as `m
 
 **Note**: The Qwen Image Edit tool automatically uses the appropriate model (`qwen-image-edit`), so you don't need to specify `--model`.
 
-See the [Qwen Image Edit](#-qwen-image-edit) section for more details on this feature.
+See the [Qwen Image Edit](#%EF%B8%8F-qwen-image-edit) section for more details on this feature.
 
 </details>
 
@@ -440,7 +440,7 @@ The `mflux-generate-fill` command supports most of the same arguments as `mflux-
 
 - **`--guidance`** (optional, `float`, default: `30.0`): The Fill tool works best with higher guidance values compared to regular image generation.
 
-See the [Fill](#-fill) section for more details on inpainting and outpainting.
+See the [Fill](#%EF%B8%8F-fill) section for more details on inpainting and outpainting.
 
 </details>
 
@@ -823,7 +823,7 @@ mflux-generate \
 
 *Note: When loading a quantized model from disk, there is no need to pass in `-q` flag, since we can infer this from the weight metadata.*
 
-*Also Note: Once we have a local model (quantized [or not](#-running-a-non-quantized-model-directly-from-disk)) specified via the `--path` argument, the huggingface cache models are not required to launch the model.
+*Also Note: Once we have a local model (quantized [or not](#-running-a-model-directly-from-disk)) specified via the `--path` argument, the huggingface cache models are not required to launch the model.
 In other words, you can reclaim the 34GB diskspace (per model) by deleting the full 16-bit model from the [Huggingface cache](#%EF%B8%8F-generating-an-image) if you choose.*
 
 ⚠️ * Quantized models saved with mflux < v.0.6.0 will not work with v.0.6.0 and later due to updated implementation. The solution is to [save a new quantized local copy](https://github.com/filipstrand/mflux/issues/149) 
@@ -1930,7 +1930,7 @@ Inpainting allows you to selectively regenerate specific parts of an image while
 Before using the Fill tool, you need an image and a corresponding mask. You can create a mask using the included tool:
 
 ```bash
-python -m tools.fill_mask_tool /path/to/your/image.jpg
+python tools/inpaint_mask_tool.py /path/to/your/image.jpg
 ```
 
 This will open an interactive interface where you can paint over the areas you want to regenerate.
@@ -1963,7 +1963,7 @@ Outpainting extends your image beyond its original boundaries, allowing you to e
 You can expand the canvas of your image using the provided tool:
 
 ```bash
-python -m tools.create_outpaint_image_canvas_and_mask \
+python tools/create_outpaint_image_canvas_and_mask.py \
   /path/to/your/image.jpg \
   --image-outpaint-padding "0,30%,20%,0"
 ```
@@ -1971,7 +1971,7 @@ python -m tools.create_outpaint_image_canvas_and_mask \
 As an example, here's how to add 25% padding to both the left and right sides of an image:
 
 ```bash
-python -m tools.create_outpaint_image_canvas_and_mask \
+python tools/create_outpaint_image_canvas_and_mask.py \
   room.png \
   --image-outpaint-padding "0,25%,0,25%"
 ```
@@ -2188,7 +2188,7 @@ provided [example configuration](src/mflux/models/flux/variants/dreambooth/_exam
 
 #### Training example
 
-A complete example ([training configuration](src/mflux/models/flux/variants/dreambooth/_example/train.json) + [dataset](src/mflux/models/flux/variants/dreambooth/_example/images)) is provided in this repository. To start a training run, go to the project folder `cd mflux`, and simply run:
+A complete example ([training configuration](src/mflux/models/flux/variants/dreambooth/_example/train.json) + [dataset](src/mflux/models/flux/variants/dreambooth/_example/images)) is provided in this repository. To start a training run, simply run:
 
 ```sh
 mflux-train --train-config src/mflux/models/flux/variants/dreambooth/_example/train.json
@@ -2373,7 +2373,7 @@ mflux-concept \
 ```
 This will generate the following image
 
-![concept_example_1](src/mflux/assets/concept_example_2.jpg)
+![concept_example_2](src/mflux/assets/concept_example_2.jpg)
 
 This command will generate:
 - The main image based on your prompt
@@ -2403,7 +2403,7 @@ mflux-concept-from-image \
 
 This will generate the following image
 
-![concept_example_1](src/mflux/assets/concept_example_3.jpg)
+![concept_example_3](src/mflux/assets/concept_example_3.jpg)
 
 #### Advanced Configuration
 
