@@ -1,0 +1,1 @@
+# Latent creator module

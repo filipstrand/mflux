@@ -23,6 +23,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux), [Qwen Image](http
 - [🦙 Qwen Models](#-qwen-models)
   * [🖼️ Qwen Image](#%EF%B8%8F-qwen-image)
   * [✏️ Qwen Image Edit](#%EF%B8%8F-qwen-image-edit)
+  * [Qwen Image Layered](#qwen-image-layered)
 - [🌀 FIBO](#-fibo)
 - [⚡ Z-Image](#-z-image)
 - [🔌 LoRA](#-lora)
@@ -371,6 +372,35 @@ The `mflux-generate-qwen` command supports most of the same arguments as `mflux-
 **Note**: The Qwen Image tool automatically uses the Qwen Image model, so you typically don't need to specify `--model`.
 
 See the [Qwen Image](#-qwen-image) section for more details on this feature.
+
+</details>
+
+#### Qwen Image Layered Command-Line Arguments
+
+<details>
+<summary>Click to expand Qwen Image Layered arguments</summary>
+
+The `mflux-generate-qwen-layered` command decomposes an input image into separate RGBA layers:
+
+- **`--image`** (required, `str`): Path to the input image to decompose into layers.
+
+- **`--layers`** (optional, `int`, default: `4`): Number of output layers to generate. Each layer will contain distinct visual elements from the source image.
+
+- **`--steps`** (optional, `int`, default: `50`): Number of inference steps. More steps generally produce better results.
+
+- **`--resolution`** (optional, `int`, default: `640`): Target resolution bucket (`640` or `1024`). The image will be resized to this resolution while maintaining aspect ratio.
+
+- **`--guidance`** (optional, `float`, default: `4.0`): Guidance scale for the decomposition.
+
+- **`--cfg-normalize`** (optional, flag): Enable CFG normalization for more stable guidance.
+
+- **`--prompt`** (optional, `str`): Text description of the image (auto-generated if not provided).
+
+- **`--negative-prompt`** (optional, `str`, default: `"blurry, bad quality"`): Negative prompt for quality guidance.
+
+- **`--output-dir`** (optional, `str`, default: `"."`): Directory where layer images will be saved.
+
+See the [Qwen Image Layered](#-qwen-image-layered) section for more details on this feature.
 
 </details>
 
@@ -1116,6 +1146,55 @@ mflux-generate-qwen-edit \
 7. **Image Quality**: Qwen images come out quite soft compared to Flux models
 
 ⚠️ *Note: The Qwen Image Edit model requires downloading the `Qwen/Qwen-Image-Edit-2509` model weights (~58GB for the full model, or use quantization for smaller sizes).*
+
+#### Qwen Image Layered
+
+**Qwen Image Layered** is a specialized image decomposition model that separates an input image into semantically disentangled RGBA layers. This enables powerful layer-based editing workflows where each layer can be independently manipulated and recomposed—similar to working with Photoshop layers but generated automatically from any image.
+
+The model uses a custom RGBA-VAE and a Layer3D RoPE transformer architecture to understand the semantic structure of images and separate them into distinct compositional layers (foreground, background, objects, etc.).
+
+**Example: Basic Image Decomposition**
+
+```sh
+mflux-generate-qwen-layered \
+  --image "input.png" \
+  --layers 4 \
+  --steps 50 \
+  --resolution 640 \
+  --guidance 4.0 \
+  --output-dir "./layers" \
+  -q 6
+```
+
+This will generate 4 RGBA layer files (`layer_0.png`, `layer_1.png`, etc.) in the output directory.
+
+**Example: Fast Preview with Fewer Steps**
+
+```sh
+mflux-generate-qwen-layered \
+  --image "photo.jpg" \
+  --layers 2 \
+  --steps 10 \
+  --resolution 640 \
+  -q 6 \
+  --output-dir "./preview"
+```
+
+**Use Cases:**
+- **Layer-based editing**: Edit individual layers independently and recompose
+- **Background removal**: Extract foreground objects with transparency
+- **Image compositing**: Combine layers from multiple decomposed images
+- **Animation**: Animate individual layers for parallax or motion effects
+- **Asset extraction**: Extract clean assets from complex scenes
+
+**Tips for Qwen Image Layered:**
+1. **Resolution**: Use 640 for faster processing, 1024 for higher quality results
+2. **Number of layers**: Start with 2-4 layers; more layers require more VRAM and time
+3. **Quantization**: 6-bit quantization (`-q 6`) significantly reduces memory usage (~29GB vs ~55GB BF16)
+4. **Steps**: 50 steps provides best quality; 10-20 steps work for quick previews
+5. **Output format**: All layers are saved as RGBA PNG files with transparency
+
+⚠️ *Note: The Qwen Image Layered model requires local weights from `Qwen/Qwen-Image-Layered` (~55GB for the full model in BF16, ~29GB with 6-bit quantization). This is a research model optimized for 48GB+ Apple Silicon Macs.*
 
 ---
 

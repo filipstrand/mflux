@@ -100,6 +100,11 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
+    def qwen_image_layered() -> "ModelConfig":
+        return AVAILABLE_MODELS["qwen-image-layered"]
+
+    @staticmethod
+    @lru_cache
     def fibo() -> "ModelConfig":
         return AVAILABLE_MODELS["fibo"]
 
@@ -307,5 +312,17 @@ AVAILABLE_MODELS = {
         supports_guidance=False,  # Turbo model uses guidance_scale=0
         requires_sigma_shift=True,
         priority=14,
+    ),
+    "qwen-image-layered": ModelConfig(
+        aliases=["qwen-image-layered", "qwen-layered"],
+        model_name="Qwen/Qwen-Image-Layered",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=None,
+        max_sequence_length=None,
+        supports_guidance=None,
+        requires_sigma_shift=None,
+        priority=15,
     ),
 }
