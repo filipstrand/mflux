@@ -61,5 +61,5 @@ class DreamBoothLoss:
             pooled_prompt_embeds=example.pooled_prompt_embeds,
         )
 
-        # Construct the loss (derivation in src/mflux/dreambooth/optimization/_loss_derivation)
+        # Construct the loss (derivation in src/mflux/models/flux/variants/dreambooth/optimization/_loss_derivation)
         return (clean_image + predicted_noise - pure_noise).square().mean()

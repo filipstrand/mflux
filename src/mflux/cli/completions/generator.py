@@ -32,6 +32,7 @@ class CompletionGenerator:
             "mflux-upscale",
             "mflux-lora-library",
             "mflux-info",
+            "mflux-completions",
         ]
 
     def create_parser_for_command(self, command: str) -> CommandLineParser:
@@ -39,16 +40,16 @@ class CompletionGenerator:
 
         if command == "mflux-generate":
             parser.add_general_arguments()
-            parser.add_model_arguments()
+            parser.add_model_arguments(require_model_arg=False)
             parser.add_lora_arguments()
-            parser.add_image_generator_arguments(supports_metadata_config=True)
+            parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
             parser.add_image_to_image_arguments()
             parser.add_image_outpaint_arguments()
             parser.add_output_arguments()
 
         elif command == "mflux-generate-controlnet":
             parser.add_general_arguments()
-            parser.add_model_arguments()
+            parser.add_model_arguments(require_model_arg=True)
             parser.add_lora_arguments()
             parser.add_controlnet_arguments()
             parser.add_image_generator_arguments()
@@ -58,18 +59,17 @@ class CompletionGenerator:
             parser.add_general_arguments()
             parser.add_model_arguments(require_model_arg=False)
             parser.add_lora_arguments()
-            parser.add_image_generator_arguments(supports_metadata_config=True)
+            parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
             parser.add_image_to_image_arguments(required=True)
             parser.add_output_arguments()
 
         elif command == "mflux-generate-in-context":
             parser.add_general_arguments()
-            parser.add_model_arguments()
+            parser.add_model_arguments(require_model_arg=False)
             parser.add_image_generator_arguments()
             parser.add_image_to_image_arguments(required=True)
+            parser.add_in_context_arguments()
             parser.add_output_arguments()
-            # Add save-full-image manually since it's not in parsers.py
-            parser.add_argument("--save-full-image", action="store_true")
 
         elif command == "mflux-generate-in-context-edit":
             parser.add_general_arguments()
@@ -91,7 +91,7 @@ class CompletionGenerator:
 
         elif command == "mflux-generate-fill":
             parser.add_general_arguments()
-            parser.add_model_arguments()
+            parser.add_model_arguments(require_model_arg=False)
             parser.add_lora_arguments()
             parser.add_image_generator_arguments()
             parser.add_fill_arguments()
@@ -99,7 +99,7 @@ class CompletionGenerator:
 
         elif command == "mflux-generate-depth":
             parser.add_general_arguments()
-            parser.add_model_arguments()
+            parser.add_model_arguments(require_model_arg=False)
             parser.add_lora_arguments()
             parser.add_image_generator_arguments()
             parser.add_depth_arguments()
@@ -107,7 +107,7 @@ class CompletionGenerator:
 
         elif command == "mflux-generate-redux":
             parser.add_general_arguments()
-            parser.add_model_arguments()
+            parser.add_model_arguments(require_model_arg=False)
             parser.add_lora_arguments()
             parser.add_image_generator_arguments()
             parser.add_redux_arguments()
@@ -167,20 +167,20 @@ class CompletionGenerator:
 
         elif command == "mflux-concept":
             parser.add_general_arguments()
-            parser.add_model_arguments()
+            parser.add_model_arguments(require_model_arg=True)
             parser.add_concept_attention_arguments()
             parser.add_image_generator_arguments()
             parser.add_output_arguments()
 
         elif command == "mflux-concept-from-image":
             parser.add_general_arguments()
-            parser.add_model_arguments()
+            parser.add_model_arguments(require_model_arg=True)
             parser.add_concept_from_image_arguments()
             parser.add_image_generator_arguments()
             parser.add_output_arguments()
 
         elif command == "mflux-save":
-            parser.add_model_arguments(path_type="save")
+            parser.add_model_arguments(path_type="save", require_model_arg=True)
 
         elif command == "mflux-save-depth":
             parser.add_save_depth_arguments()
@@ -192,19 +192,28 @@ class CompletionGenerator:
 
         elif command == "mflux-upscale":
             parser.add_general_arguments()
-            parser.add_model_arguments()
-            parser.add_image_generator_arguments(supports_metadata_config=True)
-            parser.add_image_to_image_arguments(required=True)
+            parser.add_model_arguments(require_model_arg=False)
+            parser.add_lora_arguments()
+            parser.add_image_generator_arguments(supports_metadata_config=False, supports_dimension_scale_factor=True)
+            parser.add_controlnet_arguments(require_image=True)
             parser.add_output_arguments()
 
         elif command == "mflux-lora-library":
             # Special case: has subcommands
-            subparsers = parser.add_subparsers(dest="subcommand")
+            subparsers = parser.add_subparsers(dest="command")
             list_parser = subparsers.add_parser("list")
-            list_parser.add_argument("--paths", action="store_true")
+            list_parser.add_argument(
+                "--paths", nargs="+", type=Path, help="Override LORA_LIBRARY_PATH with these directories"
+            )
 
         elif command == "mflux-info":
             parser.add_info_arguments()
+
+        elif command == "mflux-completions":
+            parser.add_argument("--print", action="store_true", help="Print completion script to stdout")
+            parser.add_argument("--dir", type=Path, help="Custom installation directory")
+            parser.add_argument("--update", action="store_true", help="Update existing installation")
+            parser.add_argument("--check", action="store_true", help="Check installation status")
 
         return parser
 
@@ -222,6 +231,18 @@ class CompletionGenerator:
 
     def format_argument_spec(self, action: argparse.Action) -> list[str]:
         specs = []
+
+        # Handle subparsers (simplified: treat subcommand as positional and add all sub-options)
+        if isinstance(action, argparse._SubParsersAction):
+            choices = " ".join(action.choices.keys())
+            dest = action.dest or "subcommand"
+            specs.append(f"'1:{dest}:({choices})'")
+            for subparser in action.choices.values():
+                for subaction in subparser._actions:
+                    if isinstance(subaction, argparse._HelpAction):
+                        continue
+                    specs.extend(self.format_argument_spec(subaction))
+            return specs
 
         # Handle options with both short and long forms
         if action.option_strings:
@@ -246,6 +267,16 @@ class CompletionGenerator:
 
             opt_spec += "'"
             specs.append(opt_spec)
+
+        # Handle positional arguments
+        else:
+            desc = self.escape_description(action.help or action.dest)
+            value_spec = self.get_value_spec(action)
+            # If get_value_spec already provides a name, use it
+            if value_spec.startswith(":"):
+                specs.append(f"':{desc}{value_spec}'")
+            else:
+                specs.append(f"':{desc}:{value_spec}'")
 
         return specs
 
