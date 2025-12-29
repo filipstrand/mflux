@@ -18,7 +18,7 @@ class TestImageGeneratorQwenImageEdit:
             height=384,
             width=640,
             guidance=2.5,
-            quantize=6,  # We should probably use at least 8-bit, but it doesn't run on 32GB machines
+            quantize=8,
             prompt="Make the hand fistbump the camera instead of showing a flat palm",
             image_path="reference_upscaled.png",
             mismatch_threshold=0.25,
@@ -26,7 +26,6 @@ class TestImageGeneratorQwenImageEdit:
         )
 
     @pytest.mark.slow
-    @pytest.mark.high_memory_requirement
     def test_image_generation_qwen_edit_multiple_images(self):
         ImageGeneratorEditTestHelper.assert_matches_reference_image(
             reference_image_path="reference_qwen_edit_multiple_images.png",
@@ -38,7 +37,7 @@ class TestImageGeneratorQwenImageEdit:
             height=384,
             width=640,
             guidance=2.5,
-            quantize=8,  # We should probably use at least 8-bit, but it doesn't run on 32GB machines
+            quantize=8,
             prompt="Make the hand fistbump the camera instead of showing a flat palm, and the man should wear this shirt. Maintain the original pose, body position, and overall stance.",
             image_paths=["reference_upscaled.png", "shirt.jpg"],
         )

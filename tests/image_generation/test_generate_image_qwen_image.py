@@ -13,14 +13,13 @@ class TestImageGeneratorQwenImage:
             output_image_path="output_qwen_txt2img.png",
             model_class=QwenImage,
             model_config=ModelConfig.qwen_image(),
-            quantize=6,  # We should probably use at least 8-bit, but it doesn't run on 32GB machines
+            quantize=8,
             steps=20,
             seed=42,
             height=341,
             width=768,
             prompt="Luxury food photograph",
             negative_prompt="ugly, blurry, low quality",
-            mismatch_threshold=0.35,  # Qwen models produce visually similar images with minor pixel differences
             low_memory=True,
         )
 
@@ -31,7 +30,7 @@ class TestImageGeneratorQwenImage:
             output_image_path="output_qwen_img2img.png",
             model_class=QwenImage,
             model_config=ModelConfig.qwen_image(),
-            quantize=6,  # We should probably use at least 8-bit, but it doesn't run on 32GB machines
+            quantize=8,
             steps=20,
             seed=44,
             height=341,
@@ -40,7 +39,6 @@ class TestImageGeneratorQwenImage:
             image_strength=0.4,
             prompt="Luxury food photograph of a burger",
             negative_prompt="ugly, blurry, low quality",
-            mismatch_threshold=0.35,  # Qwen models produce visually similar images with minor pixel differences
             low_memory=True,
         )
 
@@ -52,7 +50,7 @@ class TestImageGeneratorQwenImage:
             model_class=QwenImage,
             model_config=ModelConfig.qwen_image(),
             guidance=1.0,
-            quantize=6,  # We should probably use at least 8-bit, but it doesn't run on 32GB machines
+            quantize=8,
             steps=4,
             seed=42,
             height=341,
@@ -61,6 +59,5 @@ class TestImageGeneratorQwenImage:
             negative_prompt="ugly, blurry, low quality",
             lora_paths=["lightx2v/Qwen-Image-Lightning:Qwen-Image-Lightning-4steps-V2.0.safetensors"],
             lora_scales=[1.0],
-            mismatch_threshold=0.65,  # LoRA tests have higher variance due to model updates
             low_memory=True,
         )
