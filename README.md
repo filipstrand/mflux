@@ -23,6 +23,7 @@ Run the powerful [FLUX](https://blackforestlabs.ai/#get-flux), [Qwen Image](http
 - [🦙 Qwen Models](#-qwen-models)
   * [🖼️ Qwen Image](#%EF%B8%8F-qwen-image)
   * [✏️ Qwen Image Edit](#%EF%B8%8F-qwen-image-edit)
+  * [Qwen Image Layered](#qwen-image-layered)
 - [🌀 FIBO](#-fibo)
 - [⚡ Z-Image](#-z-image)
 - [🔌 LoRA](#-lora)
@@ -371,6 +372,35 @@ The `mflux-generate-qwen` command supports most of the same arguments as `mflux-
 **Note**: The Qwen Image tool automatically uses the Qwen Image model, so you typically don't need to specify `--model`.
 
 See the [Qwen Image](#%EF%B8%8F-qwen-image) section for more details on this feature.
+
+</details>
+
+#### Qwen Image Layered Command-Line Arguments
+
+<details>
+<summary>Click to expand Qwen Image Layered arguments</summary>
+
+The `mflux-generate-qwen-layered` command decomposes an input image into separate RGBA layers:
+
+- **`--image`** (required, `str`): Path to the input image to decompose into layers.
+
+- **`--layers`** (optional, `int`, default: `4`): Number of output layers to generate. Each layer will contain distinct visual elements from the source image.
+
+- **`--steps`** (optional, `int`, default: `50`): Number of inference steps. More steps generally produce better results.
+
+- **`--resolution`** (optional, `int`, default: `640`): Target resolution bucket (`640` or `1024`). The image will be resized to this resolution while maintaining aspect ratio.
+
+- **`--guidance`** (optional, `float`, default: `4.0`): Guidance scale for the decomposition.
+
+- **`--cfg-normalize`** (optional, flag): Enable CFG normalization for more stable guidance.
+
+- **`--prompt`** (optional, `str`): Text description of the image (auto-generated if not provided).
+
+- **`--negative-prompt`** (optional, `str`, default: `"blurry, bad quality"`): Negative prompt for quality guidance.
+
+- **`--output-dir`** (optional, `str`, default: `"."`): Directory where layer images will be saved.
+
+See the [Qwen Image Layered](#-qwen-image-layered) section for more details on this feature.
 
 </details>
 
@@ -1117,6 +1147,37 @@ mflux-generate-qwen-edit \
 
 ⚠️ *Note: The Qwen Image Edit model requires downloading the `Qwen/Qwen-Image-Edit-2509` model weights (~58GB for the full model, or use quantization for smaller sizes).*
 
+#### Qwen Image Layered
+
+**Qwen Image Layered** is a specialized image decomposition model that separates an input image into semantically disentangled RGBA layers. This enables powerful layer-based editing workflows where each layer can be independently manipulated and recomposed—similar to working with Photoshop layers but generated automatically from any image.
+
+**Example: Using Pre-Quantized Models**
+
+Pre-quantized models are available on HuggingFace and download automatically:
+
+```sh
+# Using 6-bit quantized model 
+mflux-generate-qwen-layered \
+  --image "input.png" \
+  --layers 4 \
+  --steps 50 \
+  --model-path zimengxiong/Qwen-Image-Layered-6bit
+```
+
+**Example: Quantizing from Full Model**
+
+If you prefer to quantize on-the-fly from the full model:
+
+```sh
+mflux-generate-qwen-layered \
+  --image "input.png" \
+  --layers 4 \
+  --steps 50 \
+  --resolution 640 \
+  -q 6
+```
+
+This downloads the full BF16 model from `Qwen/Qwen-Image-Layered` and quantizes at runtime.
 ---
 
 ### 🌀 FIBO

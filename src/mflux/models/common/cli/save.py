@@ -3,6 +3,7 @@ from mflux.models.common.config import ModelConfig
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
 from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
+from mflux.models.qwen_layered.variants.i2l.qwen_image_layered import QwenImageLayered
 from mflux.models.z_image.variants.turbo.z_image_turbo import ZImageTurbo
 
 
@@ -15,7 +16,9 @@ def main():
 
     # 1. Determine model class based on model name
     model_name_lower = args.model.lower()
-    if "qwen" in model_name_lower:
+    if "qwen" in model_name_lower and "layered" in model_name_lower:
+        model_class = QwenImageLayered
+    elif "qwen" in model_name_lower:
         model_class = QwenImage
     elif "fibo" in model_name_lower:
         model_class = FIBO

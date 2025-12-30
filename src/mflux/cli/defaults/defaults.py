@@ -12,12 +12,13 @@ GUIDANCE_SCALE = 3.5
 GUIDANCE_SCALE_KONTEXT = 2.5
 HEIGHT, WIDTH = 1024, 1024
 IMAGE_STRENGTH = 0.4
-MODEL_CHOICES = ["dev", "schnell", "krea-dev", "dev-krea", "qwen", "fibo", "z-image-turbo"]
+MODEL_CHOICES = ["dev", "schnell", "krea-dev", "dev-krea", "qwen", "qwen-image-layered", "fibo", "z-image-turbo"]
 MODEL_INFERENCE_STEPS = {
     "dev": 25,
     "schnell": 4,
     "krea-dev": 25,
     "qwen": 20,
+    "qwen-image-layered": 50,
     "fibo": 20,
     "z-image-turbo": 9,
 }
