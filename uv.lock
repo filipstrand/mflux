@@ -792,7 +792,7 @@ wheels = [
 
 [[package]]
 name = "mflux"
-version = "0.13.3"
+version = "0.14.0.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "huggingface-hub" },

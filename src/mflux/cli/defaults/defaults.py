@@ -18,6 +18,8 @@ MODEL_INFERENCE_STEPS = {
     "schnell": 4,
     "krea-dev": 25,
     "qwen": 20,
+    "qwen-image": 20,
+    "qwen-image-edit": 20,
     "fibo": 20,
     "z-image-turbo": 9,
 }

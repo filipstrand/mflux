@@ -11,16 +11,16 @@ class ModelConfig:
 
     def __init__(
         self,
+        priority: int,
         aliases: list[str],
         model_name: str,
         base_model: str | None,
         controlnet_model: str | None,
         custom_transformer_model: str | None,
-        num_train_steps: int,
-        max_sequence_length: int,
-        supports_guidance: bool,
-        requires_sigma_shift: bool,
-        priority: int,
+        num_train_steps: int | None,
+        max_sequence_length: int | None,
+        supports_guidance: bool | None,
+        requires_sigma_shift: bool | None,
     ):
         self.aliases = aliases
         self.model_name = model_name
@@ -108,6 +108,11 @@ class ModelConfig:
     def z_image_turbo() -> "ModelConfig":
         return AVAILABLE_MODELS["z-image-turbo"]
 
+    @staticmethod
+    @lru_cache
+    def seedvr2_3b() -> "ModelConfig":
+        return AVAILABLE_MODELS["seedvr2-3b"]
+
     def x_embedder_input_dim(self) -> int:
         if "Fill" in self.model_name:
             return 384
@@ -129,6 +134,7 @@ class ModelConfig:
 
 AVAILABLE_MODELS = {
     "dev": ModelConfig(
+        priority=0,
         aliases=["dev"],
         model_name="black-forest-labs/FLUX.1-dev",
         base_model=None,
@@ -138,9 +144,9 @@ AVAILABLE_MODELS = {
         max_sequence_length=512,
         supports_guidance=True,
         requires_sigma_shift=True,
-        priority=0,
     ),
     "schnell": ModelConfig(
+        priority=1,
         aliases=["schnell"],
         model_name="black-forest-labs/FLUX.1-schnell",
         base_model=None,
@@ -150,9 +156,9 @@ AVAILABLE_MODELS = {
         max_sequence_length=256,
         supports_guidance=False,
         requires_sigma_shift=False,
-        priority=1,
     ),
     "dev-kontext": ModelConfig(
+        priority=2,
         aliases=["dev-kontext"],
         model_name="black-forest-labs/FLUX.1-Kontext-dev",
         base_model=None,
@@ -162,9 +168,9 @@ AVAILABLE_MODELS = {
         max_sequence_length=512,
         supports_guidance=True,
         requires_sigma_shift=True,
-        priority=2,
     ),
     "dev-fill": ModelConfig(
+        priority=3,
         aliases=["dev-fill"],
         model_name="black-forest-labs/FLUX.1-Fill-dev",
         base_model=None,
@@ -174,9 +180,9 @@ AVAILABLE_MODELS = {
         max_sequence_length=512,
         supports_guidance=True,
         requires_sigma_shift=True,
-        priority=3,
     ),
     "dev-redux": ModelConfig(
+        priority=4,
         aliases=["dev-redux"],
         model_name="black-forest-labs/FLUX.1-Redux-dev",
         base_model=None,
@@ -186,9 +192,9 @@ AVAILABLE_MODELS = {
         max_sequence_length=512,
         supports_guidance=True,
         requires_sigma_shift=True,
-        priority=4,
     ),
     "dev-depth": ModelConfig(
+        priority=5,
         aliases=["dev-depth"],
         model_name="black-forest-labs/FLUX.1-Depth-dev",
         base_model=None,
@@ -198,9 +204,9 @@ AVAILABLE_MODELS = {
         max_sequence_length=512,
         supports_guidance=True,
         requires_sigma_shift=True,
-        priority=5,
     ),
     "dev-controlnet-canny": ModelConfig(
+        priority=6,
         aliases=["dev-controlnet-canny"],
         model_name="black-forest-labs/FLUX.1-dev",
         base_model=None,
@@ -210,9 +216,9 @@ AVAILABLE_MODELS = {
         max_sequence_length=512,
         supports_guidance=True,
         requires_sigma_shift=True,
-        priority=6,
     ),
     "schnell-controlnet-canny": ModelConfig(
+        priority=7,
         aliases=["schnell-controlnet-canny"],
         model_name="black-forest-labs/FLUX.1-schnell",
         base_model=None,
@@ -222,9 +228,9 @@ AVAILABLE_MODELS = {
         max_sequence_length=256,
         supports_guidance=False,
         requires_sigma_shift=False,
-        priority=7,
     ),
     "dev-controlnet-upscaler": ModelConfig(
+        priority=8,
         aliases=["dev-controlnet-upscaler"],
         model_name="black-forest-labs/FLUX.1-dev",
         base_model=None,
@@ -234,9 +240,9 @@ AVAILABLE_MODELS = {
         max_sequence_length=512,
         supports_guidance=False,
         requires_sigma_shift=False,
-        priority=8,
     ),
     "dev-fill-catvton": ModelConfig(
+        priority=9,
         aliases=["dev-fill-catvton"],
         model_name="black-forest-labs/FLUX.1-Fill-dev",
         base_model=None,
@@ -245,10 +251,10 @@ AVAILABLE_MODELS = {
         num_train_steps=1000,
         max_sequence_length=512,
         supports_guidance=True,
-        requires_sigma_shift=False,  # Not sure why, but produced better results this way...
-        priority=9,
+        requires_sigma_shift=False,
     ),
     "krea-dev": ModelConfig(
+        priority=10,
         aliases=["krea-dev", "dev-krea"],
         model_name="black-forest-labs/FLUX.1-Krea-dev",
         base_model=None,
@@ -258,9 +264,9 @@ AVAILABLE_MODELS = {
         max_sequence_length=512,
         supports_guidance=True,
         requires_sigma_shift=True,
-        priority=10,
     ),
     "qwen-image": ModelConfig(
+        priority=11,
         aliases=["qwen-image", "qwen"],
         model_name="Qwen/Qwen-Image",
         base_model=None,
@@ -270,9 +276,9 @@ AVAILABLE_MODELS = {
         max_sequence_length=None,
         supports_guidance=None,
         requires_sigma_shift=None,
-        priority=11,
     ),
     "qwen-image-edit": ModelConfig(
+        priority=12,
         aliases=["qwen-image-edit", "qwen-edit", "qwen-edit-plus", "qwen-edit-2509"],
         model_name="Qwen/Qwen-Image-Edit-2509",
         base_model=None,
@@ -282,9 +288,9 @@ AVAILABLE_MODELS = {
         max_sequence_length=None,
         supports_guidance=None,
         requires_sigma_shift=None,
-        priority=12,
     ),
     "fibo": ModelConfig(
+        priority=13,
         aliases=["fibo"],
         model_name="briaai/FIBO",
         base_model=None,
@@ -294,9 +300,9 @@ AVAILABLE_MODELS = {
         max_sequence_length=512,
         supports_guidance=True,
         requires_sigma_shift=False,
-        priority=13,
     ),
     "z-image-turbo": ModelConfig(
+        priority=14,
         aliases=["z-image-turbo", "z-image", "zimage-turbo", "zimage"],
         model_name="Tongyi-MAI/Z-Image-Turbo",
         base_model=None,
@@ -306,6 +312,17 @@ AVAILABLE_MODELS = {
         max_sequence_length=512,
         supports_guidance=False,  # Turbo model uses guidance_scale=0
         requires_sigma_shift=True,
-        priority=14,
+    ),
+    "seedvr2-3b": ModelConfig(
+        priority=15,
+        aliases=["seedvr2-3b", "seedvr2"],
+        model_name="numz/SeedVR2_comfyUI",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=None,
+        max_sequence_length=None,
+        supports_guidance=True,
+        requires_sigma_shift=None,
     ),
 }

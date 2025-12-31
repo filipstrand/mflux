@@ -205,6 +205,8 @@ class LoRALoader:
             for part in path_parts:
                 if part.isdigit():
                     current_module = current_module[int(part)]
+                elif isinstance(current_module, dict) and part in current_module:
+                    current_module = current_module[part]
                 else:
                     current_module = getattr(current_module, part)
         except (AttributeError, IndexError, KeyError):
@@ -274,12 +276,16 @@ class LoRALoader:
             for part in path_parts[:-1]:
                 if part.isdigit():
                     parent_module = parent_module[int(part)]
+                elif isinstance(parent_module, dict) and part in parent_module:
+                    parent_module = parent_module[part]
                 else:
                     parent_module = getattr(parent_module, part)
 
             final_attr = path_parts[-1]
             if final_attr.isdigit():
                 parent_module[int(final_attr)] = replacement_layer
+            elif isinstance(parent_module, dict) and final_attr in parent_module:
+                parent_module[final_attr] = replacement_layer
             else:
                 setattr(parent_module, final_attr, replacement_layer)
 

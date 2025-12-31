@@ -1,6 +1,7 @@
 import mlx.core as mx
 
 from mflux.models.common.latent_creator.latent_creator import LatentCreator
+from mflux.models.common.vae.tiling_config import TilingConfig
 from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 
 
@@ -11,6 +12,7 @@ class KontextUtil:
         height: int,
         width: int,
         image_path: str,
+        tiling_config: TilingConfig | None = None,
     ) -> tuple[mx.array, mx.array]:
         # Load and encode the input image
         input_image = LatentCreator.encode_image(
@@ -18,6 +20,7 @@ class KontextUtil:
             image_path=image_path,
             height=height,
             width=width,
+            tiling_config=tiling_config,
         )
 
         # Pack image latents for conditioning

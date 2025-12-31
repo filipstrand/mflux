@@ -3,6 +3,7 @@ import os
 import mlx.core as mx
 
 from mflux.models.common.latent_creator.latent_creator import LatentCreator
+from mflux.models.common.vae.tiling_config import TilingConfig
 from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
 
 
@@ -15,6 +16,7 @@ class QwenEditUtil:
         image_paths: list[str] | str,
         vl_width: int | None = None,
         vl_height: int | None = None,
+        tiling_config: TilingConfig | None = None,
     ) -> tuple[mx.array, mx.array, int, int, int]:
         if not isinstance(image_paths, list):
             image_paths = [str(image_paths)]
@@ -39,6 +41,7 @@ class QwenEditUtil:
                 image_path=image_path,
                 height=calc_h,
                 width=calc_w,
+                tiling_config=tiling_config,
             )
 
             image_latents = QwenLatentCreator.pack_latents(

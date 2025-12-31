@@ -6,6 +6,7 @@ from mlx import nn
 from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.latent_creator.latent_creator import Img2Img, LatentCreator
+from mflux.models.common.vae.vae_util import VAEUtil
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.fibo.fibo_initializer import FIBOInitializer
 from mflux.models.fibo.latent_creator.fibo_latent_creator import FiboLatentCreator
@@ -78,6 +79,7 @@ class FIBO(nn.Module):
                 image_path=config.image_path,
                 sigmas=config.scheduler.sigmas,
                 init_time_step=config.init_time_step,
+                tiling_config=self.tiling_config,
             ),
         )
 
@@ -125,15 +127,13 @@ class FIBO(nn.Module):
 
         # 8. Decode the latent array and return the image
         latents = FiboLatentCreator.unpack_latents(latents, config.height, config.width)
-        decoded = self.vae.decode(latents)
+        decoded = VAEUtil.decode(vae=self.vae, latent=latents, tiling_config=self.tiling_config)
         return ImageUtil.to_image(
             decoded_latents=decoded,
             config=config,
             seed=seed,
             prompt=json_prompt,
             quantization=self.bits,
-            lora_paths=None,
-            lora_scales=None,
             image_path=config.image_path,
             image_strength=config.image_strength,
             generation_time=config.time_steps.format_dict["elapsed"],

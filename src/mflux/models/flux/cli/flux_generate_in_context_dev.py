@@ -18,7 +18,7 @@ def main():
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
     parser.add_image_generator_arguments(supports_metadata_config=True)
-    parser.add_image_to_image_arguments(required=True)
+    parser.add_in_context_dev_arguments()
     parser.add_in_context_arguments()
     parser.add_output_arguments()
     args = parser.parse_args()
@@ -26,10 +26,6 @@ def main():
     # 0. Set default guidance value if not provided by user
     if args.guidance is None:
         args.guidance = ui_defaults.GUIDANCE_SCALE
-
-    # Set sensible VAE tiling split for in-context generation (side-by-side images)
-    if args.vae_tiling:
-        args.vae_tiling_split = "vertical"
 
     # Build lora_paths: style LoRA (if specified) + user-provided LoRAs
     lora_paths = []

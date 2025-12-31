@@ -14,7 +14,7 @@ source-exclude = [
 
 [project]
 name = "mflux"
-version = "0.13.3"
+version = "0.14.0dev0"
 description = "A MLX port of FLUX based on the Huggingface Diffusers implementation."
 readme = "README.md"
 keywords = ["diffusers", "flux", "mlx"]
@@ -89,7 +89,8 @@ mflux-concept-from-image = "mflux.models.flux.cli.flux_concept_from_image:main"
 mflux-save = "mflux.models.common.cli.save:main"
 mflux-save-depth = "mflux.models.depth_pro.cli.save_depth:main"
 mflux-train = "mflux.models.common.cli.train:main"
-mflux-upscale = "mflux.models.flux.cli.flux_upscale:main"
+mflux-upscale-controlnet = "mflux.models.flux.cli.flux_upscale:main"
+mflux-upscale-seedvr2 = "mflux.models.seedvr2.cli.seedvr2_upscale:main"
 mflux-lora-library = "mflux.models.common.cli.lora_library:main"
 mflux-info = "mflux.models.common.cli.info:main"
 mflux-completions = "mflux.cli.completions.install:main"
@@ -121,6 +122,8 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 addopts = '-v --failed-first --showlocals --tb=long --full-trace -m "not high_memory_requirement"'
 markers = [
+    "fast: marks tests as fast (no image generation)",
+    "slow: marks tests as slow (generates images)",
     "high_memory_requirement: marks tests that require high memory (deselect with '-m \"not high_memory_requirement\"')",
 ]
 

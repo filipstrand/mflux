@@ -17,8 +17,8 @@ class FIBOInitializer:
         model_config: ModelConfig,
         quantize: int | None = None,
         model_path: str | None = None,
-        lora_paths: list[str] | None = None,  # noqa: ARG004
-        lora_scales: list[float] | None = None,  # noqa: ARG004
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
     ) -> None:
         path = model_path if model_path else model_config.model_name
         FIBOInitializer._init_config(model, model_config)
@@ -31,6 +31,7 @@ class FIBOInitializer:
     def _init_config(model, model_config: ModelConfig) -> None:
         model.model_config = model_config
         model.callbacks = CallbackRegistry()
+        model.tiling_config = None
 
     @staticmethod
     def _load_weights(model_path: str) -> LoadedWeights:

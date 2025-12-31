@@ -19,9 +19,6 @@ class CallbackManager:
         # Battery saver (always enabled)
         CallbackManager._register_battery_saver(args, model)
 
-        # VAE Tiling (if requested)
-        CallbackManager._register_vae_tiling(args, model)
-
         # Specialized savers (based on flags)
         if enable_canny_saver:
             CallbackManager._register_canny_saver(args, model)
@@ -39,12 +36,6 @@ class CallbackManager:
     def _register_battery_saver(args: Namespace, model) -> None:
         battery_saver = BatterySaver(battery_percentage_stop_limit=args.battery_percentage_stop_limit)
         model.callbacks.register(battery_saver)
-
-    @staticmethod
-    def _register_vae_tiling(args: Namespace, model) -> None:
-        if args.vae_tiling:
-            model.vae.decoder.enable_tiling = True
-            model.vae.decoder.split_direction = args.vae_tiling_split
 
     @staticmethod
     def _register_canny_saver(args: Namespace, model) -> None:
@@ -72,6 +63,11 @@ class CallbackManager:
     def _register_memory_saver(args: Namespace, model) -> MemorySaver | None:
         memory_saver = None
         if args.low_ram:
-            memory_saver = MemorySaver(model=model, keep_transformer=len(args.seed) > 1)
+            seeds = getattr(args, "seed", []) or []
+            images = getattr(args, "image_path", [])
+            if not isinstance(images, list):
+                images = [images] if images is not None else []
+            keep_transformer = len(seeds) > 1 or len(images) > 1
+            memory_saver = MemorySaver(model=model, keep_transformer=keep_transformer, args=args)
             model.callbacks.register(memory_saver)
         return memory_saver

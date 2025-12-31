@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
+from mflux.models.common.vae.vae_util import VAEUtil
 from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
 from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer
@@ -93,6 +94,7 @@ class QwenImageEdit(nn.Module):
                 vl_width=vl_width,
                 vl_height=vl_height,
                 image_paths=image_paths,
+                tiling_config=self.tiling_config,
             )
         )
 
@@ -150,7 +152,7 @@ class QwenImageEdit(nn.Module):
 
         # 10. Decode the latent array and return the image
         latents = QwenLatentCreator.unpack_latents(latents=latents, height=config.height, width=config.width)
-        decoded = self.vae.decode(latents)
+        decoded = VAEUtil.decode(vae=self.vae, latent=latents, tiling_config=self.tiling_config)
         return ImageUtil.to_image(
             decoded_latents=decoded,
             config=config,

@@ -158,6 +158,7 @@ class FluxInitializer:
         model.prompt_cache = {}
         model.model_config = model_config
         model.callbacks = CallbackRegistry()
+        model.tiling_config = None
 
     @staticmethod
     def _load_weights(model_path: str) -> LoadedWeights:
@@ -168,10 +169,13 @@ class FluxInitializer:
 
     @staticmethod
     def _init_tokenizers(model, model_path: str, model_config: ModelConfig) -> None:
+        max_length_overrides = (
+            {"t5": model_config.max_sequence_length} if model_config.max_sequence_length is not None else {}
+        )
         model.tokenizers = TokenizerLoader.load_all(
             definitions=FluxWeightDefinition.get_tokenizers(),
             model_path=model_path,
-            max_length_overrides={"t5": model_config.max_sequence_length},
+            max_length_overrides=max_length_overrides,
         )
 
     @staticmethod

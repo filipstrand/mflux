@@ -27,8 +27,8 @@ class ImageUtil:
         prompt: str,
         quantization: int,
         generation_time: float,
-        lora_paths: list[str],
-        lora_scales: list[float],
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
         controlnet_image_path: str | Path | None = None,
         image_path: str | Path | None = None,
         image_paths: list[str] | list[Path] | None = None,
@@ -96,6 +96,8 @@ class ImageUtil:
 
     @staticmethod
     def _to_numpy(images: mx.array) -> np.ndarray:
+        if len(images.shape) == 5:
+            images = mx.squeeze(images, axis=2)
         images = mx.transpose(images, (0, 2, 3, 1))
         images = mx.array.astype(images, mx.float32)
         images = np.array(images)

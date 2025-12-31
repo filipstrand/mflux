@@ -90,7 +90,10 @@ class PathResolution:
         return None
 
     @staticmethod
-    def _find_complete_cached_snapshot(repo_id: str, patterns: list[str]) -> Path | None:
+    def _find_complete_cached_snapshot(repo_id: str | None, patterns: list[str]) -> Path | None:
+        if repo_id is None:
+            return None
+
         # Build the cache directory path for this repo
         # HuggingFace cache structure: {cache_dir}/models--{org}--{model}/snapshots/{revision}/
         repo_cache_name = f"models--{repo_id.replace('/', '--')}"
@@ -108,7 +111,7 @@ class PathResolution:
         for snapshot_path in snapshots:
             if not snapshot_path.is_dir():
                 continue
-            if PathResolution._is_snapshot_complete(snapshot_path, required_subdirs):
+            if PathResolution._is_snapshot_complete(snapshot_path, required_subdirs, patterns):
                 logger.debug(f"Found complete cached snapshot: {snapshot_path}")
                 return snapshot_path
 
@@ -130,10 +133,33 @@ class PathResolution:
         return subdirs
 
     @staticmethod
-    def _is_snapshot_complete(snapshot_path: Path, required_subdirs: set[str]) -> bool:
+    def _is_snapshot_complete(
+        snapshot_path: Path, required_subdirs: set[str], patterns: list[str] | None = None
+    ) -> bool:
         if not required_subdirs:
-            # No specific subdirs required, just check for any safetensors
-            return any(snapshot_path.glob("**/*.safetensors"))
+            # No specific subdirs required - check that all patterns are satisfied
+            if patterns:
+                for pattern in patterns:
+                    # Check if this specific pattern has any matches
+                    matches = list(snapshot_path.glob(pattern))
+                    if not matches:
+                        return False
+                    # Verify at least one match actually exists (handles broken symlinks)
+                    has_valid_match = False
+                    for match in matches:
+                        if match.is_symlink():
+                            if os.path.exists(match):
+                                has_valid_match = True
+                                break
+                        else:
+                            has_valid_match = True
+                            break
+                    if not has_valid_match:
+                        return False
+                return True
+            else:
+                # Fallback: just check for any safetensors
+                return any(snapshot_path.glob("**/*.safetensors"))
 
         for subdir in required_subdirs:
             subdir_path = snapshot_path / subdir

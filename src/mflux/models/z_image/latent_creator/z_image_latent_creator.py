@@ -17,7 +17,9 @@ class ZImageLatentCreator:
         ).astype(ModelConfig.precision)
 
     @staticmethod
-    def pack_latents(latents: mx.array, height: int, width: int) -> mx.array:
+    def pack_latents(latents: mx.array, height: int, width: int) -> mx.array:  # noqa: ARG004
+        if latents.ndim == 5:
+            latents = latents[:, :, 0, :, :]
         latents = mx.expand_dims(latents, axis=2)
         latents = mx.squeeze(latents, axis=0)
         return latents

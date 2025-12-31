@@ -1,9 +1,11 @@
 from .flow_match_euler_discrete_scheduler import FlowMatchEulerDiscreteScheduler
 from .linear_scheduler import LinearScheduler
+from .seedvr2_euler_scheduler import SeedVR2EulerScheduler
 
 __all__ = [
     "LinearScheduler",
     "FlowMatchEulerDiscreteScheduler",
+    "SeedVR2EulerScheduler",
 ]
 
 
@@ -21,6 +23,8 @@ SCHEDULER_REGISTRY = {
     "LinearScheduler": LinearScheduler,
     "flow_match_euler_discrete": FlowMatchEulerDiscreteScheduler,
     "FlowMatchEulerDiscreteScheduler": FlowMatchEulerDiscreteScheduler,
+    "seedvr2_euler": SeedVR2EulerScheduler,
+    "SeedVR2EulerScheduler": SeedVR2EulerScheduler,
 }
 
 
