@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2025-12-31
+
+### 🎨 New Model Support
+
+- **SeedVR2 Diffusion Upscaler**: Added support for [SeedVR2](https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler), a powerful diffusion-based image upscaler.
+- **New command**: `mflux-upscale-seedvr2` for high-quality image upscaling.
+- **Tiling support**: Tiling is enabled by default for SeedVR2 to support high-resolution upscaling on standard memory configurations.
+
+### 🔧 Improvements
+
+- **Global VAE Tiling Support**: Introduced a unified VAE tiling system (`VAETiler`) that supports both tiled encoding and decoding.
+- **Low-RAM Mode Enhancements**: Enabling `--low-ram` now automatically activates VAE tiling across all model families (Flux, Qwen, FIBO, Z-Image), significantly reducing memory pressure for high-resolution generation on Apple Silicon.
+- **Robust Offline Cache Handling**: Improved logic for detecting complete cached models on HuggingFace Hub, handling symlinks and missing files more reliably to prevent runtime errors during offline use.
+- **Selective Weight Loading**: Support for loading specific weight files, enabling more flexible model configurations and better resource sharing between related models.
+- **CLI UX Improvements**:
+  - Multi-image generation (multiple seeds or input images) now automatically appends suffixes (`_seed_{seed}` or `_{image_name}`) to output filenames to prevent accidental overwrites.
+  - Better model configuration resolution with a priority-based system for resolving ambiguous model names.
+- **Enhanced Shell Completions**: Significant updates to shell completion generation to support new commands and properly handle positional arguments and subparsers.
+- **Qwen Test Hardening**: Updated Qwen image generation and edit tests to use 8-bit quantization for more robust and faster testing.
+- **Test Infrastructure**: Added automatic MLX version pinning (v0.29.2) in `make test-fast` to ensure consistent test environments across different development setups.
+
+### 📝 Documentation
+
+- Added information about pre-quantized models available on HuggingFace for easier access.
+
+---
+
 ## [0.13.3] - 2025-12-06
 
 ### 🐛 Bug Fixes
