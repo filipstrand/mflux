@@ -2227,8 +2227,7 @@ SeedVR2 is more recent and the preferred method for high-fidelity upscaling and 
 ```sh
 mflux-upscale-seedvr2 \
   --image-path "input.png" \
-  --resolution 1800 \
-  --low-ram
+  --resolution 1800
 ```
 
 This will upscale the image such that the shortest side is 1800 pixels while maintaining the aspect ratio.
@@ -2257,8 +2256,7 @@ mflux-generate-z-image-turbo \
 ```sh
 mflux-upscale-seedvr2 \
   --image-path image.png \
-  --resolution 3x \
-  --low-ram
+  --resolution 3x
 ```
 </details>
 
