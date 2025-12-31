@@ -1,5 +1,6 @@
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.models.common.config import ModelConfig
+from mflux.models.common.vae.tiling_config import TilingConfig
 from mflux.models.common.weights.loading.loaded_weights import LoadedWeights
 from mflux.models.common.weights.loading.weight_applier import WeightApplier
 from mflux.models.common.weights.loading.weight_loader import WeightLoader
@@ -26,7 +27,7 @@ class SeedVR2Initializer:
     def _init_config(model, model_config: ModelConfig) -> None:
         model.model_config = model_config
         model.callbacks = CallbackRegistry()
-        model.tiling_config = None
+        model.tiling_config = TilingConfig()
 
     @staticmethod
     def _load_weights(model_path: str) -> LoadedWeights:

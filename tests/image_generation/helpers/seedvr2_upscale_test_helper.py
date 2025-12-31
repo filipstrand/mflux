@@ -30,7 +30,8 @@ class SeedVR2UpscaleTestHelper:
                 model_path=None,
                 model_config=ModelConfig.seedvr2_3b(),
             )
-            model.tiling_config = tiling_config
+            if tiling_config is not None:
+                model.tiling_config = tiling_config
 
             result = model.generate_image(
                 image_path=input_image_path,
