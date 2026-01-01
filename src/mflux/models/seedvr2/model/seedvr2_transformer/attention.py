@@ -15,7 +15,7 @@ class MMAttention(nn.Module):
         head_dim: int = 128,
         qk_bias: bool = False,
         qk_norm_eps: float = 1e-5,
-        rope_dim: int = 64,
+        rope_dim: int = 128,
         shared_weights: bool = False,
         window: tuple[int, int, int] = (4, 3, 3),
         shift: bool = False,

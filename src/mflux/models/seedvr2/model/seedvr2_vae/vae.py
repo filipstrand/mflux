@@ -6,8 +6,7 @@ from mflux.models.seedvr2.model.seedvr2_vae.encoder.encoder_3d import Encoder3D
 
 
 class SeedVR2VAE(nn.Module):
-    # According to config 0.9152 is correct, but I find it tends to over saturate the colors a bit on all examples.
-    scaling_factor: float = 1.0
+    scaling_factor: float = 0.9152
     spatial_scale = 8
 
     def __init__(

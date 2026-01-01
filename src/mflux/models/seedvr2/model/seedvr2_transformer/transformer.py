@@ -24,7 +24,7 @@ class SeedVR2Transformer(nn.Module):
         patch_size: tuple = (1, 2, 2),
         num_layers: int = 32,
         mm_layers: int = 10,
-        rope_dim: int = 64,
+        rope_dim: int = 128,
         window: tuple[int, int, int] = (4, 3, 3),
     ):
         super().__init__()

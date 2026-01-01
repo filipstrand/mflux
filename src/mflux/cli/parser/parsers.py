@@ -60,6 +60,7 @@ class CommandLineParser(argparse.ArgumentParser):
         seedvr2_group.add_argument("--image-path", "-i", type=Path, required=True, nargs="+", help="Path to the input image(s) to upscale.")
         seedvr2_group.add_argument("--seed", "-s", type=int, default=[42], nargs="+", help="Random seed(s) for reproducibility.")
         seedvr2_group.add_argument("--resolution", "-r", type=int_or_special_value, default=384, help="Target resolution for the shortest edge (pixels) or scale factor (e.g., '2x').")
+        seedvr2_group.add_argument("--softness", type=float, default=0.0, help="Value between 0.0 (off, factor 1) and 1.0 (max, factor 8). Default: 0.0.")
 
     def add_model_arguments(self, path_type: t.Literal["load", "save"] = "load", require_model_arg: bool = True) -> None:
         self.require_model_arg = require_model_arg

@@ -40,17 +40,19 @@ class SeedVR2(nn.Module):
         seed: int,
         image_path: str | Path,
         resolution: int | ScaleFactor,
+        softness: float = 0.0,
     ) -> GeneratedImage:
         # 0. Process and scale the input image
-        processed_image, height, width = SeedVR2Util.preprocess_image(
+        processed_image, true_height, true_width = SeedVR2Util.preprocess_image(
             image_path=image_path,
             resolution=resolution,
+            softness=softness,
         )
 
         # 1. Create a new config based on the model type and input parameters
         config = Config(
-            width=width,
-            height=height,
+            width=true_width,
+            height=true_height,
             guidance=1.0,
             num_inference_steps=1,
             image_path=image_path,
@@ -86,7 +88,6 @@ class SeedVR2(nn.Module):
             # 7.t Call subscribers in-loop
             ctx.in_loop(t, latents)
 
-            # (Optional) Evaluate to enable progress tracking
             mx.eval(latents)
 
         # 8. Call subscribers after loop
@@ -94,6 +95,9 @@ class SeedVR2(nn.Module):
 
         # 9. Decode the latents and return the image
         decoded = VAEUtil.decode(vae=self.vae, latent=latents, tiling_config=self.tiling_config)
+        decoded = decoded[:, :, :true_height, :true_width]
+        style = processed_image[:, :, :true_height, :true_width]
+        decoded = SeedVR2Util.apply_color_correction(decoded, style)
         return ImageUtil.to_image(
             seed=seed,
             prompt="",
