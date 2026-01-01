@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.1] - 2026-01-01
+
+### 🔧 SeedVR2 Improvements
+
+- **Enhanced Color Correction**: Implemented precise LAB histogram matching with wavelet reconstruction for superior color consistency between input and upscaled images.
+- **Configurable Softness**: Added a new `--softness` parameter (0.0 to 1.0) to control input pre-downsampling, allowing for smoother upscaling results when desired.
+- **RoPE Alignment**: Fixed RoPE dimension mismatch (increased to 128) to perfectly match the reference 3B transformer architecture.
+
+### 🤖 DX & Maintenance
+
+- **Updated `.cursorrules`**: Added standard procedure for test output preservation and release management.
+- **Updated Test Infrastructure**: Updated SeedVR2 reference images and fixed dimension-related test failures.
+
+---
+
 ## [0.14.0] - 2025-12-31
 
 ### 🎨 New Model Support

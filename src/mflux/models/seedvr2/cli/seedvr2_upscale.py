@@ -37,6 +37,7 @@ def main():
                     seed=seed,
                     image_path=image_path,
                     resolution=args.resolution,
+                    softness=args.softness,
                 )
 
                 # 6. Save result

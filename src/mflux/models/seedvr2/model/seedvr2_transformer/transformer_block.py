@@ -16,7 +16,7 @@ class TransformerBlock(nn.Module):
         expand_ratio: int = 4,
         norm_eps: float = 1e-5,
         qk_bias: bool = False,
-        rope_dim: int = 64,
+        rope_dim: int = 128,
         shared_weights: bool = False,
         is_last_layer: bool = False,
         window: tuple[int, int, int] = (4, 3, 3),
