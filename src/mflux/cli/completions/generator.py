@@ -22,6 +22,7 @@ class CompletionGenerator:
             "mflux-generate-qwen-edit",
             "mflux-generate-fibo",
             "mflux-generate-z-image-turbo",
+            "mflux-generate-z-image-controlnet",
             "mflux-refine-fibo",
             "mflux-inspire-fibo",
             "mflux-concept",
@@ -144,6 +145,14 @@ class CompletionGenerator:
             parser.add_lora_arguments()
             parser.add_image_generator_arguments(supports_metadata_config=True)
             parser.add_image_to_image_arguments()
+            parser.add_output_arguments()
+
+        elif command == "mflux-generate-z-image-controlnet":
+            parser.add_general_arguments()
+            parser.add_model_arguments(require_model_arg=False)
+            parser.add_lora_arguments()
+            parser.add_image_generator_arguments(supports_metadata_config=False)
+            parser.add_union_controlnet_arguments(require_controls=True)
             parser.add_output_arguments()
 
         elif command == "mflux-refine-fibo":

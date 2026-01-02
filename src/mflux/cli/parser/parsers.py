@@ -162,6 +162,25 @@ class CommandLineParser(argparse.ArgumentParser):
         if mode == 'canny':
             self.add_argument("--controlnet-save-canny", action="store_true", help="If set, save the Canny edge detection reference input image.")
 
+    def add_union_controlnet_arguments(self, require_controls: bool = True) -> None:
+        """
+        Union-style ControlNet inputs (e.g. pose/depth/canny/hed/mlsd).\n
+        Uses a repeatable `--control` argument with format: `type:path[:strength]`.
+        """
+        self.supports_controlnet = True
+        self.add_argument(
+            "--control",
+            action="append",
+            required=require_controls,
+            help="Repeatable control spec: type:path[:strength] (e.g. pose:pose.png:0.8).",
+        )
+        self.add_argument(
+            "--controlnet-strength",
+            type=float,
+            default=ui_defaults.CONTROLNET_STRENGTH,
+            help=f"Global multiplier applied to all controls. (Default is {ui_defaults.CONTROLNET_STRENGTH})",
+        )
+
     def add_concept_attention_arguments(self) -> None:
         concept_group = self.add_argument_group("Concept Attention configuration")
         concept_group.add_argument("--concept", type=str, required=True, help="The concept prompt to use for attention visualization")

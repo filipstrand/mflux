@@ -24,6 +24,17 @@ def _create_mflux_generate_parser(with_controlnet=False, require_model_arg=False
     return parser
 
 
+def _create_mflux_generate_z_image_controlnet_parser(require_model_arg: bool = False) -> CommandLineParser:
+    parser = CommandLineParser(description="Generate an image using Z-Image Turbo + ControlNet Union.")
+    parser.add_general_arguments()
+    parser.add_model_arguments(require_model_arg=require_model_arg)
+    parser.add_image_generator_arguments(supports_metadata_config=False)
+    parser.add_lora_arguments()
+    parser.add_union_controlnet_arguments(require_controls=True)
+    parser.add_output_arguments()
+    return parser
+
+
 @pytest.fixture
 def mflux_generate_parser() -> CommandLineParser:
     return _create_mflux_generate_parser(with_controlnet=False, require_model_arg=False)
@@ -32,6 +43,11 @@ def mflux_generate_parser() -> CommandLineParser:
 @pytest.fixture
 def mflux_generate_controlnet_parser() -> CommandLineParser:
     return _create_mflux_generate_parser(with_controlnet=True, require_model_arg=False)
+
+
+@pytest.fixture
+def mflux_generate_z_image_controlnet_parser() -> CommandLineParser:
+    return _create_mflux_generate_z_image_controlnet_parser(require_model_arg=False)
 
 
 @pytest.fixture
@@ -56,6 +72,17 @@ def mflux_generate_minimal_model_argv() -> list[str]:
 @pytest.fixture
 def mflux_generate_controlnet_minimal_argv() -> list[str]:
     return ["mflux-generate-controlnet", "--prompt", "meaning of life, imitated"]
+
+
+@pytest.fixture
+def mflux_generate_z_image_controlnet_minimal_argv() -> list[str]:
+    return [
+        "mflux-generate-z-image-controlnet",
+        "--prompt",
+        "meaning of life, controlled",
+        "--control",
+        "pose:pose.png:0.8",
+    ]
 
 
 @pytest.fixture
@@ -586,6 +613,16 @@ def test_controlnet_args(mflux_generate_controlnet_parser, mflux_generate_contro
     with patch('sys.argv', mflux_generate_controlnet_minimal_argv + ['--config-from-metadata', metadata_file.as_posix()]):  # fmt: off
         args = mflux_generate_controlnet_parser.parse_args()
         assert args.controlnet_save_canny is False
+
+
+@pytest.mark.fast
+def test_z_image_union_controlnet_args(
+    mflux_generate_z_image_controlnet_parser, mflux_generate_z_image_controlnet_minimal_argv
+):
+    with patch("sys.argv", mflux_generate_z_image_controlnet_minimal_argv):
+        args = mflux_generate_z_image_controlnet_parser.parse_args()
+        assert args.control == ["pose:pose.png:0.8"]
+        assert args.controlnet_strength == pytest.approx(ui_defaults.CONTROLNET_STRENGTH)
 
 
 @pytest.mark.fast

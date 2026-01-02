@@ -32,6 +32,7 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
         config: Config,
         canny_image: PIL.Image.Image | None = None,
         depth_image: PIL.Image.Image | None = None,
+        control_images: list[PIL.Image.Image] | None = None,
     ) -> None:
         self._save_image(
             step=config.init_time_step,
