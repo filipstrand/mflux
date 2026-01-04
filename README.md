@@ -2227,11 +2227,14 @@ SeedVR2 is more recent and the preferred method for high-fidelity upscaling and 
 ```sh
 mflux-upscale-seedvr2 \
   --image-path "input.png" \
-  --resolution 1800
+  --resolution 2160 \
+  --softness 0.5
 ```
 
-This will upscale the image such that the shortest side is 1800 pixels while maintaining the aspect ratio.
+This will upscale the image such that the shortest side is 2160 pixels while maintaining the aspect ratio.
 Instead of specifying a target resolution, you can also use `--resolution 2x` or `--resolution 3x` to upscale by a factor of 2 or 3 respectively.
+
+You can also adjust the `--softness` parameter (0.0 to 1.0) to control input pre-downsampling, which can help achieve smoother upscaling results. A value of 0.0 (default) disables pre-downsampling, while higher values up to 1.0 increase the downsampling factor (up to 8x internally) before upscaling. A value of `0.5` is often a good starting point.
 
 <details>
 <summary>🛠️ <strong>Example: Generating and Upscaling with Z-Image Turbo</strong></summary>
@@ -2256,7 +2259,8 @@ mflux-generate-z-image-turbo \
 ```sh
 mflux-upscale-seedvr2 \
   --image-path image.png \
-  --resolution 3x
+  --resolution 3x \
+  --softness 0.5
 ```
 </details>
 
