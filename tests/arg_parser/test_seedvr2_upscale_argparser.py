@@ -95,3 +95,10 @@ def test_seedvr2_model_arg(seedvr2_upscale_parser, seedvr2_upscale_minimal_argv)
         args = seedvr2_upscale_parser.parse_args()
         assert args.model == "another/path"
         assert args.model_path == "another/path"
+
+
+@pytest.mark.fast
+def test_seedvr2_softness(seedvr2_upscale_parser, seedvr2_upscale_minimal_argv):
+    with patch("sys.argv", seedvr2_upscale_minimal_argv + ["--softness", "0.5"]):
+        args = seedvr2_upscale_parser.parse_args()
+        assert args.softness == 0.5
