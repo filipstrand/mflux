@@ -1,3 +1,4 @@
+import json
 import logging
 from pathlib import Path
 
@@ -7,6 +8,19 @@ log = logging.getLogger(__name__)
 
 
 class MetadataBuilder:
+    _IPTC_PROMPT_MAX_BYTES = 2000  # IPTC Caption/Abstract (2:120) is commonly limited to 2000 bytes
+
+    @staticmethod
+    def _looks_like_json(text: str) -> bool:
+        stripped = (text or "").lstrip()
+        if not stripped or stripped[0] not in ("{", "["):
+            return False
+        try:
+            json.loads(stripped)
+            return True
+        except Exception:  # noqa: BLE001
+            return False
+
     @staticmethod
     def embed_metadata(metadata: dict, path: str | Path) -> None:
         # Check if file is PNG format
@@ -113,13 +127,35 @@ class MetadataBuilder:
         if "prompt" in metadata:
             prompt = metadata["prompt"]
             prompt_encoded = prompt.encode("utf-8")
-            if len(prompt_encoded) > 2000:
-                log.warning(f"Prompt is too long ({len(prompt_encoded)} bytes), truncating to 2000 bytes for IPTC")
-                iptc_data[120] = prompt_encoded[:2000]  # Caption/Description
+
+            # For structured JSON prompts (e.g. FIBO), store a short, stable summary in IPTC.
+            # The full prompt is already preserved in EXIF UserComment (and for FIBO also saved as a sidecar .json).
+            if (
+                MetadataBuilder._looks_like_json(prompt)
+                and len(prompt_encoded) > MetadataBuilder._IPTC_PROMPT_MAX_BYTES
+            ):
+                summary = (
+                    f"Structured JSON prompt ({len(prompt_encoded)} bytes). "
+                    "Full prompt preserved in MFLUX metadata (EXIF UserComment) and may be saved as a sidecar .json."
+                )
+                iptc_data[120] = summary.encode("utf-8")[
+                    : MetadataBuilder._IPTC_PROMPT_MAX_BYTES
+                ]  # Caption/Description
+                iptc_data[5] = b"AI: (structured prompt)"  # Object Name/Title
+                iptc_data[105] = b"AI Generated (structured prompt)"  # Headline
             else:
-                iptc_data[120] = prompt_encoded  # Caption/Description
-            iptc_data[5] = f"AI: {prompt[:50]}...".encode("utf-8")  # Object Name/Title
-            iptc_data[105] = f"AI Generated: {prompt[:80]}...".encode("utf-8")  # Headline
+                # Plain prompts: keep the existing behavior (truncate), but don't warn loudly.
+                if len(prompt_encoded) > MetadataBuilder._IPTC_PROMPT_MAX_BYTES:
+                    log.debug(
+                        "Prompt is too long (%s bytes), truncating to %s bytes for IPTC",
+                        len(prompt_encoded),
+                        MetadataBuilder._IPTC_PROMPT_MAX_BYTES,
+                    )
+                    iptc_data[120] = prompt_encoded[: MetadataBuilder._IPTC_PROMPT_MAX_BYTES]  # Caption/Description
+                else:
+                    iptc_data[120] = prompt_encoded  # Caption/Description
+                iptc_data[5] = f"AI: {prompt[:50]}...".encode("utf-8")  # Object Name/Title
+                iptc_data[105] = f"AI Generated: {prompt[:80]}...".encode("utf-8")  # Headline
 
         # Add standard fields
         iptc_data[80] = b"MFLUX"  # By-line (Creator)
