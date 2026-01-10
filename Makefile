@@ -44,7 +44,7 @@ ensure-ruff:
 # ensure pytest is available
 .PHONY: ensure-pytest
 ensure-pytest:
-	@if ! $(PYTHON) -c "import pytest" 2>/dev/null; then \
+	@if ! uv run python -c "import pytest" 2>/dev/null; then \
 		echo "pytest required for testing. Installing pytest..."; \
 		uv pip install pytest; \
 	fi
@@ -94,7 +94,7 @@ check: ensure-ruff
 test: ensure-pytest
 	# 🏗️ Running tests...
 	uv pip install mlx==0.29.2  # Install pinned MLX version specifically for testing
-	$(PYTHON) -m pytest
+	MFLUX_PRESERVE_TEST_OUTPUT=1 uv run python -m pytest
 	# ✅ Tests completed
 
 # Run fast tests only (no image generation)
@@ -102,7 +102,7 @@ test: ensure-pytest
 test-fast: ensure-pytest
 	# 🏗️ Running fast tests (no image generation)...
 	uv pip install mlx==0.29.2  # Install pinned MLX version specifically for testing
-	$(PYTHON) -m pytest -m fast
+	MFLUX_PRESERVE_TEST_OUTPUT=1 uv run python -m pytest -m fast
 	# ✅ Fast tests completed
 
 # Run slow tests only (image generation tests)
@@ -110,7 +110,7 @@ test-fast: ensure-pytest
 test-slow: ensure-pytest
 	# 🏗️ Running slow tests (image generation)...
 	uv pip install mlx==0.29.2  # Install pinned MLX version specifically for testing
-	$(PYTHON) -m pytest -m slow
+	MFLUX_PRESERVE_TEST_OUTPUT=1 uv run python -m pytest -m slow
 	# ✅ Slow tests completed
 
 
