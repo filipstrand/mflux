@@ -14,6 +14,7 @@ from mflux.models.seedvr2.seedvr2_initializer import SeedVR2Initializer
 from mflux.models.seedvr2.variants.upscale.seedvr2_util import SeedVR2Util
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
+from mflux.utils.metadata_reader import MetadataReader
 from mflux.utils.scale_factor import ScaleFactor
 
 
@@ -98,6 +99,10 @@ class SeedVR2(nn.Module):
         decoded = decoded[:, :, :true_height, :true_width]
         style = processed_image[:, :, :true_height, :true_width]
         decoded = SeedVR2Util.apply_color_correction(decoded, style)
+
+        # 10. Read metadata from the original image if available
+        init_metadata = MetadataReader.read_all_metadata(image_path) if image_path else None
+
         return ImageUtil.to_image(
             seed=seed,
             prompt="",
@@ -105,4 +110,5 @@ class SeedVR2(nn.Module):
             quantization=self.bits,
             decoded_latents=decoded,
             generation_time=config.time_steps.format_dict["elapsed"],
+            init_metadata=init_metadata,
         )

@@ -18,6 +18,7 @@ from mflux.models.flux.weights.flux_weight_definition import FluxControlnetWeigh
 from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil, StrOrBytesPath
+from mflux.utils.metadata_reader import MetadataReader
 
 
 class Flux1Controlnet(nn.Module):
@@ -146,6 +147,10 @@ class Flux1Controlnet(nn.Module):
         # 10. Decode the latent array and return the image
         latents = FluxLatentCreator.unpack_latents(latents=latents, height=config.height, width=config.width)
         decoded = VAEUtil.decode(vae=self.vae, latent=latents, tiling_config=self.tiling_config)
+
+        # 11. Read metadata from the controlnet image if available
+        init_metadata = MetadataReader.read_all_metadata(controlnet_image_path) if controlnet_image_path else None
+
         return ImageUtil.to_image(
             decoded_latents=decoded,
             config=config,
@@ -156,6 +161,7 @@ class Flux1Controlnet(nn.Module):
             lora_scales=self.lora_scales,
             controlnet_image_path=controlnet_image_path,
             generation_time=config.time_steps.format_dict["elapsed"],
+            init_metadata=init_metadata,
         )
 
     def save_model(self, base_path: str) -> None:
