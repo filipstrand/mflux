@@ -4,39 +4,29 @@ These rules exist to make agent work in this repo **predictable, verifiable, and
 
 ## Commands / environment
 
-- **Always use `uv`** for dependency management and running code.
+- **Always use uv** for dependency management and running code.
   - Run scripts/binaries with `uv run <command>`.
   - Prefer `uv run python -m ...` for local modules.
   - Manage deps with `uv add <pkg>` / `uv remove <pkg>`.
 - **Prefer Makefile targets** when they exist (they encode project-specific setup):
   - `make install`, `make lint`, `make format`, `make test-fast`, `make test`, `make build`.
+  - Prefer the Cursor commands in `.cursor/commands/` for these common targets (`/install`, `/lint`, `/format`, `/check`, `/test*`, `/build`).
 
 ## Tests (goldens / image output)
 
-- **Always preserve test outputs** (for visual inspection):
-  - Run tests with `MFLUX_PRESERVE_TEST_OUTPUT=1`.
-- Prefer faster scopes first:
-  - **Single test**: `MFLUX_PRESERVE_TEST_OUTPUT=1 uv run python -m pytest path/to/test_file.py -k "pattern"`
-  - **Fast suite**: `MFLUX_PRESERVE_TEST_OUTPUT=1 uv run python -m pytest -m fast`
-  - **Slow suite**: `MFLUX_PRESERVE_TEST_OUTPUT=1 uv run python -m pytest -m slow`
-- **Do not update reference (“golden”) images** unless explicitly asked. If a visual mismatch happens, keep the outputs and report paths for review.
+- **Always preserve test outputs** (for visual inspection): run tests with `MFLUX_PRESERVE_TEST_OUTPUT=1` (the `/test*` commands already do this).
+- **Do not update reference (“golden”) images** unless explicitly asked.
+- Prefer faster scopes first (`/test-fast` → `/test-slow` → `/test`).
+- For the full playbook (how to handle failures and golden diffs), use the `mflux-testing` skill.
 
 ## Lint / format
 
-- Use `ruff` via existing Make targets:
-  - Lint: `make lint`
-  - Format: `make format`
-  - Full pre-commit: `make check`
+- Use the repo workflows (`/lint`, `/format`, `/check`) which map to the Makefile targets.
 
 ## Releases
 
-When preparing a release:
-
-- Bump version in `pyproject.toml`
-- Add a descriptive entry to `CHANGELOG.md`
-- Update lockfile: `uv lock`
-- (Optional sanity) run `make test-fast` and `make build`
-- Tagging is handled by an external GitHub Action when publishing.
+- When preparing a release, prefer `/release-prep` and the `mflux-release` skill.
+- Tagging/publishing is handled by an external GitHub Action.
 
 ## Agent workflow norms (modern Cursor best practices)
 
