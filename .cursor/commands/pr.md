@@ -22,7 +22,8 @@ This follows the example workflow described in Cursor’s agent best practices, 
    - `git commit -m "<message>"`
 
 4. **Push**
-   - Push to the current branch:
+   - **Stop and ask for permission** before pushing.
+   - Once approved, push to the current branch:
      - `git push -u origin HEAD`
 
 5. **Open PR**

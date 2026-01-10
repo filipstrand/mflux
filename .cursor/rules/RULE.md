@@ -28,6 +28,11 @@ These rules exist to make agent work in this repo **predictable, verifiable, and
 - When preparing a release, prefer `/release-prep` and the `mflux-release` skill.
 - Tagging/publishing is handled by an external GitHub Action.
 
+## Git safety
+
+- **Never push or force-push** to the remote repository without explicit user approval for each push.
+- Committing locally is fine and encouraged for progress tracking.
+
 ## Agent workflow norms (modern Cursor best practices)
 
 - For multi-file or high-risk work, **start with a short plan** (bullets: goals, constraints, files to touch, how you’ll verify).
