@@ -31,6 +31,7 @@ These rules exist to make agent work in this repo **predictable, verifiable, and
 ## Agent workflow norms (modern Cursor best practices)
 
 - For multi-file or high-risk work, **start with a short plan** (bullets: goals, constraints, files to touch, how you’ll verify).
+- **Plan Mode Enforcement**: For any non-trivial task or high architectural risk, save your plan to `.cursor/plans/YYYY-MM-DD-feature-name.md` and ask for approval before coding.
 - Keep changes tight, and prefer **verifiable goals** (tests/lint/build) over speculation.
 - If the task scope changes materially, stop and re-align rather than continuing in a confused state.
 

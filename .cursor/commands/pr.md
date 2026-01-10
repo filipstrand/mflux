@@ -11,7 +11,9 @@ This follows the example workflow described in Cursor’s agent best practices, 
    - `git diff`
 
 2. **(Optional) Quick verification**
-   - Prefer fast tests first:
+   - Run the pre-commit suite to catch linting/formatting errors:
+     - `/check` (or `make check`)
+   - Prefer fast tests:
      - `MFLUX_PRESERVE_TEST_OUTPUT=1 uv run python -m pytest -m fast`
 
 3. **Commit**
