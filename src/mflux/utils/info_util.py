@@ -11,6 +11,9 @@ class InfoUtil:
 
         lines = ["=" * 60, "MFLUX Image Information", "=" * 60]
 
+        def _has_any(keys: list[str]) -> bool:
+            return any(exif.get(k) is not None for k in keys)
+
         # Prompt
         if prompt := exif.get("prompt"):
             lines.append(f"\nPrompt: {prompt}")
@@ -61,6 +64,43 @@ class InfoUtil:
             lines.append(f"Quantization: {quantize}-bit")
         if precision := exif.get("precision"):
             lines.append(f"Precision: {precision}")
+
+        # Explicit "Original generation" section for derived images (upscales, edits, etc.)
+        original_keys = [
+            "original_model",
+            "original_width",
+            "original_height",
+            "original_seed",
+            "original_steps",
+            "original_guidance",
+            "original_quantize",
+            "original_lora_paths",
+            "original_lora_scales",
+        ]
+        if _has_any(original_keys):
+            lines.append("")
+            lines.append("Original Generation:")
+
+            if orig_model := exif.get("original_model"):
+                lines.append(f"  - Model: {orig_model}")
+            if exif.get("original_width") is not None and exif.get("original_height") is not None:
+                lines.append(f"  - Size: {exif.get('original_width')}x{exif.get('original_height')}")
+            if orig_seed := exif.get("original_seed"):
+                lines.append(f"  - Seed: {orig_seed}")
+            if orig_steps := exif.get("original_steps"):
+                lines.append(f"  - Steps: {orig_steps}")
+            if (orig_guidance := exif.get("original_guidance")) is not None:
+                lines.append(f"  - Guidance: {orig_guidance}")
+            if (orig_quantize := exif.get("original_quantize")) is not None:
+                lines.append(f"  - Quantization: {orig_quantize}-bit")
+
+            if orig_lora_paths := exif.get("original_lora_paths"):
+                lines.append(f"  - LoRAs ({len(orig_lora_paths)}):")
+                orig_lora_scales = exif.get("original_lora_scales") or []
+                for i, lora in enumerate(orig_lora_paths):
+                    scale = orig_lora_scales[i] if i < len(orig_lora_scales) else 1.0
+                    lora_name = Path(lora).name
+                    lines.append(f"    - {lora_name} (scale: {scale})")
 
         # LoRA information
         if lora_paths := exif.get("lora_paths"):

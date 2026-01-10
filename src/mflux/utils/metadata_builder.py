@@ -76,6 +76,9 @@ class MetadataBuilder:
         # Build LoRA info for XMP
         lora_info = MetadataBuilder._build_lora_string(metadata)
 
+        # Model identifier (keep backward-compat if older code stored 'model_config')
+        model_name = metadata.get("model_config") or metadata.get("model")
+
         # Get version from metadata
         version = metadata.get("mflux_version", "unknown")
 
@@ -101,11 +104,14 @@ class MetadataBuilder:
             xmp_packet += f"\n    <mflux:steps>{metadata['steps']}</mflux:steps>"
         if "guidance" in metadata:
             xmp_packet += f"\n    <mflux:guidance>{metadata['guidance']}</mflux:guidance>"
-        if "model_config" in metadata:
-            xmp_packet += f"\n    <mflux:model>{metadata['model_config']}</mflux:model>"
+        if model_name:
+            xmp_packet += f"\n    <mflux:model>{model_name}</mflux:model>"
         if lora_info:
             xmp_packet += f"\n    <mflux:loras>{lora_info}</mflux:loras>"
-        if "generation_time" in metadata:
+        # Keep backward-compat for older key name, prefer current 'generation_time_seconds'
+        if "generation_time_seconds" in metadata:
+            xmp_packet += f"\n    <mflux:generationTimeSeconds>{metadata['generation_time_seconds']}</mflux:generationTimeSeconds>"
+        elif "generation_time" in metadata:
             xmp_packet += f"\n    <mflux:generationTime>{metadata['generation_time']}</mflux:generationTime>"
 
         xmp_packet += """
@@ -171,8 +177,9 @@ class MetadataBuilder:
         if "seed" in metadata:
             iptc_data[122] = f"Seed: {metadata['seed']}".encode("utf-8")  # Writer/Editor
 
-        if "model_config" in metadata:
-            iptc_data[90] = f"Model: {metadata['model_config']}".encode("utf-8")  # City
+        model_name = metadata.get("model_config") or metadata.get("model")
+        if model_name:
+            iptc_data[90] = f"Model: {model_name}".encode("utf-8")  # City
 
         # Add LoRA info in Province/State field
         if lora_info:
@@ -192,6 +199,8 @@ class MetadataBuilder:
             keywords.append(f"guidance-{metadata['guidance']}")
         if "model_config" in metadata:
             keywords.append(f"model-{metadata['model_config']}")
+        elif "model" in metadata and metadata["model"]:
+            keywords.append(f"model-{metadata['model']}")
         if lora_info:
             keywords.append(f"loras-{lora_info}")
 
