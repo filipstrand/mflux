@@ -21,22 +21,40 @@ class InfoUtil:
         # Model information
         lines.append("")
         if model := exif.get("model"):
-            lines.append(f"Model: {model}")
+            if (orig_model := exif.get("original_model")) and orig_model != model:
+                lines.append(f"Model: {model} (Original: {orig_model})")
+            else:
+                lines.append(f"Model: {model}")
 
         # Image dimensions
         if width := exif.get("width"):
-            lines.append(f"Width: {width}")
+            if (orig_w := exif.get("original_width")) and orig_w != width:
+                lines.append(f"Width: {width} (Original: {orig_w})")
+            else:
+                lines.append(f"Width: {width}")
         if height := exif.get("height"):
-            lines.append(f"Height: {height}")
+            if (orig_h := exif.get("original_height")) and orig_h != height:
+                lines.append(f"Height: {height} (Original: {orig_h})")
+            else:
+                lines.append(f"Height: {height}")
 
         # Generation parameters
         lines.append("")
         if seed := exif.get("seed"):
-            lines.append(f"Seed: {seed}")
+            if (orig_seed := exif.get("original_seed")) and orig_seed != seed:
+                lines.append(f"Seed: {seed} (Original: {orig_seed})")
+            else:
+                lines.append(f"Seed: {seed}")
         if steps := exif.get("steps"):
-            lines.append(f"Steps: {steps}")
+            if (orig_steps := exif.get("original_steps")) and orig_steps != steps:
+                lines.append(f"Steps: {steps} (Original: {orig_steps})")
+            else:
+                lines.append(f"Steps: {steps}")
         if guidance := exif.get("guidance"):
-            lines.append(f"Guidance: {guidance}")
+            if (orig_guidance := exif.get("original_guidance")) and orig_guidance != guidance:
+                lines.append(f"Guidance: {guidance} (Original: {orig_guidance})")
+            else:
+                lines.append(f"Guidance: {guidance}")
 
         # Technical settings
         if quantize := exif.get("quantize"):

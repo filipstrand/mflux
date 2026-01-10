@@ -40,6 +40,7 @@ class GeneratedImage:
         redux_image_strengths: list[float] | None = None,
         concept_heatmap: ConceptHeatmap | None = None,
         negative_prompt: str | None = None,
+        init_metadata: dict | None = None,
     ):
         self.image = image
         self.model_config = model_config
@@ -65,6 +66,7 @@ class GeneratedImage:
         self.redux_image_strengths = redux_image_strengths
         self.concept_heatmap = concept_heatmap
         self.negative_prompt = negative_prompt
+        self.init_metadata = init_metadata
 
     def get_right_half(self) -> "GeneratedImage":
         # Calculate the coordinates for the right half
@@ -93,6 +95,7 @@ class GeneratedImage:
             masked_image_path=self.masked_image_path,
             depth_image_path=self.depth_image_path,
             concept_heatmap=self.concept_heatmap,
+            init_metadata=self.init_metadata,
         )
 
     def save(
@@ -180,7 +183,7 @@ class GeneratedImage:
             log.error(f"Error saving prompt file: {e}")
 
     def _get_metadata(self) -> dict:
-        return {
+        metadata = {
             "mflux_version": VersionUtil.get_mflux_version(),
             "model": self.model_config.model_name,
             "base_model": str(self.model_config.base_model),
@@ -207,3 +210,35 @@ class GeneratedImage:
             "prompt": self.prompt,
             "negative_prompt": self.negative_prompt if self.negative_prompt else None,
         }
+
+        # If we have initial metadata from a source image, merge it
+        if self.init_metadata and (old_exif := self.init_metadata.get("exif")):
+            # 1. If we don't have a prompt (e.g. SeedVR2), use the original prompt
+            if not metadata.get("prompt") and old_exif.get("prompt"):
+                metadata["prompt"] = old_exif.get("prompt")
+
+            # 2. If we don't have a negative prompt, use the original one
+            if not metadata.get("negative_prompt") and old_exif.get("negative_prompt"):
+                metadata["negative_prompt"] = old_exif.get("negative_prompt")
+
+            # 3. Store original dimensions
+            if old_exif.get("width") and old_exif.get("width") != self.width:
+                metadata["original_width"] = old_exif.get("width")
+            if old_exif.get("height") and old_exif.get("height") != self.height:
+                metadata["original_height"] = old_exif.get("height")
+
+            # 4. Carry over other metadata that doesn't conflict and is useful
+            fields_to_carry = [
+                "seed",
+                "steps",
+                "guidance",
+                "model",
+                "lora_paths",
+                "lora_scales",
+                "quantize",
+            ]
+            for field in fields_to_carry:
+                if old_val := old_exif.get(field):
+                    metadata[f"original_{field}"] = old_val
+
+        return metadata
