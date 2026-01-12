@@ -20,8 +20,7 @@ def main():
     parser = CommandLineParser(description="Generate an image with Chroma model.")
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
-    # No LoRA support in initial version
-    # parser.add_lora_arguments()
+    parser.add_lora_arguments()
     parser.add_image_generator_arguments(
         supports_metadata_config=True,
         supports_dimension_scale_factor=True,
@@ -45,6 +44,8 @@ def main():
         model_config=ModelConfig.from_name(model_name=args.model, base_model=None),
         quantize=args.quantize,
         model_path=args.model_path,
+        lora_paths=args.lora_paths,
+        lora_scales=args.lora_scales,
     )
 
     # 2. Register callbacks

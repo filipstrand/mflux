@@ -7,8 +7,10 @@ Key difference from FluxInitializer: no CLIP encoder, uses ChromaWeightDefinitio
 
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.models.chroma.model.chroma_transformer.chroma_transformer import ChromaTransformer
+from mflux.models.chroma.weights.chroma_lora_mapping import ChromaLoRAMapping
 from mflux.models.chroma.weights.chroma_weight_definition import ChromaWeightDefinition
 from mflux.models.common.config import ModelConfig
+from mflux.models.common.lora.mapping.lora_loader import LoRALoader
 from mflux.models.common.tokenizer import TokenizerLoader
 from mflux.models.common.weights.loading.loaded_weights import LoadedWeights
 from mflux.models.common.weights.loading.weight_applier import WeightApplier
@@ -25,7 +27,7 @@ class ChromaInitializer:
     1. Uses ChromaWeightDefinition (T5 encoder only, no CLIP)
     2. Uses ChromaTransformer (DistilledGuidanceLayer instead of TimeTextEmbed)
     3. No CLIP encoder initialization
-    4. No LoRA support (initial version)
+    4. Uses ChromaLoRAMapping (excludes norm layers that don't exist in Chroma)
     """
 
     @staticmethod
@@ -34,6 +36,8 @@ class ChromaInitializer:
         model_config: ModelConfig,
         quantize: int | None,
         model_path: str | None = None,
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
     ) -> None:
         """
         Initialize the Chroma model.
@@ -43,6 +47,8 @@ class ChromaInitializer:
             model_config: Model configuration
             quantize: Quantization bit width (4 or 8) or None for full precision
             model_path: Path to model weights (local or HuggingFace repo ID)
+            lora_paths: List of LoRA paths (local files or HuggingFace repos)
+            lora_scales: List of LoRA scale factors (default 1.0)
         """
         path = model_path if model_path else model_config.model_name
 
@@ -51,6 +57,7 @@ class ChromaInitializer:
         ChromaInitializer._init_tokenizers(model, path, model_config)
         ChromaInitializer._init_models(model, model_config, weights)
         ChromaInitializer._apply_weights(model, weights, quantize)
+        ChromaInitializer._apply_lora(model, lora_paths, lora_scales)
 
     @staticmethod
     def _init_config(model, model_config: ModelConfig) -> None:
@@ -59,7 +66,6 @@ class ChromaInitializer:
         model.model_config = model_config
         model.callbacks = CallbackRegistry()
         model.tiling_config = None
-        # No LoRA paths for initial version
         model.lora_paths = None
         model.lora_scales = None
 
@@ -125,4 +131,28 @@ class ChromaInitializer:
                 "t5_encoder": model.t5_text_encoder,
                 # No CLIP encoder for Chroma
             },
+        )
+
+    @staticmethod
+    def _apply_lora(
+        model,
+        lora_paths: list[str] | None,
+        lora_scales: list[float] | None,
+    ) -> None:
+        """
+        Apply LoRA weights to the model.
+
+        Uses ChromaLoRAMapping which excludes norm layers that don't exist in Chroma
+        (norm1.linear, norm1_context.linear, norm.linear).
+
+        Args:
+            model: The Chroma model instance
+            lora_paths: List of LoRA paths (local files or HuggingFace repos)
+            lora_scales: List of LoRA scale factors
+        """
+        model.lora_paths, model.lora_scales = LoRALoader.load_and_apply_lora(
+            lora_mapping=ChromaLoRAMapping.get_mapping(),
+            transformer=model.transformer,
+            lora_paths=lora_paths,
+            lora_scales=lora_scales,
         )

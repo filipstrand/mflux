@@ -51,6 +51,8 @@ class Chroma(nn.Module):
         quantize: int | None = None,
         model_path: str | None = None,
         model_config: ModelConfig = None,
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
     ):
         """
         Initialize Chroma model.
@@ -59,6 +61,8 @@ class Chroma(nn.Module):
             quantize: Quantization bit width (4 or 8) or None for full precision
             model_path: Path to model weights (local or HuggingFace repo ID)
             model_config: Model configuration (defaults to Chroma config)
+            lora_paths: List of LoRA paths (local files or HuggingFace repos)
+            lora_scales: List of LoRA scale factors (default 1.0)
         """
         super().__init__()
         if model_config is None:
@@ -69,6 +73,8 @@ class Chroma(nn.Module):
             quantize=quantize,
             model_path=model_path,
             model_config=model_config,
+            lora_paths=lora_paths,
+            lora_scales=lora_scales,
         )
 
     def generate_image(
