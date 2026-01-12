@@ -1,4 +1,5 @@
 from mflux.cli.parser.parsers import CommandLineParser
+from mflux.models.chroma.variants.txt2img.chroma import Chroma
 from mflux.models.common.config import ModelConfig
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
 from mflux.models.flux.variants.txt2img.flux import Flux1
@@ -21,16 +22,25 @@ def main():
         model_class = FIBO
     elif "z-image" in model_name_lower or "zimage" in model_name_lower:
         model_class = ZImageTurbo
+    elif "chroma" in model_name_lower:
+        model_class = Chroma
     else:
         model_class = Flux1
 
     # 2. Load, quantize and save the model
-    model = model_class(
-        quantize=args.quantize,
-        lora_paths=args.lora_paths,
-        lora_scales=args.lora_scales,
-        model_config=ModelConfig.from_name(args.model, base_model=args.base_model),
-    )
+    if model_class == Chroma:
+        # Chroma doesn't support LoRA in initial version
+        model = model_class(
+            quantize=args.quantize,
+            model_config=ModelConfig.from_name(args.model, base_model=args.base_model),
+        )
+    else:
+        model = model_class(
+            quantize=args.quantize,
+            lora_paths=args.lora_paths,
+            lora_scales=args.lora_scales,
+            model_config=ModelConfig.from_name(args.model, base_model=args.base_model),
+        )
     model.save_model(args.path)
 
 
