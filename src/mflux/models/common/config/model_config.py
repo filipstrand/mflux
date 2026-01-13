@@ -376,14 +376,14 @@ AVAILABLE_MODELS = {
     ),
     "flux2": ModelConfig(
         priority=18,
-        aliases=["flux2", "flux-2", "flux.2", "flux2-schnell", "flux-2-schnell"],
-        model_name="black-forest-labs/FLUX.2-schnell",
+        aliases=["flux2", "flux-2", "flux.2", "flux2-dev", "flux-2-dev"],
+        model_name="black-forest-labs/FLUX.2-dev",
         base_model=None,
         controlnet_model=None,
         custom_transformer_model=None,
         num_train_steps=1000,
         max_sequence_length=256,
-        supports_guidance=False,
+        supports_guidance=True,  # FLUX.2-dev supports guidance
         requires_sigma_shift=False,
     ),
     "hunyuan": ModelConfig(

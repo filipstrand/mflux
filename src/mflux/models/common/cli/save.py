@@ -4,7 +4,7 @@ from mflux.models.common.config import ModelConfig
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
 from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.models.flux2.variants.txt2img.flux2 import Flux2
-from mflux.models.hunyuan.variants.txt2img.hunyuan import HunyuanDiT
+from mflux.models.hunyuan.variants.txt2img.hunyuan import Hunyuan
 from mflux.models.longcat.variants.txt2img.longcat import LongCat
 from mflux.models.newbie.variants.txt2img.newbie import NewBie
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
@@ -33,7 +33,7 @@ def main():
     elif "flux2" in model_name_lower or "flux.2" in model_name_lower or "flux-2" in model_name_lower:
         model_class = Flux2
     elif "hunyuan" in model_name_lower:
-        model_class = HunyuanDiT
+        model_class = Hunyuan
     elif "newbie" in model_name_lower:
         model_class = NewBie
     else:
