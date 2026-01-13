@@ -123,6 +123,11 @@ class ModelConfig:
     def longcat() -> "ModelConfig":
         return AVAILABLE_MODELS["longcat"]
 
+    @staticmethod
+    @lru_cache
+    def flux2() -> "ModelConfig":
+        return AVAILABLE_MODELS["flux2"]
+
     def x_embedder_input_dim(self) -> int:
         if "Fill" in self.model_name:
             return 384
@@ -358,5 +363,17 @@ AVAILABLE_MODELS = {
         max_sequence_length=512,
         supports_guidance=True,
         requires_sigma_shift=False,  # Flow Match
+    ),
+    "flux2": ModelConfig(
+        priority=18,
+        aliases=["flux2", "flux-2", "flux.2", "flux2-schnell", "flux-2-schnell"],
+        model_name="black-forest-labs/FLUX.2-schnell",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=256,
+        supports_guidance=False,
+        requires_sigma_shift=False,
     ),
 }

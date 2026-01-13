@@ -3,6 +3,7 @@ from mflux.models.chroma.variants.txt2img.chroma import Chroma
 from mflux.models.common.config import ModelConfig
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
 from mflux.models.flux.variants.txt2img.flux import Flux1
+from mflux.models.flux2.variants.txt2img.flux2 import Flux2
 from mflux.models.longcat.variants.txt2img.longcat import LongCat
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
 from mflux.models.z_image.variants.turbo.z_image_turbo import ZImageTurbo
@@ -27,6 +28,8 @@ def main():
         model_class = Chroma
     elif "longcat" in model_name_lower:
         model_class = LongCat
+    elif "flux2" in model_name_lower or "flux.2" in model_name_lower or "flux-2" in model_name_lower:
+        model_class = Flux2
     else:
         model_class = Flux1
 
