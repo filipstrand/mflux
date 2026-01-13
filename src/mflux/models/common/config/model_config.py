@@ -118,6 +118,11 @@ class ModelConfig:
     def chroma() -> "ModelConfig":
         return AVAILABLE_MODELS["chroma"]
 
+    @staticmethod
+    @lru_cache
+    def longcat() -> "ModelConfig":
+        return AVAILABLE_MODELS["longcat"]
+
     def x_embedder_input_dim(self) -> int:
         if "Fill" in self.model_name:
             return 384
@@ -341,5 +346,17 @@ AVAILABLE_MODELS = {
         max_sequence_length=512,
         supports_guidance=True,  # Uses distilled guidance
         requires_sigma_shift=False,  # Based on schnell
+    ),
+    "longcat": ModelConfig(
+        priority=17,
+        aliases=["longcat", "longcat-image"],
+        model_name="meituan-longcat/LongCat-Image",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,
+        requires_sigma_shift=False,  # Flow Match
     ),
 }

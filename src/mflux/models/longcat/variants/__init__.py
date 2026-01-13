@@ -1,0 +1,1 @@
+"""LongCat model variants."""
