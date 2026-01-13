@@ -38,3 +38,15 @@ class LoadedWeights:
         if transformer and "single_transformer_blocks" in transformer:
             return len(transformer["single_transformer_blocks"])
         return 0
+
+    def num_dit_blocks(self, component_name: str = "transformer") -> int:
+        """Count DiT blocks for models like Hunyuan-DiT that use 'blocks' key."""
+        transformer = self.components.get(component_name)
+        if transformer is None:
+            for comp in self.components.values():
+                if isinstance(comp, dict) and "blocks" in comp:
+                    transformer = comp
+                    break
+        if transformer and "blocks" in transformer:
+            return len(transformer["blocks"])
+        return 0

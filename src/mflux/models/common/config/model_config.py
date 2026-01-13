@@ -128,6 +128,11 @@ class ModelConfig:
     def flux2() -> "ModelConfig":
         return AVAILABLE_MODELS["flux2"]
 
+    @staticmethod
+    @lru_cache
+    def hunyuan() -> "ModelConfig":
+        return AVAILABLE_MODELS["hunyuan"]
+
     def x_embedder_input_dim(self) -> int:
         if "Fill" in self.model_name:
             return 384
@@ -375,5 +380,17 @@ AVAILABLE_MODELS = {
         max_sequence_length=256,
         supports_guidance=False,
         requires_sigma_shift=False,
+    ),
+    "hunyuan": ModelConfig(
+        priority=19,
+        aliases=["hunyuan", "hunyuan-dit", "hunyuan-1.2"],
+        model_name="Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=256,
+        supports_guidance=True,
+        requires_sigma_shift=False,  # DDPM scheduler
     ),
 }
