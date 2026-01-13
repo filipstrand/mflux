@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.2] - 2026-01-13
+
+### 📊 Improved Metadata Handling
+
+- **Enhanced IPTC & XMP Support**: Significant improvements to metadata reading and writing, ensuring better compatibility with professional image editing tools.
+- **Robust Metadata Extraction**: Refined logic for extracting generation parameters from previously generated images.
+- **New Metadata Tests**: Added comprehensive test suite for IPTC metadata building and original image info utilities.
+
+### 🤖 DX & Maintenance
+
+- **Cursor AI Workflows**: Introduced standardized Cursor commands and agent rules in `.cursor/` for improved development consistency and automation.
+- **SeedVR2 & ControlNet Tweaks**: Minor refinements to SeedVR2 and ControlNet model implementations.
+- **Documentation Updates**: Updated README and added AGENTS.md for better contributor onboarding.
+
+---
+
 ## [0.14.1] - 2026-01-01
 
 ### 🔧 SeedVR2 Improvements
