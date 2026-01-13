@@ -106,12 +106,15 @@ class NewBieInitializer:
         For NewBie:
         - VAE (FLUX.1-dev, 16-channel)
         - Gemma3 encoder (2560 dim)
-        - Jina CLIP encoder (1024 dim)
+        - Jina CLIP encoder (1024 dim) - optional, loaded separately from jinaai/jina-clip-v2
         - NextDiT transformer (36 blocks, GQA)
         """
         model.vae = VAE()
         model.gemma3_text_encoder = Gemma3Encoder()
-        model.jina_clip_encoder = JinaCLIPEncoder()
+
+        # Jina CLIP is optional - it's loaded from a separate repo (jinaai/jina-clip-v2)
+        # For basic functionality, we can skip it if weights aren't available
+        model.jina_clip_encoder = None  # Will be initialized if weights are available
 
         # Get number of blocks from weights, fallback to default 36 for NewBie-image
         num_blocks = weights.num_dit_blocks()
@@ -127,16 +130,20 @@ class NewBieInitializer:
     @staticmethod
     def _apply_weights(model, weights: LoadedWeights, quantize: int | None) -> None:
         """Apply loaded weights to model components and optionally quantize."""
+        models_to_apply = {
+            "vae": model.vae,
+            "transformer": model.transformer,
+            "gemma3_encoder": model.gemma3_text_encoder,
+        }
+        # Only include Jina CLIP if initialized (weights available)
+        if model.jina_clip_encoder is not None:
+            models_to_apply["jina_clip_encoder"] = model.jina_clip_encoder
+
         model.bits = WeightApplier.apply_and_quantize(
             weights=weights,
             quantize_arg=quantize,
             weight_definition=NewBieWeightDefinition,
-            models={
-                "vae": model.vae,
-                "transformer": model.transformer,
-                "gemma3_encoder": model.gemma3_text_encoder,
-                "jina_clip_encoder": model.jina_clip_encoder,
-            },
+            models=models_to_apply,
         )
 
     @staticmethod

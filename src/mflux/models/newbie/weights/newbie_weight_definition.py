@@ -45,14 +45,8 @@ class NewBieWeightDefinition:
                 precision=ModelConfig.precision,
                 mapping_getter=NewBieWeightMapping.get_gemma3_encoder_mapping,
             ),
-            ComponentDefinition(
-                name="jina_clip_encoder",
-                hf_subdir="text_encoder_2",
-                model_attr="jina_clip_encoder",
-                num_blocks=24,
-                precision=ModelConfig.precision,
-                mapping_getter=NewBieWeightMapping.get_jina_clip_encoder_mapping,
-            ),
+            # Note: Jina CLIP encoder is loaded separately from jinaai/jina-clip-v2
+            # The projection layers (clip_text_pooled_proj) are in the transformer weights
         ]
 
     @staticmethod
@@ -60,20 +54,13 @@ class NewBieWeightDefinition:
         return [
             TokenizerDefinition(
                 name="gemma3",
-                hf_subdir="tokenizer",
+                hf_subdir="text_encoder",
                 tokenizer_class="GemmaTokenizer",
                 encoder_class=LanguageTokenizer,
                 max_length=512,
-                download_patterns=["tokenizer/**"],
+                download_patterns=["text_encoder/*.json"],
             ),
-            TokenizerDefinition(
-                name="jina_clip",
-                hf_subdir="tokenizer_2",
-                tokenizer_class="BertTokenizer",
-                encoder_class=LanguageTokenizer,
-                max_length=77,
-                download_patterns=["tokenizer_2/**"],
-            ),
+            # Note: Jina CLIP tokenizer is loaded from jinaai/jina-clip-v2 repo
         ]
 
     @staticmethod
@@ -81,8 +68,6 @@ class NewBieWeightDefinition:
         return [
             "text_encoder/*.safetensors",
             "text_encoder/*.json",
-            "text_encoder_2/*.safetensors",
-            "text_encoder_2/*.json",
             "transformer/*.safetensors",
             "transformer/*.json",
             "vae/*.safetensors",
