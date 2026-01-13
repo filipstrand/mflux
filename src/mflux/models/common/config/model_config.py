@@ -133,6 +133,11 @@ class ModelConfig:
     def hunyuan() -> "ModelConfig":
         return AVAILABLE_MODELS["hunyuan"]
 
+    @staticmethod
+    @lru_cache
+    def newbie() -> "ModelConfig":
+        return AVAILABLE_MODELS["newbie"]
+
     def x_embedder_input_dim(self) -> int:
         if "Fill" in self.model_name:
             return 384
@@ -392,5 +397,17 @@ AVAILABLE_MODELS = {
         max_sequence_length=256,
         supports_guidance=True,
         requires_sigma_shift=False,  # DDPM scheduler
+    ),
+    "newbie": ModelConfig(
+        priority=20,
+        aliases=["newbie", "newbie-image"],
+        model_name="NewBie-AI/NewBie-image-Exp0.1",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,
+        requires_sigma_shift=False,  # Flow Match
     ),
 }
