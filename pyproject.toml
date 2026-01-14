@@ -61,6 +61,8 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    # Jan 2026: mflux/mlx are able to install on 3.14 using uv
+    "Programming Language :: Python :: 3.14",
 ]
 
 [project.optional-dependencies]

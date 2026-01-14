@@ -31,6 +31,9 @@ If you haven't already, [install `uv`](https://github.com/astral-sh/uv?tab=readm
 
 ```sh
 uv tool install --upgrade mflux --prerelease=allow
+
+# on nvidia DGX and similar machines, supports python 3.13 and 3.14 as of Jan 2026
+uv tool install --python 3.13 mflux --prerelease=allow
 ```
 
 After installation, the following command shows all available MFLUX CLI commands: 

@@ -1,4 +1,4 @@
-# Makefile for mflux Python 3.10+ project, using 3.11 as recommended Python as of Sep 2024
+# Makefile for mflux Python 3.10+ project, using 3.13 as recommended maintainer Python as of Jan 2026
 
 PYTHON_VERSION = 3.13
 VENV_DIR = .venv
