@@ -12,6 +12,10 @@ source-exclude = [
     "**/optimization/_loss_derivation/**",
 ]
 
+[tool.uv.sources]
+transformers = { path = "/Users/filipstrand/Desktop/transformers", editable = true }
+diffusers = { path = "/Users/filipstrand/Desktop/diffusers", editable = true }
+
 [project]
 name = "mflux"
 version = "0.14.2"
@@ -23,6 +27,9 @@ maintainers = [{ name = "Filip Strand", email = "strand.filip@gmail.com" }]
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
 dependencies = [
+    "accelerate>=0.31.0",
+    "fastapi>=0.115.0,<1.0",
+    "filelock>=3.18.0",
     "huggingface-hub>=1.1.6,<2.0",
     "matplotlib>=3.9.2,<4.0",
     "mlx>=0.27.0,<0.31.0",
@@ -33,6 +40,8 @@ dependencies = [
     "pillow>=10.4.0,<11.0; python_version<'3.13'",
     "pillow>=11.0,<12.0; python_version>='3.13'",
     "platformdirs>=4.0,<5.0",
+    "protobuf>=3.20.0,<7.0",
+    "psutil>=5.9.0",
     "regex>=2024.11.6",
     "requests>=2.32.4",
     "safetensors>=0.4.4,<1.0",
@@ -40,12 +49,13 @@ dependencies = [
     "sentencepiece>=0.2.1,<1.0; python_version>='3.13'",
     "tokenizers>=0.20.3; python_version>='3.13'",
     "toml>=0.10.2,<1.0",
-    "torch>=2.7.1",
-    "torch>=2.3.1,<3.0; python_version<'3.13'",
-    "torch>=2.8.0,<3.0; python_version>='3.13'",
+    "torch>=2.9.1",
+    "torch>=2.9.1,<3.0; python_version<'3.13'",
+    "torch>=2.9.1,<3.0; python_version>='3.13'",
     "tqdm>=4.66.5,<5.0",
     "transformers>=5.0.0rc0,<6.0",
     "twine>=6.1.0,<7.0",
+    "uvicorn>=0.34.0,<1.0",  # ASGI server for debugger
 ]
 classifiers = [
     "Intended Audience :: Developers",
@@ -94,6 +104,13 @@ mflux-upscale-seedvr2 = "mflux.models.seedvr2.cli.seedvr2_upscale:main"
 mflux-lora-library = "mflux.models.common.cli.lora_library:main"
 mflux-info = "mflux.models.common.cli.info:main"
 mflux-completions = "mflux.cli.completions.install:main"
+
+mflux-debug-mlx = "mflux_debugger.cli_wrapper:main_mlx"
+mflux-debug-pytorch = "mflux_debugger.cli_wrapper:main_pytorch"
+mflux-debug-clean = "mflux_debugger.cleanup:main"
+mflux-debug-kill-all = "mflux_debugger.kill_all:main"
+mflux-debug-inspect-weights = "mflux_debugger.cli_inspect_weights:main"
+mflux-debug-prune = "mflux_debugger.cli_prune:main"
 
 
 [tool.ruff]
@@ -156,6 +173,7 @@ disable_error_code = [
     "var-annotated",
 ]
 error_summary = true
+explicit_package_bases = true
 ignore_missing_imports = true
 implicit_optional = true
 python_version = "3.12"

@@ -24,3 +24,5 @@ build/
 .fls
 .aux
 .log
+mflux_debugger/
+__pycache__/

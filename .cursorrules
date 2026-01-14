@@ -1,7 +1,196 @@
-Always use `uv` for dependency management and running scripts in this project.
+# Cursor AI Agent Rules for MFLUX
 
-- Use `uv run <command>` to run scripts or binaries.
-- Use `uv add <package>` and `uv remove <package>` to manage dependencies.
-- Prefer `uv run python -m ...` for running local modules to ensure the correct environment and dependencies are used.
-- When running tests, always use `MFLUX_PRESERVE_TEST_OUTPUT=1` to keep the test images for visual inspection.
-- When making a new release, always update the version in `pyproject.toml`, update the lockfile with `uv lock`, and add a descriptive entry to `CHANGELOG.md`. Tagging is handled by an external GitHub Action when publishing the release.
+## 🚨 CRITICAL: Always Use `uv` Commands
+
+**This project uses `uv` for Python package management and command execution.**
+
+**ALWAYS use:**
+- `uv run python` instead of `python` or `python3`
+- `uv run uvicorn` instead of `uvicorn`
+- `uv pip install` instead of `pip install`
+- `uv run <command>` for any Python-related commands
+
+**NEVER use bare `python`, `python3`, `pip`, `uvicorn`, etc.**
+
+
+## 🚨 CRITICAL: Use the Native CLI Commands for Debugging
+
+**ALWAYS use the native CLI commands: `mflux-debug-mlx` or `mflux-debug-pytorch`**
+
+**Installation (one-time setup):**
+```bash
+cd /Users/filip/Desktop/mflux
+uv tool install --editable .
+```
+
+**Available Debugger Commands (from pyproject.toml):**
+- `mflux-debug-mlx` - MLX debugger CLI (includes `coverage` command)
+- `mflux-debug-pytorch` - PyTorch debugger CLI (includes `coverage` command)
+- `mflux-debug-clean` - Clean up everything in mflux_debugger/ directory
+- `mflux-debug-kill-all` - Kill all running debug processes
+- `mflux-debug-inspect-weights` - Inspect model weights
+- `mflux-debug-prune` - Profile and prune unused files from transformers/diffusers
+
+**Command Aliases/Shortcuts:**
+- "kill all" / "killall" → `mflux-debug-kill-all`
+- "start debugger" / "start debugging" → `mflux-debug-mlx start <script>` or `mflux-debug-pytorch start <script>`
+- "clean" / "cleanup" → `mflux-debug-clean --yes` (removes everything in mflux_debugger/)
+- "coverage" → `mflux-debug-mlx coverage <script>` or `mflux-debug-pytorch coverage <script>`
+- "prune" / "pruning" → `mflux-debug-prune prune <script>`
+- "setup prune" → `mflux-debug-prune setup`
+
+**Learn interactively first:**
+```bash
+mflux-debug-mlx tutorial      # For MLX debugging
+mflux-debug-pytorch tutorial  # For PyTorch debugging
+mflux-debug-prune tutorial    # For pruning workflow
+mflux-debug-inspect-weights tutorial  # For weight inspection
+```
+
+**Critical reminders:**
+- ✅ **`continue` polls automatically** - NEVER use `sleep` commands!
+- ✅ **CLI handles all session management** - Don't manually manage servers or use curl
+- ✅ **Fixed unique ports** - MLX=8000, PyTorch=8001 (can run simultaneously)
+
+## 🚨 BEFORE Starting Any Debugging Session
+
+**For basics:** Run the interactive tutorial first: `mflux-debug-mlx tutorial`
+
+**For advanced features:** Read the full README:
+📖 **`README.md`**
+
+Pay special attention to:
+- **"Core Philosophy"** section - Interactive Debugging Over Scripts
+- **"MLX Lazy Evaluation"** - Essential for MLX debugging  
+- **"Model Porting Guide"** - Working backwards strategy
+- **"Live Debugging Lessons Learned"** - Real-world debugging sessions
+
+## Key Principles
+
+1. **DO NOT write comparison/verification scripts** unless explicitly requested
+2. **Use the interactive debugger** to inspect the real code instead
+3. **Run the tutorial first** to learn basic commands hands-on
+
+## 🚨 Advanced Debugging Patterns
+
+### NO SLEEP COMMANDS!
+
+**❌ WRONG Usage:**
+```bash
+# DON'T DO THIS - sleep is unnecessary!
+mflux-debug-mlx continue &
+sleep 30
+mflux-debug-mlx status
+```
+
+**✅ CORRECT Usage:**
+```bash
+# continue polls automatically every 2s
+mflux-debug-mlx continue
+# When it returns, you're at a breakpoint - inspect immediately!
+```
+
+### Parallel Debugging (Multiple Sessions)
+
+**✅ CORRECT - Sequential with automatic polling:**
+```bash
+# Start both sessions
+mflux-debug-pytorch start script1.py
+mflux-debug-mlx start script2.py
+
+# Set breakpoints for both
+mflux-debug-pytorch break /path/file.py 100
+mflux-debug-mlx break /path/file.py 100
+
+# Run one, wait for breakpoint (polls automatically)
+mflux-debug-pytorch continue
+# When this returns, you're at a breakpoint!
+
+# Inspect PyTorch
+mflux-debug-pytorch eval "tensor.shape"
+
+# Run the other, wait for breakpoint
+mflux-debug-mlx continue
+# When this returns, you're at a breakpoint!
+
+# Inspect MLX
+mflux-debug-mlx eval "array.shape"
+
+# Compare results
+```
+
+**❌ WRONG - Background jobs with sleep:**
+```bash
+# DON'T DO THIS!
+(mflux-debug-pytorch continue > /tmp/log &) && (mflux-debug-mlx continue > /tmp/log2 &) && sleep 60
+```
+
+### Key Technical Points
+
+1. **`continue` blocks until a breakpoint is hit** (or timeout, default 120s)
+2. **Polling is AUTOMATIC** - checks status every 2 seconds
+3. **Use `--max-wait` to adjust timeout** - e.g., `--max-wait 180` for slow model loading
+4. **Sequential execution is fine** - one session waits, then the other
+5. **Don't use `&` to background** - defeats automatic polling
+
+## 🚨 Git Conventions
+
+**CRITICAL: Commit vs Push Behavior**
+
+1. **When asked to commit:**
+   - ✅ Commit locally only
+   - ❌ **DO NOT push** unless explicitly asked to push
+   - This applies to all repositories (mflux, transformers, diffusers)
+
+2. **When asked to push:**
+   - ✅ **ALWAYS push to mflux repository only** (`/Users/filip/Desktop/mflux`)
+   - ❌ **NEVER push to transformers or diffusers repositories**
+   - These are external repos - we can commit locally but never push
+
+3. **Local commits are fine:**
+   - ✅ Can commit locally to transformers/diffusers for pruning/restoration work
+   - ✅ These local commits stay on `main-pruned` branches
+   - ❌ Never push these commits to origin
+
+**Summary:**
+- `git commit` = local only, no push
+- `git push` = mflux repo only, never transformers/diffusers
+
+## 🚨 Test Execution Rules
+
+**CRITICAL: Test Name Interpretation**
+
+1. **When user mentions a test name (e.g., `test_image_generation_fibo`):**
+   - ✅ **ALWAYS interpret as a SPECIFIC test function**, not the whole file
+   - ✅ Run only that specific test function: `uv run pytest tests/path/to/file.py::test_image_generation_fibo`
+   - ❌ **NEVER run the whole file** unless explicitly asked
+
+2. **Running whole test files:**
+   - ✅ Only run entire test file if user **explicitly asks** (e.g., "run the whole file", "run all tests in that file")
+   - ❌ Never assume "run test X" means the whole file
+
+3. **Test output behavior:**
+   - ✅ **ALWAYS run tests with full terminal output** - use `-v` or `-vv` flags for verbose output
+   - ✅ **NEVER redirect test output to log files** - user wants to see everything in terminal
+   - ❌ **NEVER use** `> log.txt`, `--log-file`, or any output redirection for tests
+   - ✅ **ALWAYS set environment variable** to preserve output before running tests
+   - ✅ Use: `MFLUX_PRESERVE_TEST_OUTPUT=1 uv run pytest tests/path/to/file.py::test_name -v -s` (or `-vv` for even more detail)
+
+**Examples:**
+- User says: "run test_image_generation_fibo"
+  - ✅ Correct: `MFLUX_PRESERVE_TEST_OUTPUT=1 uv run pytest tests/image_generation/test_generate_image_fibo.py::TestImageGeneratorFibo::test_image_generation_fibo -v -s`
+  - ❌ Wrong: `uv run pytest tests/image_generation/test_generate_image_fibo.py` (runs whole file)
+  - ❌ Wrong: `uv run pytest tests/image_generation/test_generate_image_fibo.py::test_image_generation_fibo > log.txt` (redirects output)
+
+- User says: "run all tests in test_generate_image_fibo.py"
+  - ✅ Correct: `MFLUX_PRESERVE_TEST_OUTPUT=1 uv run pytest tests/image_generation/test_generate_image_fibo.py -v -s` (explicit request for whole file)
+
+**CRITICAL: Always use environment variable and `-s` flag:**
+- ✅ **ALWAYS set `MFLUX_PRESERVE_TEST_OUTPUT=1`** before running pytest
+- ✅ **ALWAYS use `-s` flag** with pytest to preserve output (disables output capturing)
+- ✅ Use: `MFLUX_PRESERVE_TEST_OUTPUT=1 uv run pytest tests/path/to/file.py::test_name -v -s`
+- ❌ **NEVER run tests without `MFLUX_PRESERVE_TEST_OUTPUT=1` and `-s`** - user wants to see all output in real-time
+
+---
+
+**Run `mflux-debug-mlx tutorial` to learn interactively, then see README for advanced features.**
