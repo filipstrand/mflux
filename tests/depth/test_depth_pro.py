@@ -1,4 +1,5 @@
 import os
+import platform
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,7 @@ from mflux.utils.image_compare import ImageCompare
 
 
 class TestDepthPro:
+    @pytest.mark.skipif(platform.system() == "Linux", reason="Linux-specific MLX core library failure")
     @pytest.mark.slow
     def test_depth_pro_generation(self):
         # Resolve paths

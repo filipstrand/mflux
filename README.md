@@ -67,6 +67,9 @@ For users, the easiest way to install MFLUX is to use `uv tool`: If you have [in
 
 ```sh
 uv tool install --upgrade mflux --prerelease=allow
+
+# on nvidia DGX and similar machines, supports python 3.13 and 3.14 as of Jan 2026
+uv tool install --python 3.13 mflux --prerelease=allow
 ```
 
 to get the `mflux-generate` and related command line executables. You can skip to the usage guides below.

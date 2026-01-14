@@ -1,5 +1,6 @@
 import json
 import logging
+import platform
 import re
 import subprocess
 
@@ -25,6 +26,9 @@ class BatterySaver(BeforeLoopCallback):
             raise StopImageGenerationException(f"Battery below {self.limit}% threshold: {current_pct}%")
 
     def _get_battery_percentage(self) -> int | None:
+        if platform.uname().system != "Darwin":
+            return None
+
         if not self._is_machine_battery_powered():
             return None
 

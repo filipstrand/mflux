@@ -1,6 +1,6 @@
-# Makefile for mflux Python 3.10+ project, using 3.11 as recommended Python as of Sep 2024
+# Makefile for mflux Python 3.10+ project, using 3.13 as recommended maintainer Python as of Jan 2026
 
-PYTHON_VERSION = 3.11
+PYTHON_VERSION = 3.13
 VENV_DIR = .venv
 PYTHON = $(VENV_DIR)/bin/python
 
@@ -11,8 +11,8 @@ all: install test
 .PHONY: expect-arm64
 expect-arm64:
 	# 🖥️ Checking for compatible machine
-	@if [ "$$(uname -m)" != "arm64" ]; then \
-		echo "mflux and MLX is not compatible with older Intel Macs. This project does not support your Mac."; \
+	@if ! (uname -a | grep -e arm64 -e aarch64); then \
+		echo "mflux and MLX is known to be compatible with aarch64 Mac and Linux only. This Makefile does not support your machine."; \
 		exit 1; \
 	fi
 
@@ -93,7 +93,7 @@ check: ensure-ruff
 .PHONY: test
 test: ensure-pytest
 	# 🏗️ Running tests...
-	uv pip install mlx==0.29.2  # Install pinned MLX version specifically for testing
+	uv pip install -e '.[dev]' # Install pinned MLX version specifically for testing
 	MFLUX_PRESERVE_TEST_OUTPUT=1 uv run python -m pytest
 	# ✅ Tests completed
 
@@ -101,7 +101,7 @@ test: ensure-pytest
 .PHONY: test-fast
 test-fast: ensure-pytest
 	# 🏗️ Running fast tests (no image generation)...
-	uv pip install mlx==0.29.2  # Install pinned MLX version specifically for testing
+	uv pip install -e '.[dev]' # Install pinned MLX version specifically for testing
 	MFLUX_PRESERVE_TEST_OUTPUT=1 uv run python -m pytest -m fast
 	# ✅ Fast tests completed
 
@@ -109,7 +109,7 @@ test-fast: ensure-pytest
 .PHONY: test-slow
 test-slow: ensure-pytest
 	# 🏗️ Running slow tests (image generation)...
-	uv pip install mlx==0.29.2  # Install pinned MLX version specifically for testing
+	uv pip install -e '.[dev]' # Install pinned MLX version specifically for testing
 	MFLUX_PRESERVE_TEST_OUTPUT=1 uv run python -m pytest -m slow
 	# ✅ Slow tests completed
 
