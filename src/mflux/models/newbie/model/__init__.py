@@ -1,0 +1,1 @@
+"""NewBie-image model components."""

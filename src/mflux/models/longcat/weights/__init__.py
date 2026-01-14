@@ -1,0 +1,1 @@
+"""LongCat weight handling module."""

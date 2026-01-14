@@ -113,6 +113,31 @@ class ModelConfig:
     def seedvr2_3b() -> "ModelConfig":
         return AVAILABLE_MODELS["seedvr2-3b"]
 
+    @staticmethod
+    @lru_cache
+    def chroma() -> "ModelConfig":
+        return AVAILABLE_MODELS["chroma"]
+
+    @staticmethod
+    @lru_cache
+    def longcat() -> "ModelConfig":
+        return AVAILABLE_MODELS["longcat"]
+
+    @staticmethod
+    @lru_cache
+    def flux2() -> "ModelConfig":
+        return AVAILABLE_MODELS["flux2"]
+
+    @staticmethod
+    @lru_cache
+    def hunyuan() -> "ModelConfig":
+        return AVAILABLE_MODELS["hunyuan"]
+
+    @staticmethod
+    @lru_cache
+    def newbie() -> "ModelConfig":
+        return AVAILABLE_MODELS["newbie"]
+
     def x_embedder_input_dim(self) -> int:
         if "Fill" in self.model_name:
             return 384
@@ -324,5 +349,65 @@ AVAILABLE_MODELS = {
         max_sequence_length=None,
         supports_guidance=True,
         requires_sigma_shift=None,
+    ),
+    "chroma": ModelConfig(
+        priority=16,
+        aliases=["chroma", "chroma-hd", "chroma1-hd"],
+        model_name="lodestones/Chroma1-HD",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,  # Uses distilled guidance
+        requires_sigma_shift=False,  # Based on schnell
+    ),
+    "longcat": ModelConfig(
+        priority=17,
+        aliases=["longcat", "longcat-image"],
+        model_name="meituan-longcat/LongCat-Image",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,
+        requires_sigma_shift=False,  # Flow Match
+    ),
+    "flux2": ModelConfig(
+        priority=18,
+        aliases=["flux2", "flux-2", "flux.2", "flux2-dev", "flux-2-dev"],
+        model_name="black-forest-labs/FLUX.2-dev",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=256,
+        supports_guidance=True,  # FLUX.2-dev supports guidance
+        requires_sigma_shift=False,
+    ),
+    "hunyuan": ModelConfig(
+        priority=19,
+        aliases=["hunyuan", "hunyuan-dit", "hunyuan-1.2"],
+        model_name="Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=256,
+        supports_guidance=True,
+        requires_sigma_shift=False,  # DDPM scheduler
+    ),
+    "newbie": ModelConfig(
+        priority=20,
+        aliases=["newbie", "newbie-image"],
+        model_name="NewBie-AI/NewBie-image-Exp0.1",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,
+        requires_sigma_shift=False,  # Flow Match
     ),
 }

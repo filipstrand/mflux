@@ -1,7 +1,12 @@
 from mflux.cli.parser.parsers import CommandLineParser
+from mflux.models.chroma.variants.txt2img.chroma import Chroma
 from mflux.models.common.config import ModelConfig
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
 from mflux.models.flux.variants.txt2img.flux import Flux1
+from mflux.models.flux2.variants.txt2img.flux2 import Flux2
+from mflux.models.hunyuan.variants.txt2img.hunyuan import Hunyuan
+from mflux.models.longcat.variants.txt2img.longcat import LongCat
+from mflux.models.newbie.variants.txt2img.newbie import NewBie
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
 from mflux.models.z_image.variants.turbo.z_image_turbo import ZImageTurbo
 
@@ -21,16 +26,33 @@ def main():
         model_class = FIBO
     elif "z-image" in model_name_lower or "zimage" in model_name_lower:
         model_class = ZImageTurbo
+    elif "chroma" in model_name_lower:
+        model_class = Chroma
+    elif "longcat" in model_name_lower:
+        model_class = LongCat
+    elif "flux2" in model_name_lower or "flux.2" in model_name_lower or "flux-2" in model_name_lower:
+        model_class = Flux2
+    elif "hunyuan" in model_name_lower:
+        model_class = Hunyuan
+    elif "newbie" in model_name_lower:
+        model_class = NewBie
     else:
         model_class = Flux1
 
     # 2. Load, quantize and save the model
-    model = model_class(
-        quantize=args.quantize,
-        lora_paths=args.lora_paths,
-        lora_scales=args.lora_scales,
-        model_config=ModelConfig.from_name(args.model, base_model=args.base_model),
-    )
+    if model_class == Chroma:
+        # Chroma doesn't support LoRA in initial version
+        model = model_class(
+            quantize=args.quantize,
+            model_config=ModelConfig.from_name(args.model, base_model=args.base_model),
+        )
+    else:
+        model = model_class(
+            quantize=args.quantize,
+            lora_paths=args.lora_paths,
+            lora_scales=args.lora_scales,
+            model_config=ModelConfig.from_name(args.model, base_model=args.base_model),
+        )
     model.save_model(args.path)
 
 
