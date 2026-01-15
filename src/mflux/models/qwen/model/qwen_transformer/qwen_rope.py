@@ -32,6 +32,10 @@ class QwenEmbedRopeMLX(nn.Module):
             axis=1,
         )
 
+        # OPTIMIZATION: Cache for MLX array conversions (Phase 4.2)
+        # Pre-convert pos_freqs to MLX for fast slicing without NumPy→MLX conversion overhead
+        self._mlx_pos_freqs_cache = {}
+
     def _rope_params(self, index: np.ndarray, dim: int, theta: int) -> np.ndarray:
         assert dim % 2 == 0
         scales = np.arange(0, dim, 2, dtype=np.float32) / dim
@@ -104,10 +108,20 @@ class QwenEmbedRopeMLX(nn.Module):
         vid_sin = np.concatenate(vid_sin_list, axis=0)
 
         max_len = max(txt_seq_lens)
-        txt_cos = self.pos_freqs[max_vid_index : max_vid_index + max_len, :, 0]
-        txt_sin = self.pos_freqs[max_vid_index : max_vid_index + max_len, :, 1]
+
+        # OPTIMIZATION: Cache MLX arrays for text frequencies to avoid repeated NumPy→MLX conversions (Phase 4.2)
+        cache_key = (max_vid_index, max_len)
+        if cache_key not in self._mlx_pos_freqs_cache:
+            txt_cos = self.pos_freqs[max_vid_index : max_vid_index + max_len, :, 0]
+            txt_sin = self.pos_freqs[max_vid_index : max_vid_index + max_len, :, 1]
+            self._mlx_pos_freqs_cache[cache_key] = (
+                mx.array(txt_cos.astype(np.float32)),
+                mx.array(txt_sin.astype(np.float32)),
+            )
+
+        txt_cos_mlx, txt_sin_mlx = self._mlx_pos_freqs_cache[cache_key]
 
         return (
             (mx.array(vid_cos.astype(np.float32)), mx.array(vid_sin.astype(np.float32))),
-            (mx.array(txt_cos.astype(np.float32)), mx.array(txt_sin.astype(np.float32))),
+            (txt_cos_mlx, txt_sin_mlx),
         )

@@ -69,21 +69,33 @@ class QwenEncoder(nn.Module):
             n_image_tokens = mx.sum(image_positions).item()
 
             if n_image_tokens > 0 and image_embeds.shape[0] >= n_image_tokens:
+                # OPTIMIZATION: Vectorized image embedding insertion
+                # Old approach: Python loop over all tokens with sequential indexing
+                # New approach: Compute indices on GPU, use advanced indexing
+
                 image_positions_flat = image_positions.flatten()
                 inputs_embeds_flat = inputs_embeds.reshape(-1, inputs_embeds.shape[-1])
-                image_embeds_to_use = image_embeds
 
-                new_embeds_list = []
-                image_idx = 0
-                for i in range(len(image_positions_flat)):
-                    if image_positions_flat[i] and image_idx < image_embeds_to_use.shape[0]:
-                        new_embeds_list.append(image_embeds_to_use[image_idx])
-                        image_idx += 1
-                    else:
-                        new_embeds_list.append(inputs_embeds_flat[i])
+                # Create cumulative index for image positions (on GPU)
+                # This gives us the sequential image index for each image token
+                image_indices = mx.cumsum(image_positions_flat.astype(mx.int32), axis=0) - 1
 
-                new_embeds = mx.stack(new_embeds_list, axis=0)
-                inputs_embeds = new_embeds.reshape(inputs_embeds.shape)
+                # Clamp indices to valid range
+                image_indices = mx.clip(image_indices, 0, image_embeds.shape[0] - 1)
+
+                # Gather image embeddings at the positions where we have image tokens
+                # For positions without image tokens, we'll use original text embeddings
+                gathered_image_embeds = image_embeds[image_indices]
+
+                # Use mx.where() to select between text and image embeddings
+                # This happens entirely on GPU without Python loops
+                new_embeds_flat = mx.where(
+                    image_positions_flat[:, None],  # Broadcast mask to [seq, hidden_dim]
+                    gathered_image_embeds,  # Use image embeddings where mask is True
+                    inputs_embeds_flat,  # Keep text embeddings where mask is False
+                )
+
+                inputs_embeds = new_embeds_flat.reshape(inputs_embeds.shape)
         cache_position = mx.arange(seq_len, dtype=mx.int32)
         position_ids = mx.expand_dims(mx.expand_dims(cache_position, axis=0), axis=0)
         position_ids = mx.broadcast_to(position_ids, (3, batch_size, seq_len))

@@ -67,6 +67,11 @@ class QwenImageInitializer:
         model.prompt_cache = {}
         model.model_config = model_config
         model.callbacks = CallbackRegistry()
+
+        # OPTIMIZATION: Tiling disabled for optimal performance on high-RAM systems (Phase 4.3)
+        # With 512GB RAM, we can process large images (2048x2048+) without tiling
+        # Tiling would add overhead from splitting/merging tiles
+        # Set to None to use non-tiled VAE decode/encode for maximum speed
         model.tiling_config = None
 
     @staticmethod
