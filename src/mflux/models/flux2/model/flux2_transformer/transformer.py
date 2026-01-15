@@ -369,12 +369,25 @@ class Flux2Transformer(nn.Module):
         txt_ids: mx.array,
         guidance: mx.array | None = None,
     ) -> mx.array:
+        timestep = timestep.astype(hidden_states.dtype) * 1000
+        if guidance is not None:
+            guidance = guidance.astype(hidden_states.dtype) * 1000
         temb = self.time_guidance_embed(timestep, guidance)
         temb = temb.astype(ModelConfig.precision)
 
         hidden_states = self.x_embedder(hidden_states)
         encoder_hidden_states = self.context_embedder(encoder_hidden_states)
-        image_rotary_emb = self.pos_embed(mx.concatenate([txt_ids, img_ids], axis=1))
+        if img_ids.ndim == 3:
+            img_ids = img_ids[0]
+        if txt_ids.ndim == 3:
+            txt_ids = txt_ids[0]
+
+        image_rotary_emb = self.pos_embed(img_ids)
+        text_rotary_emb = self.pos_embed(txt_ids)
+        concat_rotary_emb = (
+            mx.concatenate([text_rotary_emb[0], image_rotary_emb[0]], axis=0),
+            mx.concatenate([text_rotary_emb[1], image_rotary_emb[1]], axis=0),
+        )
 
         temb_mod_params_img = self.double_stream_modulation_img(temb)
         temb_mod_params_txt = self.double_stream_modulation_txt(temb)
@@ -385,7 +398,7 @@ class Flux2Transformer(nn.Module):
                 encoder_hidden_states=encoder_hidden_states,
                 temb_mod_params_img=temb_mod_params_img,
                 temb_mod_params_txt=temb_mod_params_txt,
-                image_rotary_emb=image_rotary_emb,
+                image_rotary_emb=concat_rotary_emb,
             )
 
         hidden_states = mx.concatenate([encoder_hidden_states, hidden_states], axis=1)
@@ -395,7 +408,7 @@ class Flux2Transformer(nn.Module):
             hidden_states = block(
                 hidden_states=hidden_states,
                 temb_mod_params=temb_mod_params_single,
-                image_rotary_emb=image_rotary_emb,
+                image_rotary_emb=concat_rotary_emb,
             )
 
         hidden_states = hidden_states[:, encoder_hidden_states.shape[1] :, ...]
