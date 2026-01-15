@@ -122,6 +122,15 @@ class QwenImageEdit(nn.Module):
                 batched_text = mx.concatenate([prompt_embeds, negative_prompt_embeds], axis=0)
                 batched_mask = mx.concatenate([prompt_mask, negative_prompt_mask], axis=0)
 
+                # HIGH PRIORITY FIX: Validate shape consistency for batched guidance
+                expected_batch = hidden_states.shape[0] * 2
+                assert batched_hidden_states.shape[0] == expected_batch, (
+                    f"Batch concatenation failed: expected {expected_batch}, got {batched_hidden_states.shape[0]}"
+                )
+                assert batched_text.shape[0] == expected_batch, (
+                    f"Text/hidden_states batch mismatch: expected {expected_batch}, got {batched_text.shape[0]}"
+                )
+
                 # Single transformer forward pass (2x batch size)
                 batched_noise = self.transformer(
                     t=t,
@@ -132,6 +141,11 @@ class QwenImageEdit(nn.Module):
                     qwen_image_ids=qwen_image_ids,
                     cond_image_grid=cond_image_grid,
                 )[:, : latents.shape[1]]
+
+                # HIGH PRIORITY FIX: Validate output shape before split
+                assert batched_noise.shape[0] == expected_batch, (
+                    f"Transformer output batch mismatch: expected {expected_batch}, got {batched_noise.shape[0]}"
+                )
 
                 # Split results back to positive and negative
                 noise, noise_negative = mx.split(batched_noise, 2, axis=0)
@@ -232,6 +246,10 @@ class QwenImageEdit(nn.Module):
         last_image = ImageUtil.load_image(image_paths[-1]).convert("RGB")
         image_size = last_image.size
 
+        # HIGH PRIORITY FIX: Validate image dimensions before division
+        if image_size[1] == 0:
+            raise ValueError(f"Invalid image dimensions: width={image_size[0]}, height={image_size[1]}")
+
         target_area = 1024 * 1024
         ratio = image_size[0] / image_size[1]
         calculated_width = math.sqrt(target_area * ratio)
@@ -258,14 +276,16 @@ class QwenImageEdit(nn.Module):
         )
 
         CONDITION_IMAGE_SIZE = 384 * 384
-        condition_ratio = image_size[0] / image_size[1]
+        # Note: ratio already validated above, reuse for safety
+        condition_ratio = ratio
         vl_width = math.sqrt(CONDITION_IMAGE_SIZE * condition_ratio)
         vl_height = vl_width / condition_ratio
         vl_width = round(vl_width / 32) * 32
         vl_height = round(vl_height / 32) * 32
 
         VAE_IMAGE_SIZE = 1024 * 1024
-        vae_ratio = image_size[0] / image_size[1]
+        # Note: ratio already validated above, reuse for safety
+        vae_ratio = ratio
         vae_width = math.sqrt(VAE_IMAGE_SIZE * vae_ratio)
         vae_height = vae_width / vae_ratio
         vae_width = round(vae_width / 32) * 32

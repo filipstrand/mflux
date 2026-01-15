@@ -61,8 +61,8 @@ class VisionAttention(nn.Module):
 
             # Process each chunk separately
             attn_outputs = []
-            # OPTIMIZATION: Use rsqrt for better numerical stability (Phase 4.1)
-            scale = mx.rsqrt(float(self.head_dim))
+            # CRITICAL FIX: Use standard 1/sqrt for deterministic numerical behavior
+            scale = 1.0 / (self.head_dim**0.5)
             for q_chunk, k_chunk, v_chunk in zip(q_chunks, k_chunks, v_chunks):
                 # Compute attention for this chunk
                 scores = mx.matmul(q_chunk, k_chunk.transpose(0, 2, 1)) * scale
@@ -74,8 +74,8 @@ class VisionAttention(nn.Module):
             attn_output = mx.concatenate(attn_outputs, axis=1)  # [heads, seq, head_dim]
         else:
             # Full attention (no chunking)
-            # OPTIMIZATION: Use rsqrt for better numerical stability (Phase 4.1)
-            scale = mx.rsqrt(float(self.head_dim))
+            # CRITICAL FIX: Use standard 1/sqrt for deterministic numerical behavior
+            scale = 1.0 / (self.head_dim**0.5)
             scores = mx.matmul(q, k.transpose(0, 2, 1)) * scale  # [heads, seq, seq]
             attn_weights = mx.softmax(scores, axis=-1)
             attn_output = mx.matmul(attn_weights, v)  # [heads, seq, head_dim]

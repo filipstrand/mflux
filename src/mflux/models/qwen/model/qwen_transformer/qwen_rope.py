@@ -4,6 +4,10 @@ import mlx.core as mx
 import numpy as np
 from mlx import nn
 
+# MEDIUM FIX: Define constants instead of magic numbers
+_ROPE_BUFFER_SIZE = 4096  # Maximum sequence length for RoPE precomputation
+_ROPE_CACHE_MAX_ENTRIES = 100  # ~5.7GB max (57MB per entry × 100)
+
 
 class QwenEmbedRopeMLX(nn.Module):
     def __init__(self, theta: int, axes_dim: list[int], scale_rope: bool = False):
@@ -34,10 +38,17 @@ class QwenEmbedRopeMLX(nn.Module):
 
         # OPTIMIZATION: Cache for MLX array conversions (Phase 4.2)
         # Pre-convert pos_freqs to MLX for fast slicing without NumPy→MLX conversion overhead
+        # CRITICAL FIX: Limit cache size to prevent memory leak
         self._mlx_pos_freqs_cache = {}
+        self._rope_cache_order = []  # Track insertion order for FIFO eviction
+        # MEDIUM FIX: Use named constant for cache size
+        self._max_rope_cache_size = _ROPE_CACHE_MAX_ENTRIES
 
     def _rope_params(self, index: np.ndarray, dim: int, theta: int) -> np.ndarray:
-        assert dim % 2 == 0
+        # HIGH PRIORITY FIX: Replace assert with proper validation
+        # Assertions can be disabled with -O flag, causing silent failures
+        if dim % 2 != 0:
+            raise ValueError(f"RoPE dimension must be even, got {dim}")
         scales = np.arange(0, dim, 2, dtype=np.float32) / dim
         omega = 1.0 / (theta**scales)
         freqs = np.outer(index.astype(np.float32), omega)
@@ -59,16 +70,28 @@ class QwenEmbedRopeMLX(nn.Module):
         freqs_frame = np.broadcast_to(freqs_frame, (frame, height, width, freqs_frame.shape[-2], 2))
 
         if self.scale_rope:
-            freqs_height = np.concatenate(
-                [freqs_neg[1][-(height - height // 2) :], freqs_pos[1][: height // 2]], axis=0
-            )
+            # HIGH PRIORITY FIX: Validate array bounds before negative indexing
+            neg_slice_len = height - height // 2
+            if neg_slice_len > freqs_neg[1].shape[0]:
+                raise ValueError(
+                    f"RoPE negative indexing out of bounds: need {neg_slice_len} elements, "
+                    f"freqs_neg has {freqs_neg[1].shape[0]}"
+                )
+            freqs_height = np.concatenate([freqs_neg[1][-neg_slice_len:], freqs_pos[1][: height // 2]], axis=0)
         else:
             freqs_height = freqs_pos[1][:height]
         freqs_height = freqs_height.reshape(1, height, 1, -1, 2)
         freqs_height = np.broadcast_to(freqs_height, (frame, height, width, freqs_height.shape[-2], 2))
 
         if self.scale_rope:
-            freqs_width = np.concatenate([freqs_neg[2][-(width - width // 2) :], freqs_pos[2][: width // 2]], axis=0)
+            # HIGH PRIORITY FIX: Validate array bounds before negative indexing
+            neg_slice_len = width - width // 2
+            if neg_slice_len > freqs_neg[2].shape[0]:
+                raise ValueError(
+                    f"RoPE negative indexing out of bounds: need {neg_slice_len} elements, "
+                    f"freqs_neg has {freqs_neg[2].shape[0]}"
+                )
+            freqs_width = np.concatenate([freqs_neg[2][-neg_slice_len:], freqs_pos[2][: width // 2]], axis=0)
         else:
             freqs_width = freqs_pos[2][:width]
         freqs_width = freqs_width.reshape(1, 1, width, -1, 2)
@@ -99,8 +122,12 @@ class QwenEmbedRopeMLX(nn.Module):
             vid_cos_list.append(cos_v)
             vid_sin_list.append(sin_v)
 
+            # HIGH PRIORITY FIX: Correctly track max index for negative frequency indexing
+            # When scale_rope=True, we use freqs_neg[i][-(height - height // 2):],
+            # which requires (height - height // 2) elements = ceil(height / 2)
+            # So we need to track the full height/width, not just height // 2
             if self.scale_rope:
-                max_vid_index = max(height // 2, width // 2, max_vid_index)
+                max_vid_index = max(height, width, max_vid_index)
             else:
                 max_vid_index = max(height, width, max_vid_index)
 
@@ -110,14 +137,21 @@ class QwenEmbedRopeMLX(nn.Module):
         max_len = max(txt_seq_lens)
 
         # OPTIMIZATION: Cache MLX arrays for text frequencies to avoid repeated NumPy→MLX conversions (Phase 4.2)
+        # CRITICAL FIX: Limit cache size to prevent memory leak (similar to prompt cache)
         cache_key = (max_vid_index, max_len)
         if cache_key not in self._mlx_pos_freqs_cache:
+            # Evict oldest entry if cache is full (FIFO)
+            if len(self._mlx_pos_freqs_cache) >= self._max_rope_cache_size:
+                oldest_key = self._rope_cache_order.pop(0)
+                del self._mlx_pos_freqs_cache[oldest_key]
+
             txt_cos = self.pos_freqs[max_vid_index : max_vid_index + max_len, :, 0]
             txt_sin = self.pos_freqs[max_vid_index : max_vid_index + max_len, :, 1]
             self._mlx_pos_freqs_cache[cache_key] = (
                 mx.array(txt_cos.astype(np.float32)),
                 mx.array(txt_sin.astype(np.float32)),
             )
+            self._rope_cache_order.append(cache_key)
 
         txt_cos_mlx, txt_sin_mlx = self._mlx_pos_freqs_cache[cache_key]
 

@@ -6,6 +6,9 @@ from mflux.models.common.latent_creator.latent_creator import LatentCreator
 from mflux.models.common.vae.tiling_config import TilingConfig
 from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
 
+# MEDIUM FIX: Define constant for VAE patch size
+_VAE_PATCH_SIZE = 16  # Qwen VAE operates on 16x16 patches in latent space
+
 
 class QwenEditUtil:
     @staticmethod
@@ -28,6 +31,11 @@ class QwenEditUtil:
 
             pil_image = ImageUtil.load_image(image_paths[-1]).convert("RGB")
             img_w, img_h = pil_image.size
+
+            # HIGH PRIORITY FIX: Validate image dimensions before division
+            if img_h == 0:
+                raise ValueError(f"Invalid image dimensions: width={img_w}, height={img_h}")
+
             target_area_env = os.getenv("MFLUX_QWEN_VL_TARGET_AREA")
             target_area = int(target_area_env) if target_area_env is not None else 1024 * 1024
             ratio = img_w / img_h
@@ -63,8 +71,9 @@ class QwenEditUtil:
             all_image_ids.append(image_ids)
         image_ids = mx.concatenate(all_image_ids, axis=1)
 
-        cond_h_patches = calc_h // 16
-        cond_w_patches = calc_w // 16
+        # MEDIUM FIX: Use named constant instead of magic number
+        cond_h_patches = calc_h // _VAE_PATCH_SIZE
+        cond_w_patches = calc_w // _VAE_PATCH_SIZE
         num_images = len(image_paths)
         return image_latents, image_ids, cond_h_patches, cond_w_patches, num_images
 

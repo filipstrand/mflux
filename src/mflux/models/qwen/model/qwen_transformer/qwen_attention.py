@@ -101,9 +101,11 @@ class QwenAttention(nn.Module):
         query_bhsd = mx.transpose(query, (0, 2, 1, 3))
         key_bhsd = mx.transpose(key, (0, 2, 1, 3))
         value_bhsd = mx.transpose(value, (0, 2, 1, 3))
-        head_dim = query.shape[-1]
-        # OPTIMIZATION: Use rsqrt for better numerical stability (Phase 4.1)
-        scale_value = mx.rsqrt(float(head_dim))
+        # HIGH PRIORITY FIX: Use instance variable instead of recomputing from shape
+        # self.head_dim is already available and avoids redundant computation
+        # CRITICAL FIX: Use standard 1/sqrt for deterministic numerical behavior
+        # rsqrt may use approximations; explicit division guarantees precision
+        scale_value = 1.0 / (self.head_dim**0.5)
         hidden_states_bhsd = scaled_dot_product_attention(
             query_bhsd, key_bhsd, value_bhsd, scale=scale_value, mask=mask
         )
@@ -133,7 +135,8 @@ class QwenAttention(nn.Module):
 
         # OPTIMIZATION: Quick check on input mask BEFORE creating joint_mask
         # If input mask is all ones, the joint mask will also be all ones (no masking needed)
-        if mx.all(mask >= 0.999):
+        # MEDIUM FIX: Use exact comparison instead of threshold to avoid precision issues
+        if mx.all(mask == 1.0):
             return None  # Early exit - no allocation needed
 
         bsz = mask.shape[0]

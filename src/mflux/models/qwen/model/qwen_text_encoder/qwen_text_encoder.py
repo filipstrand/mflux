@@ -27,10 +27,13 @@ class QwenTextEncoder(nn.Module):
 
     @staticmethod
     def _process_text_embeddings_mlx(hidden_states, attention_mask, drop_idx=1, dtype=mx.float32):
+        # MEDIUM FIX: drop_idx=34 for Qwen model (drops first 34 tokens per model spec)
+        # Assumes sequences have at least drop_idx+1 tokens after masking
         split_hidden_states = QwenTextEncoder._extract_masked_hidden(hidden_states, attention_mask)
         split_hidden_states = [e[drop_idx:] for e in split_hidden_states]
         attn_mask_list = [mx.ones(e.shape[0], dtype=mx.int32) for e in split_hidden_states]
-        max_seq_len = max([e.shape[0] for e in split_hidden_states])
+        # MEDIUM FIX: Use generator expression instead of list comprehension for efficiency
+        max_seq_len = max(e.shape[0] for e in split_hidden_states)
 
         # OPTIMIZATION: Vectorized padding with mx.pad() instead of zeros + concatenate
         # Old: Python loop with dynamic allocation (mx.zeros) + concatenate per element
@@ -82,9 +85,12 @@ class QwenTextEncoder(nn.Module):
         # NOTE: We still need .item() for variable-length slicing, but only once per batch element
         # instead of once per batch per layer (28 layers × batch = massive reduction)
         split_hidden_states = []
+        max_seq_len = hidden_states.shape[1]
         for i in range(batch_size):
             # Single .item() call per batch element (not per layer as before)
             length_idx = int(valid_lengths[i].item())
+            # CRITICAL FIX: Validate bounds to prevent corruption from invalid attention masks
+            length_idx = max(0, min(length_idx, max_seq_len))
             valid_hidden = hidden_states[i, :length_idx, :]
             split_hidden_states.append(valid_hidden)
 

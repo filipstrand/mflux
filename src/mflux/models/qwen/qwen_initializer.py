@@ -69,10 +69,30 @@ class QwenImageInitializer:
         model.callbacks = CallbackRegistry()
 
         # OPTIMIZATION: Tiling disabled for optimal performance on high-RAM systems (Phase 4.3)
-        # With 512GB RAM, we can process large images (2048x2048+) without tiling
-        # Tiling would add overhead from splitting/merging tiles
-        # Set to None to use non-tiled VAE decode/encode for maximum speed
-        model.tiling_config = None
+        # HIGH PRIORITY FIX: Detect available RAM before disabling tiling to prevent OOM
+        import subprocess
+
+        try:
+            result = subprocess.run(["sysctl", "hw.memsize"], capture_output=True, text=True, check=True)
+            mem_bytes = int(result.stdout.split(":")[1].strip())
+            mem_gb = mem_bytes / (1024**3)
+
+            # Only disable tiling if we have sufficient RAM (>= 128GB)
+            # With 512GB RAM, we can process 2048x2048+ without tiling
+            # With <128GB RAM, use default tiling config to prevent OOM
+            if mem_gb >= 128:
+                model.tiling_config = None  # Tiling disabled for maximum speed
+            else:
+                # Use default tiling config for systems with less RAM
+                from mflux.models.common.vae.tiling_config import TilingConfig
+
+                model.tiling_config = TilingConfig()
+        except (subprocess.CalledProcessError, ValueError, IndexError, FileNotFoundError):
+            # HIGH PRIORITY FIX: Added FileNotFoundError for cross-platform compatibility
+            # On error (e.g., non-macOS system, missing sysctl), use safe default (tiling enabled)
+            from mflux.models.common.vae.tiling_config import TilingConfig
+
+            model.tiling_config = TilingConfig()
 
     @staticmethod
     def _load_weights(model_path: str) -> LoadedWeights:

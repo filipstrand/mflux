@@ -111,6 +111,15 @@ class QwenImage(nn.Module):
                 batched_text = mx.concatenate([prompt_embeds, negative_prompt_embeds], axis=0)
                 batched_mask = mx.concatenate([prompt_mask, negative_prompt_mask], axis=0)
 
+                # HIGH PRIORITY FIX: Validate shape consistency for batched guidance
+                expected_batch = latents.shape[0] * 2
+                assert batched_latents.shape[0] == expected_batch, (
+                    f"Batch concatenation failed: expected {expected_batch}, got {batched_latents.shape[0]}"
+                )
+                assert batched_text.shape[0] == expected_batch, (
+                    f"Text/latent batch mismatch: expected {expected_batch}, got {batched_text.shape[0]}"
+                )
+
                 # Single transformer forward pass (2x batch size)
                 batched_noise = self.transformer(
                     t=t,
@@ -118,6 +127,11 @@ class QwenImage(nn.Module):
                     hidden_states=batched_latents,
                     encoder_hidden_states=batched_text,
                     encoder_hidden_states_mask=batched_mask,
+                )
+
+                # HIGH PRIORITY FIX: Validate output shape before split
+                assert batched_noise.shape[0] == expected_batch, (
+                    f"Transformer output batch mismatch: expected {expected_batch}, got {batched_noise.shape[0]}"
                 )
 
                 # Split results back to positive and negative
@@ -178,7 +192,11 @@ class QwenImage(nn.Module):
         guidance: float,
     ) -> mx.array:
         combined = noise_negative + guidance * (noise - noise_negative)
-        cond_norm = mx.sqrt(mx.sum(noise * noise, axis=-1, keepdims=True) + 1e-12)
-        noise_norm = mx.sqrt(mx.sum(combined * combined, axis=-1, keepdims=True) + 1e-12)
-        noise = combined * (cond_norm / noise_norm)
+        # HIGH PRIORITY FIX: Use dtype-appropriate epsilon to prevent underflow
+        # float16 has epsilon ~1e-4, so 1e-12 can underflow to zero
+        eps = 1e-6 if noise.dtype == mx.float32 else 1e-4
+        cond_norm = mx.sqrt(mx.sum(noise * noise, axis=-1, keepdims=True) + eps)
+        noise_norm = mx.sqrt(mx.sum(combined * combined, axis=-1, keepdims=True) + eps)
+        # Additional safety: prevent division by very small values
+        noise = combined * (cond_norm / mx.maximum(noise_norm, eps))
         return noise

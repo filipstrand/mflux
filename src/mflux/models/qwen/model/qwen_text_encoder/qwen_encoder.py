@@ -40,9 +40,27 @@ class QwenEncoder(nn.Module):
         pixel_values = pixel_values.astype(mx.float32)
         image_embeds = self.visual(pixel_values, image_grid_thw)
         original_split_sizes = image_grid_thw.prod(axis=-1).astype(mx.int32)
+
+        # HIGH PRIORITY FIX: Validate that original_split_sizes are non-zero before division
+        if mx.any(original_split_sizes == 0).item():
+            raise ValueError("Invalid image_grid_thw: contains zero-area grids")
+
         split_sizes = (original_split_sizes // 4).astype(mx.int32)
         split_sizes = [int(s) for s in split_sizes.tolist()]
         split_sizes = [s for s in split_sizes if s > 0]
+
+        # HIGH PRIORITY FIX: Check for empty split_sizes list
+        if len(split_sizes) == 0:
+            raise ValueError("All image grids too small (< 4 tokens each)")
+
+        # HIGH PRIORITY FIX: Validate that split_sizes sum matches image_embeds shape
+        total_expected = sum(split_sizes)
+        if total_expected != image_embeds.shape[0]:
+            raise ValueError(
+                f"Split size mismatch: expected {total_expected} tokens, "
+                f"got {image_embeds.shape[0]} from image embeddings"
+            )
+
         image_embeds_split = []
         start_idx = 0
         for split_size in split_sizes:
@@ -68,7 +86,8 @@ class QwenEncoder(nn.Module):
             image_positions = input_ids == self.image_token_id
             n_image_tokens = mx.sum(image_positions).item()
 
-            if n_image_tokens > 0 and image_embeds.shape[0] >= n_image_tokens:
+            # CRITICAL FIX: Validate that we have image embeddings before attempting insertion
+            if n_image_tokens > 0 and image_embeds.shape[0] >= n_image_tokens and image_embeds.shape[0] > 0:
                 # OPTIMIZATION: Vectorized image embedding insertion
                 # Old approach: Python loop over all tokens with sequential indexing
                 # New approach: Compute indices on GPU, use advanced indexing
@@ -80,8 +99,9 @@ class QwenEncoder(nn.Module):
                 # This gives us the sequential image index for each image token
                 image_indices = mx.cumsum(image_positions_flat.astype(mx.int32), axis=0) - 1
 
-                # Clamp indices to valid range
-                image_indices = mx.clip(image_indices, 0, image_embeds.shape[0] - 1)
+                # CRITICAL FIX: Safely clamp indices (requires image_embeds.shape[0] > 0)
+                max_index = max(0, image_embeds.shape[0] - 1)
+                image_indices = mx.clip(image_indices, 0, max_index)
 
                 # Gather image embeddings at the positions where we have image tokens
                 # For positions without image tokens, we'll use original text embeddings
