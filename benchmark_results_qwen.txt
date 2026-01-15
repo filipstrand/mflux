@@ -1,0 +1,6 @@
+Qwen-Image Optimization Benchmark Results
+============================================================
+
+512x512      20            41.73s       2.086s per step
+1024x1024    20           188.79s       9.440s per step
+2048x2048    10           695.67s      69.567s per step
