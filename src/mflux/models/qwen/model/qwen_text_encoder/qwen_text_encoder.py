@@ -28,12 +28,17 @@ class QwenTextEncoder(nn.Module):
     @staticmethod
     def _process_text_embeddings_mlx(hidden_states, attention_mask, drop_idx=1, dtype=mx.float32):
         # MEDIUM FIX: drop_idx=34 for Qwen model (drops first 34 tokens per model spec)
-        # HIGH FIX: Validate sequences have sufficient length before dropping tokens
+        # HIGH FIX: Validate sequences before and after dropping tokens
         split_hidden_states = QwenTextEncoder._extract_masked_hidden(hidden_states, attention_mask)
+
+        # HIGH FIX: Check for empty input before processing
+        if not split_hidden_states:
+            raise ValueError("No valid sequences after attention masking")
+
         split_hidden_states = [e[drop_idx:] for e in split_hidden_states]
 
         # HIGH FIX: Check for empty sequences after drop_idx (e.g., all sequences ≤ drop_idx tokens)
-        if not split_hidden_states or all(e.shape[0] == 0 for e in split_hidden_states):
+        if all(e.shape[0] == 0 for e in split_hidden_states):
             raise ValueError(
                 f"All sequences too short (≤{drop_idx} tokens) after masking. "
                 f"Qwen text encoder requires sequences with >{drop_idx} tokens."
