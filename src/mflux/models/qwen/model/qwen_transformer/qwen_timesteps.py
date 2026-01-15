@@ -13,13 +13,23 @@ class QwenTimesteps(nn.Module):
         self.scale = scale
 
     def __call__(self, timesteps: mx.array) -> mx.array:
-        assert len(timesteps.shape) == 1, "Timesteps should be a 1d-array"
+        # CRITICAL FIX: Replace assert with explicit validation (disabled with -O flag)
+        if len(timesteps.shape) != 1:
+            raise ValueError(f"Timesteps should be a 1d-array, got shape {timesteps.shape}")
 
         half_dim = self.proj_dim // 2
         max_period = 10000
 
+        # CRITICAL FIX: Validate denominator before division to prevent division by zero
+        denominator = half_dim - self.downscale_freq_shift
+        if abs(float(denominator)) < 1e-8:
+            raise ValueError(
+                f"Invalid configuration: half_dim ({half_dim}) - downscale_freq_shift "
+                f"({self.downscale_freq_shift}) results in zero division"
+            )
+
         exponent = -math.log(max_period) * mx.arange(0, half_dim, dtype=mx.float32)
-        exponent = exponent / (half_dim - self.downscale_freq_shift)
+        exponent = exponent / denominator
 
         timesteps_dtype = timesteps.dtype
         emb = mx.exp(exponent).astype(timesteps_dtype)

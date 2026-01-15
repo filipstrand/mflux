@@ -88,6 +88,12 @@ class QwenEncoder(nn.Module):
 
             # CRITICAL FIX: Validate that we have image embeddings before attempting insertion
             if n_image_tokens > 0 and image_embeds.shape[0] >= n_image_tokens and image_embeds.shape[0] > 0:
+                # HIGH FIX: Validate embedding dimensions match to prevent silent corruption
+                if image_embeds.shape[1] != inputs_embeds.shape[-1]:
+                    raise ValueError(
+                        f"Image embedding dim {image_embeds.shape[1]} != text hidden dim {inputs_embeds.shape[-1]}"
+                    )
+
                 # OPTIMIZATION: Vectorized image embedding insertion
                 # Old approach: Python loop over all tokens with sequential indexing
                 # New approach: Compute indices on GPU, use advanced indexing
