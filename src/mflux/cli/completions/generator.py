@@ -10,6 +10,7 @@ class CompletionGenerator:
     def __init__(self):
         self.commands = [
             "mflux-generate",
+            "mflux-generate-flux2",
             "mflux-generate-controlnet",
             "mflux-generate-kontext",
             "mflux-generate-in-context",
@@ -46,6 +47,13 @@ class CompletionGenerator:
             parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
             parser.add_image_to_image_arguments()
             parser.add_image_outpaint_arguments()
+            parser.add_output_arguments()
+
+        elif command == "mflux-generate-flux2":
+            parser.add_general_arguments()
+            parser.add_model_arguments(require_model_arg=False)
+            parser.add_lora_arguments()
+            parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
             parser.add_output_arguments()
 
         elif command == "mflux-generate-controlnet":
