@@ -135,8 +135,9 @@ class QwenAttention(nn.Module):
 
         # OPTIMIZATION: Quick check on input mask BEFORE creating joint_mask
         # If input mask is all ones, the joint mask will also be all ones (no masking needed)
-        # MEDIUM FIX: Use exact comparison instead of threshold to avoid precision issues
-        if mx.all(mask == 1.0):
+        # HIGH FIX: Use threshold comparison for consistency with joint_mask check
+        # Exact equality (== 1.0) is fragile with floating-point arithmetic
+        if mx.all(mask >= 0.999):
             return None  # Early exit - no allocation needed
 
         bsz = mask.shape[0]
