@@ -37,7 +37,99 @@ class Flux2Klein(nn.Module):
         )
 
     def generate_image(self, **kwargs):
-        raise NotImplementedError("Flux2Klein generation will be implemented after core ports.")
+        seed: int = kwargs.get("seed", 0)
+        prompt: str | list[str] = kwargs.get("prompt", "")
+        num_inference_steps: int = kwargs.get("num_inference_steps", 4)
+        height: int = kwargs.get("height", 1024)
+        width: int = kwargs.get("width", 1024)
+        guidance: float = kwargs.get("guidance", 1.0)
+        negative_prompt: str | list[str] | None = kwargs.get("negative_prompt", "")
+        latents_path: Path | str | None = kwargs.get("latents_path", None)
+
+        # 1. Encode prompt
+        prompt_embeds, text_ids = self.encode_prompt(
+            prompt=prompt,
+            num_images_per_prompt=1,
+            max_sequence_length=512,
+            text_encoder_out_layers=(9, 18, 27),
+        )
+
+        negative_prompt_embeds = None
+        negative_text_ids = None
+        if guidance > 1.0 and negative_prompt is not None:
+            negative_prompt_embeds, negative_text_ids = self.encode_prompt(
+                prompt=negative_prompt,
+                num_images_per_prompt=1,
+                max_sequence_length=512,
+                text_encoder_out_layers=(9, 18, 27),
+            )
+
+        # 2. Prepare latents
+        if latents_path is not None:
+            loaded = mx.load(str(latents_path))
+            if isinstance(loaded, dict):
+                latents = mx.array(next(iter(loaded.values())))
+            else:
+                latents = mx.array(loaded)
+            latent_ids = self._prepare_latent_ids_from_packed(latents)
+        else:
+            latents, latent_ids, latent_height, latent_width = self._prepare_latents(
+                seed=seed,
+                height=height,
+                width=width,
+                batch_size=1,
+            )
+            latents = self._pack_latents(latents)
+
+        # 3. Prepare timesteps and sigmas
+        image_seq_len = latents.shape[1]
+        timesteps, sigmas = self._get_timesteps_and_sigmas(
+            image_seq_len=image_seq_len,
+            num_inference_steps=num_inference_steps,
+        )
+
+        # 4. Denoising loop
+        batch_size = latents.shape[0]
+        for i in range(num_inference_steps):
+            t = timesteps[i]
+            timestep = mx.full((batch_size,), t, dtype=mx.float32)
+            noise_pred = self.transformer(
+                hidden_states=latents,
+                encoder_hidden_states=prompt_embeds,
+                timestep=timestep / 1000,
+                img_ids=latent_ids,
+                txt_ids=text_ids,
+                guidance=None,
+            )
+
+            if guidance > 1.0 and negative_prompt_embeds is not None and negative_text_ids is not None:
+                neg_noise_pred = self.transformer(
+                    hidden_states=latents,
+                    encoder_hidden_states=negative_prompt_embeds,
+                    timestep=timestep / 1000,
+                    img_ids=latent_ids,
+                    txt_ids=negative_text_ids,
+                    guidance=None,
+                )
+                noise_pred = neg_noise_pred + guidance * (noise_pred - neg_noise_pred)
+
+            dt = sigmas[i + 1] - sigmas[i]
+            latents = latents + dt.astype(latents.dtype) * noise_pred.astype(latents.dtype)
+
+        # 5. Decode latents
+        if latents_path is None:
+            height_tokens = latent_height
+            width_tokens = latent_width
+        else:
+            height_tokens = int(mx.max(latent_ids[:, :, 1]).item()) + 1
+            width_tokens = int(mx.max(latent_ids[:, :, 2]).item()) + 1
+
+        packed_latents = latents.reshape(batch_size, height_tokens, width_tokens, latents.shape[-1]).transpose(
+            0, 3, 1, 2
+        )
+        decoded = self.vae.decode_packed_latents(packed_latents)
+        normalized = ImageUtil._denormalize(decoded)
+        return ImageUtil._numpy_to_pil(ImageUtil._to_numpy(normalized))
 
     def encode_prompt(
         self,
@@ -90,6 +182,92 @@ class Flux2Klein(nn.Module):
             coords = mx.stack([t, h, w, token_ids], axis=1)
             out_ids.append(coords)
         return mx.stack(out_ids, axis=0)
+
+    @staticmethod
+    def _pack_latents(latents: mx.array) -> mx.array:
+        batch_size, num_channels, height, width = latents.shape
+        return latents.reshape(batch_size, num_channels, height * width).transpose(0, 2, 1)
+
+    @staticmethod
+    def _prepare_latent_ids(latents: mx.array) -> mx.array:
+        batch_size, _, height, width = latents.shape
+        h_ids = mx.arange(height, dtype=mx.int32)
+        w_ids = mx.arange(width, dtype=mx.int32)
+        h_grid = mx.broadcast_to(mx.expand_dims(h_ids, axis=1), (height, width))
+        w_grid = mx.broadcast_to(mx.expand_dims(w_ids, axis=0), (height, width))
+        flat_h = h_grid.reshape(-1)
+        flat_w = w_grid.reshape(-1)
+        t = mx.zeros_like(flat_h)
+        layer_ids = mx.zeros_like(flat_h)
+        coords = mx.stack([t, flat_h, flat_w, layer_ids], axis=1)
+        coords = mx.expand_dims(coords, axis=0)
+        return mx.broadcast_to(coords, (batch_size, coords.shape[1], coords.shape[2]))
+
+    @staticmethod
+    def _prepare_latents(
+        seed: int,
+        height: int,
+        width: int,
+        batch_size: int,
+        num_latents_channels: int = 32,
+        vae_scale_factor: int = 8,
+    ) -> tuple[mx.array, mx.array, int, int]:
+        height = 2 * (height // (vae_scale_factor * 2))
+        width = 2 * (width // (vae_scale_factor * 2))
+        latent_height = height // 2
+        latent_width = width // 2
+        latents = mx.random.normal(
+            shape=(batch_size, num_latents_channels * 4, latent_height, latent_width),
+            key=mx.random.key(seed),
+        ).astype(ModelConfig.precision)
+        latent_ids = Flux2Klein._prepare_latent_ids(latents)
+        return latents, latent_ids, latent_height, latent_width
+
+    @staticmethod
+    def _prepare_latent_ids_from_packed(latents: mx.array) -> mx.array:
+        batch_size, seq_len, _ = latents.shape
+        height = int(mx.sqrt(mx.array(seq_len, dtype=mx.float32)).item())
+        width = seq_len // height if height > 0 else 0
+        h_ids = mx.arange(height, dtype=mx.int32)
+        w_ids = mx.arange(width, dtype=mx.int32)
+        h_grid = mx.broadcast_to(mx.expand_dims(h_ids, axis=1), (height, width))
+        w_grid = mx.broadcast_to(mx.expand_dims(w_ids, axis=0), (height, width))
+        flat_h = h_grid.reshape(-1)
+        flat_w = w_grid.reshape(-1)
+        t = mx.zeros_like(flat_h)
+        layer_ids = mx.zeros_like(flat_h)
+        coords = mx.stack([t, flat_h, flat_w, layer_ids], axis=1)
+        coords = mx.expand_dims(coords, axis=0)
+        return mx.broadcast_to(coords, (batch_size, coords.shape[1], coords.shape[2]))
+
+    @staticmethod
+    def _compute_empirical_mu(image_seq_len: int, num_steps: int) -> float:
+        a1, b1 = 8.73809524e-05, 1.89833333
+        a2, b2 = 0.00016927, 0.45666666
+        if image_seq_len > 4300:
+            return float(a2 * image_seq_len + b2)
+        m_200 = a2 * image_seq_len + b2
+        m_10 = a1 * image_seq_len + b1
+        a = (m_200 - m_10) / 190.0
+        b = m_200 - 200.0 * a
+        return float(a * num_steps + b)
+
+    @staticmethod
+    def _time_shift_exponential(mu: float, sigma_power: float, t: mx.array) -> mx.array:
+        return mx.exp(mu) / (mx.exp(mu) + ((1.0 / t - 1.0) ** sigma_power))
+
+    @staticmethod
+    def _get_timesteps_and_sigmas(
+        image_seq_len: int,
+        num_inference_steps: int,
+        num_train_timesteps: int = 1000,
+    ) -> tuple[mx.array, mx.array]:
+        sigmas = mx.array(np.linspace(1.0, 1.0 / num_inference_steps, num_inference_steps), dtype=mx.float32)
+        mu = Flux2Klein._compute_empirical_mu(image_seq_len=image_seq_len, num_steps=num_inference_steps)
+        sigmas = Flux2Klein._time_shift_exponential(mu, 1.0, sigmas)
+        timesteps = sigmas * num_train_timesteps
+        sigmas = mx.concatenate([sigmas, mx.zeros((1,), dtype=sigmas.dtype)], axis=0)
+        return timesteps, sigmas
 
     def debug_decode_packed_latents(
         self,
