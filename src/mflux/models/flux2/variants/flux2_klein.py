@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 import mlx.core as mx
@@ -5,6 +6,7 @@ import numpy as np
 import PIL.Image
 from mlx import nn
 
+from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.flux2.flux2_initializer import Flux2Initializer
 from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3TextEncoder
@@ -43,8 +45,10 @@ class Flux2Klein(nn.Module):
         height: int = kwargs.get("height", 1024)
         width: int = kwargs.get("width", 1024)
         guidance: float = kwargs.get("guidance", 1.0)
+        scheduler: str = kwargs.get("scheduler", "flow_match_euler_discrete")
         negative_prompt: str | list[str] | None = kwargs.get("negative_prompt", "")
         latents_path: Path | str | None = kwargs.get("latents_path", None)
+        start_time = time.time()
 
         # 1. Encode prompt
         prompt_embeds, text_ids = self.encode_prompt(
@@ -128,8 +132,23 @@ class Flux2Klein(nn.Module):
             0, 3, 1, 2
         )
         decoded = self.vae.decode_packed_latents(packed_latents)
-        normalized = ImageUtil._denormalize(decoded)
-        return ImageUtil._numpy_to_pil(ImageUtil._to_numpy(normalized))
+        config = Config(
+            model_config=self.model_config,
+            num_inference_steps=num_inference_steps,
+            height=height,
+            width=width,
+            guidance=guidance,
+            scheduler=scheduler,
+        )
+        return ImageUtil.to_image(
+            decoded_latents=decoded,
+            config=config,
+            seed=seed,
+            prompt=prompt if isinstance(prompt, str) else "\n".join(prompt),
+            quantization=getattr(self, "bits", 0) or 0,
+            generation_time=time.time() - start_time,
+            negative_prompt=negative_prompt if isinstance(negative_prompt, str) else None,
+        )
 
     def encode_prompt(
         self,
