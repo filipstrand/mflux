@@ -40,7 +40,7 @@ class Flux2KleinWeightDefinition:
                 encoder_class=LanguageTokenizer,
                 max_length=512,
                 use_chat_template=True,
-                chat_template_kwargs={"add_generation_prompt": True, "enable_thinking": False},
+                chat_template_kwargs={"enable_thinking": False},
                 download_patterns=["tokenizer/**", "added_tokens.json", "chat_template.jinja"],
             ),
         ]

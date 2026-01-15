@@ -3,7 +3,33 @@ from mlx import nn
 
 from mflux.models.fibo_vlm.model.qwen3_vl_decoder_layer import Qwen3VLDecoderLayer
 from mflux.models.fibo_vlm.model.qwen3_vl_rms_norm import Qwen3VLRMSNorm
-from mflux.models.fibo_vlm.model.qwen3_vl_rope import Qwen3VLRotaryEmbedding
+
+
+class Qwen3TextRotaryEmbedding(nn.Module):
+    def __init__(
+        self,
+        dim: int,
+        max_position_embeddings: int = 40960,
+        base: float = 1000000.0,
+        scaling_factor: float = 1.0,
+    ):
+        super().__init__()
+        self.dim = dim
+        self.max_position_embeddings = max_position_embeddings
+        self.base = base
+        self.scaling_factor = scaling_factor
+        self.inv_freq = 1.0 / (base ** (mx.arange(0, dim, 2, dtype=mx.float32) / dim))
+
+    def __call__(self, x: mx.array, position_ids: mx.array) -> tuple[mx.array, mx.array]:
+        if position_ids.ndim == 1:
+            position_ids = mx.expand_dims(position_ids, axis=0)
+        inv_freq = mx.expand_dims(mx.expand_dims(self.inv_freq, axis=0), axis=0)
+        pos = mx.expand_dims(position_ids.astype(mx.float32), axis=-1)
+        freqs = pos * inv_freq
+        emb = mx.concatenate([freqs, freqs], axis=-1)
+        cos = mx.cos(emb) * self.scaling_factor
+        sin = mx.sin(emb) * self.scaling_factor
+        return cos.astype(x.dtype), sin.astype(x.dtype)
 
 
 class Qwen3TextEncoder(nn.Module):
@@ -27,9 +53,6 @@ class Qwen3TextEncoder(nn.Module):
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
         self.num_hidden_layers = num_hidden_layers
-        if mrope_section is None:
-            mrope_section = [24, 20, 20]
-
         self.embed_tokens = nn.Embedding(vocab_size, hidden_size)
         self.layers = [
             Qwen3VLDecoderLayer(
@@ -39,7 +62,7 @@ class Qwen3TextEncoder(nn.Module):
                 head_dim=head_dim,
                 max_position_embeddings=max_position_embeddings,
                 rope_theta=rope_theta,
-                mrope_section=mrope_section,
+                mrope_section=None,
                 attention_bias=attention_bias,
                 rms_norm_eps=rms_norm_eps,
                 intermediate_size=intermediate_size,
@@ -47,12 +70,11 @@ class Qwen3TextEncoder(nn.Module):
             for _ in range(num_hidden_layers)
         ]
         self.norm = Qwen3VLRMSNorm(hidden_size, eps=rms_norm_eps)
-        self.rotary_emb = Qwen3VLRotaryEmbedding(
+        self.rotary_emb = Qwen3TextRotaryEmbedding(
             dim=head_dim,
             max_position_embeddings=max_position_embeddings,
             base=rope_theta,
             scaling_factor=attention_scaling,
-            mrope_section=mrope_section,
         )
 
     def __call__(
@@ -90,11 +112,12 @@ class Qwen3TextEncoder(nn.Module):
         attention_mask_4d = causal_tri_mask + padding_mask
 
         position_ids = mx.arange(seq_len, dtype=mx.int32)
-        position_ids = mx.expand_dims(mx.expand_dims(position_ids, axis=0), axis=0)
-        position_ids = mx.broadcast_to(position_ids, (3, batch_size, seq_len))
+        position_ids = mx.expand_dims(position_ids, axis=0)
+        position_ids = mx.broadcast_to(position_ids, (batch_size, seq_len))
         position_embeddings = self.rotary_emb(hidden_states, position_ids)
 
-        hidden_states_list = [] if output_hidden_states else None
+        # Match HF behavior: include embedding output as the first hidden state.
+        hidden_states_list = [hidden_states] if output_hidden_states else None
         for layer in self.layers:
             hidden_states, _ = layer(
                 hidden_states,

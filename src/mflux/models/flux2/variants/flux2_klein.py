@@ -39,6 +39,58 @@ class Flux2Klein(nn.Module):
     def generate_image(self, **kwargs):
         raise NotImplementedError("Flux2Klein generation will be implemented after core ports.")
 
+    def encode_prompt(
+        self,
+        prompt: str | list[str],
+        num_images_per_prompt: int = 1,
+        max_sequence_length: int = 512,
+        text_encoder_out_layers: tuple[int, ...] = (9, 18, 27),
+    ) -> tuple[mx.array, mx.array]:
+        prompt_embeds = self._get_qwen3_prompt_embeds(
+            prompt=prompt,
+            max_sequence_length=max_sequence_length,
+            hidden_state_layers=text_encoder_out_layers,
+        )
+        if num_images_per_prompt > 1:
+            prompt_embeds = mx.repeat(prompt_embeds, num_images_per_prompt, axis=0)
+        text_ids = self._prepare_text_ids(prompt_embeds)
+        return prompt_embeds, text_ids
+
+    def _get_qwen3_prompt_embeds(
+        self,
+        prompt: str | list[str],
+        max_sequence_length: int,
+        hidden_state_layers: tuple[int, ...],
+    ) -> mx.array:
+        tokenizer = self.tokenizers["qwen3"]
+        tokens = tokenizer.tokenize(prompt=prompt, max_length=max_sequence_length)
+        return self.text_encoder.get_prompt_embeds(
+            input_ids=tokens.input_ids,
+            attention_mask=tokens.attention_mask,
+            hidden_state_layers=hidden_state_layers,
+        )
+
+    @staticmethod
+    def _prepare_text_ids(x: mx.array, t_coord: mx.array | None = None) -> mx.array:
+        batch_size, seq_len, _ = x.shape
+        out_ids = []
+        for i in range(batch_size):
+            if t_coord is None:
+                t = mx.zeros((seq_len,), dtype=mx.int32)
+            else:
+                t = t_coord[i]
+                if t.ndim == 0:
+                    t = mx.full((seq_len,), t, dtype=mx.int32)
+                elif t.shape[0] != seq_len:
+                    t = mx.broadcast_to(t, (seq_len,))
+                t = t.astype(mx.int32)
+            h = mx.zeros((seq_len,), dtype=mx.int32)
+            w = mx.zeros((seq_len,), dtype=mx.int32)
+            token_ids = mx.arange(seq_len, dtype=mx.int32)
+            coords = mx.stack([t, h, w, token_ids], axis=1)
+            out_ids.append(coords)
+        return mx.stack(out_ids, axis=0)
+
     def debug_decode_packed_latents(
         self,
         latents_path: str | Path,
@@ -107,4 +159,29 @@ class Flux2Klein(nn.Module):
             diff = mx.abs(noise_pred - ref)
             metrics["mean_abs_error"] = float(mx.mean(diff))
             metrics["max_abs_error"] = float(mx.max(diff))
+        return metrics
+
+    def debug_text_encoder(
+        self,
+        prompt: str | list[str],
+        inputs_path: str | Path,
+        max_sequence_length: int = 512,
+        text_encoder_out_layers: tuple[int, ...] = (9, 18, 27),
+    ) -> dict[str, float]:
+        data = np.load(Path(inputs_path))
+        ref_prompt_embeds = mx.array(data["prompt_embeds"])
+        ref_text_ids = mx.array(data["text_ids"])
+
+        prompt_embeds = self._get_qwen3_prompt_embeds(
+            prompt=prompt,
+            max_sequence_length=max_sequence_length,
+            hidden_state_layers=text_encoder_out_layers,
+        )
+        text_ids = self._prepare_text_ids(prompt_embeds)
+
+        metrics: dict[str, float] = {}
+        diff = mx.abs(prompt_embeds - ref_prompt_embeds)
+        metrics["mean_abs_error"] = float(mx.mean(diff))
+        metrics["max_abs_error"] = float(mx.max(diff))
+        metrics["text_ids_match"] = float(mx.mean((text_ids == ref_text_ids).astype(mx.float32)))
         return metrics
