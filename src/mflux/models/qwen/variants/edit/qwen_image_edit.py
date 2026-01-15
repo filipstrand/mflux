@@ -112,6 +112,23 @@ class QwenImageEdit(nn.Module):
                 # OPTIMIZATION: Single batched transformer pass instead of 2 sequential passes
                 # Old: 2 forward passes per step (positive + negative)
                 # New: 1 forward pass with batch_size × 2 (40-50% speedup on transformer)
+
+                # CRITICAL FIX: Pad prompt embeddings to same length before batching
+                # Positive and negative prompts may have different sequence lengths
+                max_seq_len = max(prompt_embeds.shape[1], negative_prompt_embeds.shape[1])
+
+                # Pad positive prompt if needed
+                if prompt_embeds.shape[1] < max_seq_len:
+                    pad_len = max_seq_len - prompt_embeds.shape[1]
+                    prompt_embeds = mx.pad(prompt_embeds, [(0, 0), (0, pad_len), (0, 0)])
+                    prompt_mask = mx.pad(prompt_mask, [(0, 0), (0, pad_len)])
+
+                # Pad negative prompt if needed
+                if negative_prompt_embeds.shape[1] < max_seq_len:
+                    pad_len = max_seq_len - negative_prompt_embeds.shape[1]
+                    negative_prompt_embeds = mx.pad(negative_prompt_embeds, [(0, 0), (0, pad_len), (0, 0)])
+                    negative_prompt_mask = mx.pad(negative_prompt_mask, [(0, 0), (0, pad_len)])
+
                 if num_images > 1:
                     cond_image_grid = [(1, cond_h_patches, cond_w_patches) for _ in range(num_images)]
                 else:

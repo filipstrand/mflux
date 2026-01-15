@@ -17,7 +17,7 @@ from pathlib import Path
 
 import mlx.core as mx
 
-from mflux.models.qwen.variants.txt2img import QwenImage
+from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
 
 
 def benchmark_generation(
