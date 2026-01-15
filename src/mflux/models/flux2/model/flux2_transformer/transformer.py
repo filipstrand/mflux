@@ -312,16 +312,16 @@ class Flux2Transformer(nn.Module):
         patch_size: int = 1,
         in_channels: int = 128,
         out_channels: int | None = None,
-        num_layers: int = 8,
-        num_single_layers: int = 48,
+        num_layers: int = 5,
+        num_single_layers: int = 20,
         attention_head_dim: int = 128,
-        num_attention_heads: int = 48,
-        joint_attention_dim: int = 15360,
+        num_attention_heads: int = 24,
+        joint_attention_dim: int = 7680,
         timestep_guidance_channels: int = 256,
         mlp_ratio: float = 3.0,
         axes_dims_rope: tuple[int, ...] = (32, 32, 32, 32),
         rope_theta: int = 2000,
-        guidance_embeds: bool = True,
+        guidance_embeds: bool = False,
     ):
         super().__init__()
         self.out_channels = out_channels or in_channels
