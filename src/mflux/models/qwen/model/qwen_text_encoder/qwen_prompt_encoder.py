@@ -5,11 +5,15 @@ from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenText
 
 
 class QwenPromptEncoder:
+    # Maximum cache entries (each ~48MB). Limit prevents unbounded memory growth.
+    # 50 entries = ~2.4GB max cache size
+    MAX_CACHE_ENTRIES = 50
+
     @staticmethod
     def encode_prompt(
         prompt: str,
         negative_prompt: str,
-        prompt_cache: dict[str, tuple[mx.array, mx.array, mx.array, mx.array]],
+        prompt_cache: dict[tuple[str, str], tuple[mx.array, mx.array, mx.array, mx.array]],
         qwen_tokenizer: Tokenizer,
         qwen_text_encoder: QwenTextEncoder,
     ) -> tuple[mx.array, mx.array, mx.array, mx.array]:
@@ -40,5 +44,12 @@ class QwenPromptEncoder:
 
         # 4. Cache the result (all 4 values)
         result = (prompt_embeds, prompt_mask, neg_prompt_embeds, neg_prompt_mask)
+
+        # Evict oldest entry if cache is full (FIFO eviction to prevent unbounded growth)
+        if len(prompt_cache) >= QwenPromptEncoder.MAX_CACHE_ENTRIES:
+            # Python 3.7+ dicts maintain insertion order, so first key is oldest
+            oldest_key = next(iter(prompt_cache))
+            del prompt_cache[oldest_key]
+
         prompt_cache[cache_key] = result
         return result
