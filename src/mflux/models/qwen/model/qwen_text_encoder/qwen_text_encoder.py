@@ -37,11 +37,14 @@ class QwenTextEncoder(nn.Module):
 
         split_hidden_states = [e[drop_idx:] for e in split_hidden_states]
 
-        # HIGH FIX: Check for empty sequences after drop_idx (e.g., all sequences ≤ drop_idx tokens)
-        if all(e.shape[0] == 0 for e in split_hidden_states):
+        # HIGH PRIORITY FIX: Check for ANY empty sequences after drop_idx (not just all)
+        # If batch has mixed lengths like [50, 30, 40] tokens and drop_idx=34,
+        # the second sequence becomes empty, causing shape mismatches in padding
+        if any(e.shape[0] == 0 for e in split_hidden_states):
+            empty_indices = [i for i, e in enumerate(split_hidden_states) if e.shape[0] == 0]
             raise ValueError(
-                f"All sequences too short (≤{drop_idx} tokens) after masking. "
-                f"Qwen text encoder requires sequences with >{drop_idx} tokens."
+                f"Sequences at indices {empty_indices} too short (≤{drop_idx} tokens) after masking. "
+                f"Qwen text encoder requires all sequences >{drop_idx} tokens."
             )
 
         attn_mask_list = [mx.ones(e.shape[0], dtype=mx.int32) for e in split_hidden_states]
@@ -102,8 +105,16 @@ class QwenTextEncoder(nn.Module):
         for i in range(batch_size):
             # Single .item() call per batch element (not per layer as before)
             length_idx = int(valid_lengths[i].item())
-            # CRITICAL FIX: Validate bounds to prevent corruption from invalid attention masks
-            length_idx = max(0, min(length_idx, max_seq_len))
+
+            # HIGH PRIORITY FIX: Explicit validation instead of silent clamping
+            # Silent clamping masks bugs in attention mask generation upstream
+            if not (0 <= length_idx <= max_seq_len):
+                raise ValueError(
+                    f"Invalid attention mask at batch index {i}: "
+                    f"sum={length_idx}, but sequence length is {max_seq_len}. "
+                    f"Attention mask should contain values in [0, 1] summing to valid length."
+                )
+
             valid_hidden = hidden_states[i, :length_idx, :]
             split_hidden_states.append(valid_hidden)
 

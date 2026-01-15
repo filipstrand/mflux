@@ -42,7 +42,8 @@ class QwenEncoder(nn.Module):
         original_split_sizes = image_grid_thw.prod(axis=-1).astype(mx.int32)
 
         # HIGH PRIORITY FIX: Validate that original_split_sizes are non-zero before division
-        if mx.any(original_split_sizes == 0).item():
+        # Use bool() instead of .item() for robust scalar conversion
+        if bool(mx.any(original_split_sizes == 0)):
             raise ValueError("Invalid image_grid_thw: contains zero-area grids")
 
         split_sizes = (original_split_sizes // 4).astype(mx.int32)
@@ -86,8 +87,18 @@ class QwenEncoder(nn.Module):
             image_positions = input_ids == self.image_token_id
             n_image_tokens = mx.sum(image_positions).item()
 
-            # CRITICAL FIX: Validate that we have image embeddings before attempting insertion
-            if n_image_tokens > 0 and image_embeds.shape[0] >= n_image_tokens and image_embeds.shape[0] > 0:
+            # HIGH PRIORITY FIX: Strict validation of image embedding count
+            # Exact match required - extra or missing embeddings indicate upstream bugs
+            if n_image_tokens > 0:
+                if image_embeds.shape[0] == 0:
+                    raise ValueError("Expected image embeddings but got empty array")
+
+                if image_embeds.shape[0] != n_image_tokens:
+                    raise ValueError(
+                        f"Image token count mismatch: tokenizer found {n_image_tokens} image tokens, "
+                        f"but vision model produced {image_embeds.shape[0]} embeddings"
+                    )
+
                 # HIGH FIX: Validate embedding dimensions match to prevent silent corruption
                 if image_embeds.shape[1] != inputs_embeds.shape[-1]:
                     raise ValueError(

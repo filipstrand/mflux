@@ -71,11 +71,12 @@ class QwenEmbedRopeMLX(nn.Module):
 
         if self.scale_rope:
             # HIGH PRIORITY FIX: Validate array bounds before negative indexing
+            # Must check for both overflow AND empty arrays to prevent silent corruption
             neg_slice_len = height - height // 2
-            if neg_slice_len > freqs_neg[1].shape[0]:
+            if neg_slice_len > freqs_neg[1].shape[0] or freqs_neg[1].shape[0] == 0:
                 raise ValueError(
-                    f"RoPE negative indexing out of bounds: need {neg_slice_len} elements, "
-                    f"freqs_neg has {freqs_neg[1].shape[0]}"
+                    f"RoPE negative indexing invalid: need {neg_slice_len} elements, "
+                    f"freqs_neg[1] has {freqs_neg[1].shape[0]}"
                 )
             freqs_height = np.concatenate([freqs_neg[1][-neg_slice_len:], freqs_pos[1][: height // 2]], axis=0)
         else:
@@ -85,11 +86,12 @@ class QwenEmbedRopeMLX(nn.Module):
 
         if self.scale_rope:
             # HIGH PRIORITY FIX: Validate array bounds before negative indexing
+            # Must check for both overflow AND empty arrays to prevent silent corruption
             neg_slice_len = width - width // 2
-            if neg_slice_len > freqs_neg[2].shape[0]:
+            if neg_slice_len > freqs_neg[2].shape[0] or freqs_neg[2].shape[0] == 0:
                 raise ValueError(
-                    f"RoPE negative indexing out of bounds: need {neg_slice_len} elements, "
-                    f"freqs_neg has {freqs_neg[2].shape[0]}"
+                    f"RoPE negative indexing invalid: need {neg_slice_len} elements, "
+                    f"freqs_neg[2] has {freqs_neg[2].shape[0]}"
                 )
             freqs_width = np.concatenate([freqs_neg[2][-neg_slice_len:], freqs_pos[2][: width // 2]], axis=0)
         else:
@@ -122,14 +124,12 @@ class QwenEmbedRopeMLX(nn.Module):
             vid_cos_list.append(cos_v)
             vid_sin_list.append(sin_v)
 
-            # HIGH PRIORITY FIX: Correctly track max index for negative frequency indexing
+            # HIGH PRIORITY FIX: Track max dimension for frequency buffer indexing
             # When scale_rope=True, we use freqs_neg[i][-(height - height // 2):],
             # which requires (height - height // 2) elements = ceil(height / 2)
-            # So we need to track the full height/width, not just height // 2
-            if self.scale_rope:
-                max_vid_index = max(height, width, max_vid_index)
-            else:
-                max_vid_index = max(height, width, max_vid_index)
+            # So we need to track the full height/width to ensure sufficient buffer
+            # This logic is the same regardless of scale_rope setting
+            max_vid_index = max(height, width, max_vid_index)
 
         vid_cos = np.concatenate(vid_cos_list, axis=0)
         vid_sin = np.concatenate(vid_sin_list, axis=0)
@@ -145,8 +145,18 @@ class QwenEmbedRopeMLX(nn.Module):
                 oldest_key = self._rope_cache_order.pop(0)
                 del self._mlx_pos_freqs_cache[oldest_key]
 
-            txt_cos = self.pos_freqs[max_vid_index : max_vid_index + max_len, :, 0]
-            txt_sin = self.pos_freqs[max_vid_index : max_vid_index + max_len, :, 1]
+            # HIGH PRIORITY FIX: Validate array bounds before slicing
+            # If end_idx > buffer size, NumPy returns shorter array causing shape mismatches
+            end_idx = max_vid_index + max_len
+            if end_idx > _ROPE_BUFFER_SIZE:
+                raise ValueError(
+                    f"RoPE frequency buffer overflow: need {end_idx} positions, "
+                    f"but buffer size is {_ROPE_BUFFER_SIZE}. "
+                    f"max_vid_index={max_vid_index}, max_len={max_len}"
+                )
+
+            txt_cos = self.pos_freqs[max_vid_index:end_idx, :, 0]
+            txt_sin = self.pos_freqs[max_vid_index:end_idx, :, 1]
             self._mlx_pos_freqs_cache[cache_key] = (
                 mx.array(txt_cos.astype(np.float32)),
                 mx.array(txt_sin.astype(np.float32)),

@@ -56,6 +56,10 @@ class QwenImage(nn.Module):
         scheduler: str = "linear",
         negative_prompt: str | None = None,
     ) -> GeneratedImage:
+        # HIGH PRIORITY FIX: Validate guidance parameter range to prevent numerical instability
+        if not (0.0 <= guidance <= 50.0):
+            raise ValueError(f"Guidance must be in range [0.0, 50.0] to prevent numerical instability, got {guidance}")
+
         # 0. Create a new config based on the model type and input parameters
         config = Config(
             width=width,
@@ -84,13 +88,49 @@ class QwenImage(nn.Module):
         )
 
         # 2. Encode the prompt (using native MLX encoding)
-        prompt_embeds, prompt_mask, negative_prompt_embeds, negative_prompt_mask = QwenPromptEncoder.encode_prompt(
-            prompt=prompt,
-            negative_prompt=negative_prompt,
-            prompt_cache=self.prompt_cache,
-            qwen_tokenizer=self.tokenizers["qwen"],
-            qwen_text_encoder=self.text_encoder,
+        prompt_embeds_orig, prompt_mask_orig, negative_prompt_embeds_orig, negative_prompt_mask_orig = (
+            QwenPromptEncoder.encode_prompt(
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                prompt_cache=self.prompt_cache,
+                qwen_tokenizer=self.tokenizers["qwen"],
+                qwen_text_encoder=self.text_encoder,
+            )
         )
+
+        # CRITICAL FIX: Pad prompt embeddings ONCE before loop, not inside loop
+        # Positive and negative prompts may have different sequence lengths
+        max_seq_len = max(prompt_embeds_orig.shape[1], negative_prompt_embeds_orig.shape[1])
+
+        # HIGH PRIORITY FIX: Validate sequence length against model limits
+        # Qwen supports up to 128k theoretically, but RoPE buffer is 4096 tokens
+        MAX_TRANSFORMER_SEQ_LEN = 4096  # From qwen_rope.py _ROPE_BUFFER_SIZE
+        if max_seq_len > MAX_TRANSFORMER_SEQ_LEN:
+            raise ValueError(
+                f"Combined sequence length {max_seq_len} exceeds model maximum {MAX_TRANSFORMER_SEQ_LEN}. "
+                f"Positive prompt: {prompt_embeds_orig.shape[1]}, Negative prompt: {negative_prompt_embeds_orig.shape[1]}"
+            )
+
+        if max_seq_len < 1:
+            raise ValueError("Sequence length must be at least 1 after padding")
+
+        # Pad positive prompt if needed
+        if prompt_embeds_orig.shape[1] < max_seq_len:
+            pad_len = max_seq_len - prompt_embeds_orig.shape[1]
+            prompt_embeds = mx.pad(prompt_embeds_orig, [(0, 0), (0, pad_len), (0, 0)])
+            prompt_mask = mx.pad(prompt_mask_orig, [(0, 0), (0, pad_len)])
+        else:
+            prompt_embeds = prompt_embeds_orig
+            prompt_mask = prompt_mask_orig
+
+        # Pad negative prompt if needed
+        if negative_prompt_embeds_orig.shape[1] < max_seq_len:
+            pad_len = max_seq_len - negative_prompt_embeds_orig.shape[1]
+            negative_prompt_embeds = mx.pad(negative_prompt_embeds_orig, [(0, 0), (0, pad_len), (0, 0)])
+            negative_prompt_mask = mx.pad(negative_prompt_mask_orig, [(0, 0), (0, pad_len)])
+        else:
+            negative_prompt_embeds = negative_prompt_embeds_orig
+            negative_prompt_mask = negative_prompt_mask_orig
 
         # 3. Create callback context and call before_loop
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
@@ -105,24 +145,8 @@ class QwenImage(nn.Module):
                 # OPTIMIZATION: Single batched transformer pass instead of 2 sequential passes
                 # Old: 2 forward passes per step (positive + negative)
                 # New: 1 forward pass with batch_size × 2 (40-50% speedup on transformer)
-                #
-                # CRITICAL FIX: Pad prompt embeddings to same length before batching
-                # Positive and negative prompts may have different sequence lengths
-                max_seq_len = max(prompt_embeds.shape[1], negative_prompt_embeds.shape[1])
 
-                # Pad positive prompt if needed
-                if prompt_embeds.shape[1] < max_seq_len:
-                    pad_len = max_seq_len - prompt_embeds.shape[1]
-                    prompt_embeds = mx.pad(prompt_embeds, [(0, 0), (0, pad_len), (0, 0)])
-                    prompt_mask = mx.pad(prompt_mask, [(0, 0), (0, pad_len)])
-
-                # Pad negative prompt if needed
-                if negative_prompt_embeds.shape[1] < max_seq_len:
-                    pad_len = max_seq_len - negative_prompt_embeds.shape[1]
-                    negative_prompt_embeds = mx.pad(negative_prompt_embeds, [(0, 0), (0, pad_len), (0, 0)])
-                    negative_prompt_mask = mx.pad(negative_prompt_mask, [(0, 0), (0, pad_len)])
-
-                # Concatenate inputs along batch dimension
+                # Concatenate inputs along batch dimension (embeddings already padded)
                 batched_latents = mx.concatenate([latents, latents], axis=0)
                 batched_text = mx.concatenate([prompt_embeds, negative_prompt_embeds], axis=0)
                 batched_mask = mx.concatenate([prompt_mask, negative_prompt_mask], axis=0)
@@ -213,11 +237,18 @@ class QwenImage(nn.Module):
         guidance: float,
     ) -> mx.array:
         combined = noise_negative + guidance * (noise - noise_negative)
-        # HIGH PRIORITY FIX: Use dtype-appropriate epsilon to prevent underflow
-        # float16 has epsilon ~1e-4, so 1e-12 can underflow to zero
+        # CRITICAL FIX: Prevent numerical instability in rescaling
+        # Use dtype-appropriate epsilon and safe division with degenerate case handling
         eps = 1e-6 if noise.dtype == mx.float32 else 1e-4
         cond_norm = mx.sqrt(mx.sum(noise * noise, axis=-1, keepdims=True) + eps)
         noise_norm = mx.sqrt(mx.sum(combined * combined, axis=-1, keepdims=True) + eps)
-        # Additional safety: prevent division by very small values
-        noise = combined * (cond_norm / mx.maximum(noise_norm, eps))
+
+        # Prevent both division by near-zero AND multiplication overflow
+        # If noise_norm is too small, use identity scaling (no rescaling)
+        ratio = mx.where(
+            noise_norm > eps * 10,  # Only rescale if noise_norm is sufficiently large
+            cond_norm / noise_norm,
+            mx.ones_like(noise_norm),  # Identity scaling for degenerate case
+        )
+        noise = combined * ratio
         return noise

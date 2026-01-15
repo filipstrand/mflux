@@ -56,6 +56,10 @@ class QwenImageEdit(nn.Module):
         scheduler: str = "linear",
         negative_prompt: str | None = None,
     ) -> GeneratedImage:
+        # HIGH PRIORITY FIX: Validate guidance parameter range to prevent numerical instability
+        if not (0.0 <= guidance <= 50.0):
+            raise ValueError(f"Guidance must be in range [0.0, 50.0] to prevent numerical instability, got {guidance}")
+
         config, vl_width, vl_height, vae_width, vae_height = self._compute_dimensions(
             width=width,
             height=height,
@@ -76,14 +80,50 @@ class QwenImageEdit(nn.Module):
         )
 
         # 2. Encode the prompt
-        prompt_embeds, prompt_mask, negative_prompt_embeds, negative_prompt_mask = self._encode_prompts_with_images(
-            prompt=prompt,
-            config=config,
-            vl_width=vl_width,
-            vl_height=vl_height,
-            image_paths=image_paths,
-            negative_prompt=negative_prompt,
+        prompt_embeds_orig, prompt_mask_orig, negative_prompt_embeds_orig, negative_prompt_mask_orig = (
+            self._encode_prompts_with_images(
+                prompt=prompt,
+                config=config,
+                vl_width=vl_width,
+                vl_height=vl_height,
+                image_paths=image_paths,
+                negative_prompt=negative_prompt,
+            )
         )
+
+        # CRITICAL FIX: Pad prompt embeddings ONCE before loop, not inside loop
+        # Positive and negative prompts may have different sequence lengths
+        max_seq_len = max(prompt_embeds_orig.shape[1], negative_prompt_embeds_orig.shape[1])
+
+        # HIGH PRIORITY FIX: Validate sequence length against model limits
+        # Qwen supports up to 128k theoretically, but RoPE buffer is 4096 tokens
+        MAX_TRANSFORMER_SEQ_LEN = 4096  # From qwen_rope.py _ROPE_BUFFER_SIZE
+        if max_seq_len > MAX_TRANSFORMER_SEQ_LEN:
+            raise ValueError(
+                f"Combined sequence length {max_seq_len} exceeds model maximum {MAX_TRANSFORMER_SEQ_LEN}. "
+                f"Positive prompt: {prompt_embeds_orig.shape[1]}, Negative prompt: {negative_prompt_embeds_orig.shape[1]}"
+            )
+
+        if max_seq_len < 1:
+            raise ValueError("Sequence length must be at least 1 after padding")
+
+        # Pad positive prompt if needed
+        if prompt_embeds_orig.shape[1] < max_seq_len:
+            pad_len = max_seq_len - prompt_embeds_orig.shape[1]
+            prompt_embeds = mx.pad(prompt_embeds_orig, [(0, 0), (0, pad_len), (0, 0)])
+            prompt_mask = mx.pad(prompt_mask_orig, [(0, 0), (0, pad_len)])
+        else:
+            prompt_embeds = prompt_embeds_orig
+            prompt_mask = prompt_mask_orig
+
+        # Pad negative prompt if needed
+        if negative_prompt_embeds_orig.shape[1] < max_seq_len:
+            pad_len = max_seq_len - negative_prompt_embeds_orig.shape[1]
+            negative_prompt_embeds = mx.pad(negative_prompt_embeds_orig, [(0, 0), (0, pad_len), (0, 0)])
+            negative_prompt_mask = mx.pad(negative_prompt_mask_orig, [(0, 0), (0, pad_len)])
+        else:
+            negative_prompt_embeds = negative_prompt_embeds_orig
+            negative_prompt_mask = negative_prompt_mask_orig
 
         # 3. Generate image conditioning latents
         static_image_latents, qwen_image_ids, cond_h_patches, cond_w_patches, num_images = (
@@ -97,6 +137,12 @@ class QwenImageEdit(nn.Module):
                 tiling_config=self.tiling_config,
             )
         )
+
+        # OPTIMIZATION: Compute cond_image_grid once before loop (doesn't change per iteration)
+        if num_images > 1:
+            cond_image_grid = [(1, cond_h_patches, cond_w_patches) for _ in range(num_images)]
+        else:
+            cond_image_grid = (1, cond_h_patches, cond_w_patches)
 
         # 4. Create callback context and call before_loop
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
@@ -113,28 +159,7 @@ class QwenImageEdit(nn.Module):
                 # Old: 2 forward passes per step (positive + negative)
                 # New: 1 forward pass with batch_size × 2 (40-50% speedup on transformer)
 
-                # CRITICAL FIX: Pad prompt embeddings to same length before batching
-                # Positive and negative prompts may have different sequence lengths
-                max_seq_len = max(prompt_embeds.shape[1], negative_prompt_embeds.shape[1])
-
-                # Pad positive prompt if needed
-                if prompt_embeds.shape[1] < max_seq_len:
-                    pad_len = max_seq_len - prompt_embeds.shape[1]
-                    prompt_embeds = mx.pad(prompt_embeds, [(0, 0), (0, pad_len), (0, 0)])
-                    prompt_mask = mx.pad(prompt_mask, [(0, 0), (0, pad_len)])
-
-                # Pad negative prompt if needed
-                if negative_prompt_embeds.shape[1] < max_seq_len:
-                    pad_len = max_seq_len - negative_prompt_embeds.shape[1]
-                    negative_prompt_embeds = mx.pad(negative_prompt_embeds, [(0, 0), (0, pad_len), (0, 0)])
-                    negative_prompt_mask = mx.pad(negative_prompt_mask, [(0, 0), (0, pad_len)])
-
-                if num_images > 1:
-                    cond_image_grid = [(1, cond_h_patches, cond_w_patches) for _ in range(num_images)]
-                else:
-                    cond_image_grid = (1, cond_h_patches, cond_w_patches)
-
-                # Concatenate inputs along batch dimension
+                # Concatenate inputs along batch dimension (embeddings already padded)
                 batched_hidden_states = mx.concatenate([hidden_states, hidden_states_neg], axis=0)
                 batched_text = mx.concatenate([prompt_embeds, negative_prompt_embeds], axis=0)
                 batched_mask = mx.concatenate([prompt_mask, negative_prompt_mask], axis=0)

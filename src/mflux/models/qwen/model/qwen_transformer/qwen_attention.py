@@ -141,6 +141,15 @@ class QwenAttention(nn.Module):
             return None  # Early exit - no allocation needed
 
         bsz = mask.shape[0]
+
+        # HIGH PRIORITY FIX: Validate sequence lengths before subtraction
+        # If txt_seq_len > joint_seq_len, img_seq_len becomes negative, causing mx.ones() to fail
+        if joint_seq_len < txt_seq_len:
+            raise ValueError(
+                f"Invalid sequence lengths: joint_seq_len ({joint_seq_len}) "
+                f"< txt_seq_len ({txt_seq_len}). Text sequence cannot be longer than joint sequence."
+            )
+
         img_seq_len = joint_seq_len - txt_seq_len
 
         # Only allocate if we actually need the mask (passed early checks)

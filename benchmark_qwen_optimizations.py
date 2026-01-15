@@ -28,6 +28,14 @@ def benchmark_generation(
     warmup_runs: int = 1,
 ) -> dict:
     """Benchmark image generation with the given parameters."""
+    # HIGH PRIORITY FIX: Validate steps parameter to prevent division by zero
+    if steps <= 0:
+        raise ValueError(f"steps must be positive, got {steps}")
+    if num_runs <= 0:
+        raise ValueError(f"num_runs must be positive, got {num_runs}")
+    if warmup_runs < 0:
+        raise ValueError(f"warmup_runs must be non-negative, got {warmup_runs}")
+
     width, height = size
     prompt = "a serene mountain landscape at sunset, highly detailed, 8k"
     negative_prompt = "blurry, low quality, distorted"
