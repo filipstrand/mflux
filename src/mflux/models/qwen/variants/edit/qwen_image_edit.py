@@ -123,13 +123,16 @@ class QwenImageEdit(nn.Module):
                 batched_mask = mx.concatenate([prompt_mask, negative_prompt_mask], axis=0)
 
                 # HIGH PRIORITY FIX: Validate shape consistency for batched guidance
+                # CRITICAL: Use explicit validation instead of assert (disabled with -O flag)
                 expected_batch = hidden_states.shape[0] * 2
-                assert batched_hidden_states.shape[0] == expected_batch, (
-                    f"Batch concatenation failed: expected {expected_batch}, got {batched_hidden_states.shape[0]}"
-                )
-                assert batched_text.shape[0] == expected_batch, (
-                    f"Text/hidden_states batch mismatch: expected {expected_batch}, got {batched_text.shape[0]}"
-                )
+                if batched_hidden_states.shape[0] != expected_batch:
+                    raise ValueError(
+                        f"Batch concatenation failed: expected {expected_batch}, got {batched_hidden_states.shape[0]}"
+                    )
+                if batched_text.shape[0] != expected_batch:
+                    raise ValueError(
+                        f"Text/hidden_states batch mismatch: expected {expected_batch}, got {batched_text.shape[0]}"
+                    )
 
                 # Single transformer forward pass (2x batch size)
                 batched_noise = self.transformer(
@@ -143,9 +146,11 @@ class QwenImageEdit(nn.Module):
                 )[:, : latents.shape[1]]
 
                 # HIGH PRIORITY FIX: Validate output shape before split
-                assert batched_noise.shape[0] == expected_batch, (
-                    f"Transformer output batch mismatch: expected {expected_batch}, got {batched_noise.shape[0]}"
-                )
+                # CRITICAL: Use explicit validation instead of assert (disabled with -O flag)
+                if batched_noise.shape[0] != expected_batch:
+                    raise ValueError(
+                        f"Transformer output batch mismatch: expected {expected_batch}, got {batched_noise.shape[0]}"
+                    )
 
                 # Split results back to positive and negative
                 noise, noise_negative = mx.split(batched_noise, 2, axis=0)
