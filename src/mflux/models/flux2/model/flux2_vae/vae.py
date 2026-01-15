@@ -294,8 +294,8 @@ class Flux2Decoder(nn.Module):
 
 
 class Flux2VAE(nn.Module):
-    scaling_factor: float = 0.3611
-    shift_factor: float = 0.1159
+    scaling_factor: float = 1.0
+    shift_factor: float = 0.0
     latent_channels: int = 32
 
     def __init__(self):

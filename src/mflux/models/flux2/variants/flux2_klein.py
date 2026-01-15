@@ -50,7 +50,11 @@ class Flux2Klein(nn.Module):
         else:
             packed_latents = data
 
-        decoded = self.vae.decode_packed_latents(mx.array(packed_latents))
+        latents = mx.array(packed_latents)
+        if latents.ndim >= 4 and latents.shape[1] == self.vae.latent_channels:
+            decoded = self.vae.decode(latents)
+        else:
+            decoded = self.vae.decode_packed_latents(latents)
         normalized = ImageUtil._denormalize(decoded)
         image = ImageUtil._numpy_to_pil(ImageUtil._to_numpy(normalized))
         if output_path is not None:
