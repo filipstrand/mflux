@@ -1,7 +1,7 @@
 import mlx.core as mx
 import numpy as np
 
-from mflux.models.common.model_components.qwen3_vl.qwen3_vl_decoder import Qwen3VLDecoder
+from mflux.models.common_models.qwen3_vl.qwen3_vl_decoder import Qwen3VLDecoder
 
 
 class Qwen3VLUtil:

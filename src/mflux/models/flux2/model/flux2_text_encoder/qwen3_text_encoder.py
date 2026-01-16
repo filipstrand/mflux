@@ -1,8 +1,8 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.common.model_components.qwen3_vl.qwen3_vl_decoder_layer import Qwen3VLDecoderLayer
-from mflux.models.common.model_components.qwen3_vl.qwen3_vl_rms_norm import Qwen3VLRMSNorm
+from mflux.models.common_models.qwen3_vl.qwen3_vl_decoder_layer import Qwen3VLDecoderLayer
+from mflux.models.common_models.qwen3_vl.qwen3_vl_rms_norm import Qwen3VLRMSNorm
 from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_rotary_embedding import Qwen3TextRotaryEmbedding
 
 
