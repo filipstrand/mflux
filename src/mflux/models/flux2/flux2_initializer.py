@@ -13,6 +13,37 @@ from mflux.models.flux2.weights.flux2_weight_definition import Flux2KleinWeightD
 
 
 class Flux2Initializer:
+    _KLEIN_TRANSFORMER_CONFIGS = {
+        "flux2-klein-4b": {
+            "patch_size": 1,
+            "in_channels": 128,
+            "num_layers": 5,
+            "num_single_layers": 20,
+            "attention_head_dim": 128,
+            "num_attention_heads": 24,
+            "joint_attention_dim": 7680,
+            "timestep_guidance_channels": 256,
+            "mlp_ratio": 3.0,
+            "axes_dims_rope": (32, 32, 32, 32),
+            "rope_theta": 2000,
+            "guidance_embeds": False,
+        },
+        "flux2-klein-9b": {
+            "patch_size": 1,
+            "in_channels": 128,
+            "num_layers": 8,
+            "num_single_layers": 24,
+            "attention_head_dim": 128,
+            "num_attention_heads": 32,
+            "joint_attention_dim": 12288,
+            "timestep_guidance_channels": 256,
+            "mlp_ratio": 3.0,
+            "axes_dims_rope": (32, 32, 32, 32),
+            "rope_theta": 2000,
+            "guidance_embeds": False,
+        },
+    }
+
     @staticmethod
     def init(
         model,
@@ -54,8 +85,16 @@ class Flux2Initializer:
     @staticmethod
     def _init_models(model) -> None:
         model.vae = Flux2VAE()
-        model.transformer = Flux2Transformer()
+        transformer_config = Flux2Initializer._get_transformer_config(model.model_config)
+        model.transformer = Flux2Transformer(**transformer_config)
         model.text_encoder = Qwen3TextEncoder()
+
+    @staticmethod
+    def _get_transformer_config(model_config: ModelConfig) -> dict:
+        model_id = model_config.model_name.lower()
+        if "klein-9b" in model_id or "klein-base-9b" in model_id:
+            return Flux2Initializer._KLEIN_TRANSFORMER_CONFIGS["flux2-klein-9b"]
+        return Flux2Initializer._KLEIN_TRANSFORMER_CONFIGS["flux2-klein-4b"]
 
     @staticmethod
     def _apply_weights(model, weights: LoadedWeights, quantize: int | None) -> None:

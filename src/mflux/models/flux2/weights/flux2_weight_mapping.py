@@ -111,22 +111,18 @@ class Flux2WeightMapping(WeightMapping):
             WeightTarget(
                 to_pattern="single_transformer_blocks.{block}.attn.to_qkv_mlp_proj.weight",
                 from_pattern=["single_transformer_blocks.{block}.attn.to_qkv_mlp_proj.weight"],
-                max_blocks=20,
             ),
             WeightTarget(
                 to_pattern="single_transformer_blocks.{block}.attn.norm_q.weight",
                 from_pattern=["single_transformer_blocks.{block}.attn.norm_q.weight"],
-                max_blocks=20,
             ),
             WeightTarget(
                 to_pattern="single_transformer_blocks.{block}.attn.norm_k.weight",
                 from_pattern=["single_transformer_blocks.{block}.attn.norm_k.weight"],
-                max_blocks=20,
             ),
             WeightTarget(
                 to_pattern="single_transformer_blocks.{block}.attn.to_out.weight",
                 from_pattern=["single_transformer_blocks.{block}.attn.to_out.weight"],
-                max_blocks=20,
             ),
         ]
 
