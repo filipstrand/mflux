@@ -149,7 +149,7 @@ class Config:
         else:
             raise NotImplementedError(f"The scheduler {self._scheduler_str!r} is not implemented by mflux.")
 
-        if hasattr(self._scheduler, "set_image_seq_len"):
+        if hasattr(self._scheduler, "set_image_seq_len") and self.model_config.requires_sigma_shift:
             self._scheduler.set_image_seq_len(self.image_seq_len)
 
         return self._scheduler
