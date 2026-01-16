@@ -13,7 +13,6 @@ from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3
 from mflux.models.flux2.model.flux2_transformer.transformer import Flux2Transformer
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 from mflux.models.flux2.schedulers.flow_match_euler_discrete import FlowMatchEulerDiscreteScheduler
-from mflux.models.flux2.variants.flux2_klein_debug import Flux2KleinDebug
 from mflux.utils.image_util import ImageUtil
 
 
@@ -164,55 +163,6 @@ class Flux2Klein(nn.Module):
             tokenizer=self.tokenizers["qwen3"],
             text_encoder=self.text_encoder,
             num_images_per_prompt=num_images_per_prompt,
-            max_sequence_length=max_sequence_length,
-            text_encoder_out_layers=text_encoder_out_layers,
-        )
-
-    def debug_decode_packed_latents(
-        self,
-        latents_path: str | Path,
-        output_path: str | Path | None = None,
-    ):
-        return Flux2KleinDebug.decode_packed_latents(
-            vae=self.vae,
-            latents_path=latents_path,
-            output_path=output_path,
-        )
-
-    def debug_roundtrip_image(
-        self,
-        image_path: str | Path,
-        output_path: str | Path | None = None,
-    ):
-        return Flux2KleinDebug.roundtrip_image(
-            vae=self.vae,
-            image_path=image_path,
-            output_path=output_path,
-        )
-
-    def debug_transformer_step(
-        self,
-        inputs_path: str | Path,
-        output_path: str | Path | None = None,
-    ) -> dict[str, float]:
-        return Flux2KleinDebug.transformer_step(
-            transformer=self.transformer,
-            inputs_path=inputs_path,
-            output_path=output_path,
-        )
-
-    def debug_text_encoder(
-        self,
-        prompt: str | list[str],
-        inputs_path: str | Path,
-        max_sequence_length: int = 512,
-        text_encoder_out_layers: tuple[int, ...] = (9, 18, 27),
-    ) -> dict[str, float]:
-        return Flux2KleinDebug.text_encoder(
-            text_encoder=self.text_encoder,
-            tokenizer=self.tokenizers["qwen3"],
-            prompt=prompt,
-            inputs_path=inputs_path,
             max_sequence_length=max_sequence_length,
             text_encoder_out_layers=text_encoder_out_layers,
         )
