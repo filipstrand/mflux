@@ -5,7 +5,6 @@ from mlx import nn
 
 from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
-from mflux.models.common.schedulers.flow_match_euler_discrete_scheduler import FlowMatchEulerDiscreteScheduler
 from mflux.models.flux2.flux2_initializer import Flux2Initializer
 from mflux.models.flux2.latent_creator.flux2_latent_creator import Flux2LatentCreator
 from mflux.models.flux2.model.flux2_text_encoder.prompt_encoder import Flux2PromptEncoder
@@ -93,11 +92,6 @@ class Flux2Klein(nn.Module):
             width=config.width,
             batch_size=1,
         )
-
-        # 3. Prepare timesteps and sigmas
-        image_seq_len = latents.shape[1]
-        if isinstance(config.scheduler, FlowMatchEulerDiscreteScheduler):
-            config.scheduler.set_image_seq_len(image_seq_len)
 
         # 4. Denoising loop
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
