@@ -1,8 +1,8 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.fibo_vlm.model.qwen3_vl_decoder_layer import Qwen3VLDecoderLayer
-from mflux.models.fibo_vlm.model.qwen3_vl_rms_norm import Qwen3VLRMSNorm
+from mflux.models.common.model_components.qwen3_vl.qwen3_vl_decoder_layer import Qwen3VLDecoderLayer
+from mflux.models.common.model_components.qwen3_vl.qwen3_vl_rms_norm import Qwen3VLRMSNorm
 from mflux.models.fibo_vlm.model.qwen3_vl_rope import Qwen3VLRotaryEmbedding
 
 

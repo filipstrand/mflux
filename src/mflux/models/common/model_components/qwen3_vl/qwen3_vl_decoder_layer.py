@@ -1,9 +1,9 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.fibo_vlm.model.qwen3_vl_attention import Qwen3VLAttention
-from mflux.models.fibo_vlm.model.qwen3_vl_mlp import Qwen3VLMLP
-from mflux.models.fibo_vlm.model.qwen3_vl_rms_norm import Qwen3VLRMSNorm
+from mflux.models.common.model_components.qwen3_vl.qwen3_vl_attention import Qwen3VLAttention
+from mflux.models.common.model_components.qwen3_vl.qwen3_vl_mlp import Qwen3VLMLP
+from mflux.models.common.model_components.qwen3_vl.qwen3_vl_rms_norm import Qwen3VLRMSNorm
 
 
 class Qwen3VLDecoderLayer(nn.Module):
