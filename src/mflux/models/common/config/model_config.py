@@ -90,6 +90,16 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
+    def flux2_klein_4b() -> "ModelConfig":
+        return AVAILABLE_MODELS["flux2-klein-4b"]
+
+    @staticmethod
+    @lru_cache
+    def flux2_klein_9b() -> "ModelConfig":
+        return AVAILABLE_MODELS["flux2-klein-9b"]
+
+    @staticmethod
+    @lru_cache
     def qwen_image() -> "ModelConfig":
         return AVAILABLE_MODELS["qwen-image"]
 

@@ -12,7 +12,7 @@ class TestImageGeneratorFlux2Klein:
             reference_image_path="reference_flux2_klein_tiger_swim.png",
             output_image_path="output_flux2_klein_tiger_swim.png",
             model_class=Flux2Klein,
-            model_config=ModelConfig.from_name("flux2-klein-4b"),
+            model_config=ModelConfig.flux2_klein_4b(),
             quantize=None,
             steps=4,
             seed=5,
