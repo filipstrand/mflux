@@ -25,6 +25,7 @@ Provide a repeatable, MLX-focused workflow for porting ML models (typically from
      - Export packed latents from the reference just before VAE decode.
      - Load latents inline and decode to an image for visual inspection.
      - Run an encode→decode roundtrip to sanity check reconstruction; a good-looking image reconstruction increases confidence in the implementation.
+   - Once the full port is working, remove any loaded tensors or debug artifacts so no traces remain.
    - Then port the transformer loop and its schedulers with intermediate latent checks.
      - If the reference uses a novel scheduler, port it; otherwise, reuse the existing mflux scheduler.
    - Finish with the text encoder and tokenizer details.
