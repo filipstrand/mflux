@@ -14,8 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🔧 Improvements
 
-- **Flux2 CLI integration**: Added Flux2 model choices and shell completions.
-- **Text encoder parity**: Qwen3 prompt encoding and tokenizer handling aligned with diffusers outputs.
+- **Qwen3-VL shared module**: Extracted `qwen3_vl` into `models/common_models/` for reuse across model families (Flux2 and Fibo etc).
 
 ---
 
