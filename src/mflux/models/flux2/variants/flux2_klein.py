@@ -52,7 +52,6 @@ class Flux2Klein(nn.Module):
         image_strength: float | None = None,
         scheduler: str = "flow_match_euler_discrete",
         negative_prompt: str | list[str] | None = None,
-        latents_path: Path | str | None = None,
     ) -> GeneratedImage:
         config = Config(
             model_config=self.model_config,
@@ -85,21 +84,13 @@ class Flux2Klein(nn.Module):
             )
 
         # 2. Prepare latents
-        if latents_path is not None:
-            loaded = mx.load(str(latents_path))
-            if isinstance(loaded, dict):
-                latents = mx.array(next(iter(loaded.values())))
-            else:
-                latents = mx.array(loaded)
-            latent_ids = Flux2LatentCreator.prepare_latent_ids_from_packed(latents)
-        else:
-            latents, latent_ids, latent_height, latent_width = Flux2LatentCreator.prepare_latents(
-                seed=seed,
-                height=config.height,
-                width=config.width,
-                batch_size=1,
-            )
-            latents = Flux2LatentCreator.pack_latents(latents)
+        latents, latent_ids, latent_height, latent_width = Flux2LatentCreator.prepare_latents(
+            seed=seed,
+            height=config.height,
+            width=config.width,
+            batch_size=1,
+        )
+        latents = Flux2LatentCreator.pack_latents(latents)
 
         # 3. Prepare timesteps and sigmas
         image_seq_len = latents.shape[1]
@@ -137,12 +128,8 @@ class Flux2Klein(nn.Module):
             latents = latents + dt.astype(latents.dtype) * noise_pred.astype(latents.dtype)
 
         # 5. Decode latents
-        if latents_path is None:
-            height_tokens = latent_height
-            width_tokens = latent_width
-        else:
-            height_tokens = int(mx.max(latent_ids[:, :, 1]).item()) + 1
-            width_tokens = int(mx.max(latent_ids[:, :, 2]).item()) + 1
+        height_tokens = latent_height
+        width_tokens = latent_width
 
         packed_latents = latents.reshape(batch_size, height_tokens, width_tokens, latents.shape[-1]).transpose(
             0, 3, 1, 2
