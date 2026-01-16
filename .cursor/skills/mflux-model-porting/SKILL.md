@@ -1,7 +1,7 @@
-# mflux ML model porting (general)
+# mflux model porting (general)
 
 ## Goal
-Provide a repeatable, MLX-focused workflow for porting ML models (e.g., from diffusers) into mflux with correctness first, then refactor to mflux style.
+Provide a repeatable, MLX-focused workflow for porting ML models (typically from diffusers repo located near mflux repo in the system) into mflux with correctness first, then refactor to mflux style.
 
 ## Principles
 - Match the reference implementation first; prove correctness before cleanup.
@@ -14,10 +14,11 @@ Provide a repeatable, MLX-focused workflow for porting ML models (e.g., from dif
    - Identify reference files, configs, and checkpoints to mirror.
 2. **Port fast to reference**
    - Add the model package skeleton and a variant class + initializer.
-   - Wire weight definitions/mappings early so loading is exercised (avoid quantization until correct).
+   - Wire weight definitions/mappings early so loading is exercised (implement quantization in the initializer, but skip it during early runs).
    - Add a minimal hardcoded runner for quick iteration.
    - Add lightweight shape checks close to the code paths.
    - Keep temporary debug hooks inline (no throwaway scripts).
+   - Use `mx.save`/`mx.load` at critical points; it is OK to add these to the reference (without changing logic) to export latents.
 3. **Port order (work backwards from image)**
    - Typical image generation flow: `prompt → text_encoder → transformer_loop → VAE → image`.
    - For porting, invert the order so you can validate pixel space early.
@@ -26,6 +27,7 @@ Provide a repeatable, MLX-focused workflow for porting ML models (e.g., from dif
      - Load latents inline and decode to an image for visual inspection.
      - Run an encode→decode roundtrip to sanity check reconstruction; a good-looking image increases confidence in the implementation.
    - Then port the transformer loop and its schedulers with intermediate latent checks.
+     - If the reference uses a novel scheduler, port it; otherwise, reuse the existing mflux scheduler.
    - Finish with the text encoder and tokenizer details.
 4. **Deterministic validation**
    - Create a deterministic MLX test (image or tensor) that locks the output.
@@ -37,6 +39,7 @@ Provide a repeatable, MLX-focused workflow for porting ML models (e.g., from dif
    - Move configuration defaults into standard config/scheduler paths.
 6. **Finalize**
    - Re-run tests and basic perf checks.
+   - Add CLI/pipeline defaults and completions later, once core output is stable.
    - Document any new mapping rules, shape constraints, or tolerances.
 
 ## Tooling expectations
