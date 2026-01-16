@@ -1,10 +1,10 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.fibo_vlm.model.qwen3_vl_vision_block import Qwen3VLVisionBlock
-from mflux.models.fibo_vlm.model.qwen3_vl_vision_patch_embed import Qwen3VLVisionPatchEmbed
-from mflux.models.fibo_vlm.model.qwen3_vl_vision_patch_merger import Qwen3VLVisionPatchMerger
-from mflux.models.fibo_vlm.model.qwen3_vl_vision_rotary_embedding import Qwen3VLVisionRotaryEmbedding
+from mflux.models.common.model_components.qwen3_vl.qwen3_vl_vision_block import Qwen3VLVisionBlock
+from mflux.models.common.model_components.qwen3_vl.qwen3_vl_vision_patch_embed import Qwen3VLVisionPatchEmbed
+from mflux.models.common.model_components.qwen3_vl.qwen3_vl_vision_patch_merger import Qwen3VLVisionPatchMerger
+from mflux.models.common.model_components.qwen3_vl.qwen3_vl_vision_rotary_embedding import Qwen3VLVisionRotaryEmbedding
 
 
 class Qwen3VLVisionModel(nn.Module):
