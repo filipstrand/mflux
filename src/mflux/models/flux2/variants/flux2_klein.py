@@ -13,6 +13,7 @@ from mflux.models.flux2.model.flux2_text_encoder.prompt_encoder import Flux2Prom
 from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3TextEncoder
 from mflux.models.flux2.model.flux2_transformer.transformer import Flux2Transformer
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
+from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
 
@@ -43,7 +44,7 @@ class Flux2Klein(nn.Module):
     def generate_image(
         self,
         seed: int,
-        prompt: str | list[str],
+        prompt: str,
         num_inference_steps: int = 4,
         height: int = 1024,
         width: int = 1024,
@@ -51,7 +52,7 @@ class Flux2Klein(nn.Module):
         image_path: Path | str | None = None,
         image_strength: float | None = None,
         scheduler: str = "flow_match_euler_discrete",
-        negative_prompt: str | list[str] | None = None,
+        negative_prompt: str | None = None,
     ) -> GeneratedImage:
         config = Config(
             model_config=self.model_config,
@@ -66,8 +67,10 @@ class Flux2Klein(nn.Module):
         start_time = time.time()
 
         # 1. Encode prompt
-        prompt_embeds, text_ids = self.encode_prompt(
+        prompt_embeds, text_ids = Flux2PromptEncoder.encode_prompt(
             prompt=prompt,
+            tokenizer=self.tokenizers["qwen3"],
+            text_encoder=self.text_encoder,
             num_images_per_prompt=1,
             max_sequence_length=512,
             text_encoder_out_layers=(9, 18, 27),
@@ -76,8 +79,10 @@ class Flux2Klein(nn.Module):
         negative_prompt_embeds = None
         negative_text_ids = None
         if config.guidance > 1.0 and negative_prompt:
-            negative_prompt_embeds, negative_text_ids = self.encode_prompt(
+            negative_prompt_embeds, negative_text_ids = Flux2PromptEncoder.encode_prompt(
                 prompt=negative_prompt,
+                tokenizer=self.tokenizers["qwen3"],
+                text_encoder=self.text_encoder,
                 num_images_per_prompt=1,
                 max_sequence_length=512,
                 text_encoder_out_layers=(9, 18, 27),
@@ -100,38 +105,50 @@ class Flux2Klein(nn.Module):
         )
 
         # 4. Denoising loop
-        batch_size = latents.shape[0]
-        for i in range(config.num_inference_steps):
-            t = timesteps[i]
-            timestep = mx.full((batch_size,), t, dtype=mx.float32)
-            noise_pred = self.transformer(
-                hidden_states=latents,
-                encoder_hidden_states=prompt_embeds,
-                timestep=timestep / 1000,
-                img_ids=latent_ids,
-                txt_ids=text_ids,
-                guidance=None,
-            )
-
-            if config.guidance > 1.0 and negative_prompt_embeds is not None and negative_text_ids is not None:
-                neg_noise_pred = self.transformer(
+        ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
+        ctx.before_loop(latents)
+        for i in config.time_steps:
+            try:
+                t = timesteps[i]
+                timestep = mx.full((latents.shape[0],), t, dtype=mx.float32)
+                noise_pred = self.transformer(
                     hidden_states=latents,
-                    encoder_hidden_states=negative_prompt_embeds,
+                    encoder_hidden_states=prompt_embeds,
                     timestep=timestep / 1000,
                     img_ids=latent_ids,
-                    txt_ids=negative_text_ids,
+                    txt_ids=text_ids,
                     guidance=None,
                 )
-                noise_pred = neg_noise_pred + config.guidance * (noise_pred - neg_noise_pred)
 
-            dt = sigmas[i + 1] - sigmas[i]
-            latents = latents + dt.astype(latents.dtype) * noise_pred.astype(latents.dtype)
+                if config.guidance > 1.0 and negative_prompt_embeds is not None and negative_text_ids is not None:
+                    neg_noise_pred = self.transformer(
+                        hidden_states=latents,
+                        encoder_hidden_states=negative_prompt_embeds,
+                        timestep=timestep / 1000,
+                        img_ids=latent_ids,
+                        txt_ids=negative_text_ids,
+                        guidance=None,
+                    )
+                    noise_pred = neg_noise_pred + config.guidance * (noise_pred - neg_noise_pred)
+
+                dt = sigmas[i + 1] - sigmas[i]
+                latents = latents + dt.astype(latents.dtype) * noise_pred.astype(latents.dtype)
+
+                ctx.in_loop(i, latents)
+                mx.eval(latents)
+            except KeyboardInterrupt:  # noqa: PERF203
+                ctx.interruption(i, latents)
+                raise StopImageGenerationException(
+                    f"Stopping image generation at step {i + 1}/{config.num_inference_steps}"
+                )
+
+        ctx.after_loop(latents)
 
         # 5. Decode latents
         height_tokens = latent_height
         width_tokens = latent_width
 
-        packed_latents = latents.reshape(batch_size, height_tokens, width_tokens, latents.shape[-1]).transpose(
+        packed_latents = latents.reshape(latents.shape[0], height_tokens, width_tokens, latents.shape[-1]).transpose(
             0, 3, 1, 2
         )
         decoded = self.vae.decode_packed_latents(packed_latents)
@@ -139,24 +156,8 @@ class Flux2Klein(nn.Module):
             decoded_latents=decoded,
             config=config,
             seed=seed,
-            prompt=prompt if isinstance(prompt, str) else "\n".join(prompt),
+            prompt=prompt,
             quantization=getattr(self, "bits", 0) or 0,
             generation_time=time.time() - start_time,
-            negative_prompt=negative_prompt if isinstance(negative_prompt, str) else None,
-        )
-
-    def encode_prompt(
-        self,
-        prompt: str | list[str],
-        num_images_per_prompt: int = 1,
-        max_sequence_length: int = 512,
-        text_encoder_out_layers: tuple[int, ...] = (9, 18, 27),
-    ) -> tuple[mx.array, mx.array]:
-        return Flux2PromptEncoder.encode_prompt(
-            prompt=prompt,
-            tokenizer=self.tokenizers["qwen3"],
-            text_encoder=self.text_encoder,
-            num_images_per_prompt=num_images_per_prompt,
-            max_sequence_length=max_sequence_length,
-            text_encoder_out_layers=text_encoder_out_layers,
+            negative_prompt=negative_prompt,
         )
