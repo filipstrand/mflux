@@ -68,14 +68,26 @@ class Flux2Transformer(nn.Module):
         self,
         hidden_states: mx.array,
         encoder_hidden_states: mx.array,
-        timestep: mx.array,
+        timestep: mx.array | float | int,
         img_ids: mx.array,
         txt_ids: mx.array,
-        guidance: mx.array | None = None,
+        guidance: mx.array | float | int | None = None,
     ) -> mx.array:
-        timestep = timestep.astype(hidden_states.dtype) * 1000
+        if not isinstance(timestep, mx.array):
+            timestep = mx.array(timestep, dtype=hidden_states.dtype)
+        if timestep.ndim == 0:
+            timestep = mx.full((hidden_states.shape[0],), timestep, dtype=hidden_states.dtype)
+        timestep = timestep.astype(hidden_states.dtype)
+        timestep_scale = mx.where(mx.max(timestep) <= 1.0, 1000.0, 1.0).astype(hidden_states.dtype)
+        timestep = timestep * timestep_scale
         if guidance is not None:
-            guidance = guidance.astype(hidden_states.dtype) * 1000
+            if not isinstance(guidance, mx.array):
+                guidance = mx.array(guidance, dtype=hidden_states.dtype)
+            if guidance.ndim == 0:
+                guidance = mx.full((hidden_states.shape[0],), guidance, dtype=hidden_states.dtype)
+            guidance = guidance.astype(hidden_states.dtype)
+            guidance_scale = mx.where(mx.max(guidance) <= 1.0, 1000.0, 1.0).astype(hidden_states.dtype)
+            guidance = guidance * guidance_scale
         temb = self.time_guidance_embed(timestep, guidance)
         temb = temb.astype(ModelConfig.precision)
 

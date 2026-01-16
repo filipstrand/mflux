@@ -45,6 +45,25 @@ class Flux2LatentCreator:
         return latents, latent_ids, latent_height, latent_width
 
     @staticmethod
+    def prepare_packed_latents(
+        seed: int,
+        height: int,
+        width: int,
+        batch_size: int,
+        num_latents_channels: int = 32,
+        vae_scale_factor: int = 8,
+    ) -> tuple[mx.array, mx.array, int, int]:
+        latents, latent_ids, latent_height, latent_width = Flux2LatentCreator.prepare_latents(
+            seed=seed,
+            height=height,
+            width=width,
+            batch_size=batch_size,
+            num_latents_channels=num_latents_channels,
+            vae_scale_factor=vae_scale_factor,
+        )
+        return Flux2LatentCreator.pack_latents(latents), latent_ids, latent_height, latent_width
+
+    @staticmethod
     def prepare_latent_ids_from_packed(latents: mx.array) -> mx.array:
         batch_size, seq_len, _ = latents.shape
         height = int(mx.sqrt(mx.array(seq_len, dtype=mx.float32)).item())

@@ -1,4 +1,3 @@
-import time
 from pathlib import Path
 
 import mlx.core as mx
@@ -54,6 +53,7 @@ class Flux2Klein(nn.Module):
         scheduler: str = "flow_match_euler_discrete",
         negative_prompt: str | None = None,
     ) -> GeneratedImage:
+        # 0. Create a new config based on the model type and input parameters
         config = Config(
             model_config=self.model_config,
             num_inference_steps=num_inference_steps,
@@ -64,8 +64,6 @@ class Flux2Klein(nn.Module):
             image_strength=image_strength,
             scheduler=scheduler,
         )
-        start_time = time.time()
-
         # 1. Encode prompt
         prompt_embeds, text_ids = Flux2PromptEncoder.encode_prompt(
             prompt=prompt,
@@ -89,68 +87,66 @@ class Flux2Klein(nn.Module):
             )
 
         # 2. Prepare latents
-        latents, latent_ids, latent_height, latent_width = Flux2LatentCreator.prepare_latents(
+        latents, latent_ids, latent_height, latent_width = Flux2LatentCreator.prepare_packed_latents(
             seed=seed,
             height=config.height,
             width=config.width,
             batch_size=1,
         )
-        latents = Flux2LatentCreator.pack_latents(latents)
 
         # 3. Prepare timesteps and sigmas
         image_seq_len = latents.shape[1]
-        timesteps, sigmas = FlowMatchEulerDiscreteScheduler.get_timesteps_and_sigmas(
-            image_seq_len=image_seq_len,
-            num_inference_steps=config.num_inference_steps,
-        )
+        if isinstance(config.scheduler, FlowMatchEulerDiscreteScheduler):
+            config.scheduler.set_image_seq_len(image_seq_len)
 
         # 4. Denoising loop
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
-        for i in config.time_steps:
+        for t in config.time_steps:
             try:
-                t = timesteps[i]
-                timestep = mx.full((latents.shape[0],), t, dtype=mx.float32)
+                timestep = config.scheduler.timesteps[t]
+                # 5.t Predict the noise
                 noise_pred = self.transformer(
                     hidden_states=latents,
                     encoder_hidden_states=prompt_embeds,
-                    timestep=timestep / 1000,
+                    timestep=timestep,
                     img_ids=latent_ids,
                     txt_ids=text_ids,
                     guidance=None,
                 )
 
+                # 6.t Apply guidance (if provided)
                 if config.guidance > 1.0 and negative_prompt_embeds is not None and negative_text_ids is not None:
                     neg_noise_pred = self.transformer(
                         hidden_states=latents,
                         encoder_hidden_states=negative_prompt_embeds,
-                        timestep=timestep / 1000,
+                        timestep=timestep,
                         img_ids=latent_ids,
                         txt_ids=negative_text_ids,
                         guidance=None,
                     )
                     noise_pred = neg_noise_pred + config.guidance * (noise_pred - neg_noise_pred)
 
-                dt = sigmas[i + 1] - sigmas[i]
-                latents = latents + dt.astype(latents.dtype) * noise_pred.astype(latents.dtype)
+                # 7.t Take one denoise step
+                latents = config.scheduler.step(
+                    noise=noise_pred.astype(latents.dtype),
+                    timestep=t,
+                    latents=latents,
+                    sigmas=config.scheduler.sigmas,
+                )
 
-                ctx.in_loop(i, latents)
+                ctx.in_loop(t, latents)
                 mx.eval(latents)
             except KeyboardInterrupt:  # noqa: PERF203
-                ctx.interruption(i, latents)
+                ctx.interruption(t, latents)
                 raise StopImageGenerationException(
-                    f"Stopping image generation at step {i + 1}/{config.num_inference_steps}"
+                    f"Stopping image generation at step {t + 1}/{config.num_inference_steps}"
                 )
 
         ctx.after_loop(latents)
 
-        # 5. Decode latents
-        height_tokens = latent_height
-        width_tokens = latent_width
-
-        packed_latents = latents.reshape(latents.shape[0], height_tokens, width_tokens, latents.shape[-1]).transpose(
-            0, 3, 1, 2
-        )
+        # 8. Decode latents
+        packed_latents = latents.reshape(latents.shape[0], latent_height, latent_width, latents.shape[-1]).transpose(0, 3, 1, 2)  # fmt: off
         decoded = self.vae.decode_packed_latents(packed_latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,
@@ -158,6 +154,6 @@ class Flux2Klein(nn.Module):
             seed=seed,
             prompt=prompt,
             quantization=getattr(self, "bits", 0) or 0,
-            generation_time=time.time() - start_time,
+            generation_time=config.time_steps.format_dict["elapsed"],
             negative_prompt=negative_prompt,
         )

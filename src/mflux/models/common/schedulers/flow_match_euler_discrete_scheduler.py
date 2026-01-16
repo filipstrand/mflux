@@ -29,6 +29,12 @@ class FlowMatchEulerDiscreteScheduler(BaseScheduler):
     def timesteps(self) -> mx.array:
         return self._timesteps
 
+    def set_image_seq_len(self, image_seq_len: int) -> None:
+        self._timesteps, self._sigmas = FlowMatchEulerDiscreteScheduler.get_timesteps_and_sigmas(
+            image_seq_len=image_seq_len,
+            num_inference_steps=self.config.num_inference_steps,
+        )
+
     def _compute_mu(self) -> float:
         h_patches = self.config.height // 16
         w_patches = self.config.width // 16
@@ -99,7 +105,8 @@ class FlowMatchEulerDiscreteScheduler(BaseScheduler):
         return sigmas_arr, timesteps_arr
 
     def step(self, noise: mx.array, timestep: int, latents: mx.array, **kwargs) -> mx.array:
-        dt = self._sigmas[timestep + 1] - self._sigmas[timestep]
+        sigmas = kwargs.get("sigmas", self._sigmas)
+        dt = sigmas[timestep + 1] - sigmas[timestep]
         return latents + dt * noise
 
     def scale_model_input(self, latents: mx.array, t: int) -> mx.array:
