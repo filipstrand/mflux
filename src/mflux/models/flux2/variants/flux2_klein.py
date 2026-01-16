@@ -98,12 +98,11 @@ class Flux2Klein(nn.Module):
         ctx.before_loop(latents)
         for t in config.time_steps:
             try:
-                timestep = config.scheduler.timesteps[t]
                 # 5.t Predict the noise
-                noise_pred = self.transformer(
+                noise = self.transformer(
                     hidden_states=latents,
                     encoder_hidden_states=prompt_embeds,
-                    timestep=timestep,
+                    timestep=config.scheduler.timesteps[t],
                     img_ids=latent_ids,
                     txt_ids=text_ids,
                     guidance=None,
@@ -111,22 +110,19 @@ class Flux2Klein(nn.Module):
 
                 # 6.t Apply guidance (if provided)
                 if config.guidance > 1.0 and negative_prompt_embeds is not None and negative_text_ids is not None:
-                    neg_noise_pred = self.transformer(
+                    neg_noise = self.transformer(
                         hidden_states=latents,
                         encoder_hidden_states=negative_prompt_embeds,
-                        timestep=timestep,
+                        timestep=config.scheduler.timesteps[t],
                         img_ids=latent_ids,
                         txt_ids=negative_text_ids,
                         guidance=None,
                     )
-                    noise_pred = neg_noise_pred + config.guidance * (noise_pred - neg_noise_pred)
+                    noise = neg_noise + config.guidance * (noise - neg_noise)
 
                 # 7.t Take one denoise step
                 latents = config.scheduler.step(
-                    noise=noise_pred.astype(latents.dtype),
-                    timestep=t,
-                    latents=latents,
-                    sigmas=config.scheduler.sigmas,
+                    noise=noise, timestep=t, latents=latents, sigmas=config.scheduler.sigmas
                 )
 
                 ctx.in_loop(t, latents)
