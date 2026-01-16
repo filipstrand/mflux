@@ -15,9 +15,8 @@ Provide a repeatable, MLX-focused workflow for porting ML models (typically from
 2. **Port fast to reference**
    - Add the model package skeleton and a variant class + initializer.
    - Wire weight definitions/mappings early so loading is exercised (implement quantization in the initializer, but skip it during early runs).
-   - Add a minimal hardcoded runner for quick iteration.
+   - Add a minimal hardcoded runner for quick iteration, seeded with diffusers-style defaults (e.g., 1024×1024, default prompt).
    - Add lightweight shape checks close to the code paths.
-   - Keep temporary debug hooks inline (no throwaway scripts).
    - Use `mx.save`/`mx.load` at critical points; it is OK to add these to the reference (without changing logic) to export latents.
 3. **Port order (work backwards from image)**
    - Typical image generation flow: `prompt → text_encoder → transformer_loop → VAE → image`.
@@ -25,7 +24,7 @@ Provide a repeatable, MLX-focused workflow for porting ML models (typically from
    - Start with VAE decode/encode to validate output images quickly:
      - Export packed latents from the reference just before VAE decode.
      - Load latents inline and decode to an image for visual inspection.
-     - Run an encode→decode roundtrip to sanity check reconstruction; a good-looking image increases confidence in the implementation.
+     - Run an encode→decode roundtrip to sanity check reconstruction; a good-looking image reconstruction increases confidence in the implementation.
    - Then port the transformer loop and its schedulers with intermediate latent checks.
      - If the reference uses a novel scheduler, port it; otherwise, reuse the existing mflux scheduler.
    - Finish with the text encoder and tokenizer details.
@@ -37,6 +36,9 @@ Provide a repeatable, MLX-focused workflow for porting ML models (typically from
    - Consolidate shared components into common modules.
    - Remove debug paths and one-off schedulers once validated.
    - Move configuration defaults into standard config/scheduler paths.
+    - Simplify and decompose large files into focused modules once behavior is locked.
+    - Prefer shared scheduler implementations when they already exist in mflux.
+    - Keep running the deterministic image test during refactors to avoid regressions.
 6. **Finalize**
    - Re-run tests and basic perf checks.
    - Add CLI/pipeline defaults and completions later, once core output is stable.
