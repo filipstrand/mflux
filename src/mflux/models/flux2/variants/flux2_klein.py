@@ -13,6 +13,7 @@ from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3
 from mflux.models.flux2.model.flux2_transformer.transformer import Flux2Transformer
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 from mflux.models.flux2.schedulers.flow_match_euler_discrete import FlowMatchEulerDiscreteScheduler
+from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
 
 
@@ -39,16 +40,30 @@ class Flux2Klein(nn.Module):
             model_config=model_config or ModelConfig.from_name("flux2-klein-4b"),
         )
 
-    def generate_image(self, **kwargs):
-        seed: int = kwargs.get("seed", 0)
-        prompt: str | list[str] = kwargs.get("prompt", "")
-        num_inference_steps: int = kwargs.get("num_inference_steps", 4)
-        height: int = kwargs.get("height", 1024)
-        width: int = kwargs.get("width", 1024)
-        guidance: float = kwargs.get("guidance", 1.0)
-        scheduler: str = kwargs.get("scheduler", "flow_match_euler_discrete")
-        negative_prompt: str | list[str] | None = kwargs.get("negative_prompt", "")
-        latents_path: Path | str | None = kwargs.get("latents_path", None)
+    def generate_image(
+        self,
+        seed: int,
+        prompt: str | list[str],
+        num_inference_steps: int = 4,
+        height: int = 1024,
+        width: int = 1024,
+        guidance: float = 1.0,
+        image_path: Path | str | None = None,
+        image_strength: float | None = None,
+        scheduler: str = "flow_match_euler_discrete",
+        negative_prompt: str | list[str] | None = None,
+        latents_path: Path | str | None = None,
+    ) -> GeneratedImage:
+        config = Config(
+            model_config=self.model_config,
+            num_inference_steps=num_inference_steps,
+            height=height,
+            width=width,
+            guidance=guidance,
+            image_path=image_path,
+            image_strength=image_strength,
+            scheduler=scheduler,
+        )
         start_time = time.time()
 
         # 1. Encode prompt
@@ -61,7 +76,7 @@ class Flux2Klein(nn.Module):
 
         negative_prompt_embeds = None
         negative_text_ids = None
-        if guidance > 1.0 and negative_prompt is not None:
+        if config.guidance > 1.0 and negative_prompt:
             negative_prompt_embeds, negative_text_ids = self.encode_prompt(
                 prompt=negative_prompt,
                 num_images_per_prompt=1,
@@ -80,8 +95,8 @@ class Flux2Klein(nn.Module):
         else:
             latents, latent_ids, latent_height, latent_width = Flux2LatentCreator.prepare_latents(
                 seed=seed,
-                height=height,
-                width=width,
+                height=config.height,
+                width=config.width,
                 batch_size=1,
             )
             latents = Flux2LatentCreator.pack_latents(latents)
@@ -90,12 +105,12 @@ class Flux2Klein(nn.Module):
         image_seq_len = latents.shape[1]
         timesteps, sigmas = FlowMatchEulerDiscreteScheduler.get_timesteps_and_sigmas(
             image_seq_len=image_seq_len,
-            num_inference_steps=num_inference_steps,
+            num_inference_steps=config.num_inference_steps,
         )
 
         # 4. Denoising loop
         batch_size = latents.shape[0]
-        for i in range(num_inference_steps):
+        for i in range(config.num_inference_steps):
             t = timesteps[i]
             timestep = mx.full((batch_size,), t, dtype=mx.float32)
             noise_pred = self.transformer(
@@ -107,7 +122,7 @@ class Flux2Klein(nn.Module):
                 guidance=None,
             )
 
-            if guidance > 1.0 and negative_prompt_embeds is not None and negative_text_ids is not None:
+            if config.guidance > 1.0 and negative_prompt_embeds is not None and negative_text_ids is not None:
                 neg_noise_pred = self.transformer(
                     hidden_states=latents,
                     encoder_hidden_states=negative_prompt_embeds,
@@ -116,7 +131,7 @@ class Flux2Klein(nn.Module):
                     txt_ids=negative_text_ids,
                     guidance=None,
                 )
-                noise_pred = neg_noise_pred + guidance * (noise_pred - neg_noise_pred)
+                noise_pred = neg_noise_pred + config.guidance * (noise_pred - neg_noise_pred)
 
             dt = sigmas[i + 1] - sigmas[i]
             latents = latents + dt.astype(latents.dtype) * noise_pred.astype(latents.dtype)
@@ -133,14 +148,6 @@ class Flux2Klein(nn.Module):
             0, 3, 1, 2
         )
         decoded = self.vae.decode_packed_latents(packed_latents)
-        config = Config(
-            model_config=self.model_config,
-            num_inference_steps=num_inference_steps,
-            height=height,
-            width=width,
-            guidance=guidance,
-            scheduler=scheduler,
-        )
         return ImageUtil.to_image(
             decoded_latents=decoded,
             config=config,
