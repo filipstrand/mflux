@@ -22,4 +22,5 @@ class TestImageGeneratorFlux2Klein:
             prompt=(
                 "Photorealistic tiger swimming in a jungle river, water droplets, golden hour, 85mm lens, natural light"
             ),
+            mismatch_threshold=0,
         )
