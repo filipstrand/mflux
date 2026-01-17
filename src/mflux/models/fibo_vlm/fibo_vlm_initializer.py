@@ -2,8 +2,8 @@ from mflux.models.common.tokenizer import TokenizerLoader
 from mflux.models.common.weights.loading.loaded_weights import LoadedWeights
 from mflux.models.common.weights.loading.weight_applier import WeightApplier
 from mflux.models.common.weights.loading.weight_loader import WeightLoader
-from mflux.models.fibo_vlm.model.qwen3_vl_decoder import Qwen3VLDecoder
-from mflux.models.fibo_vlm.model.qwen3_vl_vision_model import Qwen3VLVisionModel
+from mflux.models.common_models.qwen3_vl.qwen3_vl_decoder import Qwen3VLDecoder
+from mflux.models.common_models.qwen3_vl.qwen3_vl_vision_model import Qwen3VLVisionModel
 from mflux.models.fibo_vlm.weights.fibo_vlm_weight_definition import FIBOVLMWeightDefinition
 
 
