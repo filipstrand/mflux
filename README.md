@@ -1,10 +1,9 @@
 ![image](src/mflux/assets/logo.png)
-*A MLX port of FLUX based on the Huggingface Diffusers implementation.*
-
 
 ### About
 
-Run the latest state-of-the-art generative image models locally on your Mac!
+Run the latest state-of-the-art generative image models locally on your Mac in native MLX!
+
 
 ### Table of contents
 
