@@ -5,12 +5,14 @@ from mlx import nn
 
 from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
+from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.flux2.flux2_initializer import Flux2Initializer
 from mflux.models.flux2.latent_creator.flux2_latent_creator import Flux2LatentCreator
 from mflux.models.flux2.model.flux2_text_encoder.prompt_encoder import Flux2PromptEncoder
 from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3TextEncoder
 from mflux.models.flux2.model.flux2_transformer.transformer import Flux2Transformer
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
+from mflux.models.flux2.weights.flux2_weight_definition import Flux2KleinWeightDefinition
 from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
@@ -124,4 +126,12 @@ class Flux2Klein(nn.Module):
             quantization=getattr(self, "bits", 0) or 0,
             generation_time=config.time_steps.format_dict["elapsed"],
             negative_prompt=None,
+        )
+
+    def save_model(self, base_path: str) -> None:
+        ModelSaver.save_model(
+            model=self,
+            bits=getattr(self, "bits", 0) or 0,
+            base_path=base_path,
+            weight_definition=Flux2KleinWeightDefinition,
         )
