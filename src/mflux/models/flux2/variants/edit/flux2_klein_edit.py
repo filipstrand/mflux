@@ -136,9 +136,9 @@ class Flux2KleinEdit(nn.Module):
             config=config,
             seed=seed,
             prompt=prompt,
-            quantization=getattr(self, "bits", 0) or 0,
-            generation_time=config.time_steps.format_dict["elapsed"],
-            image_path=config.image_path,
-            image_paths=image_paths,
             negative_prompt=None,
+            quantization=self.bits,
+            image_paths=image_paths,
+            image_path=config.image_path,
+            generation_time=config.time_steps.format_dict["elapsed"],
         )

@@ -123,15 +123,15 @@ class Flux2Klein(nn.Module):
             config=config,
             seed=seed,
             prompt=prompt,
-            quantization=getattr(self, "bits", 0) or 0,
-            generation_time=config.time_steps.format_dict["elapsed"],
             negative_prompt=None,
+            quantization=self.bits,
+            generation_time=config.time_steps.format_dict["elapsed"],
         )
 
     def save_model(self, base_path: str) -> None:
         ModelSaver.save_model(
             model=self,
-            bits=getattr(self, "bits", 0) or 0,
+            bits=self.bits,
             base_path=base_path,
             weight_definition=Flux2KleinWeightDefinition,
         )

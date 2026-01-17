@@ -26,6 +26,10 @@ uv tool install --force --editable --reinstall --prerelease=allow .
 ## Core CLI checks (pick what’s relevant)
 
 - **Basic generation**: run the CLI once with a representative prompt and confirm the output is not “all noise”.
+- **Model saving** (if relevant): if you touched weight loading/saving or model definitions, run `mflux-save` for the affected model(s) and verify:
+  - the output directory is created
+  - the command completes without missing-file errors
+- **Run from disk** (if relevant): if you touched save/load paths or model resolution, generate from a locally saved model directory by passing `--model /full/path/to/saved-model` and confirm it runs and produces a sane image.
 - **Stepwise outputs** (if relevant): run with `--stepwise-image-output-dir` and confirm:
   - step images are written for each step
   - the final step image matches the final output image qualitatively
