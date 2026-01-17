@@ -4,10 +4,7 @@
 
 Run the latest state-of-the-art generative image models locally on your Mac in native MLX!
 
-
 ### Table of contents
-
-<!-- TOC start -->
 
 - [Philosophy](#philosophy)
 - [💿 Installation](#-installation)
@@ -16,18 +13,13 @@ Run the latest state-of-the-art generative image models locally on your Mac in n
 - [🙏 Acknowledgements](#-acknowledgements)
 - [⚖️ License](#%EF%B8%8F-license)
 
-<!-- TOC end -->
-
 ---
 
 ### Philosophy
 
 MFLUX is a line-by-line MLX port of several state-of-the-art generative image model implementations from the [Huggingface Diffusers](https://github.com/huggingface/diffusers) and [Huggingface Transformers](https://github.com/huggingface/transformers) libraries.
 MFLUX is purposefully kept minimal and explicit - Network architectures are hardcoded and no config files are used
-except for the tokenizers. The aim is to have a tiny codebase with the single purpose of expressing these models
-(thereby avoiding too many abstractions). While MFLUX priorities readability over generality and performance, [it can still be quite fast](#%EF%B8%8F-image-generation-speed-updated), [and even faster quantized](#%EF%B8%8F-quantization).
-
-All models are implemented from scratch in MLX and only the tokenizers are used via the [Huggingface Transformers](https://github.com/huggingface/transformers) library. Other than that, there are only minimal dependencies like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) for simple image post-processing.
+except for the tokenizers. All models are implemented from scratch in MLX and only the tokenizers are used via the [Huggingface Transformers](https://github.com/huggingface/transformers) library. Other than that, there are only minimal dependencies like [Numpy](https://numpy.org) and [Pillow](https://pypi.org/project/pillow/) for simple image post-processing.
 
 ---
 
@@ -42,6 +34,18 @@ After installation, the following command shows all available MFLUX CLI commands
 
 ```sh
 uv tool list 
+```
+
+To generate your first image using, for example, the z-image-turbo model, run
+
+```
+mflux-generate-z-image-turbo \
+  --prompt "A puffin standing on a cliff" \
+  --width 1280 \
+  --height 500 \
+  --seed 42 \
+  --steps 9 \
+  -q 8
 ```
 
 ---
