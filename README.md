@@ -6,7 +6,7 @@ Run the latest state-of-the-art generative image models locally on your Mac in n
 
 ### Table of contents
 
-- [Philosophy](#philosophy)
+- [💡 Philosophy](#-philosophy)
 - [💿 Installation](#-installation)
 - [🎨 Models](#-models)
 - [🌱‍ Related projects](#-related-projects)
@@ -15,7 +15,7 @@ Run the latest state-of-the-art generative image models locally on your Mac in n
 
 ---
 
-### Philosophy
+### 💡 Philosophy
 
 MFLUX is a line-by-line MLX port of several state-of-the-art generative image model implementations from the [Huggingface Diffusers](https://github.com/huggingface/diffusers) and [Huggingface Transformers](https://github.com/huggingface/transformers) libraries.
 MFLUX is purposefully kept minimal and explicit - Network architectures are hardcoded and no config files are used
@@ -58,13 +58,13 @@ MFLUX supports the following models. They have different strengths and weaknesse
 
 | Model | Release date | Size | Type | Description |
 | --- | --- | --- | --- | --- |
-|[Z-Image](src/mflux/models/z_image/README.md) | Nov 2025 | 6B | Distilled | Best all-rounder: fast, small, good realism. |
-|[FLUX.2](src/mflux/models/flux2/README.md) | Jan 2026 | 4B & 9B | Distilled | Fastest + smallest, with edit capabilities. |
+|[Z-Image](src/mflux/models/z_image/README.md) | Nov 2025 | 6B | Distilled | Best all-rounder: fast, small, very good quality and realism. |
+|[FLUX.2](src/mflux/models/flux2/README.md) | Jan 2026 | 4B & 9B | Distilled | Fastest + smallest with very good qaility and edit capabilities. |
+|[FIBO](src/mflux/models/fibo/README.md) | Oct 2025 | 8B | Base | Very good JSON-based prompt understanding and editability, medium speed |
 |[SeedVR2](src/mflux/models/seedvr2/README.md) | Jun 2025 | 3B | — | Best upscaling model. |
-|[FIBO](src/mflux/models/fibo/README.md) | Oct 2025 | 8B | Base | Good quality; very good prompt understanding and editability. |
 |[Qwen Image](src/mflux/models/qwen/README.md) | Aug 2025+ | 20B | Base | Large model (slower); strong prompt understanding and world knowledge. Has edit capabilities |
-|[FLUX.1](src/mflux/models/flux/README.md) | Aug 2024 | 12B | Distilled & Base | Legacy option with decent quality. Has edit capabilities with 'Kontext' model and upscaling support with controlnet |
-|[Depth Pro](src/mflux/models/depth_pro/README.md) | Oct 2024 | — | — | Depth estimation model. |
+|[FLUX.1](src/mflux/models/flux/README.md) | Aug 2024 | 12B | Distilled & Base | Legacy option with decent quality. Has edit capabilities with 'Kontext' model and upscaling support via ControlNet |
+|[Depth Pro](src/mflux/models/depth_pro/README.md) | Oct 2024 | — | — | Very fast and accurate depth estimation model from Apple. |
 
 
 ---
