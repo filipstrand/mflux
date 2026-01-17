@@ -9,7 +9,7 @@ Run the latest state-of-the-art generative image models locally on your Mac in n
 - [💡 Philosophy](#-philosophy)
 - [💿 Installation](#-installation)
 - [🎨 Models](#-models)
-- [🌱‍ Related projects](#-related-projects)
+- [🌱 Related projects](#related-projects)
 - [🙏 Acknowledgements](#-acknowledgements)
 - [⚖️ License](#%EF%B8%8F-license)
 
@@ -50,6 +50,8 @@ mflux-generate-z-image-turbo \
 
 ![Puffin](src/mflux/assets/puffin.png)
 
+The first time you run this, the model will automatiaclly download which can take some time. See the model section below for the different options and features. See the ... 
+
 ---
 
 ### 🎨 Models
@@ -69,7 +71,9 @@ MFLUX supports the following models. They have different strengths and weaknesse
 
 ---
 
-### 🌱‍ Related projects
+<a id="related-projects"></a>
+
+### 🌱 Related projects
 
 - [MindCraft Studio](https://themindstudio.cc/mindcraft#models) by [@shaoju](https://github.com/shaoju)
 - [Mflux-ComfyUI](https://github.com/raysers/Mflux-ComfyUI) by [@raysers](https://github.com/raysers)
