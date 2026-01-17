@@ -48,6 +48,8 @@ mflux-generate-z-image-turbo \
   -q 8
 ```
 
+![Puffin](src/mflux/assets/puffin.png)
+
 ---
 
 ### 🎨 Models
