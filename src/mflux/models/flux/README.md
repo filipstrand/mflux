@@ -1,4 +1,8 @@
 ## FLUX.1
+
+> [!NOTE]
+> FLUX.1 is still fully supported, but newer models like FLUX.2, Z-Image Turbo, and Qwen Image often provide better performance and native support for many of the techniques and features documented here (such as in-context editing).
+
 Supported base models include `schnell`, `dev`, and `krea-dev` (alias `dev-krea`), typically run via `mflux-generate`.
 
 ---
