@@ -86,6 +86,9 @@ MFLUX supports the following model families. They have different strengths and w
 
 See the [common model README](src/mflux/models/common/README.md) for detailed usage and examples, and use the model section above to browse specific models and capabilities.
 
+> [!NOTE]
+> As MFLUX supports a wide variety of CLI tools and options, the easiest way to navigate the CLI in 2026 is to use a coding agent (like [Cursor](https://cursor.com), [Claude Code](https://www.anthropic.com/claude-code), or similar). Ask questions like: “Can you help me generate an image using z-image?”
+
 
 ---
 
