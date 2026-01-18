@@ -71,7 +71,7 @@ MFLUX supports the following model families. They have different strengths and w
 
 ---
 
-#### ✨ Features
+### ✨ Features
 
 **General**
 - Quantization and local model loading
