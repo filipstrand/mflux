@@ -7,13 +7,13 @@ OWL_PROMPT = """
   "short_description": "A hyper-detailed, ultra-fluffy owl sitting in the trees at night, looking directly at the camera with wide, adorable, expressive eyes. Its feathers are soft and voluminous, catching the cool moonlight with subtle silver highlights. The owl's gaze is curious and full of charm, giving it a whimsical, storybook-like personality.",
   "objects": [
     {
-      "description": "An adorable, fluffy owl with large, expressive eyes and soft, voluminous feathers. Its plumage is a mix of warm browns, grays, and subtle silver highlights from the moonlight.",
+      "description": "An adorable, fluffy owl with large, expressive eyes and soft, voluminous feathers. Its plumage is a mix of earthy tones with subtle silver highlights from the moonlight.",
       "location": "center",
-      "relationship": "The owl is the sole subject, perched comfortably within its environment.",
+      "relationship": "The owl is the sole subject, perched on a branch.",
       "relative_size": "large within frame",
-      "shape_and_color": "Round head, large eyes, voluminous body shape. Predominantly brown and gray with silver accents.",
+      "shape_and_color": "Round head, large eyes, rounded body shape. Predominantly shades of brown, grey, and white, with silver highlights.",
       "texture": "extremely soft, fluffy, downy feathers",
-      "appearance_details": "Wide, dark pupils in large, light-colored eyes. Small, delicate beak. Visible ear tufts.",
+      "appearance_details": "Wide, dark pupils in large, light-colored irises. Small, delicate beak. Visible ear tufts.",
       "number_of_objects": 1,
       "pose": "Sitting upright, facing forward.",
       "expression": "curious and gentle",
@@ -22,29 +22,29 @@ OWL_PROMPT = """
       "orientation": "upright"
     }
   ],
-  "background_setting": "A dense, dark forest at night. The trees are silhouetted against a dark sky, with subtle hints of moonlight filtering through the leaves. The overall impression is one of depth and nocturnal serenity.",
+  "background_setting": "A dark, nocturnal forest environment. Silhouetted trees and branches are visible, with a hint of moonlight filtering through. The overall atmosphere is mysterious and serene.",
   "lighting": {
-    "conditions": "night, moonlight",
+    "conditions": "moonlight",
     "direction": "side-lit from the left, with some ambient light from above",
     "shadows": "soft, elongated shadows cast by the owl and branches, adding depth"
   },
   "aesthetics": {
-    "composition": "centered framing, with the owl as the clear focal point",
-    "color_scheme": "cool blues and grays of moonlight contrasting with the warm browns and grays of the owl and forest",
+    "composition": "centered framing, with the owl filling a significant portion of the frame",
+    "color_scheme": "cool color palette dominated by blues, greys, and deep greens, with warm accents from the owl's eyes and subtle browns",
     "mood_atmosphere": "magical, serene, whimsical",
     "aesthetic_score": "very high",
     "preference_score": "very high"
   },
   "photographic_characteristics": {
-    "depth_of_field": "shallow, with the background softly blurred",
+    "depth_of_field": "shallow, with a softly blurred background",
     "focus": "sharp focus on the owl's face and eyes",
     "camera_angle": "eye-level",
     "lens_focal_length": "medium portrait lens"
   },
   "style_medium": "digital illustration",
   "text_render": [],
-  "context": "This image is a charming illustration, suitable for a children's book, a whimsical art print, or a decorative piece for a nature-themed space.",
-  "artistic_style": "storybook, whimsical, detailed"
+  "context": "This image is a whimsical illustration, suitable for a children's book, a fantasy game, or a charming piece of digital art.",
+  "artistic_style": "storybook, fantasy, detailed"
 }
 """
 
@@ -53,13 +53,13 @@ OWL_PROMPT_REFINED = """
   "short_description": "A hyper-detailed, ultra-fluffy owl sitting in the trees at night, looking directly at the camera with wide, adorable, expressive eyes. Its feathers are soft and voluminous, catching the cool moonlight with subtle silver highlights. The owl's gaze is curious and full of charm, giving it a whimsical, storybook-like personality.",
   "objects": [
     {
-      "description": "An adorable, fluffy owl with large, expressive eyes and soft, voluminous feathers. Its plumage is a mix of white and subtle silver highlights from the moonlight.",
+      "description": "An adorable, fluffy owl with large, expressive eyes and soft, voluminous feathers. Its plumage is a mix of earthy tones with subtle silver highlights from the moonlight.",
       "location": "center",
-      "relationship": "The owl is the sole subject, perched comfortably within its environment.",
+      "relationship": "The owl is the sole subject, perched on a branch.",
       "relative_size": "large within frame",
-      "shape_and_color": "Round head, large eyes, voluminous body shape. Predominantly white with silver accents.",
+      "shape_and_color": "Round head, large eyes, rounded body shape. Predominantly shades of white, with silver highlights.",
       "texture": "extremely soft, fluffy, downy feathers",
-      "appearance_details": "Wide, dark pupils in large, light-colored eyes. Small, delicate beak. Visible ear tufts.",
+      "appearance_details": "Wide, dark pupils in large, light-colored irises. Small, delicate beak. Visible ear tufts.",
       "number_of_objects": 1,
       "pose": "Sitting upright, facing forward.",
       "expression": "curious and gentle",
@@ -68,29 +68,29 @@ OWL_PROMPT_REFINED = """
       "orientation": "upright"
     }
   ],
-  "background_setting": "A dense, dark forest at night. The trees are silhouetted against a dark sky, with subtle hints of moonlight filtering through the leaves. The overall impression is one of depth and nocturnal serenity.",
+  "background_setting": "A dark, nocturnal forest environment. Silhouetted trees and branches are visible, with a hint of moonlight filtering through. The overall atmosphere is mysterious and serene.",
   "lighting": {
-    "conditions": "night, moonlight",
+    "conditions": "moonlight",
     "direction": "side-lit from the left, with some ambient light from above",
     "shadows": "soft, elongated shadows cast by the owl and branches, adding depth"
   },
   "aesthetics": {
-    "composition": "centered framing, with the owl as the clear focal point",
-    "color_scheme": "cool blues and grays of moonlight contrasting with the white of the owl and forest",
+    "composition": "centered framing, with the owl filling a significant portion of the frame",
+    "color_scheme": "cool color palette dominated by blues, greys, and deep greens, with warm accents from the owl's eyes and subtle browns",
     "mood_atmosphere": "magical, serene, whimsical",
     "aesthetic_score": "very high",
     "preference_score": "very high"
   },
   "photographic_characteristics": {
-    "depth_of_field": "shallow, with the background softly blurred",
+    "depth_of_field": "shallow, with a softly blurred background",
     "focus": "sharp focus on the owl's face and eyes",
     "camera_angle": "eye-level",
     "lens_focal_length": "medium portrait lens"
   },
   "style_medium": "digital illustration",
   "text_render": [],
-  "context": "This image is a charming illustration, suitable for a children's book, a whimsical art print, or a decorative piece for a nature-themed space.",
-  "artistic_style": "storybook, whimsical, detailed"
+  "context": "This image is a whimsical illustration, suitable for a children's book, a fantasy game, or a charming piece of digital art.",
+  "artistic_style": "storybook, fantasy, detailed"
 }
 """
 

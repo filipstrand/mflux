@@ -55,6 +55,42 @@ mflux-generate-z-image-turbo \
 
 The first time you run this, the model will automatically download which can take some time. See the [model section](#-models) for the different options and features, and the [common README](src/mflux/models/common/README.md) for shared CLI patterns and examples.
 
+<details>
+<summary>Python API</summary>
+
+Create a standalone `generate.py` script with inline `uv` dependencies:
+
+```python
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#   "mflux",
+# ]
+# ///
+from mflux.models.z_image import ZImageTurbo
+
+model = ZImageTurbo(quantize=8)
+image = model.generate_image(
+    prompt="A puffin standing on a cliff",
+    seed=42,
+    num_inference_steps=9,
+    width=1280,
+    height=500,
+)
+image.save("puffin.png")
+```
+
+Run it with:
+
+```sh
+uv run --prerelease=allow generate.py
+```
+
+For more Python API inspiration, look at the CLI entry points for the respective models.
+
+</details>
+
 ---
 
 ### 🎨 Models

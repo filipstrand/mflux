@@ -1,3 +1,4 @@
+import gc
 import os
 import shutil
 
@@ -37,6 +38,8 @@ class TestResumeTraining:
                 training_state=training_state,
             )
             del fluxA, config, training_spec, training_state
+            gc.collect()
+            mx.clear_cache()
             # ...where we can inspect the training state after 5 runs...
             adapter_after_5_steps = ZipUtil.unzip(
                 zip_path=CHECKPOINT_5,
@@ -59,6 +62,8 @@ class TestResumeTraining:
                 training_state=training_state,
             )
             del fluxB, config, training_spec, training_state
+            gc.collect()
+            mx.clear_cache()
             # ...where we can inspect the training state after 2 additional runs...
             adapter_after_5_steps_resumed = ZipUtil.unzip(
                 zip_path=CHECKPOINT_5,

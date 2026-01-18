@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 
-import cv2
 import numpy as np
 from PIL import Image
 
@@ -34,11 +33,6 @@ class ImageCompare:
         total_elements = image1_data.size
         mismatch_ratio = num_mismatched / total_elements
         if mismatch_ratio > mismatch_threshold:
-            diff = image1_data - image2_data
-            # Scale the difference so it's visible. A difference of 50 will become bright.
-            # We'll scale it so that a difference of 50 or more becomes pure white (255).
-            diff_visual = (np.abs(diff) / 50 * 255).clip(0, 255).astype(np.uint8)
-            cv2.imwrite(image2_path.with_stem(image1_path.stem + "_diff"), diff_visual)
             raise AssertionError(
                 f"{error_message_prefix} Check {image1_path} vs {image2_path} :: their elements are {mismatch_ratio:.1%} different. Fails assertion for {mismatch_threshold=}"
             )
@@ -49,7 +43,6 @@ class ImageCompare:
         image1_path: str | Path,
         image2_path: str | Path,
         mismatch_threshold: float | None = None,
-        create_diff: bool = True,
     ) -> dict:
         image1_path = Path(image1_path)
         image2_path = Path(image2_path)
@@ -68,20 +61,12 @@ class ImageCompare:
         total_elements = image1_data.size
         mismatch_ratio = num_mismatched / total_elements
 
-        diff_path = None
-        if create_diff:
-            diff = image1_data - image2_data
-            diff_visual = (np.abs(diff) / 50 * 255).clip(0, 255).astype(np.uint8)
-            diff_path = image2_path.with_stem(image1_path.stem + "_diff")
-            cv2.imwrite(str(diff_path), diff_visual)
-
         result = {
             "mismatch_ratio": mismatch_ratio,
             "total_pixels": total_elements,
             "mismatched_pixels": num_mismatched,
             "image1_shape": image1_data.shape,
             "image2_shape": image2_data.shape,
-            "diff_path": str(diff_path) if diff_path else None,
         }
 
         if mismatch_threshold is not None:
