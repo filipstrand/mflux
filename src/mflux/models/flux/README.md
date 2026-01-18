@@ -21,8 +21,7 @@ mflux-generate \
 
 *Learn more about FLUX.1 Krea [dev] in the [official announcement](https://bfl.ai/announcements/flux-1-krea-dev).*
 
-## Quantization (Flux)
-MFLUX supports running FLUX in 3, 4, 5, 6, or 8-bit quantized mode. Running a quantized version can greatly speed up the generation process and reduce the memory consumption by several gigabytes.
+---
 
 ```sh
 mflux-generate \
