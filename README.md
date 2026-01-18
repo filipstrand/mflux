@@ -1,4 +1,4 @@
-![image](src/mflux/assets/logo.png)
+![image](src/mflux/assets/logo.jpg)
 
 ### About
 
