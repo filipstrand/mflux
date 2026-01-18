@@ -42,4 +42,5 @@ These rules exist to make agent work in this repo **predictable, verifiable, and
 - **Plan Mode Enforcement**: For any non-trivial task or high architectural risk, save your plan to `.cursor/plans/YYYY-MM-DD-feature-name.md` and ask for approval before coding.
 - Keep changes tight, and prefer **verifiable goals** (tests/lint/build) over speculation.
 - If the task scope changes materially, stop and re-align rather than continuing in a confused state.
+- When users ask for CLI usage (e.g., “Can you help me generate an image using z-image?”), use the `mflux-cli` skill.
 

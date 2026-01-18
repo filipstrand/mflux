@@ -12,6 +12,7 @@ for commands without relying on brittle file paths.
 - You need to list supported CLI features or commands.
 - You need to find where a capability is implemented in the CLI.
 - You are documenting or refactoring CLI features and want a stable map.
+- A user asks for CLI help, e.g., “Can you help me generate an image using z-image?”
 
 ## How to find commands (structure, not exact paths)
 
