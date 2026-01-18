@@ -9,6 +9,7 @@ Run the latest state-of-the-art generative image models locally on your Mac in n
 - [💡 Philosophy](#-philosophy)
 - [💿 Installation](#-installation)
 - [🎨 Models](#-models)
+- [✨ Features](#-features)
 - [🌱 Related projects](#related-projects)
 - [🙏 Acknowledgements](#-acknowledgements)
 - [⚖️ License](#%EF%B8%8F-license)
@@ -67,6 +68,23 @@ MFLUX supports the following model families. They have different strengths and w
 |[Qwen Image](src/mflux/models/qwen/README.md) | Aug 2025+ | 20B | Base | Large model (slower); strong prompt understanding and world knowledge. Has edit capabilities |
 |[FLUX.1](src/mflux/models/flux/README.md) | Aug 2024 | 12B | Distilled & Base | Legacy option with decent quality. Has edit capabilities with 'Kontext' model and upscaling support via ControlNet |
 |[Depth Pro](src/mflux/models/depth_pro/README.md) | Oct 2024 | — | — | Very fast and accurate depth estimation model from Apple. |
+
+#### ✨ Features
+
+**General**
+- Quantization and local model loading
+- LoRA support (multi-LoRA, scales, library lookup)
+- Metadata export + reuse, plus prompt file support
+
+**Model-specific highlights**
+- Text-to-image and image-to-image generation.
+- In-context editing, multi-image editing, and virtual try-on
+- ControlNet (Canny), depth conditioning, fill/inpainting, and Redux
+- Upscaling (SeedVR2 and Flux ControlNet)
+- LoRA finetuning using the Dreambooth technique
+- Depth map extraction and FIBO prompt tooling (VLM inspire/refine)
+
+See the [common model README](src/mflux/models/common/README.md) for detailed usage and examples, and use the model section above to browse specific models and capabilities.
 
 
 ---
