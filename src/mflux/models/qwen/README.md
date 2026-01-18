@@ -65,7 +65,8 @@ mflux-generate-qwen \
 
 </details>
 
-⚠️ *Note: The Qwen Image model requires downloading the `Qwen/Qwen-Image` model weights (~58GB for the full model, or use quantization for smaller sizes).*
+> [!WARNING]
+> Note: The Qwen Image model requires downloading the `Qwen/Qwen-Image` model weights (~58GB for the full model, or use quantization for smaller sizes).
 
 ## Qwen Image Edit (natural language image editing)
 **Qwen Image Edit** enables precise natural language image editing, allowing you to modify images using text instructions while maintaining their original structure and context. The model uses a vision-language encoder to understand both the input image and your editing instructions.
@@ -112,5 +113,6 @@ mflux-generate-qwen-edit \
 6. **Seed Variation**: Qwen models typically do not vary much with seed changes. If you want more variation, vary the prompt instead
 7. **Image Quality**: Qwen images come out quite soft compared to Flux models
 
-⚠️ *Note: The Qwen Image Edit model requires downloading the `Qwen/Qwen-Image-Edit-2509` model weights (~58GB for the full model, or use quantization for smaller sizes).*
+> [!WARNING]
+> Note: The Qwen Image Edit model requires downloading the `Qwen/Qwen-Image-Edit-2509` model weights (~58GB for the full model, or use quantization for smaller sizes).
 

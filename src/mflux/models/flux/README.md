@@ -131,7 +131,8 @@ mflux-generate-fill \
 - **Prompting**: For best results, provide detailed prompts that describe both what you want in the newly generated areas and how it should relate to the preserved parts of the image.
 - **Steps**: Using 20-30 denoising steps generally produces higher quality results.
 
-⚠️ *Note: Using the Fill tool requires an additional 33.92 GB download from [black-forest-labs/FLUX.1-Fill-dev](https://huggingface.co/black-forest-labs/FLUX.1-Fill-dev). The download happens automatically on first use.*
+> [!WARNING]
+> Note: Using the Fill tool requires an additional 33.92 GB download from [black-forest-labs/FLUX.1-Fill-dev](https://huggingface.co/black-forest-labs/FLUX.1-Fill-dev). The download happens automatically on first use.
 
 #### 🔍 Depth
 
@@ -178,9 +179,11 @@ mflux-save-depth --image-path "your_image.jpg" -q 8
 This will create a depth map and save it with the same name as your image but with a "_depth" suffix (e.g., "your_image_depth.png").
 Quantization is supported for the Depth Pro model, however, output quality can very depend on the input image. 
 
-⚠️ *Note: The Depth Pro model requires an additional 1.9GB download from Apple. The download happens automatically on first use.*
+> [!WARNING]
+> Note: The Depth Pro model requires an additional 1.9GB download from Apple. The download happens automatically on first use.
 
-⚠️ *Note: Using the Depth tool requires an additional 33.92 GB download from [black-forest-labs/FLUX.1-Depth-dev](https://huggingface.co/black-forest-labs/FLUX.1-Depth-dev). The download happens automatically on first use.*
+> [!WARNING]
+> Note: Using the Depth tool requires an additional 33.92 GB download from [black-forest-labs/FLUX.1-Depth-dev](https://huggingface.co/black-forest-labs/FLUX.1-Depth-dev). The download happens automatically on first use.
 
 #### 🔄 Redux
 
@@ -222,13 +225,15 @@ A higher strength value gives the reference image more influence over the final 
 
 There is a tendency for the reference image to dominate over the input prompt.
 
-⚠️ *Note: Using the Redux tool requires an additional 1.1GB download from [black-forest-labs/FLUX.1-Redux-dev](https://huggingface.co/black-forest-labs/FLUX.1-Redux-dev). The download happens automatically on first use.*
+> [!WARNING]
+> Note: Using the Redux tool requires an additional 1.1GB download from [black-forest-labs/FLUX.1-Redux-dev](https://huggingface.co/black-forest-labs/FLUX.1-Redux-dev). The download happens automatically on first use.
 
 ---
 
 ### 🎭 In-Context Generation
 
-⚠️ *Legacy / outdated: this section documents older in-context workflows and may be changed or removed in a future release.*
+> [!WARNING]
+> Legacy / outdated: this section documents older in-context workflows and may be changed or removed in a future release.
 
 In-Context Generation is a powerful collection of techniques that allows you to generate images based on reference images and context, without requiring model fine-tuning. MFLUX supports multiple in-context approaches, each designed for specific use cases ranging from style transfer to virtual try-on and image editing.
 
@@ -316,7 +321,8 @@ For comprehensive prompting strategies, see the [official Black Forest Labs Kont
 3. **Multiple Seeds**: Try different seeds to explore variations while maintaining consistency
 4. **Resolution**: Use standard resolutions (1024x1024, 768x1024, etc.) for best results
 
-⚠️ *Note: Using the Kontext tool requires an additional ~34 GB download from [black-forest-labs/FLUX.1-Kontext-dev](https://huggingface.co/black-forest-labs/FLUX.1-Kontext-dev). The download happens automatically on first use.*
+> [!WARNING]
+> Note: Using the Kontext tool requires an additional ~34 GB download from [black-forest-labs/FLUX.1-Kontext-dev](https://huggingface.co/black-forest-labs/FLUX.1-Kontext-dev). The download happens automatically on first use.
 
 #### 🎨 In-Context LoRA
 
@@ -394,7 +400,8 @@ This prompt clearly describes both the reference image (after `[IMAGE1]`) and th
 
 #### 👕 CatVTON (Virtual Try-On)
 
-⚠️ **Experimental Feature**: CatVTON is an experimental feature and may be removed or significantly changed in future updates.
+> [!WARNING]
+> **Experimental Feature**: CatVTON is an experimental feature and may be removed or significantly changed in future updates.
 
 CatVTON enables virtual try-on capabilities using in-context learning. This approach allows you to generate images of people wearing different garments by providing a person image, a person mask, and a garment image.
 
@@ -460,7 +467,8 @@ mflux-generate-in-context-catvton \
 
 #### ✏️ IC-Edit (In-Context Editing)
 
-⚠️ **Experimental Feature**: IC-Edit is an experimental feature and may be removed or significantly changed in future updates.
+> [!WARNING]
+> **Experimental Feature**: IC-Edit is an experimental feature and may be removed or significantly changed in future updates.
 
 IC-Edit provides intuitive image editing capabilities using natural language instructions. This approach automatically applies a specialized LoRA and generates edited versions of your reference image based on simple text instructions.
 
@@ -532,7 +540,8 @@ mflux-generate-in-context-edit \
 4. **Iterative Editing**: Use the output of one edit as input for the next to build complex changes
 5. **Try Multiple Seeds**: Generate several variations with different seeds to find the best result, as outcomes can vary significantly
 
-⚠️ *Note: Using the IC-Edit tool requires an additional ~230MB download for the specialized LoRA weights. The download happens automatically on first use. This remarkably small LoRA (less than 0.7% of the base model's ~34GB) enables sophisticated image editing capabilities, demonstrating that the base FLUX model is already highly competent at style transfers and transformations - the LoRA simply provides the user control and interface to access these latent capabilities.*
+> [!WARNING]
+> Note: Using the IC-Edit tool requires an additional ~230MB download for the specialized LoRA weights. The download happens automatically on first use. This remarkably small LoRA (less than 0.7% of the base model's ~34GB) enables sophisticated image editing capabilities, demonstrating that the base FLUX model is already highly competent at style transfers and transformations - the LoRA simply provides the user control and interface to access these latent capabilities.
 
 ---
 
@@ -559,12 +568,14 @@ mflux-generate-controlnet \
 
 *This example combines the controlnet reference image with the LoRA [Dark Comic Flux](https://civitai.com/models/742916/dark-comic-flux)*.
 
-⚠️ *Note: Controlnet requires an additional one-time download of ~3.58GB of weights from Huggingface. This happens automatically the first time you run the `generate-controlnet` command.
-At the moment, the Controlnet used is [InstantX/FLUX.1-dev-Controlnet-Canny](https://huggingface.co/InstantX/FLUX.1-dev-Controlnet-Canny), which was trained for the `dev` model.
-It can work well with `schnell`, but performance is not guaranteed.*
+> [!WARNING]
+> Note: Controlnet requires an additional one-time download of ~3.58GB of weights from Huggingface. This happens automatically the first time you run the `generate-controlnet` command.
+> At the moment, the Controlnet used is [InstantX/FLUX.1-dev-Controlnet-Canny](https://huggingface.co/InstantX/FLUX.1-dev-Controlnet-Canny), which was trained for the `dev` model.
+> It can work well with `schnell`, but performance is not guaranteed.
 
-⚠️ *Note: The output can be highly sensitive to the controlnet strength and is very much dependent on the reference image.
-Too high settings will corrupt the image. A recommended starting point a value like 0.4 and to play around with the strength.*
+> [!WARNING]
+> Note: The output can be highly sensitive to the controlnet strength and is very much dependent on the reference image.
+> Too high settings will corrupt the image. A recommended starting point a value like 0.4 and to play around with the strength.
 
 
 Controlnet can also work well together with [LoRA adapters](#-lora). In the example below the same reference image is used as a controlnet input
@@ -624,11 +635,13 @@ There are two nice properties of the training procedure:
 Because of these, MFLUX has the ability to resume a training run from a previous checkpoint and have the results
 be *exactly* identical to a training run which was never interrupted in the first place.
 
-*⚠️ Note: Everything but the dataset itself is contained within this zip file, as the dataset can be quite large.
-The zip file will contain configuration files which point to the original dataset, so make sure that it is in the same place when resuming training*.
+> [!WARNING]
+> Note: Everything but the dataset itself is contained within this zip file, as the dataset can be quite large.
+> The zip file will contain configuration files which point to the original dataset, so make sure that it is in the same place when resuming training.
 
-*⚠️ Note: One current limitation is that a training run can only be resumed if it has not yet been completed. 
-In other words, only checkpoints that represent an interrupted training-run can be resumed and run until completion.*
+> [!WARNING]
+> Note: One current limitation is that a training run can only be resumed if it has not yet been completed.
+> In other words, only checkpoints that represent an interrupted training-run can be resumed and run until completion.
 
 <details>
 <summary>⚙️ <strong>Configuration details</strong></summary>
@@ -688,8 +701,9 @@ For even more precision, you can specify individual block indices to train like 
 ```
 </details>
 
-*⚠️ Note: As the joint transformer blocks (`transformer_blocks`) - are placed earlier on in the sequence of computations, they will require more resources to train.
-In other words, training later layers, such as only the `single_transformer_blocks` should be faster. However, training too few / only later layers might result in a faster but unsuccessful training.*
+> [!WARNING]
+> Note: As the joint transformer blocks (`transformer_blocks`) - are placed earlier on in the sequence of computations, they will require more resources to train.
+> In other words, training later layers, such as only the `single_transformer_blocks` should be faster. However, training too few / only later layers might result in a faster but unsuccessful training.
 
 *Under the `examples` section, there is an argument called `"path"` which specifies where the images are located. This path is relative to the config file itself.*
 

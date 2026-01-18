@@ -14,5 +14,6 @@ This will create a depth map and save it with the same name as your image but wi
 
 ## Notes
 - Quantization is supported for the Depth Pro model, however output quality can vary a lot depending on the input image.
-- ⚠️ *The Depth Pro model requires an additional ~1.9GB download from Apple. The download happens automatically on first use.*
+- > [!WARNING]
+  > The Depth Pro model requires an additional ~1.9GB download from Apple. The download happens automatically on first use.
 

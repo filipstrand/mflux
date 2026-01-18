@@ -63,7 +63,8 @@ mflux-generate \
 *Also Note: Once we have a local model (quantized [or not](#-running-a-model-directly-from-disk)) specified via the `--path` argument, the huggingface cache models are not required to launch the model.
 In other words, you can reclaim the 34GB diskspace (per model) by deleting the full 16-bit model from the [Huggingface cache](#%EF%B8%8F-generating-an-image) if you choose.*
 
-⚠️ * Quantized models saved with mflux < v.0.6.0 will not work with v.0.6.0 and later due to updated implementation. The solution is to [save a new quantized local copy](https://github.com/filipstrand/mflux/issues/149) 
+> [!WARNING]
+> Quantized models saved with mflux < v.0.6.0 will not work with v.0.6.0 and later due to updated implementation. The solution is to [save a new quantized local copy](https://github.com/filipstrand/mflux/issues/149) 
 
 *If you don't want to download the full models and quantize them yourself, the 4-bit weights are available here for a direct download:*
 - For mflux < v.0.6.0:
@@ -101,8 +102,9 @@ mflux-generate-fibo \
     --seed 42
 ```
 
-⚠️ * Note: As of MFLUX v.0.13, some internal changes have been made which breaks compatibility with older pre-quantized models.
-Newer ones will be uploaded, but in the meantime, you can always save a new quantized version from the original weights using the [mflux-save](#-saving-a-quantized-version-to-disk) command.*
+> [!WARNING]
+> Note: As of MFLUX v.0.13, some internal changes have been made which breaks compatibility with older pre-quantized models.
+> Newer ones will be uploaded, but in the meantime, you can always save a new quantized version from the original weights using the [mflux-save](#-saving-a-quantized-version-to-disk) command.
 To save disk space, you can delete the original full 16-bit model from the Huggingface cache after saving the quantized version.
 
 ---

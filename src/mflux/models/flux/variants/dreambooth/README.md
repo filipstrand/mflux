@@ -41,9 +41,11 @@ This feature has two helpful properties:
 
 Because of these, MFLUX can resume a training run from a previous checkpoint and produce results that are *exactly* identical to a training run which was never interrupted.
 
-*⚠️ Note: Everything but the dataset itself is contained within the zip file. The zip file contains configuration files which point to the original dataset, so make sure that it is in the same place when resuming.*
+> [!WARNING]
+> Note: Everything but the dataset itself is contained within the zip file. The zip file contains configuration files which point to the original dataset, so make sure that it is in the same place when resuming.
 
-*⚠️ Note: A training run can only be resumed if it has not yet been completed (only checkpoints from interrupted runs can be resumed).*
+> [!WARNING]
+> Note: A training run can only be resumed if it has not yet been completed (only checkpoints from interrupted runs can be resumed).
 
 ## Memory issues
 Fine-tuning can be memory intensive. To reduce memory requirements, consider:
