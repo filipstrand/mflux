@@ -2,6 +2,7 @@ from mflux.cli.parser.parsers import CommandLineParser
 from mflux.models.common.config import ModelConfig
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
 from mflux.models.flux.variants.txt2img.flux import Flux1
+from mflux.models.flux2.variants.txt2img.flux2_klein import Flux2Klein
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
 from mflux.models.z_image.variants.turbo.z_image_turbo import ZImageTurbo
 
@@ -21,6 +22,8 @@ def main():
         model_class = FIBO
     elif "z-image" in model_name_lower or "zimage" in model_name_lower:
         model_class = ZImageTurbo
+    elif "flux2" in model_name_lower or "flux.2" in model_name_lower:
+        model_class = Flux2Klein
     else:
         model_class = Flux1
 

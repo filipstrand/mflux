@@ -1,7 +1,5 @@
-Always use `uv` for dependency management and running scripts in this project.
+# Agent notes (mflux)
 
-- Use `uv run <command>` to run scripts or binaries.
-- Use `uv add <package>` and `uv remove <package>` to manage dependencies.
-- Prefer `uv run python -m ...` for running local modules to ensure the correct environment and dependencies are used.
-- When running tests, always use `MFLUX_PRESERVE_TEST_OUTPUT=1` to keep the test images for visual inspection.
-- When making a new release, always update the version in `pyproject.toml`, update the lockfile with `uv lock`, and add a descriptive entry to `CHANGELOG.md`. Tagging is handled by an external GitHub Action when publishing the release.
+Primary guidance for agents lives in:
+
+- `.cursor/rules/RULE.md`

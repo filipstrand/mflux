@@ -1,3 +1,4 @@
+import gc
 import os
 from pathlib import Path
 from typing import Type, Union
@@ -23,6 +24,7 @@ class ImageGeneratorTestHelper:
         height: int | None = None,
         width: int | None = None,
         image_path: str | None = None,
+        image_paths: list[str] | None = None,
         image_strength: float | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
@@ -36,6 +38,9 @@ class ImageGeneratorTestHelper:
         output_image_path = ImageGeneratorTestHelper.resolve_path(output_image_path)
         lora_paths = [str(ImageGeneratorTestHelper.resolve_path(p)) for p in lora_paths] if lora_paths else None
 
+        model = None
+        image = None
+        memory_saver = None
         try:
             # given
             model_kwargs = {
@@ -51,11 +56,16 @@ class ImageGeneratorTestHelper:
                 "seed": seed,
                 "prompt": prompt,
                 "num_inference_steps": steps,
-                "image_path": ImageGeneratorTestHelper.resolve_path(image_path),
                 "image_strength": image_strength,
                 "height": height or 1024,
                 "width": width or 1024,
             }
+
+            if image_path is not None:
+                generate_kwargs["image_path"] = ImageGeneratorTestHelper.resolve_path(image_path)
+
+            if image_paths is not None:
+                generate_kwargs["image_paths"] = [ImageGeneratorTestHelper.resolve_path(p) for p in image_paths]
 
             # Add guidance if provided
             if guidance is not None:
@@ -85,6 +95,19 @@ class ImageGeneratorTestHelper:
             # cleanup
             if os.path.exists(output_image_path) and "MFLUX_PRESERVE_TEST_OUTPUT" not in os.environ:
                 os.remove(output_image_path)
+
+            # Help avoid long test-suite runs building up native memory.
+            image = None
+            model = None
+            memory_saver = None
+            gc.collect()
+
+            try:
+                import mlx.core as mx  # noqa: PLC0415
+
+                mx.metal.clear_cache()
+            except (ImportError, AttributeError):
+                pass
 
     @staticmethod
     def resolve_path(path) -> Path | None:

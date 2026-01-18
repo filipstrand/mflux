@@ -63,6 +63,10 @@ class Config:
         self._width = value
 
     @property
+    def image_seq_len(self) -> int:
+        return (self._height // 16) * (self._width // 16)
+
+    @property
     def guidance(self) -> float:
         return self._guidance
 
@@ -144,5 +148,8 @@ class Config:
             self._scheduler = scheduler_cls(self)
         else:
             raise NotImplementedError(f"The scheduler {self._scheduler_str!r} is not implemented by mflux.")
+
+        if hasattr(self._scheduler, "set_image_seq_len") and self.model_config.requires_sigma_shift:
+            self._scheduler.set_image_seq_len(self.image_seq_len)
 
         return self._scheduler

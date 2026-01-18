@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-01-18
+
+### 🎨 New Model Support
+
+- **Flux2 Klein (4B/9B)**: Full MLX port of Flux2 Klein (including multi-image editing support).
+- **New command**: `mflux-generate-flux2` for Flux2 Klein image generation.
+- **New command**: `mflux-generate-flux2-edit` for Flux2 Klein image editing.
+
+### 🔧 Improvements
+
+- **Qwen3-VL shared module**: Extracted `qwen3_vl` into `models/common_models/` for reuse across model families (Flux2 and Fibo etc).
+
+### 📝 Documentation
+
+- **README reorganization**: Reorganized the main README for better structure and readability.
+
+---
+
 ## [0.14.2] - 2026-01-13
 
 ### 📊 Improved Metadata Handling
