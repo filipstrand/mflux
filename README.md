@@ -56,7 +56,7 @@ The first time you run this, the model will automatiaclly download which can tak
 
 ### 🎨 Models
 
-MFLUX supports the following models. They have different strengths and weaknesses; see each model’s README for full usage details.
+MFLUX supports the following model families. They have different strengths and weaknesses; see each model’s README for full usage details.
 
 | Model | Release date | Size | Type | Description |
 | --- | --- | --- | --- | --- |
