@@ -69,6 +69,8 @@ MFLUX supports the following model families. They have different strengths and w
 |[FLUX.1](src/mflux/models/flux/README.md) | Aug 2024 | 12B | Distilled & Base | Legacy option with decent quality. Has edit capabilities with 'Kontext' model and upscaling support via ControlNet |
 |[Depth Pro](src/mflux/models/depth_pro/README.md) | Oct 2024 | — | — | Very fast and accurate depth estimation model from Apple. |
 
+---
+
 #### ✨ Features
 
 **General**
