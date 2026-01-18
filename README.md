@@ -68,6 +68,54 @@ MFLUX supports the following models. They have different strengths and weaknesse
 |[FLUX.1](src/mflux/models/flux/README.md) | Aug 2024 | 12B | Distilled & Base | Legacy option with decent quality. Has edit capabilities with 'Kontext' model and upscaling support via ControlNet |
 |[Depth Pro](src/mflux/models/depth_pro/README.md) | Oct 2024 | — | — | Very fast and accurate depth estimation model from Apple. |
 
+<details>
+<summary><strong>Z-Image Documentation</strong></summary>
+
+📖 [View full Z-Image README](src/mflux/models/z_image/README.md)
+
+</details>
+
+<details>
+<summary><strong>FLUX.2 Documentation</strong></summary>
+
+📖 [View full FLUX.2 README](src/mflux/models/flux2/README.md)
+
+</details>
+
+<details>
+<summary><strong>FIBO Documentation</strong></summary>
+
+📖 [View full FIBO README](src/mflux/models/fibo/README.md)
+
+</details>
+
+<details>
+<summary><strong>SeedVR2 Documentation</strong></summary>
+
+📖 [View full SeedVR2 README](src/mflux/models/seedvr2/README.md)
+
+</details>
+
+<details>
+<summary><strong>Qwen Image Documentation</strong></summary>
+
+📖 [View full Qwen Image README](src/mflux/models/qwen/README.md)
+
+</details>
+
+<details>
+<summary><strong>FLUX.1 Documentation</strong></summary>
+
+📖 [View full FLUX.1 README](src/mflux/models/flux/README.md)
+
+</details>
+
+<details>
+<summary><strong>Depth Pro Documentation</strong></summary>
+
+📖 [View full Depth Pro README](src/mflux/models/depth_pro/README.md)
+
+</details>
 
 ---
 
