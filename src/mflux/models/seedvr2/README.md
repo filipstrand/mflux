@@ -1,4 +1,4 @@
-# SeedVR2 (MLX)
+# SeedVR2
 This directory contains MFLUX’s MLX implementation of the **SeedVR2** upscaler.
 
 SeedVR2 (3B) is a dedicated diffusion-based super-resolution model based on https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler. It is designed to be fast (often 1-step) and highly faithful to the original image. Unlike the ControlNet-based upscaler, it does not require a text prompt.

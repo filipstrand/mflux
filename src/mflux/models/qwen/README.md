@@ -1,4 +1,4 @@
-# Qwen Image (MLX)
+# Qwen Image
 This directory contains MFLUX’s MLX implementation of the **Qwen Image** family, including both **text-to-image generation** and **natural language image editing**.
 
 ## Qwen Image (text-to-image)

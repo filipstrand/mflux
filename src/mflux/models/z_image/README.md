@@ -1,4 +1,4 @@
-# Z-Image Turbo (MLX)
+# Z-Image Turbo
 This directory contains MFLUX’s MLX implementation of **Z-Image-Turbo**.
 
 MFLUX supports [Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo) from Tongyi Lab (Alibaba), released in November 2025. Z-Image is an efficient 6B-parameter image generation model with a single-stream DiT architecture. Z-Image-Turbo delivers high-quality images in just 9 steps, making it one of the fastest open-source models available.

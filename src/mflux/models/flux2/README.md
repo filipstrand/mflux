@@ -1,4 +1,4 @@
-# FLUX.2 (MLX)
+# FLUX.2
 This directory contains MFLUX’s MLX implementation of the **FLUX.2** family.
 
 ## Supported variants
@@ -30,7 +30,7 @@ mflux-generate-flux2-edit \
 ## Notes
 - FLUX.2 does not support `--negative-prompt` or CFG-style guidance. Use `--guidance 1.0`.
 
-# FLUX.2 (MLX)
+# FLUX.2
 This directory contains MFLUX’s MLX implementation of the **FLUX.2** family.
 
 ## Supported variants

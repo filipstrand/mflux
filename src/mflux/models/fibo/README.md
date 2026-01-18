@@ -1,4 +1,4 @@
-# FIBO (MLX)
+# FIBO
 [FIBO](https://huggingface.co/briaai/FIBO) from [Bria.ai](https://bria.ai), the first open-source JSON-native text-to-image model trained on long structured captions. FIBO delivers high image quality, strong prompt adherence, and professional-grade control—trained exclusively on licensed data. ([Technical Paper](https://arxiv.org/abs/2511.06876))
 
 ![FIBO Example](../../assets/fibo_example.jpg)

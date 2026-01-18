@@ -1,4 +1,4 @@
-# Depth Pro (MLX)
+# Depth Pro
 This directory contains MFLUX’s MLX implementation of **Depth Pro** (Apple’s monocular depth model), used for generating depth maps from images.
 
 Depth maps can be used by the FLUX depth tool (`mflux-generate-depth`) to constrain image generation.
