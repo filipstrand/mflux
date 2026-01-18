@@ -88,7 +88,14 @@ uv run --prerelease=allow generate.py
 ```
 
 For more Python API inspiration, look at the CLI entry points for the respective models.
+</details>
 
+<details>
+<summary>DGX / NVIDIA (uv tool install)</summary>
+
+```sh
+uv tool install --python 3.13 mflux --prerelease=allow
+```
 </details>
 
 ---
