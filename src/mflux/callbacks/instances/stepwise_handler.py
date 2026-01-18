@@ -81,7 +81,10 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
         time_steps: tqdm,
     ) -> None:
         unpack_latents = self.latent_creator.unpack_latents(latents=latents, height=config.height, width=config.width)
-        stepwise_decoded = self.model.vae.decode(unpack_latents)
+        if hasattr(self.model.vae, "decode_packed_latents"):
+            stepwise_decoded = self.model.vae.decode_packed_latents(unpack_latents)
+        else:
+            stepwise_decoded = self.model.vae.decode(unpack_latents)
         generation_time = time_steps.format_dict["elapsed"] if time_steps is not None else 0
         stepwise_img = ImageUtil.to_image(
             decoded_latents=stepwise_decoded,

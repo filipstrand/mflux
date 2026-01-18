@@ -8,6 +8,9 @@ These rules exist to make agent work in this repo **predictable, verifiable, and
   - Run scripts/binaries with `uv run <command>`.
   - Prefer `uv run python -m ...` for local modules.
   - Manage deps with `uv add <pkg>` / `uv remove <pkg>`.
+- **Tool installs (CLI executables)**:
+  - When you need to (re)install the local checkout as a `uv tool` (e.g. after changing CLI code), prefer an **editable prerelease install** because mflux currently relies on a newer `transformers` prerelease:
+    - `uv tool install --force --editable --reinstall --prerelease=allow .`
 - **Prefer Makefile targets** when they exist (they encode project-specific setup):
   - `make install`, `make lint`, `make format`, `make test-fast`, `make test`, `make build`.
   - Prefer the Cursor commands in `.cursor/commands/` for these common targets (`/install`, `/lint`, `/format`, `/check`, `/test*`, `/build`).
@@ -39,4 +42,5 @@ These rules exist to make agent work in this repo **predictable, verifiable, and
 - **Plan Mode Enforcement**: For any non-trivial task or high architectural risk, save your plan to `.cursor/plans/YYYY-MM-DD-feature-name.md` and ask for approval before coding.
 - Keep changes tight, and prefer **verifiable goals** (tests/lint/build) over speculation.
 - If the task scope changes materially, stop and re-align rather than continuing in a confused state.
+- When users ask for CLI usage (e.g., “Can you help me generate an image using z-image?”), use the `mflux-cli` skill.
 

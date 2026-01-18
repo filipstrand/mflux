@@ -21,6 +21,7 @@ class ModelConfig:
         max_sequence_length: int | None,
         supports_guidance: bool | None,
         requires_sigma_shift: bool | None,
+        transformer_overrides: dict | None = None,
     ):
         self.aliases = aliases
         self.model_name = model_name
@@ -32,6 +33,7 @@ class ModelConfig:
         self.supports_guidance = supports_guidance
         self.requires_sigma_shift = requires_sigma_shift
         self.priority = priority
+        self.transformer_overrides = transformer_overrides or {}
 
     @staticmethod
     @lru_cache
@@ -87,6 +89,16 @@ class ModelConfig:
     @lru_cache
     def krea_dev() -> "ModelConfig":
         return AVAILABLE_MODELS["krea-dev"]
+
+    @staticmethod
+    @lru_cache
+    def flux2_klein_4b() -> "ModelConfig":
+        return AVAILABLE_MODELS["flux2-klein-4b"]
+
+    @staticmethod
+    @lru_cache
+    def flux2_klein_9b() -> "ModelConfig":
+        return AVAILABLE_MODELS["flux2-klein-9b"]
 
     @staticmethod
     @lru_cache
@@ -265,8 +277,44 @@ AVAILABLE_MODELS = {
         supports_guidance=True,
         requires_sigma_shift=True,
     ),
-    "qwen-image": ModelConfig(
+    "flux2-klein-4b": ModelConfig(
         priority=11,
+        aliases=["flux2-klein-4b", "flux2-klein-4B", "flux2-klein", "klein-4b", "klein-4B"],
+        model_name="black-forest-labs/FLUX.2-klein-4B",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,
+        requires_sigma_shift=True,
+        transformer_overrides={
+            "num_layers": 5,
+            "num_single_layers": 20,
+            "num_attention_heads": 24,
+            "joint_attention_dim": 7680,
+        },
+    ),
+    "flux2-klein-9b": ModelConfig(
+        priority=12,
+        aliases=["flux2-klein-9b", "flux2-klein-9B", "klein-9b", "klein-9B"],
+        model_name="black-forest-labs/FLUX.2-klein-9B",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,
+        requires_sigma_shift=True,
+        transformer_overrides={
+            "num_layers": 8,
+            "num_single_layers": 24,
+            "num_attention_heads": 32,
+            "joint_attention_dim": 12288,
+        },
+    ),
+    "qwen-image": ModelConfig(
+        priority=13,
         aliases=["qwen-image", "qwen"],
         model_name="Qwen/Qwen-Image",
         base_model=None,
@@ -278,7 +326,7 @@ AVAILABLE_MODELS = {
         requires_sigma_shift=None,
     ),
     "qwen-image-edit": ModelConfig(
-        priority=12,
+        priority=14,
         aliases=["qwen-image-edit", "qwen-edit", "qwen-edit-plus", "qwen-edit-2509"],
         model_name="Qwen/Qwen-Image-Edit-2509",
         base_model=None,
@@ -290,7 +338,7 @@ AVAILABLE_MODELS = {
         requires_sigma_shift=None,
     ),
     "fibo": ModelConfig(
-        priority=13,
+        priority=15,
         aliases=["fibo"],
         model_name="briaai/FIBO",
         base_model=None,
@@ -302,7 +350,7 @@ AVAILABLE_MODELS = {
         requires_sigma_shift=False,
     ),
     "z-image-turbo": ModelConfig(
-        priority=14,
+        priority=16,
         aliases=["z-image-turbo", "z-image", "zimage-turbo", "zimage"],
         model_name="Tongyi-MAI/Z-Image-Turbo",
         base_model=None,
@@ -314,7 +362,7 @@ AVAILABLE_MODELS = {
         requires_sigma_shift=True,
     ),
     "seedvr2-3b": ModelConfig(
-        priority=15,
+        priority=17,
         aliases=["seedvr2-3b", "seedvr2"],
         model_name="numz/SeedVR2_comfyUI",
         base_model=None,

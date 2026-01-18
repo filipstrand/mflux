@@ -20,5 +20,6 @@ Releases are prepared in-repo; tagging/publishing is handled by GitHub Actions.
   - Add a descriptive entry to `CHANGELOG.md`
   - Update lockfile: `uv lock`
   - Sanity checks (optional unless requested): `make test-fast`, `make build`
+  - Manual checks (optional): if the release includes CLI/callback/image-path changes, consider running the `mflux-manual-testing` skill to exercise the touched commands and visually review outputs.
 - Do not tag releases locally unless explicitly requested (normally handled by CI).
 

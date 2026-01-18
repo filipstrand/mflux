@@ -6,9 +6,9 @@ import mlx.core as mx
 import numpy as np
 from PIL import Image
 
+from mflux.models.common_models.qwen3_vl.qwen3_vl_decoder import Qwen3VLDecoder
+from mflux.models.common_models.qwen3_vl.qwen3_vl_util import Qwen3VLUtil
 from mflux.models.fibo_vlm.fibo_vlm_initializer import FiboVLMInitializer
-from mflux.models.fibo_vlm.model.qwen3_vl_decoder import Qwen3VLDecoder
-from mflux.models.fibo_vlm.model.qwen3_vl_util import Qwen3VLUtil
 from mflux.models.fibo_vlm.tokenizer.qwen2vl_processor import Qwen2VLProcessor
 
 
