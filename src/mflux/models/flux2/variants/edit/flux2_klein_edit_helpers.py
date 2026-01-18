@@ -74,6 +74,12 @@ class _Flux2KleinEditHelpers:
         return latents
 
     @staticmethod
+    def ensure_4d_latents(latents: mx.array) -> mx.array:
+        if latents.ndim == 5 and latents.shape[2] == 1:
+            return latents[:, :, 0, :, :]
+        return latents
+
+    @staticmethod
     def bn_normalize_vae_encoded_latents(encoded: mx.array, *, vae: Flux2VAE) -> mx.array:
         bn_mean = vae.bn.running_mean.reshape(1, -1, 1, 1).astype(encoded.dtype)
         bn_std = mx.sqrt(vae.bn.running_var.reshape(1, -1, 1, 1) + vae.bn.eps).astype(encoded.dtype)
@@ -102,6 +108,7 @@ class _Flux2KleinEditHelpers:
                 width=width,
                 tiling_config=tiling_config,
             )
+            encoded = _Flux2KleinEditHelpers.ensure_4d_latents(encoded)
             encoded = _Flux2KleinEditHelpers.crop_to_even_spatial(encoded)
             encoded = Flux2LatentCreator.patchify_latents(encoded)
             encoded = _Flux2KleinEditHelpers.bn_normalize_vae_encoded_latents(encoded, vae=vae)

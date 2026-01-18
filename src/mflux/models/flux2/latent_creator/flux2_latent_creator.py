@@ -6,6 +6,10 @@ from mflux.models.common.config.model_config import ModelConfig
 class Flux2LatentCreator:
     @staticmethod
     def patchify_latents(latents: mx.array) -> mx.array:
+        if latents.ndim == 5 and latents.shape[2] == 1:
+            latents = latents[:, :, 0, :, :]
+        if latents.ndim != 4:
+            raise ValueError(f"Expected latents with ndim=4, got shape={latents.shape}")
         batch_size, num_channels, height, width = latents.shape
         latents = latents.reshape(batch_size, num_channels, height // 2, 2, width // 2, 2)
         latents = latents.transpose(0, 1, 3, 5, 2, 4)
