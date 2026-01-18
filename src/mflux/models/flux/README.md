@@ -49,7 +49,7 @@ The Fill tool uses the [FLUX.1-Fill-dev](https://huggingface.co/black-forest-lab
 
 Inpainting allows you to selectively regenerate specific parts of an image while preserving the rest. This is perfect for removing unwanted objects, adding new elements, or changing specific areas of an image without affecting the surrounding content. The Fill tool understands the context of the entire image and creates seamless edits that blend naturally with the preserved areas.
 
-![inpaint example](src/mflux/assets/inpaint_example.jpg)
+![inpaint example](../../assets/inpaint_example.jpg)
 *Original dog image credit: [Julio Bernal on Unsplash](https://unsplash.com/photos/brown-and-white-long-coated-dog-WLGx0fKFSeI)*
 
 ##### Creating Masks
@@ -82,7 +82,7 @@ mflux-generate-fill \
 
 #### Outpainting
 
-![outpaint example](src/mflux/assets/outpaint_example.jpg)
+![outpaint example](../../assets/outpaint_example.jpg)
 *Original room image credit: [Alexey Aladashvili on Unsplash](https://unsplash.com/photos/a-living-room-with-a-couch-and-a-table-JFzglhmwlck)*
 
 Outpainting extends your image beyond its original boundaries, allowing you to expand the canvas in any direction while maintaining visual consistency with the original content. This is useful for creating wider landscapes, revealing more of a scene, or transforming a portrait into a full-body image. The Fill tool intelligently generates new content that seamlessly connects with the existing image.
@@ -139,7 +139,7 @@ Using the depth tool, you can generate high-quality images constrained on a dept
 
 For state-of-the-art depth extraction, MFLUX now supports the [Depth Pro](https://github.com/apple/ml-depth-pro) model, natively implemented in MLX based on the reference implementation. 
 
-![depth example](src/mflux/assets/depth_example.jpg)
+![depth example](../../assets/depth_example.jpg)
 *Original hallway image credit: [Yuliya Matuzava on Unsplash](https://unsplash.com/photos/a-long-hallway-in-a-building-with-arches-and-arches-39NJt9jfGSU)*
 
 ##### Example
@@ -188,7 +188,7 @@ The Redux tool is an adapter for FLUX.1 models that enables image variation gene
 It can reproduce an input image with slight variations, allowing you to refine and enhance existing images. 
 Unlike the image-to-image technique which resumes the denoising process mid-way starting from the input image, the redux tool instead embeds the image and joins it with the T5 text encodings.
 
-![redux example](src/mflux/assets/redux_example.jpg)
+![redux example](../../assets/redux_example.jpg)
 *Image credit: [Paris Bilal on Unsplash](https://unsplash.com/photos/a-cat-statue-sitting-on-top-of-a-white-base-Bedd4qHGWCg)*
 
 ##### Example
@@ -237,7 +237,7 @@ In-Context Generation is a powerful collection of techniques that allows you to 
 FLUX.1 Kontext, released in June 2025, is Black Forest Labs' [official model](https://bfl.ai/models/flux-kontext) that goes beyond text-to-image generation. Unlike previous flow models that only allow text-based generation, Kontext understands and creates from existing images, enabling flexible image editing through simple text instructions without complex workflows or finetuning.
 Out of the various in-context generation techniques, Kontext is the most advanced and versatile, allowing for a wide range of image editing and generation tasks. It is recommended to try Kontext first before exploring other in-context methods.
 
-![kontext example](src/mflux/assets/kontext_example.jpg)
+![kontext example](../../assets/kontext_example.jpg)
 
 *Original images credit: [Jon Tyson (sign)](https://unsplash.com/photos/the-sign-urges-viewers-to-get-more-rest-a4Cm6EnYtls), [Daniel Seßler (town)](https://unsplash.com/photos/colorful-buildings-line-a-coastal-towns-harbor-haVcuj4buqE), [Liga Alksne (house)](https://unsplash.com/photos/a-building-with-a-mountain-in-the-background-jZV4jaycoxE) on Unsplash*
 
@@ -246,7 +246,7 @@ Kontext's core capabilities include **character consistency** (preserving unique
 
 ##### Example Usage with sequential edits
 
-![kontext sequential edit example](src/mflux/assets/kontext_sequential_edit_example.jpg)
+![kontext sequential edit example](../../assets/kontext_sequential_edit_example.jpg)
 
 The image above illustrates **sequential editing** with Kontext - making multiple individual edits to progressively refine an image. Each edit builds upon the previous result, allowing for precise, iterative modifications.
 
@@ -324,7 +324,7 @@ In-Context LoRA allows you to generate images in a specific style based on a ref
 
 This feature is based on the [In-Context LoRA for Diffusion Transformers](https://github.com/ali-vilab/In-Context-LoRA) project by Ali-ViLab.
 
-![image](src/mflux/assets/in_context_example.jpg)
+![image](../../assets/in_context_example.jpg)
 
 To use In-Context LoRA, you need:
 1. A reference image
@@ -355,7 +355,7 @@ The In-Context LoRA generation creates a side-by-side image where:
 
 The final output is automatically cropped to show only the right half (the generated image).
 
-![image](src/mflux/assets/in_context_how_it_works.jpg)
+![image](../../assets/in_context_how_it_works.jpg)
 
 ##### Prompting for In-Context LoRA
 
@@ -400,7 +400,7 @@ CatVTON enables virtual try-on capabilities using in-context learning. This appr
 
 The implementation is based on [@nftblackmagic/catvton-flux](https://github.com/nftblackmagic/catvton-flux) and uses the model weights from [xiaozaa/catvton-flux-beta](https://huggingface.co/xiaozaa/catvton-flux-beta) (approximately 24 GB download).
 
-![catvton example](src/mflux/assets/catvton_example.jpg)
+![catvton example](../../assets/catvton_example.jpg)
 
 ##### How it works
 
@@ -416,7 +416,7 @@ CatVTON uses a sophisticated in-context learning approach that creates a side-by
 
 This approach allows the model to understand the garment's properties while precisely controlling which parts of the person image should be transformed, resulting in natural-looking virtual clothing fitting.
 
-![catvton how it works](src/mflux/assets/catvton_how_it_works.jpg)
+![catvton how it works](../../assets/catvton_how_it_works.jpg)
 
 ##### Example Command
 
@@ -466,7 +466,7 @@ IC-Edit provides intuitive image editing capabilities using natural language ins
 
 The implementation is based on [@River-Zhang/ICEdit](https://github.com/River-Zhang/ICEdit).
 
-![ic-edit example](src/mflux/assets/ic_edit_example.jpg)
+![ic-edit example](../../assets/ic_edit_example.jpg)
 *Original images credit: [Jimmy Chang (flower)](https://unsplash.com/photos/closeup-photography-of-pink-lotus-flower-LP5WXkrnxX0), [Kar Ming Moo (tiger)](https://unsplash.com/photos/brown-and-black-tiger-lying-on-ground-Q_3WmguWgYg), [Martin Baron (car)](https://unsplash.com/photos/a-shiny-black-car-parks-on-a-street-8JoIWt2KzYI) on Unsplash*
 
 ##### How it works
@@ -485,7 +485,7 @@ IC-Edit employs a streamlined diptych approach for natural language image editin
 
 This simplified approach removes the complexity of mask creation while still providing precise control through natural language instructions, making image editing accessible and intuitive.
 
-![ic-edit how it works](src/mflux/assets/ic_edit_how_it_works.jpg)
+![ic-edit how it works](../../assets/ic_edit_how_it_works.jpg)
 
 ##### Example Command
 
@@ -555,7 +555,7 @@ mflux-generate-controlnet \
   --controlnet-strength 0.5 \
   --controlnet-save-canny
 ```
-![image](src/mflux/assets/controlnet1.jpg)
+![image](../../assets/controlnet1.jpg)
 
 *This example combines the controlnet reference image with the LoRA [Dark Comic Flux](https://civitai.com/models/742916/dark-comic-flux)*.
 
@@ -570,7 +570,7 @@ Too high settings will corrupt the image. A recommended starting point a value l
 Controlnet can also work well together with [LoRA adapters](#-lora). In the example below the same reference image is used as a controlnet input
 with different prompts and LoRA adapters active.
 
-![image](src/mflux/assets/controlnet2.jpg)
+![image](../../assets/controlnet2.jpg)
 
 ---
 
@@ -578,7 +578,7 @@ with different prompts and LoRA adapters active.
 
 As of release [v.0.5.0](https://github.com/filipstrand/mflux/releases/tag/v.0.5.0), MFLUX has support for fine-tuning your own LoRA adapters using the [Dreambooth](https://dreambooth.github.io) technique.
 
-![image](src/mflux/assets/dreambooth.jpg)
+![image](../../assets/dreambooth.jpg)
 
 *This example shows the MFLUX training progression of the [included training example](#training-example) which is based on the [DreamBooth Dataset](https://github.com/google/dreambooth), also used in the [mlx-examples repo](https://github.com/ml-explore/mlx-examples/tree/main/flux#finetuning).*
 
@@ -745,7 +745,7 @@ The aim is to also gradually expand the scope of this feature with alternative t
 
 The Concept Attention feature allows you to visualize and understand how FLUX models focus on specific concepts within your prompts during image generation.
 
-![concept_example_1](src/mflux/assets/concept_example_1.jpg)
+![concept_example_1](../../assets/concept_example_1.jpg)
 
 This implementation is based on the research paper ["ConceptAttention: Diffusion Transformers Learn Highly Interpretable Features"](https://arxiv.org/abs/2502.04320) by [Helbling et al.](https://github.com/helblazer811/ConceptAttention), which demonstrates that multi-modal diffusion transformers like FLUX learn highly interpretable representations that can be leveraged to generate precise concept localization maps.
 
@@ -775,7 +775,7 @@ mflux-concept \
 ```
 This will generate the following image
 
-![concept_example_2](src/mflux/assets/concept_example_2.jpg)
+![concept_example_2](../../assets/concept_example_2.jpg)
 
 This command will generate:
 - The main image based on your prompt
@@ -805,7 +805,7 @@ mflux-concept-from-image \
 
 This will generate the following image
 
-![concept_example_3](src/mflux/assets/concept_example_3.jpg)
+![concept_example_3](../../assets/concept_example_3.jpg)
 
 #### Advanced Configuration
 
