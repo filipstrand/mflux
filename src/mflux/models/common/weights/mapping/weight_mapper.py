@@ -62,6 +62,11 @@ class WeightMapper:
             match = re.search(r"transformer_blocks\.(\d+)\.", key)
             if match:
                 block_numbers.add(int(match.group(1)))
+                continue
+            # Match pattern: single_transformer_blocks.{number}.something
+            match = re.search(r"single_transformer_blocks\.(\d+)\.", key)
+            if match:
+                block_numbers.add(int(match.group(1)))
 
         if block_numbers:
             return max(block_numbers) + 1  # Blocks are 0-indexed

@@ -81,10 +81,11 @@ class AttentionUtils:
 
     @staticmethod
     def apply_rope_bshd(xq: mx.array, xk: mx.array, cos: mx.array, sin: mx.array):
+        out_dtype = xq.dtype
         xq_f = xq.astype(mx.float32)
         xk_f = xk.astype(mx.float32)
-        cos_b = cos.reshape(1, cos.shape[0], 1, cos.shape[1])
-        sin_b = sin.reshape(1, sin.shape[0], 1, sin.shape[1])
+        cos_b = cos.reshape(1, 1, cos.shape[0], cos.shape[1])
+        sin_b = sin.reshape(1, 1, sin.shape[0], sin.shape[1])
 
         def mix(x: mx.array) -> mx.array:
             x2 = x.reshape(*x.shape[:-1], -1, 2)
@@ -95,4 +96,4 @@ class AttentionUtils:
             out2 = mx.stack([out0, out1], axis=-1)
             return out2.reshape(*x.shape)
 
-        return mix(xq_f).astype(mx.float32), mix(xk_f).astype(mx.float32)
+        return mix(xq_f).astype(out_dtype), mix(xk_f).astype(out_dtype)
