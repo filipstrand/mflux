@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Qwen3-VL shared module**: Extracted `qwen3_vl` into `models/common_models/` for reuse across model families (Flux2 and Fibo etc).
 
+### 📝 Documentation
+
+- **README reorganization**: Reorganized the main README for better structure and readability.
+
 ---
 
 ## [0.14.2] - 2026-01-13
