@@ -14,7 +14,7 @@ source-exclude = [
 
 [project]
 name = "mflux"
-version = "0.15.0"
+version = "0.15.1"
 description = "A MLX port of FLUX based on the Huggingface Diffusers implementation."
 readme = "README.md"
 keywords = ["diffusers", "flux", "mlx"]
@@ -52,7 +52,6 @@ dependencies = [
     "urllib3>=2.6.0",
 ]
 classifiers = [
-    "Architecture :: AArch64",
     "Intended Audience :: Developers",
     "Operating System :: MacOS",
     "Operating System :: POSIX :: Linux",
