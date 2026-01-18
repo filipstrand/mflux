@@ -8,14 +8,16 @@ All the standard modes such as img2img, LoRA and quantizations are supported for
 ![FLUX.2 Klein Example](../../assets/flux2_klein.jpg)
 
 ## Example
-The following uses the 4B model to generate a luxury food photograph:
+The following uses the 9B model to generate a photorealistic hummingbird image:
 
 ```sh
 mflux-generate-flux2 \
-  --model flux2-klein-4b \
-  --prompt "Luxury food photograph" \
+  --model flux2-klein-9b \
+  --prompt "Photorealistic close-up of a hummingbird hovering near red flowers, frozen wings, detailed feathers, soft green background bokeh, high shutter speed look." \
   --steps 4 \
-  --seed 2
+  --seed 640563507 \
+  --width 1024 \
+  --height 560
 ```
 
 ## Image-conditioned editing

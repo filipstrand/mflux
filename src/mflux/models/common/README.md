@@ -20,6 +20,7 @@ This README covers stable, shared patterns. For model-specific usage, see each m
 - [Cache locations](#cache-locations)
 - [Capabilities by task](#capabilities-by-task)
 - [Command reference](#command-reference)
+- [CLI completions](#cli-completions)
 
 ---
 
@@ -228,10 +229,24 @@ HF_HOME=/Volumes/T7/.cache/huggingface \
 
 ## Command reference
 
-Use the model READMEs for exact command names and options. Typical CLI entrypoints include:
+Use the model READMEs for exact command names and options. General utilities that work across models:
 
-- Generation and editing per model family (Flux, Flux2, Qwen, Z-Image, FIBO)
-- Upscaling (SeedVR2, Flux ControlNet)
-- Model management (`mflux-save`, `mflux-info`, `mflux-lora-library`)
-- Training (`mflux-train`)
-- Utilities (`mflux-save-depth`, `mflux-fibo-inspire`, `mflux-fibo-refine`)
+- **Model management**: `mflux-save`, `mflux-info`, `mflux-lora-library`
+- **Training**: `mflux-train`
+- **Utilities**: `mflux-save-depth`
+
+For model-specific generation commands (Flux, Flux2, Qwen, Z-Image, FIBO) and specialized features (ControlNet, depth, fill, Redux, in-context editing, kontext, concept attention, upscaling), see the respective model READMEs and the top-level `README.md`.
+
+---
+
+## CLI completions
+
+MFLUX provides ZSH shell completions for all CLI commands. Install with:
+
+```sh
+mflux-completions
+```
+
+Then reload your shell (`exec zsh`) and enjoy tab completion for all mflux commands, options, and arguments. Completions include smart suggestions for model names, quantization levels, LoRA styles, and file paths.
+
+For detailed installation instructions, troubleshooting, and advanced usage, see [`src/mflux/cli/completions/README.md`](../../cli/completions/README.md).

@@ -61,7 +61,7 @@ class ImageGenerationConceptTestHelper:
 
         finally:
             # cleanup
-            if os.path.exists(output_heatmap_path):
+            if os.path.exists(output_heatmap_path) and "MFLUX_PRESERVE_TEST_OUTPUT" not in os.environ:
                 os.remove(output_heatmap_path)
 
     @staticmethod

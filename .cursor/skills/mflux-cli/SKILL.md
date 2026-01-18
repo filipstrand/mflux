@@ -26,6 +26,7 @@ Because README examples can drift, prefer verifying support against the current 
 
 - **Inference steps**: When constructing a CLI call for any model, check `MODEL_INFERENCE_STEPS` to use the recommended number of steps for that model (unless the user explicitly specifies how many steps they want).
 - **Resource/inspection flags**: Mention `--low-ram` to reduce memory usage and `--stepwise-image-output-dir` for stepwise outputs when useful.
+- **Python API requests**: If a user asks for the Python API, treat the equivalent CLI script as the best starting reference for the underlying parameters and defaults.
 
 ## Capability inventory (current)
 
