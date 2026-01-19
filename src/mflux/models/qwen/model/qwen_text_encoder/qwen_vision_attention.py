@@ -1,8 +1,27 @@
 import mlx.core as mx
 from mlx import nn
+from mlx.core.fast import scaled_dot_product_attention
 
 
 class VisionAttention(nn.Module):
+    """Multi-head self-attention for vision encoder with RoPE support.
+
+    This attention module is designed for processing unbatched visual sequences
+    (shape: [seq_len, embed_dim]) and supports optional windowed attention via
+    cumulative sequence lengths (cu_seqlens).
+
+    NOTE: This module does NOT support attention masking. For controlling
+    attention patterns, use cu_seqlens for windowed/chunked attention.
+    This is by design - visual features typically attend to all positions
+    within their window without masking.
+
+    Unlike QwenAttention (text encoder), this operates on unbatched input:
+    - VisionAttention: input [seq_len, embed_dim], Q/K/V [heads, seq, head_dim]
+    - QwenAttention: input [batch, seq_len, hidden], Q/K/V [batch, heads, seq, head_dim]
+
+    The batch dimension is added internally only for scaled_dot_product_attention.
+    """
+
     def __init__(self, embed_dim: int = 1280, num_heads: int = 16):
         super().__init__()
         self.embed_dim = embed_dim
@@ -24,6 +43,19 @@ class VisionAttention(nn.Module):
         return rotated
 
     def __call__(self, x: mx.array, position_embeddings=None, cu_seqlens=None) -> mx.array:
+        """Compute vision attention.
+
+        Args:
+            x: Input tensor of shape [seq_len, embed_dim] (unbatched).
+            position_embeddings: Optional tuple of (cos, sin) RoPE embeddings,
+                each of shape [seq_len, head_dim].
+            cu_seqlens: Optional cumulative sequence lengths for windowed attention.
+                If provided with >2 elements, splits input into chunks where each
+                chunk attends only within itself.
+
+        Returns:
+            Output tensor of shape [seq_len, embed_dim].
+        """
         seq_len, embed_dim = x.shape
 
         qkv = self.qkv(x)
@@ -59,26 +91,28 @@ class VisionAttention(nn.Module):
                 v_chunks.append(v[:, offset : offset + length, :])
                 offset += length
 
-            # Process each chunk separately
+            # Process each chunk separately using optimized Metal kernel
             attn_outputs = []
-            # CRITICAL FIX: Use standard 1/sqrt for deterministic numerical behavior
             scale = 1.0 / (self.head_dim**0.5)
             for q_chunk, k_chunk, v_chunk in zip(q_chunks, k_chunks, v_chunks):
-                # Compute attention for this chunk
-                scores = mx.matmul(q_chunk, k_chunk.transpose(0, 2, 1)) * scale
-                attn_weights = mx.softmax(scores, axis=-1)
-                attn_chunk = mx.matmul(attn_weights, v_chunk)  # [heads, chunk_len, head_dim]
-                attn_outputs.append(attn_chunk)
+                # Add batch dimension for scaled_dot_product_attention: [heads, seq, dim] -> [1, heads, seq, dim]
+                q_batch = q_chunk[None, :, :, :]
+                k_batch = k_chunk[None, :, :, :]
+                v_batch = v_chunk[None, :, :, :]
+                attn_chunk = scaled_dot_product_attention(q_batch, k_batch, v_batch, scale=scale)
+                attn_outputs.append(attn_chunk[0])  # Remove batch dimension
 
             # Concatenate chunks back together
             attn_output = mx.concatenate(attn_outputs, axis=1)  # [heads, seq, head_dim]
         else:
-            # Full attention (no chunking)
-            # CRITICAL FIX: Use standard 1/sqrt for deterministic numerical behavior
+            # Full attention (no chunking) - use optimized Metal kernel
             scale = 1.0 / (self.head_dim**0.5)
-            scores = mx.matmul(q, k.transpose(0, 2, 1)) * scale  # [heads, seq, seq]
-            attn_weights = mx.softmax(scores, axis=-1)
-            attn_output = mx.matmul(attn_weights, v)  # [heads, seq, head_dim]
+            # Add batch dimension: [heads, seq, dim] -> [1, heads, seq, dim]
+            q_batch = q[None, :, :, :]
+            k_batch = k[None, :, :, :]
+            v_batch = v[None, :, :, :]
+            attn_output = scaled_dot_product_attention(q_batch, k_batch, v_batch, scale=scale)
+            attn_output = attn_output[0]  # Remove batch dimension: [heads, seq, head_dim]
 
         # Reshape and project
         attn_output = attn_output.transpose(1, 0, 2).reshape(seq_len, embed_dim)  # [seq, embed_dim]

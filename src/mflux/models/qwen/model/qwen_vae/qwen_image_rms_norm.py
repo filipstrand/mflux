@@ -3,6 +3,22 @@ from mlx import nn
 
 
 class QwenImageRMSNorm(nn.Module):
+    """Channel-wise L2 normalization for VAE encoder/decoder.
+
+    NOTE: Despite the name, this is NOT RMS normalization. It uses L2 norm:
+        output = (x / ||x||_2) * scale * weight
+    where ||x||_2 = sqrt(sum(x^2)) computed across the channel dimension (axis=1).
+
+    This differs from standard RMSNorm which uses:
+        output = x / sqrt(mean(x^2)) * weight
+
+    Cannot use mx.fast.rms_norm() because:
+    1. Different formula (L2 norm vs RMS)
+    2. Normalizes across channel axis (axis=1), not last axis
+    3. Has custom scaling factor (sqrt(num_channels))
+    4. Dynamic weight reshaping based on input dimensions (4D vs 5D)
+    """
+
     def __init__(self, num_channels: int, eps: float = 1e-12, images: bool = True):
         super().__init__()
         self.eps = eps

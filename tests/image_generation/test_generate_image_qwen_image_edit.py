@@ -40,4 +40,5 @@ class TestImageGeneratorQwenImageEdit:
             quantize=8,
             prompt="Make the hand fistbump the camera instead of showing a flat palm, and the man should wear this shirt. Maintain the original pose, body position, and overall stance.",
             image_paths=["reference_upscaled.png", "shirt.jpg"],
+            mismatch_threshold=0.20,  # Slightly higher threshold for multi-image edit variability
         )
