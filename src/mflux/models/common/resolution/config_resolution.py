@@ -124,4 +124,5 @@ class ConfigResolution:
             supports_guidance=base.supports_guidance,
             requires_sigma_shift=base.requires_sigma_shift,
             priority=base.priority,
+            transformer_overrides=base.transformer_overrides,
         )
