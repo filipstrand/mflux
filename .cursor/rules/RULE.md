@@ -44,3 +44,15 @@ These rules exist to make agent work in this repo **predictable, verifiable, and
 - If the task scope changes materially, stop and re-align rather than continuing in a confused state.
 - When users ask for CLI usage (e.g., “Can you help me generate an image using z-image?”), use the `mflux-cli` skill.
 
+## Skills
+
+- For image generation requests, **always use** `mflux-cli` to find the right command and flags.
+- Use `mflux-cli` for CLI capability discovery and usage help.
+- Use `mflux-dev-env` for setup, uv usage, and Makefile targets.
+- Use `mflux-testing` for running tests and handling golden images.
+- Use `mflux-manual-testing` for validating CLI outputs manually.
+- Use `mflux-debugging` for MLX vs PyTorch/diffusers comparisons.
+- Use `mflux-model-porting` when porting models into MLX.
+- Use `mflux-release` for release preparation steps.
+- Use `mflux-pr` for preparing clean PRs.
+
