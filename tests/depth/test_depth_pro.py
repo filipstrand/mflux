@@ -15,7 +15,7 @@ class TestDepthPro:
         # Resolve paths
         resource_dir = Path(__file__).parent.parent / "resources"
         input_image_path = resource_dir / "reference_controlnet_dev_lora.png"
-        reference_image_path = resource_dir / "reference_controlnet_dev_lora_depth.png"
+        reference_image_path = resource_dir / "reference_depth.png"
         output_image_path = resource_dir / "output_depth.png"
 
         try:
