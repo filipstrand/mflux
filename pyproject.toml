@@ -130,6 +130,12 @@ docstring-code-line-length = "dynamic"
 testpaths = ["tests"]
 python_files = "test_*.py"
 addopts = '-v --failed-first --showlocals --tb=long --full-trace -m "not high_memory_requirement"'
+filterwarnings = [
+    "ignore::DeprecationWarning:transformers\\.models\\.clip\\.tokenization_clip",
+    "ignore:builtin type SwigPyPacked has no __module__ attribute:DeprecationWarning",
+    "ignore:builtin type SwigPyObject has no __module__ attribute:DeprecationWarning",
+    "ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning",
+]
 markers = [
     "fast: marks tests as fast (no image generation)",
     "slow: marks tests as slow (generates images)",

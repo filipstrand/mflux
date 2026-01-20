@@ -12,24 +12,24 @@ class MetadataReader:
     @staticmethod
     def read_exif_metadata(image_path: str | Path) -> dict | None:
         try:
-            img = PIL.Image.open(image_path)
-            exif_bytes = img.info.get("exif")
+            with PIL.Image.open(image_path) as img:
+                exif_bytes = img.info.get("exif")
 
-            if not exif_bytes:
+                if not exif_bytes:
+                    return None
+
+                exif_dict = piexif.load(exif_bytes)
+                user_comment = exif_dict["Exif"].get(0x9286, b"")
+
+                if user_comment:
+                    # Try to parse as JSON (strip the ASCII prefix if present)
+                    if user_comment.startswith(b"ASCII\x00\x00\x00"):
+                        metadata_str = user_comment[8:].decode("utf-8")
+                    else:
+                        metadata_str = user_comment.decode("utf-8")
+                    return json.loads(metadata_str)
+
                 return None
-
-            exif_dict = piexif.load(exif_bytes)
-            user_comment = exif_dict["Exif"].get(0x9286, b"")
-
-            if user_comment:
-                # Try to parse as JSON (strip the ASCII prefix if present)
-                if user_comment.startswith(b"ASCII\x00\x00\x00"):
-                    metadata_str = user_comment[8:].decode("utf-8")
-                else:
-                    metadata_str = user_comment.decode("utf-8")
-                return json.loads(metadata_str)
-
-            return None
 
         except (OSError, KeyError, json.JSONDecodeError, UnicodeDecodeError) as e:
             log.debug(f"Error reading EXIF metadata: {e}")
@@ -38,49 +38,49 @@ class MetadataReader:
     @staticmethod
     def read_xmp_metadata(image_path: str | Path) -> dict | None:
         try:
-            img = PIL.Image.open(image_path)
-            xmp_data = img.info.get("XML:com.adobe.xmp")
+            with PIL.Image.open(image_path) as img:
+                xmp_data = img.info.get("XML:com.adobe.xmp")
 
-            if not xmp_data:
-                return None
+                if not xmp_data:
+                    return None
 
-            # Parse XMP XML to extract key fields
-            xmp_dict = {}
+                # Parse XMP XML to extract key fields
+                xmp_dict = {}
 
-            # Simple XML parsing for common fields
-            fields = {
-                "description": '<dc:description><rdf:Alt><rdf:li xml:lang="x-default">',
-                "creator": "<dc:creator><rdf:Seq><rdf:li>",
-                "rights": '<dc:rights><rdf:Alt><rdf:li xml:lang="x-default">',
-                "creator_tool": "<xmp:CreatorTool>",
-                "category": "<photoshop:Category>",
-                "credit": "<photoshop:Credit>",
-                "seed": "<mflux:seed>",
-                "steps": "<mflux:steps>",
-                "guidance": "<mflux:guidance>",
-                "model": "<mflux:model>",
-                "loras": "<mflux:loras>",
-                "generation_time": "<mflux:generationTime>",
-            }
+                # Simple XML parsing for common fields
+                fields = {
+                    "description": '<dc:description><rdf:Alt><rdf:li xml:lang="x-default">',
+                    "creator": "<dc:creator><rdf:Seq><rdf:li>",
+                    "rights": '<dc:rights><rdf:Alt><rdf:li xml:lang="x-default">',
+                    "creator_tool": "<xmp:CreatorTool>",
+                    "category": "<photoshop:Category>",
+                    "credit": "<photoshop:Credit>",
+                    "seed": "<mflux:seed>",
+                    "steps": "<mflux:steps>",
+                    "guidance": "<mflux:guidance>",
+                    "model": "<mflux:model>",
+                    "loras": "<mflux:loras>",
+                    "generation_time": "<mflux:generationTime>",
+                }
 
-            for key, start_tag in fields.items():
-                if start_tag in xmp_data:
-                    start_idx = xmp_data.index(start_tag) + len(start_tag)
-                    # Find the closing tag
-                    if key in ["description", "rights"]:
-                        end_tag = "</rdf:li>"
-                    elif key == "creator":
-                        end_tag = "</rdf:li>"
-                    else:
-                        # Extract tag name from start_tag
-                        tag_name = start_tag.split(":")[1].rstrip(">")
-                        end_tag = f"</{start_tag.split(':')[0]}:{tag_name}>"
+                for key, start_tag in fields.items():
+                    if start_tag in xmp_data:
+                        start_idx = xmp_data.index(start_tag) + len(start_tag)
+                        # Find the closing tag
+                        if key in ["description", "rights"]:
+                            end_tag = "</rdf:li>"
+                        elif key == "creator":
+                            end_tag = "</rdf:li>"
+                        else:
+                            # Extract tag name from start_tag
+                            tag_name = start_tag.split(":")[1].rstrip(">")
+                            end_tag = f"</{start_tag.split(':')[0]}:{tag_name}>"
 
-                    end_idx = xmp_data.index(end_tag, start_idx)
-                    value = xmp_data[start_idx:end_idx]
-                    xmp_dict[key] = value
+                        end_idx = xmp_data.index(end_tag, start_idx)
+                        value = xmp_data[start_idx:end_idx]
+                        xmp_dict[key] = value
 
-            return xmp_dict if xmp_dict else None
+                return xmp_dict if xmp_dict else None
 
         except (OSError, KeyError, ValueError) as e:
             log.debug(f"Error reading XMP metadata: {e}")

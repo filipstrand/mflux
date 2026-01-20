@@ -119,9 +119,9 @@ class TestMetadata:
             import piexif
             from PIL import Image
 
-            img = Image.open(output_path)
-            exif_bytes = img.info.get("exif")
-            assert exif_bytes is not None, "EXIF bytes should be present"
+            with Image.open(output_path) as img:
+                exif_bytes = img.info.get("exif")
+                assert exif_bytes is not None, "EXIF bytes should be present"
 
             exif_dict = piexif.load(exif_bytes)
             user_comment = exif_dict.get("Exif", {}).get(piexif.ExifIFD.UserComment)
