@@ -110,7 +110,7 @@ mflux-generate-z-image-turbo \
   --model z-image-turbo \
   --steps 9 \
   --prompt "a portrait" \
-  --lora-paths "author/lora-model" \
+  --lora-paths "/local/path/to/lora.safetensors" \
   --lora-scales 0.8
 ```
 
@@ -198,7 +198,7 @@ mflux-generate-z-image-turbo \
 
 ## Cache locations
 
-- **MFLUX cache**: set `MFLUX_CACHE_DIR` to override the default.
+- **MFLUX cache**: set `MFLUX_CACHE_DIR` to override the default (`~/Library/Caches/mflux` on macOS, `~/.cache/mflux` on Linux).
 - **Hugging Face cache**: set `HF_HOME` (for example, `HF_HOME=/Volumes/T7/.cache/huggingface`). For more details, refer to the Hugging Face cache documentation.
 
 Example with `HF_HOME` set for a generation run:
