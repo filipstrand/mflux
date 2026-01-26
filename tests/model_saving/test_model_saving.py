@@ -5,9 +5,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from mflux.models.common.config import ModelConfig
 from mflux.models.common.weights.loading.weight_loader import WeightLoader
-from mflux.models.flux.variants.txt2img.flux import Flux1
+from mflux.models.z_image.variants.turbo.z_image_turbo import ZImageTurbo
 from mflux.utils.version_util import VersionUtil
 
 PATH = "tests/4bit/"
@@ -21,19 +20,16 @@ class TestModelSaving:
 
         try:
             # given a saved quantized model (and an image from that model)
-            fluxA = Flux1(
-                model_config=ModelConfig.dev(),
-                quantize=4,
-            )
-            image1 = fluxA.generate_image(
+            modelA = ZImageTurbo(quantize=4)
+            image1 = modelA.generate_image(
                 seed=42,
                 prompt="Luxury food photograph",
-                num_inference_steps=15,
-                height=341,
-                width=768,
+                num_inference_steps=2,
+                height=368,
+                width=640,
             )
-            fluxA.save_model(PATH)
-            del fluxA
+            modelA.save_model(PATH)
+            del modelA
 
             # Verify that the mflux version is correctly saved in the model's metadata
             _, quantization_level, mflux_version = WeightLoader._try_load_mflux_format(Path(PATH) / "vae")
@@ -41,18 +37,15 @@ class TestModelSaving:
             assert quantization_level == 4, "quantization level not correctly saved in metadata"  # fmt: off
 
             # when loading the quantized model (also without specifying bits)
-            fluxB = Flux1(
-                model_config=ModelConfig.dev(),
-                model_path=PATH,
-            )
+            modelB = ZImageTurbo(model_path=PATH)
 
             # then we can load the model and generate the identical image
-            image2 = fluxB.generate_image(
+            image2 = modelB.generate_image(
                 seed=42,
                 prompt="Luxury food photograph",
-                num_inference_steps=15,
-                height=341,
-                width=768,
+                num_inference_steps=2,
+                height=368,
+                width=640,
             )
             np.testing.assert_array_equal(
                 np.array(image1.image),
