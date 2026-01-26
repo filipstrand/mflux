@@ -12,8 +12,11 @@ SIZE_TOLERANCE_RATIO = 0.05  # allow small metadata/header differences
 
 
 class TestModelSavingLora:
-    LORA_PATHS = ["renderartist/Technically-Color-Z-Image-Turbo"]
-    LORA_SCALES = [0.5]
+    LORA_PATHS = [
+        "renderartist/Technically-Color-Z-Image-Turbo",
+        "renderartist/Classic-Painting-Z-Image-Turbo-LoRA",
+    ]
+    LORA_SCALES = [0.5, 0.5]
 
     @pytest.mark.slow
     def test_save_and_load_4bit_model_with_lora(self):
