@@ -1,11 +1,14 @@
 import os
 import shutil
+import tempfile
 from pathlib import Path
 
 import numpy as np
 import pytest
 
+from mflux.models.common.lora.mapping.lora_saver import LoRASaver
 from mflux.models.z_image.variants.turbo.z_image_turbo import ZImageTurbo
+from mflux.utils.image_compare import ImageCompare
 
 PATH = "tests/4bit/"
 SIZE_TOLERANCE_RATIO = 0.05  # allow small metadata/header differences
@@ -69,6 +72,72 @@ class TestModelSavingLora:
                 err_msg="image2 doesn't match image1.",
             )
 
+        finally:
+            # cleanup
+            TestModelSavingLora._delete_folder_if_exists(PATH)
+
+    @pytest.mark.slow
+    def test_save_baked_lora_loads_with_same_output(self):
+        # Clean up any existing temporary directories from previous test runs
+        TestModelSavingLora._delete_folder_if_exists(PATH)
+
+        try:
+            lora_paths = TestModelSavingLora.LORA_PATHS
+            lora_scales = TestModelSavingLora.LORA_SCALES
+
+            # Given: a model with LoRAs applied, generate an image and then bake
+            # Use non-quantized weights so baked LoRA output matches exactly.
+            modelA = ZImageTurbo(
+                quantize=None,
+                lora_paths=lora_paths,
+                lora_scales=lora_scales,
+            )
+            image1 = modelA.generate_image(
+                seed=44,
+                prompt="mkym this is made of wool, pizza",
+                num_inference_steps=9,
+                height=368,
+                width=640,
+            )
+            LoRASaver.bake_and_strip_lora(modelA.transformer)
+            baked_image = modelA.generate_image(
+                seed=44,
+                prompt="mkym this is made of wool, pizza",
+                num_inference_steps=9,
+                height=368,
+                width=640,
+            )
+            # Runtime vs baked can drift; compare with a relaxed mismatch threshold.
+            with tempfile.TemporaryDirectory() as temp_dir:
+                runtime_path = Path(temp_dir) / "runtime.png"
+                baked_path = Path(temp_dir) / "baked.png"
+                image1.image.save(runtime_path)
+                baked_image.image.save(baked_path)
+                ImageCompare.check_images_close_enough(
+                    runtime_path,
+                    baked_path,
+                    "Runtime LoRA differs too much from baked LoRA.",
+                    mismatch_threshold=0.25,
+                )
+            modelA.save_model(PATH)
+            del modelA
+
+            # When: loading the baked model without LoRAs
+            modelB = ZImageTurbo(model_path=PATH)
+            image2 = modelB.generate_image(
+                seed=44,
+                prompt="mkym this is made of wool, pizza",
+                num_inference_steps=9,
+                height=368,
+                width=640,
+            )
+
+            # Then: the saved baked model should match the in-memory baked output
+            np.testing.assert_array_equal(
+                np.array(baked_image.image),
+                np.array(image2.image),
+                err_msg="image2 doesn't match baked_image.",
+            )
         finally:
             # cleanup
             TestModelSavingLora._delete_folder_if_exists(PATH)
