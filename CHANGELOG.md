@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.5] - 2026-01-26
+
+### ✨ Improvements
+
+- **SeedVR2 directory input**: Allow passing a folder to `--image-path` to upscale all images inside.
+
+### 🧰 DX & Maintenance
+
+- **Model porting guidance**: Require model README entries in the porting workflow.
+
+### 📝 Documentation
+
+- **SeedVR2 usage**: Document directory upscaling with CLI and Python API examples.
+- **CLI docs**: Add Python API sections and improve Z-Image Turbo entry-point links.
+
+---
+
 ## [0.15.4] - 2026-01-20
 
 ### ✨ Improvements

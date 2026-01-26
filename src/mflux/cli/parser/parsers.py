@@ -57,7 +57,14 @@ class CommandLineParser(argparse.ArgumentParser):
         self.supports_image_generation = True
         self.require_prompt = False
         seedvr2_group = self.add_argument_group("SeedVR2 upscale configuration")
-        seedvr2_group.add_argument("--image-path", "-i", type=Path, required=True, nargs="+", help="Path to the input image(s) to upscale.")
+        seedvr2_group.add_argument(
+            "--image-path",
+            "-i",
+            type=Path,
+            required=True,
+            nargs="+",
+            help="Path to the input image(s) or directories to upscale.",
+        )
         seedvr2_group.add_argument("--seed", "-s", type=int, default=[42], nargs="+", help="Random seed(s) for reproducibility.")
         seedvr2_group.add_argument("--resolution", "-r", type=int_or_special_value, default=384, help="Target resolution for the shortest edge (pixels) or scale factor (e.g., '2x').")
         seedvr2_group.add_argument("--softness", type=float, default=0.0, help="Value between 0.0 (off, factor 1) and 1.0 (max, factor 8). Default: 0.0.")

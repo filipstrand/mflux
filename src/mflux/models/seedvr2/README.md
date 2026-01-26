@@ -40,6 +40,40 @@ Instead of specifying a target resolution, you can also use `--resolution 2x` or
 
 You can also adjust the `--softness` parameter (0.0 to 1.0) to control input pre-downsampling, which can help achieve smoother upscaling results. A value of 0.0 (default) disables pre-downsampling, while higher values up to 1.0 increase the downsampling factor (up to 8x internally) before upscaling. A value of `0.5` is often a good starting point.
 
+## Upscale a Directory
+
+Pass a directory to `--image-path` to upscale every image inside.
+
+```sh
+mflux-upscale-seedvr2 \
+  --image-path "./inputs" \
+  --resolution 2160 \
+  --softness 0.5
+```
+
+<details>
+<summary>Python API</summary>
+
+```python
+from pathlib import Path
+
+from mflux.models.common.config import ModelConfig
+from mflux.models.seedvr2 import SeedVR2
+
+model = SeedVR2(model_config=ModelConfig.seedvr2_3b())
+for image_path in sorted(Path("./inputs").iterdir()):
+    if image_path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+        continue
+    image = model.generate_image(
+        seed=42,
+        image_path=image_path,
+        resolution=2160,
+        softness=0.5,
+    )
+    image.save(image_path.with_stem(f"{image_path.stem}_upscaled"))
+```
+</details>
+
 <details>
 <summary>🛠️ <strong>Example: Generating and Upscaling with Z-Image Turbo</strong></summary>
 
