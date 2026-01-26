@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
 from mflux.models.common.config import ModelConfig
 from mflux.models.flux.variants.txt2img.flux import Flux1
@@ -18,10 +19,15 @@ class TestMetadata:
         fd, temp_path = tempfile.mkstemp(suffix=".png")
         os.close(fd)  # Close the file descriptor immediately
         output_path = Path(temp_path)
+        reference_image = None
 
         try:
-            # Use img2img to test image_path and image_strength metadata fields
-            reference_image = Path(__file__).parent.parent / "resources" / "reference_schnell.png"
+            # Use img2img to test image_path and image_strength metadata fields.
+            # Create a tiny local reference image for the test run.
+            ref_fd, ref_path = tempfile.mkstemp(suffix=".png")
+            os.close(ref_fd)
+            reference_image = Path(ref_path)
+            Image.new("RGB", (64, 64), (128, 128, 128)).save(reference_image)
 
             # Generate a small, fast image with schnell img2img (256x256, 2 steps, quantized)
             flux = Flux1(
@@ -117,7 +123,6 @@ class TestMetadata:
             # Test 10: EXIF JSON is valid and parseable
             # =================================================================
             import piexif
-            from PIL import Image
 
             with Image.open(output_path) as img:
                 exif_bytes = img.info.get("exif")
@@ -163,3 +168,5 @@ class TestMetadata:
             # Cleanup: Always remove the temporary file
             if output_path.exists():
                 output_path.unlink()
+            if reference_image and reference_image.exists():
+                reference_image.unlink()
