@@ -87,7 +87,7 @@ Run it with:
 uv run --prerelease=allow generate.py
 ```
 
-For more Python API inspiration, look at the CLI entry points for the respective models.
+For more Python API inspiration, look at the [CLI entry points](src/mflux/models/z_image/cli/z_image_turbo_generate.py) for the respective models.
 </details>
 
 <details>
