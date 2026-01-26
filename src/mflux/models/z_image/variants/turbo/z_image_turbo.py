@@ -131,6 +131,8 @@ class ZImageTurbo(nn.Module):
             quantization=self.bits,
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
+            image_path=config.image_path,
+            image_strength=config.image_strength,
             generation_time=config.time_steps.format_dict["elapsed"],
         )
 
