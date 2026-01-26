@@ -56,6 +56,7 @@ Provide a repeatable, MLX-focused workflow for porting ML models (typically from
    - Re-run tests and basic perf checks.
    - Add CLI/pipeline defaults and completions later, once core output is stable.
    - Document any new mapping rules, shape constraints, or tolerances.
+   - Create a model README that follows the structure of existing model READMEs.
 
 ## Tooling expectations
 - Use `uv` for running scripts and tests: `uv run <command>`.
