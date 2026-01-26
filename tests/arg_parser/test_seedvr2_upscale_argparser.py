@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 
 from mflux.cli.parser.parsers import CommandLineParser
+from mflux.models.seedvr2.cli.seedvr2_upscale import _expand_image_paths
 from mflux.utils.scale_factor import ScaleFactor
 
 
@@ -102,3 +103,32 @@ def test_seedvr2_softness(seedvr2_upscale_parser, seedvr2_upscale_minimal_argv):
     with patch("sys.argv", seedvr2_upscale_minimal_argv + ["--softness", "0.5"]):
         args = seedvr2_upscale_parser.parse_args()
         assert args.softness == 0.5
+
+
+@pytest.mark.fast
+def test_seedvr2_expands_directory_image_paths(tmp_path):
+    image_a = tmp_path / "a.png"
+    image_b = tmp_path / "b.JPG"
+    not_image = tmp_path / "note.txt"
+    subdir = tmp_path / "subdir"
+
+    image_a.touch()
+    image_b.touch()
+    not_image.touch()
+    subdir.mkdir()
+    (subdir / "c.png").touch()
+
+    assert _expand_image_paths([tmp_path]) == [image_a, image_b]
+
+
+@pytest.mark.fast
+def test_seedvr2_expands_directories_and_files_in_order(tmp_path):
+    dir_images = tmp_path / "images"
+    dir_images.mkdir()
+    dir_image = dir_images / "dir.png"
+    dir_image.touch()
+
+    file_image = tmp_path / "file.webp"
+    file_image.touch()
+
+    assert _expand_image_paths([dir_images, file_image]) == [dir_image, file_image]
