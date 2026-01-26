@@ -5,9 +5,9 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
-from mflux.models.common.config import ModelConfig
-from mflux.models.flux.variants.txt2img.flux import Flux1
+from mflux.models.z_image.variants.turbo.z_image_turbo import ZImageTurbo
 from mflux.utils.metadata_reader import MetadataReader
 
 
@@ -18,18 +18,20 @@ class TestMetadata:
         fd, temp_path = tempfile.mkstemp(suffix=".png")
         os.close(fd)  # Close the file descriptor immediately
         output_path = Path(temp_path)
+        reference_image = None
 
         try:
-            # Use img2img to test image_path and image_strength metadata fields
-            reference_image = Path(__file__).parent.parent / "resources" / "reference_schnell.png"
+            # Use img2img to test image_path and image_strength metadata fields.
+            # Create a tiny local reference image for the test run.
+            ref_fd, ref_path = tempfile.mkstemp(suffix=".png")
+            os.close(ref_fd)
+            reference_image = Path(ref_path)
+            Image.new("RGB", (64, 64), (128, 128, 128)).save(reference_image)
 
-            # Generate a small, fast image with schnell img2img (256x256, 2 steps, quantized)
-            flux = Flux1(
-                model_config=ModelConfig.schnell(),
-                quantize=8,
-            )
+            # Generate a small, fast image with z-image turbo img2img (256x256, 2 steps, quantized)
+            model = ZImageTurbo(quantize=8)
 
-            image = flux.generate_image(
+            image = model.generate_image(
                 seed=42,
                 prompt="A simple test image",
                 num_inference_steps=2,
@@ -58,7 +60,7 @@ class TestMetadata:
             assert exif.get("seed") == 42, "Seed should match"
             assert exif.get("steps") == 2, "Steps should match"
             assert exif.get("prompt") == "A simple test image", "Prompt should match"
-            assert exif.get("model") == "black-forest-labs/FLUX.1-schnell", "Model should match"
+            assert exif.get("model") == "Tongyi-MAI/Z-Image-Turbo", "Model should match"
 
             # =================================================================
             # Test 3: Dimensions (NEW FEATURE)
@@ -111,13 +113,12 @@ class TestMetadata:
             assert exif.get("lora_scales") is None, "LoRA scales should be None when not used"
             assert exif.get("controlnet_image_path") is None, "ControlNet path should be None when not used"
             assert exif.get("negative_prompt") is None, "Negative prompt should be None when not used"
-            assert exif.get("guidance") is None, "Guidance should be None for schnell model"
+            assert exif.get("guidance") is None, "Guidance should be None for z-image turbo model"
 
             # =================================================================
             # Test 10: EXIF JSON is valid and parseable
             # =================================================================
             import piexif
-            from PIL import Image
 
             with Image.open(output_path) as img:
                 exif_bytes = img.info.get("exif")
@@ -163,3 +164,5 @@ class TestMetadata:
             # Cleanup: Always remove the temporary file
             if output_path.exists():
                 output_path.unlink()
+            if reference_image and reference_image.exists():
+                reference_image.unlink()

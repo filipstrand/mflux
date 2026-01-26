@@ -152,7 +152,10 @@ class WeightLoader:
             return None, None, None
 
         # Convert quantization level from string to int
-        quantization_level = int(quantization_level_str) if quantization_level_str is not None else None
+        if quantization_level_str in (None, "None", "null", ""):
+            quantization_level = None
+        else:
+            quantization_level = int(quantization_level_str)
 
         # Load all shards
         all_weights: dict[str, mx.array] = {}

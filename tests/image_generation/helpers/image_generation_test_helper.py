@@ -1,11 +1,10 @@
 import gc
 import os
 from pathlib import Path
-from typing import Type, Union
+from typing import Any, Type
 
 from mflux.callbacks.instances.memory_saver import MemorySaver
 from mflux.models.common.config import ModelConfig
-from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
 from mflux.utils.image_compare import ImageCompare
 
@@ -15,7 +14,7 @@ class ImageGeneratorTestHelper:
     def assert_matches_reference_image(
         reference_image_path: str,
         output_image_path: str,
-        model_class: Type[Union[Flux1, QwenImage]],
+        model_class: Type[Any],
         model_config: ModelConfig,
         prompt: str,
         steps: int,
