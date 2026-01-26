@@ -22,6 +22,30 @@ mflux-generate-z-image-turbo \
   --lora-scales 0.5
 ```
 
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.models.common.config import ModelConfig
+from mflux.models.z_image import ZImageTurbo
+
+model = ZImageTurbo(
+    model_config=ModelConfig.z_image_turbo(),
+    model_path="filipstrand/Z-Image-Turbo-mflux-4bit",
+    lora_paths=["renderartist/Technically-Color-Z-Image-Turbo"],
+    lora_scales=[0.5],
+)
+image = model.generate_image(
+    seed=456,
+    prompt="t3chnic4lly vibrant 1960s close-up of a woman sitting under a tree in a blue skirt and white blouse, she has blonde wavy short hair and a smile with green eyes lake scene by a garden with flowers in the foreground 1960s style film She's holding her hand out there is a small smooth frog in her palm, she's making eye contact with the toad.",
+    num_inference_steps=9,
+    width=1280,
+    height=720,
+)
+image.save("z_image_turbo.png")
+```
+</details>
+
 > [!WARNING]
 > Note: Z-Image-Turbo requires downloading the `Tongyi-MAI/Z-Image-Turbo` model weights (~31GB), or use quantization for smaller sizes.
 

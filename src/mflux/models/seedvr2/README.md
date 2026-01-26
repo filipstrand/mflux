@@ -16,6 +16,24 @@ mflux-upscale-seedvr2 \
   --softness 0.5
 ```
 
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.models.common.config import ModelConfig
+from mflux.models.seedvr2 import SeedVR2
+
+model = SeedVR2(model_config=ModelConfig.seedvr2_3b())
+image = model.generate_image(
+    seed=42,
+    image_path="input.png",
+    resolution=2160,
+    softness=0.5,
+)
+image.save("input_upscaled.png")
+```
+</details>
+
 This will upscale the image such that the shortest side is 2160 pixels while maintaining the aspect ratio.
 
 Instead of specifying a target resolution, you can also use `--resolution 2x` or `--resolution 3x` to upscale by a factor of 2 or 3 respectively.
@@ -42,6 +60,28 @@ mflux-generate-z-image-turbo \
   --output image.png
 ```
 
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.models.z_image import ZImageTurbo
+
+model = ZImageTurbo(
+    quantize=8,
+    lora_paths=["renderartist/Classic-Painting-Z-Image-Turbo-LoRA"],
+    lora_scales=[0.5],
+)
+image = model.generate_image(
+    seed=42,
+    prompt="class1cpa1nt a prestigious candlelit banquet table in a high-ceilinged palace hall. The scene features a bottle of \"Z-Image Vintage Select\" beside a sparkling crystal decanter. The table is overflowing with luxury: golden plates, silk napkins, and a centerpiece of dark red roses. Fine details of the wood grain on the table and the reflection of a chandelier in the polished surfaces. The lighting is dramatic and warm, reminiscent of Rembrandt. Masterful oil painting with aged texture and crackle glaze.",
+    num_inference_steps=9,
+    width=768,
+    height=336,
+)
+image.save("image.png")
+```
+</details>
+
 **2. Upscale 3x using SeedVR2**
 
 ```sh
@@ -50,6 +90,25 @@ mflux-upscale-seedvr2 \
   --resolution 3x \
   --softness 0.5
 ```
+
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.models.common.config import ModelConfig
+from mflux.models.seedvr2 import SeedVR2
+from mflux.utils.scale_factor import ScaleFactor
+
+model = SeedVR2(model_config=ModelConfig.seedvr2_3b())
+image = model.generate_image(
+    seed=42,
+    image_path="image.png",
+    resolution=ScaleFactor.parse("3x"),
+    softness=0.5,
+)
+image.save("image_upscaled.png")
+```
+</details>
 
 </details>
 

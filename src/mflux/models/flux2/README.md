@@ -20,6 +20,25 @@ mflux-generate-flux2 \
   --height 560
 ```
 
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.models.common.config import ModelConfig
+from mflux.models.flux2.variants import Flux2Klein
+
+model = Flux2Klein(model_config=ModelConfig.flux2_klein_9b())
+image = model.generate_image(
+    seed=640563507,
+    prompt="Photorealistic close-up of a hummingbird hovering near red flowers, frozen wings, detailed feathers, soft green background bokeh, high shutter speed look.",
+    num_inference_steps=4,
+    width=1024,
+    height=560,
+)
+image.save("hummingbird.png")
+```
+</details>
+
 ## Image-conditioned editing
 FLUX.2 supports image-conditioned editing with one or more reference images:
 
@@ -35,6 +54,24 @@ mflux-generate-flux2-edit \
   --steps 4 \
   --seed 42
 ```
+
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.models.common.config import ModelConfig
+from mflux.models.flux2.variants import Flux2KleinEdit
+
+model = Flux2KleinEdit(model_config=ModelConfig.flux2_klein_9b())
+image = model.generate_image(
+    seed=42,
+    prompt="Make the woman wear the eyeglasses (regular glasses, not sunglasses)",
+    image_paths=["person.jpg", "glasses.jpg"],
+    num_inference_steps=4,
+)
+image.save("flux2_edit.png")
+```
+</details>
 
 > [!WARNING]
 > Note: FLUX.2-klein-4B requires downloading the `black-forest-labs/FLUX.2-klein-4B` model weights (~15GB), and FLUX.2-klein-9B requires `black-forest-labs/FLUX.2-klein-9B` model weights (~32GB), or use quantization for smaller sizes.

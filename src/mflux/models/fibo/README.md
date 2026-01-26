@@ -29,6 +29,37 @@ mflux-generate-fibo \
   --output animal_bakers.png
 ```
 
+<details>
+<summary>Python API</summary>
+
+```python
+from pathlib import Path
+
+from mflux.models.common.config import ModelConfig
+from mflux.models.fibo.variants.txt2img.fibo import FIBO
+from mflux.models.fibo_vlm.model.fibo_vlm import FiboVLM
+from mflux.models.fibo_vlm.model.util import FiboVLMUtil
+
+vlm = FiboVLM()
+json_prompt = vlm.generate(
+    prompt="Three cartoon animal chefs in a colorful bakery kitchen, Pixar style: a bunny with floppy ears wearing a tall white chef hat and pink apron holding a chocolate cake on the left, a raccoon with a striped tail wearing blue oven mitts and a yellow bandana frosting cupcakes in the center, a penguin wearing a red bowtie and checkered apron carrying a tray of golden croissants on the right, warm kitchen lighting with flour dust in air",
+    seed=42,
+)
+FiboVLMUtil.save_json_prompt(Path("animal_bakers.json"), json_prompt)
+
+model = FIBO(model_config=ModelConfig.fibo())
+image = model.generate_image(
+    seed=42,
+    prompt=json_prompt,
+    num_inference_steps=20,
+    width=1200,
+    height=540,
+    guidance=4.0,
+)
+image.save("animal_bakers.png")
+```
+</details>
+
 This command will output both the generated image (`animal_bakers.png`) and a JSON prompt file (`animal_bakers.json`) containing the expanded structured prompt used for generation.
 
 If a JSON prompt file is provided, it will be used directly for image generation, thus bypassing the VLM step and giving you full control over the prompt structure:
@@ -43,6 +74,30 @@ mflux-generate-fibo \
     --seed 42 \
     --output animal_bakers.png
 ```
+
+<details>
+<summary>Python API</summary>
+
+```python
+from pathlib import Path
+
+from mflux.models.common.config import ModelConfig
+from mflux.models.fibo.variants.txt2img.fibo import FIBO
+from mflux.models.fibo_vlm.model.util import FiboVLMUtil
+
+structured_prompt = FiboVLMUtil.get_structured_prompt(Path("animal_bakers.json"))
+model = FIBO(model_config=ModelConfig.fibo())
+image = model.generate_image(
+    seed=42,
+    prompt=structured_prompt,
+    num_inference_steps=20,
+    width=1200,
+    height=540,
+    guidance=4.0,
+)
+image.save("animal_bakers.png")
+```
+</details>
 
 When working with a JSON prompt file, you can use whatever tool you prefer to edit it and are not forced to use the built-in FIBO-VLM. Other good alternatives are [coding](https://cursor.com/agents) [agents](https://www.claude.com/product/claude-code), other [LLMs](https://github.com/ml-explore/mlx-lm)/[VLMs](https://github.com/Blaizzy/mlx-vlm) etc.
 
@@ -145,6 +200,25 @@ mflux-refine-fibo \
     --output owl_white.json
 ```
 
+<details>
+<summary>Python API</summary>
+
+```python
+from pathlib import Path
+
+from mflux.models.fibo_vlm.model.fibo_vlm import FiboVLM
+from mflux.models.fibo_vlm.model.util import FiboVLMUtil
+
+vlm = FiboVLM()
+refined_json = vlm.refine(
+    seed=42,
+    structured_prompt=FiboVLMUtil.get_structured_prompt(Path("owl_brown.json")),
+    editing_instructions="Make the owl white instead of brown, and add round glasses and a black scarf. Keep everything else exactly the same - the same forest background, moonlight lighting, composition, and overall whimsical atmosphere.",
+)
+FiboVLMUtil.save_json_prompt(Path("owl_white.json"), refined_json)
+```
+</details>
+
 Then generate the refined image using the updated JSON prompt:
 
 ```sh
@@ -158,6 +232,30 @@ mflux-generate-fibo \
     --quantize 4 \
     --output owl_white.png
 ```
+
+<details>
+<summary>Python API</summary>
+
+```python
+from pathlib import Path
+
+from mflux.models.common.config import ModelConfig
+from mflux.models.fibo.variants.txt2img.fibo import FIBO
+from mflux.models.fibo_vlm.model.util import FiboVLMUtil
+
+structured_prompt = FiboVLMUtil.get_structured_prompt(Path("owl_white.json"))
+model = FIBO(model_config=ModelConfig.fibo(), quantize=4)
+image = model.generate_image(
+    seed=42,
+    prompt=structured_prompt,
+    num_inference_steps=20,
+    width=1024,
+    height=560,
+    guidance=4.0,
+)
+image.save("owl_white.png")
+```
+</details>
 
 It is worth noting that refine does not work the same way as other editing techniques like Flux Kontext or Qwen Image Edit. Instead of modifying an existing image, it modifies the underlying **structured prompt** to produce a new image.
 
@@ -176,6 +274,26 @@ mflux-inspire-fibo \
     --seed 42
 ```
 
+<details>
+<summary>Python API</summary>
+
+```python
+from pathlib import Path
+
+from mflux.models.fibo_vlm.model.fibo_vlm import FiboVLM
+from mflux.models.fibo_vlm.model.util import FiboVLMUtil
+
+vlm = FiboVLM()
+image = FiboVLMUtil.load_image(Path("bird.jpg"))
+inspired_json = vlm.inspire(
+    seed=42,
+    image=image,
+    prompt="blue and brown bird on brown tree trunk",
+)
+FiboVLMUtil.save_json_prompt(Path("bird_inspired.json"), inspired_json)
+```
+</details>
+
 Then generate new images with similar characteristics:
 
 ```sh
@@ -189,6 +307,30 @@ mflux-generate-fibo \
     -q 8 \
     --output bird_inspired.png
 ```
+
+<details>
+<summary>Python API</summary>
+
+```python
+from pathlib import Path
+
+from mflux.models.common.config import ModelConfig
+from mflux.models.fibo.variants.txt2img.fibo import FIBO
+from mflux.models.fibo_vlm.model.util import FiboVLMUtil
+
+structured_prompt = FiboVLMUtil.get_structured_prompt(Path("bird_inspired.json"))
+model = FIBO(model_config=ModelConfig.fibo(), quantize=8)
+image = model.generate_image(
+    seed=42,
+    prompt=structured_prompt,
+    num_inference_steps=20,
+    width=1024,
+    height=672,
+    guidance=4.0,
+)
+image.save("bird_inspired.png")
+```
+</details>
 
 ## Notes
 > [!WARNING]

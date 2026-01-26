@@ -11,6 +11,18 @@ To generate and export the depth map from an image (without running image genera
 mflux-save-depth --image-path "your_image.jpg" -q 8
 ```
 
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.models.depth_pro.model.depth_pro import DepthPro
+
+model = DepthPro(quantize=8)
+result = model.create_depth_map("your_image.jpg")
+result.depth_image.save("your_image_depth.png")
+```
+</details>
+
 This will create a depth map and save it with the same name as your image but with a `_depth` suffix (e.g., `your_image_depth.png`).
 
 ## Notes

@@ -36,6 +36,23 @@ mflux-generate-z-image-turbo \
   --prompt "A photo of a dog"
 ```
 
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.models.common.config import ModelConfig
+from mflux.models.z_image import ZImageTurbo
+
+model = ZImageTurbo(quantize=8, model_config=ModelConfig.z_image_turbo())
+image = model.generate_image(
+    seed=42,
+    prompt="A photo of a dog",
+    num_inference_steps=9,
+)
+image.save("dog.png")
+```
+</details>
+
 ### Saving a quantized model
 
 ```sh
@@ -44,6 +61,18 @@ mflux-save \
   --model z-image-turbo \
   --quantize 8
 ```
+
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.models.common.config import ModelConfig
+from mflux.models.z_image import ZImageTurbo
+
+model = ZImageTurbo(quantize=8, model_config=ModelConfig.z_image_turbo())
+model.save_model("/Users/me/models/z-image-turbo_8bit")
+```
+</details>
 
 You can optionally include LoRAs when saving:
 
@@ -55,6 +84,23 @@ mflux-save \
   --lora-paths "/path/to/lora.safetensors" \
   --lora-scales 0.7
 ```
+
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.models.common.config import ModelConfig
+from mflux.models.z_image import ZImageTurbo
+
+model = ZImageTurbo(
+    quantize=8,
+    model_config=ModelConfig.z_image_turbo(),
+    lora_paths=["/path/to/lora.safetensors"],
+    lora_scales=[0.7],
+)
+model.save_model("/Users/me/models/z-image-turbo_8bit")
+```
+</details>
 
 > [!WARNING]
 > Quantized models saved with mflux < v0.6.0 are incompatible with newer versions. Re-save using `mflux-save`.
@@ -73,6 +119,26 @@ mflux-generate-z-image-turbo \
   --prompt "Luxury food photograph"
 ```
 
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.models.common.config import ModelConfig
+from mflux.models.z_image import ZImageTurbo
+
+model = ZImageTurbo(
+    model_config=ModelConfig.z_image_turbo(),
+    model_path="/Users/me/models/z-image-turbo",
+)
+image = model.generate_image(
+    seed=42,
+    prompt="Luxury food photograph",
+    num_inference_steps=9,
+)
+image.save("luxury_food.png")
+```
+</details>
+
 Local HuggingFace-style weights should match the repo layout for the model. See the model README if you need the exact directory structure.
 
 ---
@@ -88,6 +154,26 @@ mflux-generate-z-image-turbo \
   --prompt "A beautiful landscape"
 ```
 
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.models.common.config import ModelConfig
+from mflux.models.z_image import ZImageTurbo
+
+model = ZImageTurbo(
+    model_config=ModelConfig.z_image_turbo(),
+    model_path="filipstrand/Z-Image-Turbo-mflux-4bit",
+)
+image = model.generate_image(
+    seed=42,
+    prompt="A beautiful landscape",
+    num_inference_steps=9,
+)
+image.save("landscape.png")
+```
+</details>
+
 ---
 
 ## Prompt files
@@ -100,6 +186,26 @@ mflux-generate-z-image-turbo \
   --steps 9 \
   --prompt-file ./prompt.txt
 ```
+
+<details>
+<summary>Python API</summary>
+
+```python
+from pathlib import Path
+
+from mflux.models.common.config import ModelConfig
+from mflux.models.z_image import ZImageTurbo
+
+prompt = Path("./prompt.txt").read_text().strip()
+model = ZImageTurbo(model_config=ModelConfig.z_image_turbo())
+image = model.generate_image(
+    seed=42,
+    prompt=prompt,
+    num_inference_steps=9,
+)
+image.save("prompt_file.png")
+```
+</details>
 
 ---
 
@@ -114,6 +220,27 @@ mflux-generate-z-image-turbo \
   --lora-scales 0.8
 ```
 
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.models.common.config import ModelConfig
+from mflux.models.z_image import ZImageTurbo
+
+model = ZImageTurbo(
+    model_config=ModelConfig.z_image_turbo(),
+    lora_paths=["/local/path/to/lora.safetensors"],
+    lora_scales=[0.8],
+)
+image = model.generate_image(
+    seed=42,
+    prompt="a portrait",
+    num_inference_steps=9,
+)
+image.save("portrait_lora.png")
+```
+</details>
+
 You can also use a real HuggingFace LoRA repo with Z-Image Turbo:
 
 ```sh
@@ -124,6 +251,28 @@ mflux-generate-z-image-turbo \
   --lora-paths renderartist/Technically-Color-Z-Image-Turbo \
   --lora-scales 0.5
 ```
+
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.models.common.config import ModelConfig
+from mflux.models.z_image import ZImageTurbo
+
+model = ZImageTurbo(
+    model_config=ModelConfig.z_image_turbo(),
+    model_path="filipstrand/Z-Image-Turbo-mflux-4bit",
+    lora_paths=["renderartist/Technically-Color-Z-Image-Turbo"],
+    lora_scales=[0.5],
+)
+image = model.generate_image(
+    seed=42,
+    prompt="t3chnic4lly vibrant 1960s portrait",
+    num_inference_steps=9,
+)
+image.save("portrait_hf_lora.png")
+```
+</details>
 
 For multi-LoRA, pass multiple paths and scales. For library usage, set `LORA_LIBRARY_PATH` and pass basenames.
 
@@ -141,6 +290,23 @@ mflux-generate-z-image-turbo \
   --output ./outputs/zimage.png
 ```
 
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.models.common.config import ModelConfig
+from mflux.models.z_image import ZImageTurbo
+
+model = ZImageTurbo(model_config=ModelConfig.z_image_turbo())
+image = model.generate_image(
+    seed=42,
+    prompt="a portrait",
+    num_inference_steps=9,
+)
+image.save("./outputs/zimage.png")
+```
+</details>
+
 ---
 
 ## Auto seeds
@@ -154,6 +320,25 @@ mflux-generate-z-image-turbo \
   --auto-seeds 4 \
   --prompt "a portrait"
 ```
+
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.models.common.config import ModelConfig
+from mflux.models.z_image import ZImageTurbo
+
+model = ZImageTurbo(model_config=ModelConfig.z_image_turbo())
+seeds = [42, 1337, 2024, 9999]
+for seed in seeds:
+    image = model.generate_image(
+        seed=seed,
+        prompt="a portrait",
+        num_inference_steps=9,
+    )
+    image.save(f"portrait_{seed}.png")
+```
+</details>
 
 ---
 
@@ -169,6 +354,30 @@ mflux-generate-z-image-turbo \
   --prompt "Same composition, warmer light"
 ```
 
+<details>
+<summary>Python API</summary>
+
+```python
+import json
+
+from mflux.models.common.config import ModelConfig
+from mflux.models.z_image import ZImageTurbo
+
+with open("./image.json", "r") as handle:
+    metadata = json.load(handle)
+
+model = ZImageTurbo(model_config=ModelConfig.z_image_turbo())
+image = model.generate_image(
+    seed=metadata.get("seed", 42),
+    prompt="Same composition, warmer light",
+    num_inference_steps=metadata.get("steps", 9),
+    width=metadata.get("width", 1024),
+    height=metadata.get("height", 1024),
+)
+image.save("image_warmer_light.png")
+```
+</details>
+
 ---
 
 ## Metadata inspection
@@ -178,6 +387,17 @@ Use `mflux-info` to inspect metadata embedded in an image generated by MFLUX:
 ```sh
 mflux-info ./image.png
 ```
+
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.utils.metadata_reader import MetadataReader
+
+metadata = MetadataReader.read_all_metadata("./image.png")
+print(metadata)
+```
+</details>
 
 ---
 
@@ -193,6 +413,36 @@ mflux-generate-z-image-turbo \
   --low-ram \
   --stepwise-image-output-dir ./steps
 ```
+
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.callbacks.instances.battery_saver import BatterySaver
+from mflux.callbacks.instances.memory_saver import MemorySaver
+from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
+from mflux.models.common.config import ModelConfig
+from mflux.models.z_image import ZImageTurbo
+from mflux.models.z_image.latent_creator import ZImageLatentCreator
+
+model = ZImageTurbo(model_config=ModelConfig.z_image_turbo())
+model.callbacks.register(BatterySaver(battery_percentage_stop_limit=20))
+model.callbacks.register(MemorySaver(model=model, keep_transformer=False))
+model.callbacks.register(
+    StepwiseHandler(
+        model=model,
+        output_dir="./steps",
+        latent_creator=ZImageLatentCreator,
+    )
+)
+image = model.generate_image(
+    seed=42,
+    prompt="a portrait",
+    num_inference_steps=9,
+)
+image.save("image.png")
+```
+</details>
 
 ---
 
@@ -210,6 +460,26 @@ HF_HOME=/Volumes/T7/.cache/huggingface \
   --steps 9 \
   --prompt "A moody coastal landscape at dusk"
 ```
+
+<details>
+<summary>Python API</summary>
+
+```python
+import os
+
+from mflux.models.common.config import ModelConfig
+from mflux.models.z_image import ZImageTurbo
+
+os.environ["HF_HOME"] = "/Volumes/T7/.cache/huggingface"
+model = ZImageTurbo(model_config=ModelConfig.z_image_turbo())
+image = model.generate_image(
+    seed=42,
+    prompt="A moody coastal landscape at dusk",
+    num_inference_steps=9,
+)
+image.save("coastal_dusk.png")
+```
+</details>
 
 ---
 
