@@ -91,6 +91,19 @@ For more Python API inspiration, look at the [CLI entry points](src/mflux/models
 </details>
 
 <details>
+<summary>⚠️ Troubleshooting: hf_transfer error</summary>
+
+If you encounter a `ValueError: Fast download using 'hf_transfer' is enabled (HF_HUB_ENABLE_HF_TRANSFER=1) but 'hf_transfer' package is not available`, you can install MFLUX with the `hf_transfer` package included:
+
+```sh
+uv tool install --upgrade mflux --with hf_transfer
+```
+
+This will enable faster model downloads from Hugging Face.
+
+</details>
+
+<details>
 <summary>DGX / NVIDIA (uv tool install)</summary>
 
 ```sh
