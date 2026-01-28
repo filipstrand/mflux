@@ -9,8 +9,8 @@ These rules exist to make agent work in this repo **predictable, verifiable, and
   - Prefer `uv run python -m ...` for local modules.
   - Manage deps with `uv add <pkg>` / `uv remove <pkg>`.
 - **Tool installs (CLI executables)**:
-  - When you need to (re)install the local checkout as a `uv tool` (e.g. after changing CLI code), prefer an **editable prerelease install** because mflux currently relies on a newer `transformers` prerelease:
-    - `uv tool install --force --editable --reinstall --prerelease=allow .`
+  - When you need to (re)install the local checkout as a `uv tool` (e.g. after changing CLI code), prefer an **editable install**:
+    - `uv tool install --force --editable --reinstall .`
 - **Prefer Makefile targets** when they exist (they encode project-specific setup):
   - `make install`, `make lint`, `make format`, `make test-fast`, `make test`, `make build`.
   - Prefer the Cursor commands in `.cursor/commands/` for these common targets (`/install`, `/lint`, `/format`, `/check`, `/test*`, `/build`).

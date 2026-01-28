@@ -30,7 +30,7 @@ MFLUX is a line-by-line MLX port of several state-of-the-art generative image mo
 If you haven't already, [install `uv`](https://github.com/astral-sh/uv?tab=readme-ov-file#installation), then run:
 
 ```sh
-uv tool install --upgrade mflux --prerelease=allow
+uv tool install --upgrade mflux
 ```
 
 After installation, the following command shows all available MFLUX CLI commands: 
@@ -84,7 +84,7 @@ image.save("puffin.png")
 Run it with:
 
 ```sh
-uv run --prerelease=allow generate.py
+uv run generate.py
 ```
 
 For more Python API inspiration, look at the [CLI entry points](src/mflux/models/z_image/cli/z_image_turbo_generate.py) for the respective models.
@@ -107,7 +107,7 @@ This will enable faster model downloads from Hugging Face.
 <summary>DGX / NVIDIA (uv tool install)</summary>
 
 ```sh
-uv tool install --python 3.13 mflux --prerelease=allow
+uv tool install --python 3.13 mflux
 ```
 </details>
 

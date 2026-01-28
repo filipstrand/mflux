@@ -20,7 +20,7 @@ Some regressions (especially in CLIs and image IO) are easiest to catch by runni
 - Before manual CLI testing, **reinstall the local tool executables** so you’re testing the latest code:
 
 ```bash
-uv tool install --force --editable --reinstall --prerelease=allow .
+uv tool install --force --editable --reinstall .
 ```
 
 ## Core CLI checks (pick what’s relevant)
