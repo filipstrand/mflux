@@ -4,9 +4,12 @@ Groups images by aspect ratio for more efficient training on
 varied datasets with different image proportions.
 """
 
+import logging
 import random
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from mflux.models.z_image.variants.training.dataset.batch import Example
@@ -153,8 +156,8 @@ class AspectRatioSampler:
                 if h > 0 and w > 0:
                     return float(w) / float(h)
                 # Log warning for malformed latent shapes with actionable guidance
-                print(
-                    f"Warning: Example {example.example_id} has invalid latent dimensions (h={h}, w={w}). "
+                logger.warning(
+                    f"Example {example.example_id} has invalid latent dimensions (h={h}, w={w}). "
                     f"Using square aspect ratio ({DEFAULT_ASPECT_RATIO}). This is usually caused by corrupted image encoding. "
                     f"Training will continue but batch bucketing efficiency may be affected."
                 )
@@ -165,15 +168,15 @@ class AspectRatioSampler:
                 h, w = shape[2], shape[3]
                 if h > 0 and w > 0:
                     return float(w) / float(h)
-                print(
-                    f"Warning: Example {example.example_id} has invalid 4D latent dimensions (h={h}, w={w}). "
+                logger.warning(
+                    f"Example {example.example_id} has invalid 4D latent dimensions (h={h}, w={w}). "
                     f"Using square aspect ratio ({DEFAULT_ASPECT_RATIO})."
                 )
                 return DEFAULT_ASPECT_RATIO
 
             # Unexpected shape - warn with specific shape info
-            print(
-                f"Warning: Example {example.example_id} has unexpected latent shape {shape} "
+            logger.warning(
+                f"Example {example.example_id} has unexpected latent shape {shape} "
                 f"(expected 3D [C,H,W] or 4D [C,F,H,W]). "
                 f"Using square aspect ratio ({DEFAULT_ASPECT_RATIO}). Training will continue normally."
             )

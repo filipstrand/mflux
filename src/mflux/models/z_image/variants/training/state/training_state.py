@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 import tempfile
 import zipfile
 from pathlib import Path
@@ -14,6 +15,8 @@ from mflux.models.z_image.variants.training.statistics.statistics import Statist
 
 if TYPE_CHECKING:
     from mflux.models.z_image.variants.training.z_image_base import ZImageBase
+
+logger = logging.getLogger(__name__)
 
 TRAINING_PATH_CHECKPOINTS = "_checkpoints"
 TRAINING_FILE_NAME_CHECKPOINT = "checkpoint"
@@ -130,7 +133,7 @@ class TrainingState:
                     try:
                         zipf.write(file_path, file_path.name)
                     except FileNotFoundError:  # noqa: PERF203 - Intentional: TOCTOU safety
-                        print(f"Warning: Could not save {file_path.name} to checkpoint - file not found")
+                        logger.warning(f"Could not save {file_path.name} to checkpoint - file not found")
 
     def _save_full_model(self, model: "ZImageBase", path: Path) -> None:
         """Save full transformer model weights for full fine-tuning mode.
@@ -162,6 +165,16 @@ class TrainingState:
     def _create_checkpoint_data(
         self, training_spec: TrainingSpec, start_date_time: datetime.datetime, files: dict
     ) -> dict:
+        """Create checkpoint metadata dictionary.
+
+        Args:
+            training_spec: Training specification with mode and settings
+            start_date_time: When training started
+            files: Dictionary mapping component names to filenames in the checkpoint
+
+        Returns:
+            Dictionary with metadata (timing, mode, example count) and file manifest
+        """
         now = datetime.datetime.now()
         return {
             "metadata": {
@@ -201,6 +214,15 @@ class TrainingState:
 
     @staticmethod
     def _format_duration(start: datetime.datetime, end: datetime.datetime) -> str:
+        """Format a time duration as human-readable string.
+
+        Args:
+            start: Start datetime
+            end: End datetime
+
+        Returns:
+            Human-readable duration string (e.g., "2 hours and 30 minutes")
+        """
         duration = end - start
         total_seconds = int(duration.total_seconds())
 
@@ -219,10 +241,19 @@ class TrainingState:
 
     @staticmethod
     def _save_train_config(path: Path, training_spec: TrainingSpec) -> None:
+        """Save training configuration to checkpoint.
+
+        Loads config from either the original config file path or from a previous
+        checkpoint (for resumed training), then saves it to the new checkpoint.
+
+        Args:
+            path: Destination path for the config JSON file
+            training_spec: Training specification containing config_path or checkpoint_path
+        """
         if training_spec.config_path is not None:
             config_file_path = Path(training_spec.config_path)
             if not config_file_path.exists():
-                print(f"Warning: Original config file not found: {config_file_path}. Skipping config save.")
+                logger.warning(f"Original config file not found: {config_file_path}. Skipping config save.")
                 return
             with open(config_file_path, "r") as f:
                 data = json.load(f)

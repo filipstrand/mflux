@@ -13,6 +13,8 @@ Optimizations:
 - Vectorized batch loss computation (10-25% speedup)
 """
 
+import logging
+
 import mlx.core as mx
 from tqdm import tqdm
 
@@ -27,6 +29,8 @@ from mflux.models.z_image.variants.training.state.training_state import Training
 from mflux.models.z_image.variants.training.statistics.plotter import Plotter
 from mflux.models.z_image.variants.training.statistics.profiler import create_profiler
 from mflux.models.z_image.variants.training.z_image_base import ZImageBase
+
+logger = logging.getLogger(__name__)
 
 
 class ZImageTrainer:
@@ -236,8 +240,8 @@ class ZImageTrainer:
 
         # Apply any remaining accumulated gradients before saving
         if accumulation_steps > 1 and accumulated_grads is not None and accumulation_count > 0:
-            print(
-                f"Warning: Applying partial gradient accumulation ({accumulation_count}/{accumulation_steps} steps). "
+            logger.warning(
+                f"Applying partial gradient accumulation ({accumulation_count}/{accumulation_steps} steps). "
                 f"Consider adjusting batch count to be divisible by gradient_accumulation_steps."
             )
             # Average the partial accumulated gradients (scale creates new dict, so free old one)
@@ -252,26 +256,26 @@ class ZImageTrainer:
 
         # Log sync statistics
         sync_stats = deferred_sync.get_stats()
-        print(
-            f"\nSync efficiency: {sync_stats['efficiency']:.1f}% deferred ({sync_stats['total_deferred']} skipped / {sync_stats['total_syncs']} performed)"
+        logger.info(
+            f"Sync efficiency: {sync_stats['efficiency']:.1f}% deferred ({sync_stats['total_deferred']} skipped / {sync_stats['total_syncs']} performed)"
         )
 
         # Log NaN gradient statistics if any occurred
         if total_nan_skips > 0:
             total_steps = training_state.iterator.num_iterations
             nan_rate = (total_nan_skips / total_steps) * 100 if total_steps > 0 else 0
-            print(
-                f"Warning: {total_nan_skips} NaN/Inf gradient updates skipped ({nan_rate:.1f}% of steps). "
+            logger.warning(
+                f"{total_nan_skips} NaN/Inf gradient updates skipped ({nan_rate:.1f}% of steps). "
                 f"Training completed but model quality may be affected."
             )
 
         # Log profiler report if enabled
         if enable_profiling:
-            print(f"\n{profiler.report()}")
+            logger.info(f"Profiler report:\n{profiler.report()}")
 
         # Save final state
         training_state.save(model, training_spec)
-        print(f"Training complete! Final checkpoint saved to {training_spec.saver.output_path}")
+        logger.info(f"Training complete! Final checkpoint saved to {training_spec.saver.output_path}")
 
     @staticmethod
     def _generate_validation_image(
@@ -300,7 +304,7 @@ class ZImageTrainer:
             # RuntimeError: MLX operation failures
             # ValueError: Invalid parameters
             # MemoryError: OOM during generation
-            print(f"Warning: Failed to generate validation image: {type(e).__name__}: {e}")
+            logger.warning(f"Failed to generate validation image: {type(e).__name__}: {e}")
         finally:
             if image is not None:
                 del image
@@ -348,7 +352,7 @@ class ZImageTrainer:
 
         # Check for NaN/Inf and skip update if detected
         if not mx.isfinite(total_norm).item():
-            print(f"Warning: Non-finite gradient norm detected ({total_norm.item()}). Skipping update.")
+            logger.warning(f"Non-finite gradient norm detected ({total_norm.item()}). Skipping update.")
             return None
 
         # Compute clipping coefficient

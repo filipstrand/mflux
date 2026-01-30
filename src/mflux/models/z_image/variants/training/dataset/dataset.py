@@ -1,3 +1,4 @@
+import logging
 import random
 from collections import OrderedDict
 from pathlib import Path
@@ -17,6 +18,8 @@ from mflux.utils.image_util import ImageUtil
 
 if TYPE_CHECKING:
     from mflux.models.z_image.variants.training.z_image_base import ZImageBase
+
+logger = logging.getLogger(__name__)
 
 
 class Dataset:
@@ -80,8 +83,8 @@ class Dataset:
 
         # Early warning for large base datasets
         if len(raw_data) > 25_000:
-            print(
-                f"Warning: Large base dataset ({len(raw_data)} images). "
+            logger.warning(
+                f"Large base dataset ({len(raw_data)} images). "
                 f"With repeat_count={repeat_count} and augmentation={enable_augmentation}, "
                 f"effective size may approach memory limits."
             )
@@ -235,7 +238,7 @@ class Dataset:
                 mx.synchronize()
             except Exception as e:  # noqa: BLE001 - Intentional: graceful degradation for encoding failures
                 # Log error but continue with remaining examples for graceful degradation
-                print(f"Warning: Failed to encode image {entry.image}: {e}. Skipping this example.")
+                logger.warning(f"Failed to encode image {entry.image}: {e}. Skipping this example.")
                 continue
             finally:
                 # Explicit cleanup of intermediate objects
@@ -250,7 +253,7 @@ class Dataset:
             stats_msg = f"Text embedding deduplication: {cache_hits}/{total_prompts} cached ({hit_rate:.1f}% hit rate)"
             if cache_evictions > 0:
                 stats_msg += f", {cache_evictions} evictions"
-            print(stats_msg)
+            logger.info(stats_msg)
 
         return examples
 

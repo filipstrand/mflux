@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 import random
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -9,8 +10,12 @@ from mflux.models.z_image.variants.training.dataset.dataset import Dataset
 from mflux.models.z_image.variants.training.state.training_spec import TrainingSpec
 from mflux.models.z_image.variants.training.state.zip_util import ZipUtil
 
-# Maximum number of examples to use for validation loss computation
-# Kept small to avoid memory pressure during training validation
+logger = logging.getLogger(__name__)
+
+# Maximum number of examples to use for validation loss computation.
+# Kept small (10) to avoid memory pressure during training validation.
+# For systems with more memory (512GB+), this could be increased to 50-100
+# for more representative validation metrics at the cost of longer validation time.
 VALIDATION_BATCH_MAX_SIZE = 10
 
 if TYPE_CHECKING:
@@ -122,8 +127,8 @@ class Iterator:
         # Use aspect ratio bucketing if enabled
         if self.use_aspect_ratio_bucketing:
             if self._aspect_ratio_sampler is None:
-                print(
-                    "Warning: Aspect ratio bucketing enabled but sampler not initialized, falling back to standard iteration"
+                logger.warning(
+                    "Aspect ratio bucketing enabled but sampler not initialized, falling back to standard iteration"
                 )
                 self.use_aspect_ratio_bucketing = False  # Disable to avoid repeated warnings
             else:
@@ -197,8 +202,8 @@ class Iterator:
 
         if result is None:
             # Sampler is misconfigured or empty - log and stop iteration
-            print(
-                f"Warning: Aspect ratio sampler exhausted {max_reset_attempts} reset attempts "
+            logger.warning(
+                f"Aspect ratio sampler exhausted {max_reset_attempts} reset attempts "
                 f"without producing batches. Check sampler configuration and dataset. Stopping iteration."
             )
             raise StopIteration()
