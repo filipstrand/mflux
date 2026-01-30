@@ -5,6 +5,22 @@ from mflux.models.common.tokenizer import LanguageTokenizer
 from mflux.models.common.weights.loading.weight_definition import ComponentDefinition, TokenizerDefinition
 from mflux.models.z_image.weights.z_image_weight_mapping import ZImageWeightMapping
 
+# Alignment required for efficient INT4/INT8 quantization (matches MLX group size)
+QUANTIZATION_ALIGNMENT = 64
+
+# Attention projection layers that should be kept at full precision for quality
+# These layers are most sensitive to quantization error
+ATTENTION_SENSITIVE_LAYERS = frozenset(
+    [
+        "to_q",
+        "to_k",
+        "to_v",  # Z-Image attention naming
+        "q_proj",
+        "k_proj",
+        "v_proj",  # Common transformer naming
+    ]
+)
+
 
 class ZImageWeightDefinition:
     @staticmethod
@@ -62,4 +78,30 @@ class ZImageWeightDefinition:
 
     @staticmethod
     def quantization_predicate(path: str, module) -> bool:
-        return hasattr(module, "to_quantized")
+        """Determine if a module should be quantized.
+
+        Improved predicate that:
+        - Skips modules that can't be quantized
+        - Preserves attention QKV at higher precision for quality
+        - Skips VAE components to prevent color banding
+        - Checks dimension alignment (misaligned dims cause quality issues)
+        """
+        if not hasattr(module, "to_quantized"):
+            return False
+
+        # Skip VAE entirely - quantizing VAE causes color banding artifacts
+        if "vae" in path:
+            return False
+
+        # Keep attention QKV projections at higher precision for quality
+        # Use set membership for O(1) lookup
+        if any(layer in path for layer in ATTENTION_SENSITIVE_LAYERS):
+            return False
+
+        # Check dimension alignment - misaligned weights cause quality issues
+        # Explicit None check to handle modules where weight exists but is None
+        if hasattr(module, "weight") and module.weight is not None and hasattr(module.weight, "shape"):
+            if module.weight.shape[-1] % QUANTIZATION_ALIGNMENT != 0:
+                return False
+
+        return True

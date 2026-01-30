@@ -100,6 +100,11 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
+    def qwen_image_layered() -> "ModelConfig":
+        return AVAILABLE_MODELS["qwen-image-layered"]
+
+    @staticmethod
+    @lru_cache
     def fibo() -> "ModelConfig":
         return AVAILABLE_MODELS["fibo"]
 
@@ -107,6 +112,11 @@ class ModelConfig:
     @lru_cache
     def z_image_turbo() -> "ModelConfig":
         return AVAILABLE_MODELS["z-image-turbo"]
+
+    @staticmethod
+    @lru_cache
+    def z_image_base() -> "ModelConfig":
+        return AVAILABLE_MODELS["z-image-base"]
 
     @staticmethod
     @lru_cache
@@ -289,6 +299,18 @@ AVAILABLE_MODELS = {
         supports_guidance=None,
         requires_sigma_shift=None,
     ),
+    "qwen-image-layered": ModelConfig(
+        priority=16,
+        aliases=["qwen-image-layered", "qwen-layered"],
+        model_name="Qwen/Qwen-Image-Layered",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=None,
+        max_sequence_length=None,
+        supports_guidance=True,
+        requires_sigma_shift=None,
+    ),
     "fibo": ModelConfig(
         priority=13,
         aliases=["fibo"],
@@ -303,7 +325,7 @@ AVAILABLE_MODELS = {
     ),
     "z-image-turbo": ModelConfig(
         priority=14,
-        aliases=["z-image-turbo", "z-image", "zimage-turbo", "zimage"],
+        aliases=["z-image-turbo", "zimage-turbo"],
         model_name="Tongyi-MAI/Z-Image-Turbo",
         base_model=None,
         controlnet_model=None,
@@ -311,6 +333,18 @@ AVAILABLE_MODELS = {
         num_train_steps=1000,
         max_sequence_length=512,
         supports_guidance=False,  # Turbo model uses guidance_scale=0
+        requires_sigma_shift=True,
+    ),
+    "z-image-base": ModelConfig(
+        priority=17,
+        aliases=["z-image-base", "z-image", "zimage", "zimage-base"],
+        model_name="Tongyi-MAI/Z-Image",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,  # Base model uses CFG guidance
         requires_sigma_shift=True,
     ),
     "seedvr2-3b": ModelConfig(

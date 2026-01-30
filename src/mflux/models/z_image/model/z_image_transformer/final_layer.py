@@ -3,6 +3,15 @@ from mlx import nn
 
 
 class FinalLayer(nn.Module):
+    """Final output layer with AdaLN modulation for Z-Image transformer.
+
+    Z-Image uses scale-only AdaLN (no shift), consistent with its S3-DiT architecture.
+    This differs from standard AdaLN-Zero which uses both scale and shift.
+
+    The modulation formula is: x_out = norm(x) * (1 + scale)
+    where scale is computed from the conditioning embedding c.
+    """
+
     def __init__(self, hidden_size: int, out_channels: int):
         super().__init__()
         self.norm = nn.LayerNorm(hidden_size, eps=1e-6, affine=False)
