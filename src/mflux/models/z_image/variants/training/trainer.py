@@ -90,6 +90,11 @@ class ZImageTrainer:
         accumulated_grads = None
         accumulation_count = 0
 
+        # NaN/Inf gradient tracking to detect training divergence
+        MAX_CONSECUTIVE_NAN_SKIPS = 10
+        consecutive_nan_skips = 0
+        total_nan_skips = 0
+
         # Get EMA and scheduler from training state
         ema = training_state.ema
         scheduler = training_state.scheduler
@@ -121,6 +126,20 @@ class ZImageTrainer:
                     # Apply gradient clipping to prevent explosion in 6B parameter model
                     if max_grad_norm > 0:
                         accumulated_grads = ZImageTrainer._clip_grad_norm(accumulated_grads, max_grad_norm)
+                        if accumulated_grads is None:
+                            # Track consecutive NaN/Inf skips to detect training divergence
+                            consecutive_nan_skips += 1
+                            total_nan_skips += 1
+                            if consecutive_nan_skips >= MAX_CONSECUTIVE_NAN_SKIPS:
+                                raise RuntimeError(
+                                    f"Training diverged: {MAX_CONSECUTIVE_NAN_SKIPS} consecutive NaN/Inf gradient updates detected. "
+                                    f"Total NaN skips: {total_nan_skips}. Consider: (1) reducing learning rate, "
+                                    f"(2) enabling gradient clipping, (3) checking dataset for corrupted samples."
+                                )
+                            accumulation_count = 0
+                            continue
+                    # Reset consecutive counter on successful update
+                    consecutive_nan_skips = 0
                     # Apply update
                     with profiler.time_section("optimizer"):
                         training_state.optimizer.update(model=model, gradients=accumulated_grads)
@@ -140,6 +159,19 @@ class ZImageTrainer:
                 # Apply gradient clipping to prevent explosion in 6B parameter model
                 if max_grad_norm > 0:
                     grads = ZImageTrainer._clip_grad_norm(grads, max_grad_norm)
+                    if grads is None:
+                        # Track consecutive NaN/Inf skips to detect training divergence
+                        consecutive_nan_skips += 1
+                        total_nan_skips += 1
+                        if consecutive_nan_skips >= MAX_CONSECUTIVE_NAN_SKIPS:
+                            raise RuntimeError(
+                                f"Training diverged: {MAX_CONSECUTIVE_NAN_SKIPS} consecutive NaN/Inf gradient updates detected. "
+                                f"Total NaN skips: {total_nan_skips}. Consider: (1) reducing learning rate, "
+                                f"(2) enabling gradient clipping, (3) checking dataset for corrupted samples."
+                            )
+                        continue
+                # Reset consecutive counter on successful update
+                consecutive_nan_skips = 0
                 with profiler.time_section("optimizer"):
                     training_state.optimizer.update(model=model, gradients=grads)
                 # Update EMA weights after optimizer step
@@ -224,6 +256,15 @@ class ZImageTrainer:
             f"\nSync efficiency: {sync_stats['efficiency']:.1f}% deferred ({sync_stats['total_deferred']} skipped / {sync_stats['total_syncs']} performed)"
         )
 
+        # Log NaN gradient statistics if any occurred
+        if total_nan_skips > 0:
+            total_steps = training_state.iterator.num_iterations
+            nan_rate = (total_nan_skips / total_steps) * 100 if total_steps > 0 else 0
+            print(
+                f"Warning: {total_nan_skips} NaN/Inf gradient updates skipped ({nan_rate:.1f}% of steps). "
+                f"Training completed but model quality may be affected."
+            )
+
         # Log profiler report if enabled
         if enable_profiling:
             print(f"\n{profiler.report()}")
@@ -285,7 +326,7 @@ class ZImageTrainer:
         return {k: v * scale for k, v in grads.items()}
 
     @staticmethod
-    def _clip_grad_norm(grads: dict, max_norm: float) -> dict:
+    def _clip_grad_norm(grads: dict, max_norm: float) -> dict | None:
         """Clip gradients by global norm to prevent gradient explosion.
 
         Args:
@@ -293,7 +334,8 @@ class ZImageTrainer:
             max_norm: Maximum allowed gradient norm
 
         Returns:
-            Clipped gradients (same dict if no clipping needed)
+            Clipped gradients (same dict if no clipping needed), or None if
+            gradients contain NaN/Inf values (caller should skip optimizer update)
         """
         if max_norm <= 0:
             return grads
@@ -303,6 +345,11 @@ class ZImageTrainer:
         for g in grads.values():
             total_norm_sq = total_norm_sq + mx.sum(g**2)
         total_norm = mx.sqrt(total_norm_sq)
+
+        # Check for NaN/Inf and skip update if detected
+        if not mx.isfinite(total_norm).item():
+            print(f"Warning: Non-finite gradient norm detected ({total_norm.item()}). Skipping update.")
+            return None
 
         # Compute clipping coefficient
         clip_coef = max_norm / (total_norm + 1e-6)

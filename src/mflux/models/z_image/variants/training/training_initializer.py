@@ -505,5 +505,25 @@ class ZImageTrainingInitializer:
                 mx.synchronize()
                 continue
 
-        # Fallback
+        # If we get here, even batch_size=1 failed - verify it's truly unusable
+        print("Warning: All batch sizes failed during probing. Verifying batch_size=1...")
+        try:
+            # Final verification for batch_size=1
+            if test_dataset.size() >= 1:
+                test_examples = test_dataset.examples[:1]
+                test_batch = Batch(
+                    examples=test_examples,
+                    rng=random.Random(42),
+                )
+                loss = ZImageLoss.compute_loss(model, config, test_batch)
+                mx.synchronize()
+                del loss, test_batch
+                print("Verification passed: batch_size=1 works")
+                return 1
+        except Exception as e:  # noqa: BLE001
+            raise RuntimeError(
+                f"Cannot train: even batch_size=1 causes failure. "
+                f"Reduce image dimensions or model size. Error: {type(e).__name__}: {e}"
+            ) from e
+
         return 1

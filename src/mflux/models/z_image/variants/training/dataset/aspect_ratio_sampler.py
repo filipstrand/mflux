@@ -133,8 +133,12 @@ class AspectRatioSampler:
     def _get_aspect_ratio(self, example: "Example") -> float:
         """Get aspect ratio for an example.
 
-        Attempts to get the original image dimensions.
-        Falls back to 1.0 (square) if not available.
+        Attempts to get the original image dimensions from the latent shape.
+        Supports multiple latent formats:
+        - [C, H, W] - 3D packed latents after pack_latents
+        - [C, F, H, W] - 4D format before packing
+
+        Falls back to 1.0 (square) with warning if shape is unexpected.
 
         Returns:
             Aspect ratio (width/height), always > 0. Defaults to 1.0.
@@ -142,11 +146,10 @@ class AspectRatioSampler:
         # Try to get from latent shape (if available)
         if hasattr(example, "encoded_image") and example.encoded_image is not None:
             shape = example.encoded_image.shape
-            # Latent shape is typically (1, H/8, W/8, C) for VAE
-            if len(shape) >= 3:
-                # Assume H, W are in positions 1, 2 for most formats
+
+            # Z-Image latents: [C, H/8, W/8] after pack_latents
+            if len(shape) == 3:
                 h, w = shape[1], shape[2]
-                # Require both dimensions to be positive to avoid division issues
                 if h > 0 and w > 0:
                     return float(w) / float(h)
                 # Log warning for malformed latent shapes with actionable guidance
@@ -155,11 +158,25 @@ class AspectRatioSampler:
                     f"Using square aspect ratio ({DEFAULT_ASPECT_RATIO}). This is usually caused by corrupted image encoding. "
                     f"Training will continue but batch bucketing efficiency may be affected."
                 )
-            else:
+                return DEFAULT_ASPECT_RATIO
+
+            # Also handle [C, F, H, W] format before packing
+            if len(shape) == 4:
+                h, w = shape[2], shape[3]
+                if h > 0 and w > 0:
+                    return float(w) / float(h)
                 print(
-                    f"Warning: Example {example.example_id} has unexpected latent shape {shape} (expected 3+ dimensions). "
-                    f"Using square aspect ratio ({DEFAULT_ASPECT_RATIO}). Training will continue normally."
+                    f"Warning: Example {example.example_id} has invalid 4D latent dimensions (h={h}, w={w}). "
+                    f"Using square aspect ratio ({DEFAULT_ASPECT_RATIO})."
                 )
+                return DEFAULT_ASPECT_RATIO
+
+            # Unexpected shape - warn with specific shape info
+            print(
+                f"Warning: Example {example.example_id} has unexpected latent shape {shape} "
+                f"(expected 3D [C,H,W] or 4D [C,F,H,W]). "
+                f"Using square aspect ratio ({DEFAULT_ASPECT_RATIO}). Training will continue normally."
+            )
 
         return DEFAULT_ASPECT_RATIO
 

@@ -60,10 +60,22 @@ class LRScheduler(ABC):
         return {
             "step_count": self._step_count,
             "initial_lr": self.initial_lr,
+            "scheduler_type": self.__class__.__name__,
         }
 
     def load_state_dict(self, state: dict[str, Any]) -> None:
-        """Load scheduler state from checkpoint."""
+        """Load scheduler state from checkpoint.
+
+        Raises:
+            ValueError: If checkpoint scheduler type doesn't match current scheduler
+        """
+        # Validate scheduler type matches (if present in state)
+        scheduler_type = state.get("scheduler_type")
+        if scheduler_type is not None and scheduler_type != self.__class__.__name__:
+            raise ValueError(
+                f"Checkpoint scheduler type mismatch: expected {self.__class__.__name__}, "
+                f"got {scheduler_type}. Use the same scheduler type for resume."
+            )
         self._step_count = int(state["step_count"])
         self.initial_lr = float(state["initial_lr"])
 

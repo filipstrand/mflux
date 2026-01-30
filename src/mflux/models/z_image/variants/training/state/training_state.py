@@ -220,9 +220,13 @@ class TrainingState:
     @staticmethod
     def _save_train_config(path: Path, training_spec: TrainingSpec) -> None:
         if training_spec.config_path is not None:
-            with open(Path(training_spec.config_path), "r") as f:
+            config_file_path = Path(training_spec.config_path)
+            if not config_file_path.exists():
+                print(f"Warning: Original config file not found: {config_file_path}. Skipping config save.")
+                return
+            with open(config_file_path, "r") as f:
                 data = json.load(f)
-                data["examples"]["path"] = str(Path(training_spec.config_path).parent / data["examples"]["path"])
+                data["examples"]["path"] = str(config_file_path.parent / data["examples"]["path"])
         else:
             checkpoint = ZipUtil.unzip(
                 training_spec.checkpoint_path, "checkpoint.json", lambda x: json.load(open(x, "r"))

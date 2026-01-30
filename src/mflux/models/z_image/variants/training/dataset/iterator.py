@@ -216,12 +216,18 @@ class Iterator:
         return Batch(examples=examples, rng=self.rng)
 
     def to_dict(self) -> dict[str, Any]:
+        # Serialize RNG state with labeled keys for clarity and robustness
+        rng_state = self.rng.getstate()
         return {
             "position": self._position,
             "epoch": self._epoch,
             "num_iterations": self.num_iterations,
             "current_permutation": self._current_permutation,
-            "rng_state": list(self.rng.getstate()),
+            "rng_state": {
+                "version": rng_state[0],
+                "state": list(rng_state[1]),  # tuple -> list for JSON
+                "index": rng_state[2],
+            },
             "batch_size": self.batch_size,
             "num_epochs": self.num_epochs,
             "start_date_time": self.start_date_time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -235,17 +241,28 @@ class Iterator:
         rng_state = None
 
         if rng_state_raw is not None:
-            # Validate RNG state structure (Python random.Random state format)
-            if not isinstance(rng_state_raw, (list, tuple)) or len(rng_state_raw) != 3:
-                raise ValueError(
-                    f"Invalid RNG state format: expected list/tuple of 3 elements, got {type(rng_state_raw)}"
-                )
-            if not isinstance(rng_state_raw[1], (list, tuple)):
-                raise ValueError(f"Invalid RNG state[1]: expected list/tuple, got {type(rng_state_raw[1])}")
-
             try:
-                rng_state = (rng_state_raw[0], tuple(rng_state_raw[1]), rng_state_raw[2])
-            except (TypeError, IndexError) as e:
+                if isinstance(rng_state_raw, dict):
+                    # New format with labeled keys (version, state, index)
+                    if not all(k in rng_state_raw for k in ("version", "state", "index")):
+                        raise ValueError(
+                            f"Invalid RNG state dict format: missing keys. Got {list(rng_state_raw.keys())}"
+                        )
+                    rng_state = (
+                        rng_state_raw["version"],
+                        tuple(rng_state_raw["state"]),
+                        rng_state_raw["index"],
+                    )
+                elif isinstance(rng_state_raw, (list, tuple)) and len(rng_state_raw) == 3:
+                    # Legacy format: [version, state_tuple, index]
+                    if not isinstance(rng_state_raw[1], (list, tuple)):
+                        raise ValueError(f"Invalid RNG state[1]: expected list/tuple, got {type(rng_state_raw[1])}")
+                    rng_state = (rng_state_raw[0], tuple(rng_state_raw[1]), rng_state_raw[2])
+                else:
+                    raise ValueError(
+                        f"Invalid RNG state format: expected dict or list/tuple of 3 elements, got {type(rng_state_raw)}"
+                    )
+            except (TypeError, IndexError, KeyError) as e:
                 raise ValueError(f"Failed to reconstruct RNG state: {e}") from e
 
         return cls(
@@ -275,22 +292,32 @@ class Iterator:
         return cls.from_dict(data, dataset)
 
     def get_validation_batch(self) -> Batch:
-        """Get a batch for validation loss computation."""
+        """Get a batch for validation loss computation.
+
+        Uses deterministic random sampling based on epoch to avoid bias from
+        always using the first N examples (which could be sorted by quality/difficulty).
+        Sampling is reproducible within an epoch for consistent validation metrics.
+        """
         examples = self.dataset.examples
+
         if len(examples) > VALIDATION_BATCH_MAX_SIZE:
-            examples = examples[0:VALIDATION_BATCH_MAX_SIZE]
+            # Use deterministic sampling based on epoch to avoid bias
+            # but keep consistent within an epoch for reproducibility
+            validation_rng = random.Random(self._epoch)
+            examples = validation_rng.sample(examples, VALIDATION_BATCH_MAX_SIZE)
 
         return Batch(examples=examples, rng=self.rng)
 
-    def total_number_of_steps(self) -> int:
+    def total_number_of_steps(self) -> int | None:
         """Calculate total number of training steps.
 
         Returns:
-            Total steps (examples * epochs), or 0 if num_epochs is None (infinite training).
+            Total steps (examples * epochs), or None if num_epochs is None (infinite training).
+            Returning None allows tqdm to display an indeterminate progress bar.
         """
         if self.num_epochs is None:
-            # For infinite training, return a reasonable default for progress bar
-            return 0
+            # For infinite training, return None to let tqdm handle indeterminate progress
+            return None
         return self.total_examples * self.num_epochs
 
     def save(self, path: Path) -> None:

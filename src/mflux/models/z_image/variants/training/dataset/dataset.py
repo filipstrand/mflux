@@ -111,6 +111,13 @@ class Dataset:
             base_directory=base_directory,
         )
 
+        # Validate that we have at least one successfully encoded example
+        if len(examples) == 0:
+            raise ValueError(
+                f"Dataset preparation failed: 0 examples encoded successfully out of {len(raw_data)} inputs. "
+                "Check image paths and encoding errors above."
+            )
+
         # Repeat examples for small datasets
         if repeat_count > 1:
             examples = ZImagePreProcessing.repeat_examples(examples, repeat_count)
