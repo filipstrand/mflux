@@ -90,6 +90,10 @@ class ZImageTrainer:
         accumulated_grads = None
         accumulation_count = 0
 
+        # Get EMA and scheduler from training state
+        ema = training_state.ema
+        scheduler = training_state.scheduler
+
         # Main training loop
         for batch in batches:
             # Compute loss and gradients
@@ -120,6 +124,12 @@ class ZImageTrainer:
                     # Apply update
                     with profiler.time_section("optimizer"):
                         training_state.optimizer.update(model=model, gradients=accumulated_grads)
+                    # Update EMA weights after optimizer step
+                    if ema is not None:
+                        ema.update(model)
+                    # Step the learning rate scheduler
+                    if scheduler is not None:
+                        scheduler.step()
                     with profiler.time_section("sync"):
                         deferred_sync.maybe_sync()  # Deferred sync for better throughput
                     del accumulated_grads  # Free after update
@@ -132,6 +142,12 @@ class ZImageTrainer:
                     grads = ZImageTrainer._clip_grad_norm(grads, max_grad_norm)
                 with profiler.time_section("optimizer"):
                     training_state.optimizer.update(model=model, gradients=grads)
+                # Update EMA weights after optimizer step
+                if ema is not None:
+                    ema.update(model)
+                # Step the learning rate scheduler
+                if scheduler is not None:
+                    scheduler.step()
                 with profiler.time_section("sync"):
                     deferred_sync.maybe_sync()  # Deferred sync for better throughput
                 del grads  # Free after update
@@ -167,11 +183,18 @@ class ZImageTrainer:
             if training_state.should_generate_image(training_spec):
                 deferred_sync.force_sync()  # Ensure model weights are current
                 with profiler.time_section("validation"):
-                    ZImageTrainer._generate_validation_image(
-                        model=model,
-                        training_spec=training_spec,
-                        training_state=training_state,
-                    )
+                    # Use EMA weights for validation if available
+                    if ema is not None:
+                        ema.apply_shadow(model)
+                    try:
+                        ZImageTrainer._generate_validation_image(
+                            model=model,
+                            training_spec=training_spec,
+                            training_state=training_state,
+                        )
+                    finally:
+                        if ema is not None:
+                            ema.restore(model)
 
             # Save checkpoint periodically
             if training_state.should_save(training_spec):
@@ -231,8 +254,12 @@ class ZImageTrainer:
                 height=training_spec.height,
             )
             image.save(training_state.get_current_validation_image_path(training_spec))
-        except Exception as e:  # noqa: BLE001 - Intentional: validation image failure shouldn't halt training
-            print(f"Warning: Failed to generate validation image: {e}")
+        except (RuntimeError, ValueError, MemoryError) as e:
+            # Catch specific exceptions that may occur during validation generation
+            # RuntimeError: MLX operation failures
+            # ValueError: Invalid parameters
+            # MemoryError: OOM during generation
+            print(f"Warning: Failed to generate validation image: {type(e).__name__}: {e}")
         finally:
             if image is not None:
                 del image

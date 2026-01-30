@@ -71,6 +71,10 @@ class OptimizerSpec:
     warmup_steps: int = 0  # Learning rate warmup steps
     warmup_ratio: float = 0.0  # Alternative: warmup as ratio of total steps (if > 0, overrides warmup_steps)
     state_path: str | None = None
+    # LR Scheduler configuration
+    scheduler_type: str = "constant"  # "constant", "cosine", "onecycle", "linear_warmup"
+    min_lr: float = 0.0  # Minimum LR for cosine scheduler
+    pct_start: float = 0.3  # Warmup percentage for OneCycle scheduler
 
 
 @dataclass
@@ -177,6 +181,37 @@ class DatasetSpec:
 
 
 @dataclass
+class EMASpec:
+    """EMA (Exponential Moving Average) configuration.
+
+    Attributes:
+        enabled: Whether to use EMA for weight smoothing during training.
+        decay: EMA decay factor in range [0.0, 1.0]. Higher values mean slower
+               updates and smoother weights. Typical values: 0.999-0.9999.
+        state_path: Path to EMA state in checkpoint (optional).
+    """
+
+    enabled: bool = False
+    decay: float = 0.9999
+    state_path: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate EMA configuration."""
+        if not 0.0 <= self.decay <= 1.0:
+            raise ValueError(f"EMA decay must be in range [0.0, 1.0], got {self.decay}")
+        # Warn about unusual decay values that may indicate configuration errors
+        if self.enabled and (self.decay < 0.99 or self.decay > 0.99999):
+            import warnings
+
+            warnings.warn(
+                f"EMA decay {self.decay} is outside typical range [0.99, 0.99999]. "
+                f"Very low values cause rapid weight changes; very high values may not smooth enough.",
+                UserWarning,
+                stacklevel=2,
+            )
+
+
+@dataclass
 class FullFinetuneSpec:
     """Full fine-tuning configuration."""
 
@@ -218,6 +253,7 @@ class TrainingSpec:
     lora_layers: LoraLayersSpec | None = None  # For LoRA mode
     full_finetune: FullFinetuneSpec | None = None  # For full mode
     dataset: DatasetSpec | None = None  # Dataset augmentation config
+    ema: EMASpec | None = None  # EMA configuration
     config_path: str | None = None
     checkpoint_path: str | None = None
 
@@ -292,6 +328,10 @@ class TrainingSpec:
         dataset_config = config.get("dataset", None)
         dataset_spec = DatasetSpec(**dataset_config) if dataset_config else DatasetSpec()
 
+        # Parse EMA spec
+        ema_config = config.get("ema", None)
+        ema_spec = EMASpec(**ema_config) if ema_config else EMASpec()
+
         return TrainingSpec(
             model=config.get("model", "z-image"),
             seed=config["seed"],
@@ -308,6 +348,7 @@ class TrainingSpec:
             lora_layers=lora_layers,
             full_finetune=full_finetune,
             dataset=dataset_spec,
+            ema=ema_spec,
             statistics=statistics,
             examples=examples,
             config_path=None if absolute_config_path is None else str(absolute_config_path),

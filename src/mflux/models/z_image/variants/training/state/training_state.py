@@ -24,6 +24,8 @@ TRAINING_FILE_NAME_ITERATOR = "iterator"
 TRAINING_FILE_NAME_LOSS_FILE = "loss"
 TRAINING_FILE_NAME_CONFIG_FILE = "config"
 TRAINING_FILE_NAME_MODEL = "model"
+TRAINING_FILE_NAME_EMA = "ema"
+TRAINING_FILE_NAME_SCHEDULER = "scheduler"
 
 TRAINING_PATH_VALIDATION_IMAGES = "_validation/images/"
 TRAINING_FILE_NAME_VALIDATION_IMAGE = "validation_image"
@@ -38,10 +40,14 @@ class TrainingState:
         iterator: Iterator,
         optimizer: Optimizer,
         statistics: Statistics,
+        ema=None,
+        scheduler=None,
     ):
         self.iterator = iterator
         self.optimizer = optimizer
         self.statistics = statistics
+        self.ema = ema  # EMAModel | NoOpEMA | None
+        self.scheduler = scheduler  # LRScheduler | None
 
     def save(self, model: "ZImageBase", training_spec: TrainingSpec) -> None:
         """Save checkpoint with all training state."""
@@ -81,6 +87,24 @@ class TrainingState:
                 self._save_full_model(model, model_path)
                 paths.append(model_path)
                 checkpoint_files["model"] = f"{self.iterator.num_iterations:07d}_{TRAINING_FILE_NAME_MODEL}.safetensors"
+
+            # Save EMA state if enabled
+            if self.ema is not None and training_spec.ema is not None and training_spec.ema.enabled:
+                ema_path = Path(temp_dir) / f"{self.iterator.num_iterations:07d}_{TRAINING_FILE_NAME_EMA}.safetensors"
+                self.ema.save(ema_path)
+                paths.append(ema_path)
+                checkpoint_files["ema"] = f"{self.iterator.num_iterations:07d}_{TRAINING_FILE_NAME_EMA}.safetensors"
+
+            # Save scheduler state if present
+            if self.scheduler is not None:
+                scheduler_path = (
+                    Path(temp_dir) / f"{self.iterator.num_iterations:07d}_{TRAINING_FILE_NAME_SCHEDULER}.safetensors"
+                )
+                self.scheduler.save(scheduler_path)
+                paths.append(scheduler_path)
+                checkpoint_files["scheduler"] = (
+                    f"{self.iterator.num_iterations:07d}_{TRAINING_FILE_NAME_SCHEDULER}.safetensors"
+                )
 
             # Save individual components
             self.optimizer.save(optimizer_path)

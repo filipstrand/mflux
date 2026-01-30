@@ -14,6 +14,8 @@ from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.z_image.variants.training.dataset.dataset import Dataset
 from mflux.models.z_image.variants.training.dataset.iterator import Iterator
 from mflux.models.z_image.variants.training.lora_layers.lora_layers import ZImageLoRALayers
+from mflux.models.z_image.variants.training.optimization.ema import create_ema
+from mflux.models.z_image.variants.training.optimization.lr_scheduler import create_scheduler
 from mflux.models.z_image.variants.training.optimization.optimizer import Optimizer
 from mflux.models.z_image.variants.training.state.training_spec import TrainingMode, TrainingSpec
 from mflux.models.z_image.variants.training.state.training_state import TrainingState
@@ -115,11 +117,42 @@ class ZImageTrainingInitializer:
         # Setup statistics tracking
         statistics = Statistics.from_spec(training_spec=training_spec)
 
+        # Create EMA if enabled
+        ema = None
+        if training_spec.ema is not None and training_spec.ema.enabled:
+            print("Setting up EMA for weight smoothing...")
+            ema = create_ema(
+                model=model,
+                enabled=True,
+                decay=training_spec.ema.decay,
+            )
+
+        # Create LR scheduler if specified
+        scheduler = None
+        scheduler_type = training_spec.optimizer.scheduler_type
+        if scheduler_type and scheduler_type.lower() != "constant":
+            total_steps = iterator.total_number_of_steps()
+            warmup_steps = training_spec.optimizer.warmup_steps
+            if training_spec.optimizer.warmup_ratio > 0:
+                warmup_steps = int(total_steps * training_spec.optimizer.warmup_ratio)
+            print(f"Setting up {scheduler_type} LR scheduler...")
+            scheduler = create_scheduler(
+                name=scheduler_type,
+                optimizer=optimizer.optimizer,
+                initial_lr=training_spec.optimizer.learning_rate,
+                total_steps=total_steps,
+                warmup_steps=warmup_steps,
+                min_lr=training_spec.optimizer.min_lr,
+                pct_start=training_spec.optimizer.pct_start,
+            )
+
         # Create training state
         training_state = TrainingState(
             optimizer=optimizer,
             iterator=iterator,
             statistics=statistics,
+            ema=ema,
+            scheduler=scheduler,
         )
 
         print("\n=== Training Configuration ===")
@@ -132,6 +165,13 @@ class ZImageTrainingInitializer:
         print(f"Batch size: {training_spec.training_loop.batch_size}")
         print(f"Epochs: {training_spec.training_loop.num_epochs}")
         print(f"Learning rate: {training_spec.optimizer.learning_rate}")
+        print(f"LR Scheduler: {training_spec.optimizer.scheduler_type}")
+        ema_status = (
+            f"enabled (decay={training_spec.ema.decay})"
+            if training_spec.ema and training_spec.ema.enabled
+            else "disabled"
+        )
+        print(f"EMA: {ema_status}")
         print(f"Total training examples: {dataset.size()}")
         print(f"Output path: {training_spec.saver.output_path}")
         print("=" * 30)

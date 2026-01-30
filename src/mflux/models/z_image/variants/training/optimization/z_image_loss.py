@@ -113,8 +113,9 @@ class ZImageLoss:
 
         # Step 4: Vectorized noise interpolation
         # Get sigma for each timestep using indexing (no Python loop)
-        # config.scheduler.sigmas is already an mx.array
-        sigmas_t = config.scheduler.sigmas[timesteps]  # [B]
+        # Convert sigmas to mx.array for array indexing
+        sigmas_arr = mx.array(config.scheduler.sigmas)
+        sigmas_t = sigmas_arr[timesteps]  # [B]
         # Expand for broadcasting [B, 1, 1, 1, 1]
         sigmas_expanded = sigmas_t[:, None, None, None, None]
         # latents_t = (1 - sigma) * clean + sigma * noise [B, C, F, H, W]

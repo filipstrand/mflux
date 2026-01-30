@@ -9,6 +9,7 @@ from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.latent_creator.latent_creator import Img2Img, LatentCreator
 from mflux.models.common.vae.vae_util import VAEUtil
 from mflux.models.common.weights.saving.model_saver import ModelSaver
+from mflux.models.z_image.constants import MAX_BATCH_SIZE, MAX_PROMPT_LENGTH
 from mflux.models.z_image.latent_creator import ZImageLatentCreator
 from mflux.models.z_image.model.z_image_text_encoder.prompt_encoder import PromptEncoder
 from mflux.models.z_image.model.z_image_text_encoder.text_encoder import TextEncoder
@@ -29,6 +30,10 @@ class ZImage(nn.Module):
     - More inference steps (recommended: 28-50)
     - Higher diversity and fine-tunability
     """
+
+    # Re-export constants for backwards compatibility and documentation
+    MAX_PROMPT_LENGTH = MAX_PROMPT_LENGTH
+    MAX_BATCH_SIZE = MAX_BATCH_SIZE
 
     vae: VAE
     text_encoder: TextEncoder
@@ -203,6 +208,107 @@ class ZImage(nn.Module):
             lora_scales=self.lora_scales,
             generation_time=config.time_steps.format_dict["elapsed"],
         )
+
+    def generate_images_sequential(
+        self,
+        seeds: list[int],
+        prompts: list[str] | str,
+        negative_prompt: str = "",
+        num_inference_steps: int = 50,
+        height: int = 1024,
+        width: int = 1024,
+        guidance_scale: float = 4.0,
+        cfg_normalization: bool = False,
+        scheduler: str = "linear",
+        verbose: bool = True,
+    ) -> list[Image.Image]:
+        """Generate multiple images sequentially with a convenient API.
+
+        This is a convenience wrapper that generates images one at a time.
+        It does NOT provide batched/parallel inference - use this when you
+        need multiple images with different seeds/prompts but don't need
+        true GPU parallelism.
+
+        For true batched inference with 2-3x throughput improvement,
+        batched transformer support would need to be implemented.
+
+        Args:
+            seeds: List of random seeds (one per image, max 64)
+            prompts: Either a single prompt for all images, or a list of prompts
+            negative_prompt: Text describing what to avoid (shared across batch)
+            num_inference_steps: Number of denoising steps
+            height: Output image height (same for all, 64-4096)
+            width: Output image width (same for all, 64-4096)
+            guidance_scale: CFG scale
+            cfg_normalization: Whether to normalize CFG output
+            scheduler: Scheduler type
+            verbose: Whether to print progress messages (default: True)
+
+        Returns:
+            List of generated PIL Images
+
+        Raises:
+            ValueError: If inputs are invalid (empty seeds, mismatched counts,
+                       dimensions out of range)
+
+        Example:
+            images = model.generate_images_sequential(
+                seeds=[1, 2, 3, 4],
+                prompts="a beautiful sunset",  # Same prompt for all
+                num_inference_steps=50,
+            )
+        """
+        # Validate seeds - fail fast before any processing
+        if not isinstance(seeds, list) or len(seeds) == 0:
+            raise ValueError("seeds must be a non-empty list")
+        if len(seeds) > self.MAX_BATCH_SIZE:
+            raise ValueError(f"Too many seeds ({len(seeds)}), maximum is {self.MAX_BATCH_SIZE}")
+        # Validate each seed is an integer (fail fast before processing prompts)
+        for i, seed in enumerate(seeds):
+            if not isinstance(seed, int):
+                raise TypeError(f"seed at index {i} must be an integer, got {type(seed).__name__}")
+
+        batch_size = len(seeds)
+        max_prompt_len = self.MAX_PROMPT_LENGTH  # Cache for loop
+
+        # Handle prompt: either single or list
+        if isinstance(prompts, str):
+            if len(prompts) > max_prompt_len:
+                raise ValueError(
+                    f"Single prompt too long ({len(prompts)} chars), maximum is {max_prompt_len}. "
+                    f"This prompt would be used for all {batch_size} images."
+                )
+            prompts = [prompts] * batch_size
+        else:
+            if len(prompts) != batch_size:
+                raise ValueError(f"Number of prompts ({len(prompts)}) must match number of seeds ({batch_size})")
+            # Validate each prompt length
+            for i, p in enumerate(prompts):
+                if not isinstance(p, str):
+                    raise TypeError(f"Prompt at index {i} must be a string, got {type(p).__name__}")
+                if len(p) > max_prompt_len:
+                    raise ValueError(f"Prompt at index {i} too long ({len(p)} chars), maximum is {max_prompt_len}")
+
+        # Generate each image sequentially
+        # Note: This wrapper provides API convenience but not performance gains
+        results = []
+        for i, (seed, prompt) in enumerate(zip(seeds, prompts)):
+            if verbose:
+                print(f"Generating image {i + 1}/{batch_size} (seed={seed})")
+            image = self.generate_image(
+                seed=seed,
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                num_inference_steps=num_inference_steps,
+                height=height,
+                width=width,
+                guidance_scale=guidance_scale,
+                cfg_normalization=cfg_normalization,
+                scheduler=scheduler,
+            )
+            results.append(image)
+
+        return results
 
     def save_model(self, base_path: str) -> None:
         ModelSaver.save_model(
