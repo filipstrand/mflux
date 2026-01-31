@@ -23,14 +23,19 @@ from mflux.models.z_image.variants.training.modes.full_trainer import FullTraine
 from mflux.models.z_image.variants.training.modes.lora_trainer import LoRATrainer
 from mflux.models.z_image.variants.training.optimization.compiled_train_step import CompiledTrainStep
 from mflux.models.z_image.variants.training.optimization.deferred_sync import create_synchronizer
+from mflux.models.z_image.variants.training.optimization.memory_monitor import create_memory_monitor
 from mflux.models.z_image.variants.training.optimization.z_image_loss import ZImageLoss
 from mflux.models.z_image.variants.training.state.training_spec import TrainingMode, TrainingSpec
 from mflux.models.z_image.variants.training.state.training_state import TrainingState
 from mflux.models.z_image.variants.training.statistics.plotter import Plotter
 from mflux.models.z_image.variants.training.statistics.profiler import create_profiler
+from mflux.models.z_image.variants.training.validation.clip_scorer import create_clip_scorer
 from mflux.models.z_image.variants.training.z_image_base import ZImageBase
 
 logger = logging.getLogger(__name__)
+
+# Training loop constants
+MEMORY_CHECK_INTERVAL = 100  # Steps between memory monitoring checks
 
 
 class ZImageTrainer:
@@ -80,6 +85,18 @@ class ZImageTrainer:
         enable_profiling = getattr(training_spec, "enable_profiling", False)
         profiler = create_profiler(enabled=enable_profiling)
 
+        # Setup memory monitor (detects OOM early, suggests batch size reduction)
+        enable_memory_monitoring = training_spec.instrumentation is not None and getattr(
+            training_spec.instrumentation, "enable_memory_monitoring", False
+        )
+        memory_monitor = create_memory_monitor(enabled=enable_memory_monitoring)
+
+        # Setup CLIP scorer for validation (measures prompt-image alignment)
+        enable_clip_score = training_spec.instrumentation is not None and getattr(
+            training_spec.instrumentation, "compute_clip_score", False
+        )
+        clip_scorer = create_clip_scorer(enabled=enable_clip_score)
+
         # Setup progress bar
         batches = tqdm(
             training_state.iterator,
@@ -108,6 +125,19 @@ class ZImageTrainer:
             # Compute loss and gradients
             with profiler.time_section("forward"):
                 loss, grads = train_step_function(batch)
+
+            # Periodic memory monitoring
+            if memory_monitor is not None and training_state.iterator.num_iterations % MEMORY_CHECK_INTERVAL == 0:
+                snapshot = memory_monitor.check()
+                if snapshot.status == "critical":
+                    logger.warning(
+                        f"Memory critical: {snapshot.utilization:.1%} ({snapshot.active_gb:.1f}GB / {snapshot.available_gb:.1f}GB). "
+                        f"Consider reducing batch size or enabling gradient checkpointing."
+                    )
+                elif snapshot.status == "warning":
+                    logger.info(
+                        f"Memory warning: {snapshot.utilization:.1%} ({snapshot.active_gb:.1f}GB / {snapshot.available_gb:.1f}GB)"
+                    )
 
             # Gradient accumulation
             if accumulation_steps > 1:
@@ -226,16 +256,33 @@ class ZImageTrainer:
             # Generate validation image periodically
             if training_state.should_generate_image(training_spec):
                 deferred_sync.force_sync()  # Ensure model weights are current
+                # Log memory status before validation
+                if memory_monitor is not None:
+                    memory_monitor.log_status()
                 with profiler.time_section("validation"):
                     # Use EMA weights for validation if available
                     if ema is not None:
                         ema.apply_shadow(model)
                     try:
-                        ZImageTrainer._generate_validation_image(
+                        validation_image = ZImageTrainer._generate_validation_image(
                             model=model,
                             training_spec=training_spec,
                             training_state=training_state,
                         )
+                        # Compute CLIP score if enabled and image was generated
+                        if validation_image is not None and clip_scorer is not None:
+                            try:
+                                clip_score = clip_scorer.compute_score(
+                                    validation_image,
+                                    training_spec.instrumentation.validation_prompt,
+                                )
+                                training_state.statistics.append_values(
+                                    step=training_state.iterator.num_iterations,
+                                    clip_score=clip_score,
+                                )
+                                logger.info(f"CLIP score: {clip_score:.2f}")
+                            except (RuntimeError, ValueError, OSError) as e:
+                                logger.warning(f"Failed to compute CLIP score: {e}")
                     finally:
                         if ema is not None:
                             ema.restore(model)
@@ -277,6 +324,15 @@ class ZImageTrainer:
                 f"Training completed but model quality may be affected."
             )
 
+        # Log memory monitor statistics if enabled
+        if memory_monitor is not None:
+            mem_stats = memory_monitor.get_stats()
+            logger.info(
+                f"Memory stats: {mem_stats['check_count']} checks, "
+                f"{mem_stats['warning_count']} warnings, {mem_stats['critical_count']} critical, "
+                f"peak utilization: {mem_stats['peak_utilization']:.1%}"
+            )
+
         # Log profiler report if enabled
         if enable_profiling:
             logger.info(f"Profiler report:\n{profiler.report()}")
@@ -290,10 +346,14 @@ class ZImageTrainer:
         model: ZImageBase,
         training_spec: TrainingSpec,
         training_state: TrainingState,
-    ) -> None:
-        """Generate a validation image during training."""
+    ):
+        """Generate a validation image during training.
+
+        Returns:
+            PIL Image if successful, None otherwise. The image is also saved to disk.
+        """
         if training_spec.instrumentation is None:
-            return
+            return None
 
         image = None
         try:
@@ -307,15 +367,14 @@ class ZImageTrainer:
                 height=training_spec.height,
             )
             image.save(training_state.get_current_validation_image_path(training_spec))
+            return image  # Return image for CLIP scoring
         except (RuntimeError, ValueError, MemoryError) as e:
             # Catch specific exceptions that may occur during validation generation
             # RuntimeError: MLX operation failures
             # ValueError: Invalid parameters
             # MemoryError: OOM during generation
             logger.warning(f"Failed to generate validation image: {type(e).__name__}: {e}")
-        finally:
-            if image is not None:
-                del image
+            return None
 
     @staticmethod
     def _accumulate_grads(acc_grads: dict, new_grads: dict) -> dict:

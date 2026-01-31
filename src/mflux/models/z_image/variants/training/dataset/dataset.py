@@ -36,6 +36,57 @@ class Dataset:
     MAX_EMBEDDING_CACHE_SIZE = 50_000
 
     @staticmethod
+    def split_train_validation(
+        examples: list[Example],
+        validation_split: float = 0.1,
+        seed: int = 42,
+    ) -> tuple[list[Example], list[Example]]:
+        """Split examples into training and validation sets.
+
+        Uses stratified random sampling to ensure diverse validation set.
+
+        Args:
+            examples: Full list of examples to split
+            validation_split: Fraction for validation (0.0-0.5)
+            seed: Random seed for reproducible splits
+
+        Returns:
+            Tuple of (training_examples, validation_examples)
+
+        Raises:
+            ValueError: If validation_split is out of range or too few examples
+        """
+        if not 0.0 < validation_split < 0.5:
+            raise ValueError(f"validation_split must be in (0, 0.5), got {validation_split}")
+
+        n_total = len(examples)
+        if n_total < 2:
+            raise ValueError(f"Need at least 2 examples for split, got {n_total}")
+
+        n_val = max(1, int(n_total * validation_split))
+        n_train = n_total - n_val
+
+        if n_train < 1:
+            raise ValueError("Split would leave 0 training examples")
+
+        # Shuffle indices deterministically
+        rng = random.Random(seed)
+        indices = list(range(n_total))
+        rng.shuffle(indices)
+
+        # Single-pass partitioning to avoid double iteration
+        val_indices = set(indices[:n_val])
+        train_examples: list[Example] = []
+        val_examples: list[Example] = []
+        for i, ex in enumerate(examples):
+            if i in val_indices:
+                val_examples.append(ex)
+            else:
+                train_examples.append(ex)
+
+        return train_examples, val_examples
+
+    @staticmethod
     def prepare_dataset(
         model: "ZImageBase",
         raw_data: list[ExampleSpec],
@@ -133,6 +184,80 @@ class Dataset:
             return Dataset(augmented_examples)
 
         return Dataset(examples)
+
+    @staticmethod
+    def prepare_dataset_with_validation(
+        model: "ZImageBase",
+        raw_data: list[ExampleSpec],
+        width: int,
+        height: int,
+        validation_split: float = 0.1,
+        enable_augmentation: bool = True,
+        repeat_count: int = 1,
+        random_crop: bool = False,
+        seed: int | None = None,
+        base_directory: Path | None = None,
+    ) -> tuple["Dataset", "Dataset"]:
+        """Prepare training and validation datasets with holdout split.
+
+        The validation set is split BEFORE augmentation and repetition to ensure
+        true out-of-sample validation (no augmented versions of val images in train).
+
+        Args:
+            model: The model for encoding
+            raw_data: List of example specifications
+            width: Target image width
+            height: Target image height
+            validation_split: Fraction of data for validation (0.0-0.5)
+            enable_augmentation: Whether to apply augmentations (train set only)
+            repeat_count: Number of times to repeat training examples
+            random_crop: Whether to apply random crop during encoding
+            seed: Random seed for reproducibility
+            base_directory: Security boundary for image paths
+
+        Returns:
+            Tuple of (training_dataset, validation_dataset)
+
+        Note:
+            Augmentation and repetition are only applied to the training set.
+            The validation set remains unaugmented for consistent evaluation.
+        """
+        # Encode all examples first (shared between train/val)
+        rng = random.Random(seed) if random_crop else None
+
+        examples = Dataset._create_examples(
+            model,
+            raw_data,
+            width=width,
+            height=height,
+            random_crop=random_crop,
+            rng=rng,
+            base_directory=base_directory,
+        )
+
+        if len(examples) < 2:
+            raise ValueError(f"Need at least 2 examples for validation split, got {len(examples)}")
+
+        # Split BEFORE augmentation for true holdout
+        train_examples, val_examples = Dataset.split_train_validation(
+            examples=examples,
+            validation_split=validation_split,
+            seed=seed if seed is not None else 42,
+        )
+
+        logger.info(f"Split dataset: {len(train_examples)} train, {len(val_examples)} validation")
+
+        # Apply repetition to training set only
+        if repeat_count > 1:
+            train_examples = ZImagePreProcessing.repeat_examples(train_examples, repeat_count)
+
+        # Apply augmentation to training set only
+        if enable_augmentation:
+            train_examples = [
+                variation for example in train_examples for variation in ZImagePreProcessing.augment(example)
+            ]
+
+        return Dataset(train_examples), Dataset(val_examples)
 
     def size(self) -> int:
         return len(self.examples)

@@ -9,7 +9,9 @@ from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenText
 from mflux.models.qwen.model.qwen_text_encoder.qwen_vision_language_encoder import QwenVisionLanguageEncoder
 from mflux.models.qwen.model.qwen_text_encoder.qwen_vision_transformer import VisionTransformer
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer
+from mflux.models.qwen.model.qwen_transformer.qwen_transformer_layered import QwenTransformerLayered
 from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
+from mflux.models.qwen.model.qwen_vae.qwen_vae_rgba import QwenVAERGBA
 from mflux.models.qwen.tokenizer.qwen_vision_language_processor import QwenVisionLanguageProcessor
 from mflux.models.qwen.tokenizer.qwen_vision_language_tokenizer import QwenVisionLanguageTokenizer
 from mflux.models.qwen.weights.qwen_lora_mapping import QwenLoRAMapping
@@ -17,6 +19,52 @@ from mflux.models.qwen.weights.qwen_weight_definition import QwenWeightDefinitio
 
 
 class QwenImageInitializer:
+    @staticmethod
+    def _init_common(
+        model,
+        model_config: ModelConfig,
+        quantize: int | None,
+        model_init_fn,
+        model_path: str | None = None,
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
+        add_vision_language: bool = False,
+    ) -> None:
+        """Common initialization logic shared across model variants.
+
+        Args:
+            model: Model instance to initialize
+            model_config: Model configuration
+            quantize: Quantization bits (None for full precision)
+            model_init_fn: Function to call for model-specific initialization
+            model_path: Optional custom model path
+            lora_paths: Optional LoRA paths
+            lora_scales: Optional LoRA scales
+            add_vision_language: Whether to add vision-language tokenizer
+        """
+        path = model_path if model_path else model_config.model_name
+        QwenImageInitializer._init_config(model, model_config)
+        weights = QwenImageInitializer._load_weights(path)
+        QwenImageInitializer._init_tokenizers(model, path)
+        model_init_fn(model)
+        QwenImageInitializer._apply_weights(model, weights, quantize)
+        QwenImageInitializer._apply_lora(model, lora_paths, lora_scales)
+
+        if add_vision_language:
+            QwenImageInitializer._add_vision_language_encoder(model)
+
+    @staticmethod
+    def _add_vision_language_encoder(model) -> None:
+        """Add vision-language tokenizer and encoder to model."""
+        raw_tokenizer = model.tokenizers["qwen"].tokenizer
+        processor = QwenVisionLanguageProcessor(tokenizer=raw_tokenizer)
+        model.tokenizers["qwen_vl"] = QwenVisionLanguageTokenizer(
+            processor=processor,
+            max_length=1024,
+            use_picture_prefix=True,
+        )
+        model.qwen_vl_encoder = QwenVisionLanguageEncoder(encoder=model.text_encoder.encoder)
+
     @staticmethod
     def init(
         model,
@@ -26,13 +74,16 @@ class QwenImageInitializer:
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
     ) -> None:
-        path = model_path if model_path else model_config.model_name
-        QwenImageInitializer._init_config(model, model_config)
-        weights = QwenImageInitializer._load_weights(path)
-        QwenImageInitializer._init_tokenizers(model, path)
-        QwenImageInitializer._init_models(model)
-        QwenImageInitializer._apply_weights(model, weights, quantize)
-        QwenImageInitializer._apply_lora(model, lora_paths, lora_scales)
+        QwenImageInitializer._init_common(
+            model,
+            model_config,
+            quantize,
+            QwenImageInitializer._init_models,
+            model_path,
+            lora_paths,
+            lora_scales,
+            add_vision_language=False,
+        )
 
     @staticmethod
     def init_edit(
@@ -43,24 +94,43 @@ class QwenImageInitializer:
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
     ) -> None:
-        # Use model_path if provided, otherwise fall back to model_config.model_name
-        path = model_path if model_path else model_config.model_name
-        QwenImageInitializer._init_config(model, model_config)
-        weights = QwenImageInitializer._load_weights(path)
-        QwenImageInitializer._init_tokenizers(model, path)
-        QwenImageInitializer._init_edit_models(model)
-        QwenImageInitializer._apply_weights(model, weights, quantize)
-        QwenImageInitializer._apply_lora(model, lora_paths, lora_scales)
-
-        # Add vision-language tokenizer
-        raw_tokenizer = model.tokenizers["qwen"].tokenizer
-        processor = QwenVisionLanguageProcessor(tokenizer=raw_tokenizer)
-        model.tokenizers["qwen_vl"] = QwenVisionLanguageTokenizer(
-            processor=processor,
-            max_length=1024,
-            use_picture_prefix=True,
+        QwenImageInitializer._init_common(
+            model,
+            model_config,
+            quantize,
+            QwenImageInitializer._init_edit_models,
+            model_path,
+            lora_paths,
+            lora_scales,
+            add_vision_language=True,
         )
-        model.qwen_vl_encoder = QwenVisionLanguageEncoder(encoder=model.text_encoder.encoder)
+
+    @staticmethod
+    def init_layered(
+        model,
+        model_config: ModelConfig,
+        quantize: int | None,
+        model_path: str | None = None,
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
+    ) -> None:
+        """Initialize a Qwen-Image-Layered model for image decomposition.
+
+        This variant uses:
+        - RGBA VAE (4-channel input/output)
+        - Layered transformer with additional timestep conditioning
+        - Vision-language encoder for image+text conditioning
+        """
+        QwenImageInitializer._init_common(
+            model,
+            model_config,
+            quantize,
+            QwenImageInitializer._init_layered_models,
+            model_path,
+            lora_paths,
+            lora_scales,
+            add_vision_language=True,
+        )
 
     @staticmethod
     def _init_config(model, model_config: ModelConfig) -> None:
@@ -118,6 +188,14 @@ class QwenImageInitializer:
     def _init_edit_models(model) -> None:
         model.vae = QwenVAE()
         model.transformer = QwenTransformer()
+        model.text_encoder = QwenTextEncoder()
+        model.text_encoder.encoder.visual = VisionTransformer()
+
+    @staticmethod
+    def _init_layered_models(model) -> None:
+        """Initialize models for Qwen-Image-Layered with RGBA VAE and layered transformer."""
+        model.vae = QwenVAERGBA()
+        model.transformer = QwenTransformerLayered()
         model.text_encoder = QwenTextEncoder()
         model.text_encoder.encoder.visual = VisionTransformer()
 

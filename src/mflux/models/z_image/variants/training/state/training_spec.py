@@ -85,21 +85,58 @@ class SaveSpec:
         checkpoint_frequency: How often to save checkpoints (in iterations).
         output_path: Directory path for saving checkpoints.
         keep_last_n_checkpoints: Number of recent checkpoints to keep. 0 means keep all (default).
+        keep_best_n_checkpoints: Number of best checkpoints to keep by metric. 0 means disabled.
+        best_checkpoint_metric: Metric for best checkpoint selection ("validation_loss" or "clip_score").
     """
 
     checkpoint_frequency: int
     output_path: str
     keep_last_n_checkpoints: int = 0  # 0 = keep all (backward compatible)
+    keep_best_n_checkpoints: int = 0  # 0 = disabled, >0 = keep best N by metric
+    best_checkpoint_metric: str = "validation_loss"  # Metric for best selection
 
     def __post_init__(self) -> None:
         """Validate checkpoint saving configuration."""
+        import os
+        import tempfile
+
         if self.checkpoint_frequency < 1:
             raise ValueError(f"checkpoint_frequency must be >= 1, got {self.checkpoint_frequency}")
         if self.keep_last_n_checkpoints < 0:
             raise ValueError(f"keep_last_n_checkpoints must be >= 0, got {self.keep_last_n_checkpoints}")
-        # Validate output_path doesn't contain path traversal patterns
+        if self.keep_best_n_checkpoints < 0:
+            raise ValueError(f"keep_best_n_checkpoints must be >= 0, got {self.keep_best_n_checkpoints}")
+        if self.best_checkpoint_metric not in ("validation_loss", "clip_score"):
+            raise ValueError(
+                f"best_checkpoint_metric must be 'validation_loss' or 'clip_score', got {self.best_checkpoint_metric}"
+            )
+
+        # Security: Validate output_path against path traversal attacks
+        # Check for basic traversal patterns
         if ".." in self.output_path:
             raise ValueError(f"output_path cannot contain '..': {self.output_path}")
+
+        # For absolute paths, verify they're within allowed locations
+        if os.path.isabs(self.output_path):
+            resolved = os.path.abspath(self.output_path)
+            # Allow system temp directories (for testing)
+            # macOS uses /private/tmp and /var/folders for temp dirs
+            temp_dir = os.path.abspath(tempfile.gettempdir())
+            allowed_prefixes = [
+                temp_dir,
+                "/tmp",
+                "/private/tmp",
+                os.path.abspath(os.path.expanduser("~")),  # User's home directory
+            ]
+            is_allowed = any(resolved.startswith(prefix) for prefix in allowed_prefixes)
+            if not is_allowed:
+                raise ValueError(f"output_path must be relative or within temp/home directory: {self.output_path}")
+        else:
+            # For relative paths, ensure they don't escape current directory
+            cwd = os.path.abspath(os.getcwd())
+            resolved = os.path.abspath(os.path.join(cwd, self.output_path))
+            if not resolved.startswith(cwd):
+                raise ValueError(f"output_path resolves outside working directory: {self.output_path}")
 
 
 @dataclass
@@ -188,6 +225,36 @@ class LoraLayersSpec:
 
 
 @dataclass
+class AugmentationSpec:
+    """Detailed augmentation configuration for training images.
+
+    These augmentations are applied during dataset preparation and can
+    help improve model generalization, especially for small datasets.
+
+    Attributes:
+        enable_flip: Enable horizontal flip (default: True)
+        enable_brightness: Enable random brightness adjustment
+        brightness_range: Min/max brightness multiplier
+        enable_contrast: Enable random contrast adjustment
+        contrast_range: Min/max contrast multiplier
+        enable_color_jitter: Enable random color/saturation jitter
+        color_jitter_strength: Strength of color variation (0.0-1.0)
+        enable_rotation: Enable small random rotation
+        rotation_degrees: Maximum rotation in degrees (+/-)
+    """
+
+    enable_flip: bool = True
+    enable_brightness: bool = False
+    brightness_range: tuple[float, float] = (0.8, 1.2)
+    enable_contrast: bool = False
+    contrast_range: tuple[float, float] = (0.8, 1.2)
+    enable_color_jitter: bool = False
+    color_jitter_strength: float = 0.1
+    enable_rotation: bool = False
+    rotation_degrees: float = 5.0
+
+
+@dataclass
 class DatasetSpec:
     """Dataset augmentation and preprocessing configuration."""
 
@@ -195,6 +262,31 @@ class DatasetSpec:
     enable_augmentation: bool = True  # Enable flip/crop augmentations
     random_crop: bool = False  # Apply random crop during encoding
     use_aspect_ratio_bucketing: bool = False  # Group images by aspect ratio for efficient batching
+    augmentation: AugmentationSpec | None = None  # Detailed augmentation config
+
+
+@dataclass
+class ValidationSpec:
+    """Validation dataset configuration.
+
+    Attributes:
+        enabled: Whether to use a separate validation set
+        validation_split: Fraction of data for validation (0.0-0.5)
+        validation_seed: Seed for reproducible validation splits
+        validation_frequency: How often to compute validation metrics (iterations)
+    """
+
+    enabled: bool = False
+    validation_split: float = 0.1
+    validation_seed: int = 42
+    validation_frequency: int = 100
+
+    def __post_init__(self) -> None:
+        """Validate configuration."""
+        if self.enabled and not 0.0 < self.validation_split < 0.5:
+            raise ValueError(f"validation_split must be in (0, 0.5), got {self.validation_split}")
+        if self.validation_frequency < 1:
+            raise ValueError(f"validation_frequency must be >= 1, got {self.validation_frequency}")
 
 
 @dataclass
@@ -269,6 +361,8 @@ class InstrumentationSpec:
     validation_prompt: str
     negative_prompt: str = ""
     guidance_scale: float = 3.5  # Z-Image-Base supports CFG
+    enable_memory_monitoring: bool = False  # Enable memory monitoring during training
+    compute_clip_score: bool = False  # Compute CLIP score during validation
 
 
 @dataclass
@@ -292,6 +386,7 @@ class TrainingSpec:
     lora_layers: LoraLayersSpec | None = None  # For LoRA mode
     full_finetune: FullFinetuneSpec | None = None  # For full mode
     dataset: DatasetSpec | None = None  # Dataset augmentation config
+    validation: ValidationSpec | None = None  # Validation holdout config
     ema: EMASpec | None = None  # EMA configuration
     early_stopping: EarlyStoppingSpec | None = None  # Early stopping configuration
     config_path: str | None = None
@@ -365,9 +460,21 @@ class TrainingSpec:
             else:
                 full_finetune = FullFinetuneSpec()
 
-        # Parse dataset spec
+        # Parse dataset spec with nested augmentation config
         dataset_config = config.get("dataset", None)
-        dataset_spec = DatasetSpec(**dataset_config) if dataset_config else DatasetSpec()
+        if dataset_config:
+            # Extract augmentation config if present (use .get to avoid mutating input)
+            aug_config = dataset_config.get("augmentation", None)
+            aug_spec = AugmentationSpec(**aug_config) if aug_config else None
+            # Create dataset spec without augmentation key
+            dataset_kwargs = {k: v for k, v in dataset_config.items() if k != "augmentation"}
+            dataset_spec = DatasetSpec(**dataset_kwargs, augmentation=aug_spec)
+        else:
+            dataset_spec = DatasetSpec()
+
+        # Parse validation spec
+        validation_config = config.get("validation", None)
+        validation_spec = ValidationSpec(**validation_config) if validation_config else None
 
         # Parse EMA spec
         ema_config = config.get("ema", None)
@@ -393,6 +500,7 @@ class TrainingSpec:
             lora_layers=lora_layers,
             full_finetune=full_finetune,
             dataset=dataset_spec,
+            validation=validation_spec,
             ema=ema_spec,
             early_stopping=early_stopping_spec,
             statistics=statistics,

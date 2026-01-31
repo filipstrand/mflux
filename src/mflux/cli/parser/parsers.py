@@ -16,6 +16,36 @@ class ModelSpecAction(argparse.Action):
         setattr(namespace, self.dest, values)
 
 
+def quantize_mode(value: str) -> int:
+    """Parse quantize argument: accepts int bits (2,4,8) or string modes (speed, quality, mixed).
+
+    Args:
+        value: Either an integer bit depth or a preset mode name.
+
+    Returns:
+        Integer bit depth for quantization.
+
+    Raises:
+        argparse.ArgumentTypeError: If value is not a valid int or mode name.
+    """
+    # Try to parse as integer first
+    try:
+        bits = int(value)
+        if bits in ui_defaults.QUANTIZE_CHOICES:
+            return bits
+        raise argparse.ArgumentTypeError(f"Invalid quantize bits: {bits}. Choose from {ui_defaults.QUANTIZE_CHOICES}")
+    except ValueError:
+        pass
+
+    # Try as mode name
+    mode_lower = value.lower()
+    if mode_lower in ui_defaults.QUANTIZE_MODES:
+        return ui_defaults.QUANTIZE_MODES[mode_lower]
+
+    valid_options = ui_defaults.QUANTIZE_CHOICES + ui_defaults.QUANTIZE_MODE_CHOICES
+    raise argparse.ArgumentTypeError(f"Invalid quantize value: '{value}'. Choose from {valid_options}")
+
+
 def int_or_special_value(value) -> int | scale_factor.ScaleFactor:
     if value.lower() == "auto":
         return scale_factor.ScaleFactor(value=1)
@@ -68,7 +98,7 @@ class CommandLineParser(argparse.ArgumentParser):
         if path_type == "save":
             self.add_argument("--path", type=str, required=True, help="Local path for saving a model to disk.")
         self.add_argument("--base-model", type=str, required=False, choices=ui_defaults.MODEL_CHOICES, help="When using a third-party huggingface model, explicitly specify whether the base model is dev or schnell")
-        self.add_argument("--quantize",  "-q", type=int, choices=ui_defaults.QUANTIZE_CHOICES, default=None, help=f"Quantize the model ({' or '.join(map(str, ui_defaults.QUANTIZE_CHOICES))}, Default is None)")
+        self.add_argument("--quantize",  "-q", type=quantize_mode, default=None, help=f"Quantize the model: bits ({', '.join(map(str, ui_defaults.QUANTIZE_CHOICES))}) or mode ({', '.join(ui_defaults.QUANTIZE_MODE_CHOICES)}). Default is None")
 
     def add_lora_arguments(self) -> None:
         self.supports_lora = True
@@ -140,7 +170,7 @@ class CommandLineParser(argparse.ArgumentParser):
 
     def add_save_depth_arguments(self) -> None:
         self.add_argument("--image-path", type=Path, required=True, help="Local path to the source image")
-        self.add_argument("--quantize",  "-q", type=int, choices=ui_defaults.QUANTIZE_CHOICES, default=None, required=False, help=f"Quantize the model ({' or '.join(map(str, ui_defaults.QUANTIZE_CHOICES))}, Default is None)")
+        self.add_argument("--quantize",  "-q", type=quantize_mode, default=None, required=False, help=f"Quantize the model: bits ({', '.join(map(str, ui_defaults.QUANTIZE_CHOICES))}) or mode ({', '.join(ui_defaults.QUANTIZE_MODE_CHOICES)}). Default is None")
 
     def add_redux_arguments(self) -> None:
         self.add_argument("--redux-image-paths", type=Path, nargs="*", required=True, help="Local path to the source image")

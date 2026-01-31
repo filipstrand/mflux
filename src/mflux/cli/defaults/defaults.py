@@ -23,7 +23,20 @@ MODEL_INFERENCE_STEPS = {
     "fibo": 20,
     "z-image-turbo": 9,
 }
-QUANTIZE_CHOICES = [3, 5, 4, 6, 8]
+QUANTIZE_CHOICES = [2, 3, 4, 5, 6, 8]  # INT2 added for extreme compression
+
+# Quantization mode presets: map user-friendly names to bit depths
+# These provide semantic options that users can choose based on their priorities
+QUANTIZE_MODES = {
+    "speed": 4,  # INT4: Fastest inference, smaller memory footprint
+    "quality": 8,  # INT8: Best quality, larger memory footprint
+    "balanced": 4,  # INT4: Good balance (same as speed)
+    "mixed": 4,  # INT4 for most, could be expanded to INT8 attention + INT4 FFN
+    "extreme": 2,  # INT2: Maximum compression, experimental
+}
+
+# All valid quantization values (int bits + string modes)
+QUANTIZE_MODE_CHOICES = list(QUANTIZE_MODES.keys())
 
 if os.environ.get("MFLUX_CACHE_DIR"):
     MFLUX_CACHE_DIR = Path(os.environ["MFLUX_CACHE_DIR"]).resolve()

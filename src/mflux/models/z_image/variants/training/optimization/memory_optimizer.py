@@ -15,12 +15,16 @@ class MemoryOptimizer:
     MODEL_SIZE_BF16 = 12.0  # 6B params * 2 bytes
     MODEL_SIZE_8BIT = 6.0  # 6B params * 1 byte
     MODEL_SIZE_4BIT = 3.0  # 6B params * 0.5 byte
+    MODEL_SIZE_2BIT = 1.5  # 6B params * 0.25 byte (INT2 extreme compression)
 
     # Per-image memory overhead (approximate, in GB)
     LATENT_OVERHEAD_PER_IMAGE = 0.05  # 1024x1024 latent
     EMBEDDING_OVERHEAD_PER_IMAGE = 0.1  # Text embeddings
     ACTIVATION_OVERHEAD_PER_IMAGE = 15.0  # Full fine-tuning
     LORA_ACTIVATION_PER_IMAGE = 3.0  # LoRA mode (much smaller)
+
+    # Activation checkpointing reduces memory by trading compute
+    ACTIVATION_CHECKPOINTING_FACTOR = 0.15  # ~85% reduction in activation memory
 
     # Optimizer state multipliers
     ADAMW_STATE_MULTIPLIER = 2.0  # momentum + variance
@@ -67,7 +71,9 @@ class MemoryOptimizer:
             Dictionary with memory breakdown in GB
         """
         # Base model size
-        if quantize == 4:
+        if quantize == 2:
+            model_size = MemoryOptimizer.MODEL_SIZE_2BIT
+        elif quantize == 4:
             model_size = MemoryOptimizer.MODEL_SIZE_4BIT
         elif quantize == 8:
             model_size = MemoryOptimizer.MODEL_SIZE_8BIT

@@ -10,6 +10,7 @@ from mflux.models.common.weights.loading.weight_loader import WeightLoader
 from mflux.models.z_image.model.z_image_text_encoder.text_encoder import TextEncoder
 from mflux.models.z_image.model.z_image_transformer.transformer import ZImageTransformer
 from mflux.models.z_image.model.z_image_vae.vae import VAE
+from mflux.models.z_image.optimization.prompt_cache import ZImagePromptCache
 from mflux.models.z_image.weights.z_image_lora_mapping import ZImageLoRAMapping
 from mflux.models.z_image.weights.z_image_weight_definition import ZImageWeightDefinition
 
@@ -37,6 +38,7 @@ class ZImageInitializer:
         model.model_config = model_config
         model.callbacks = CallbackRegistry()
         model.tiling_config = None
+        model.prompt_cache = ZImagePromptCache(max_items=100)
 
     @staticmethod
     def _load_weights(model_path: str) -> LoadedWeights:
