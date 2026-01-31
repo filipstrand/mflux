@@ -79,10 +79,27 @@ class OptimizerSpec:
 
 @dataclass
 class SaveSpec:
-    """Checkpoint saving configuration."""
+    """Checkpoint saving configuration.
+
+    Attributes:
+        checkpoint_frequency: How often to save checkpoints (in iterations).
+        output_path: Directory path for saving checkpoints.
+        keep_last_n_checkpoints: Number of recent checkpoints to keep. 0 means keep all (default).
+    """
 
     checkpoint_frequency: int
     output_path: str
+    keep_last_n_checkpoints: int = 0  # 0 = keep all (backward compatible)
+
+    def __post_init__(self) -> None:
+        """Validate checkpoint saving configuration."""
+        if self.checkpoint_frequency < 1:
+            raise ValueError(f"checkpoint_frequency must be >= 1, got {self.checkpoint_frequency}")
+        if self.keep_last_n_checkpoints < 0:
+            raise ValueError(f"keep_last_n_checkpoints must be >= 0, got {self.keep_last_n_checkpoints}")
+        # Validate output_path doesn't contain path traversal patterns
+        if ".." in self.output_path:
+            raise ValueError(f"output_path cannot contain '..': {self.output_path}")
 
 
 @dataclass
@@ -212,6 +229,28 @@ class EMASpec:
 
 
 @dataclass
+class EarlyStoppingSpec:
+    """Early stopping configuration.
+
+    Attributes:
+        enabled: Whether to use early stopping during training.
+        patience: Number of validations without improvement before stopping.
+        min_delta: Minimum improvement threshold to consider as improvement.
+    """
+
+    enabled: bool = False
+    patience: int = 5  # Validations without improvement before stopping
+    min_delta: float = 0.0  # Minimum improvement threshold
+
+    def __post_init__(self) -> None:
+        """Validate early stopping configuration."""
+        if self.patience < 1:
+            raise ValueError(f"patience must be >= 1, got {self.patience}")
+        if self.min_delta < 0:
+            raise ValueError(f"min_delta must be >= 0, got {self.min_delta}")
+
+
+@dataclass
 class FullFinetuneSpec:
     """Full fine-tuning configuration."""
 
@@ -254,6 +293,7 @@ class TrainingSpec:
     full_finetune: FullFinetuneSpec | None = None  # For full mode
     dataset: DatasetSpec | None = None  # Dataset augmentation config
     ema: EMASpec | None = None  # EMA configuration
+    early_stopping: EarlyStoppingSpec | None = None  # Early stopping configuration
     config_path: str | None = None
     checkpoint_path: str | None = None
 
@@ -294,6 +334,7 @@ class TrainingSpec:
         saver = SaveSpec(
             checkpoint_frequency=config["save"]["checkpoint_frequency"],
             output_path=TrainingSpec._resolve_output_path(config["save"]["output_path"], new_folder),
+            keep_last_n_checkpoints=config["save"].get("keep_last_n_checkpoints", 0),
         )
         instrumentation = (
             None if config.get("instrumentation", None) is None else InstrumentationSpec(**config["instrumentation"])
@@ -332,6 +373,10 @@ class TrainingSpec:
         ema_config = config.get("ema", None)
         ema_spec = EMASpec(**ema_config) if ema_config else EMASpec()
 
+        # Parse early stopping spec
+        early_stopping_config = config.get("early_stopping", None)
+        early_stopping_spec = EarlyStoppingSpec(**early_stopping_config) if early_stopping_config else None
+
         return TrainingSpec(
             model=config.get("model", "z-image"),
             seed=config["seed"],
@@ -349,6 +394,7 @@ class TrainingSpec:
             full_finetune=full_finetune,
             dataset=dataset_spec,
             ema=ema_spec,
+            early_stopping=early_stopping_spec,
             statistics=statistics,
             examples=examples,
             config_path=None if absolute_config_path is None else str(absolute_config_path),

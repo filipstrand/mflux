@@ -205,11 +205,19 @@ class ZImageTrainer:
                 try:
                     with profiler.time_section("validation"):
                         validation_loss = ZImageLoss.compute_validation_loss(model, config, validation_batch)
+                    validation_loss_float = float(validation_loss)
                     training_state.statistics.append_values(
                         step=training_state.iterator.num_iterations,
-                        loss=float(validation_loss),
+                        loss=validation_loss_float,
                     )
                     Plotter.update_loss_plot(training_spec=training_spec, training_state=training_state)
+
+                    # Early stopping check
+                    if training_state.early_stopping is not None:
+                        if training_state.early_stopping.check(validation_loss_float):
+                            logger.info("Early stopping triggered: saving final checkpoint")
+                            training_state.save(model, training_spec)
+                            return  # Exit training loop
                 finally:
                     del validation_batch
                     if "validation_loss" in locals():

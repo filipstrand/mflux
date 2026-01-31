@@ -61,6 +61,11 @@ class Iterator:
         self._aspect_ratio_sampler: "AspectRatioSampler | None" = None
         self._current_target_resolution: tuple[int, int] | None = None
 
+        # Validation RNG cache (avoids recreating on every get_validation_batch call)
+        # Invalidated when epoch changes - see _invalidate_validation_cache()
+        self._validation_rng: random.Random | None = None
+        self._validation_rng_epoch: int = -1  # Use -1 to ensure first call creates RNG
+
         if rng_state is not None:
             # Validate RNG state structure before applying
             if not isinstance(rng_state, tuple) or len(rng_state) != 3:
@@ -296,20 +301,35 @@ class Iterator:
         )
         return cls.from_dict(data, dataset)
 
+    def _invalidate_validation_cache(self) -> None:
+        """Invalidate the validation RNG cache.
+
+        Called automatically when epoch changes. The cache uses epoch comparison
+        to detect staleness, but this method can be called explicitly after
+        checkpoint restore or epoch manipulation to ensure deterministic behavior.
+        """
+        self._validation_rng = None
+        self._validation_rng_epoch = -1
+
     def get_validation_batch(self) -> Batch:
         """Get a batch for validation loss computation.
 
         Uses deterministic random sampling based on epoch to avoid bias from
         always using the first N examples (which could be sorted by quality/difficulty).
         Sampling is reproducible within an epoch for consistent validation metrics.
+
+        The validation RNG is cached per-epoch and automatically invalidated when
+        the epoch changes (including on checkpoint restore where epoch may decrease).
         """
         examples = self.dataset.examples
 
         if len(examples) > VALIDATION_BATCH_MAX_SIZE:
-            # Use deterministic sampling based on epoch to avoid bias
-            # but keep consistent within an epoch for reproducibility
-            validation_rng = random.Random(self._epoch)
-            examples = validation_rng.sample(examples, VALIDATION_BATCH_MAX_SIZE)
+            # Use cached validation RNG (epoch-based for reproducibility)
+            # Cache invalidates when epoch changes in either direction
+            if self._validation_rng is None or self._validation_rng_epoch != self._epoch:
+                self._validation_rng = random.Random(self._epoch)
+                self._validation_rng_epoch = self._epoch
+            examples = self._validation_rng.sample(examples, VALIDATION_BATCH_MAX_SIZE)
 
         return Batch(examples=examples, rng=self.rng)
 

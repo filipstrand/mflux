@@ -185,6 +185,84 @@ class TestZImageTrainAndLoad:
             mx.synchronize()
 
 
+@pytest.mark.fast
+class TestTrainingModeSpecs:
+    """Unit tests for training mode specifications."""
+
+    def test_full_finetune_mode_spec(self):
+        """Test TrainingMode.FULL mode specification."""
+        import tempfile
+
+        # Create spec for full mode
+        from mflux.models.z_image.variants.training.state.training_spec import (
+            FullFinetuneSpec,
+            OptimizerSpec,
+            SaveSpec,
+            StatisticsSpec,
+            TrainingLoopSpec,
+            TrainingMode,
+            TrainingSpec,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            spec = TrainingSpec(
+                model="z-image-base",
+                seed=42,
+                steps=2,
+                guidance=3.5,
+                quantize=None,  # Full mode typically uses fp16/bf16
+                width=256,
+                height=256,
+                mode=TrainingMode.FULL,
+                training_loop=TrainingLoopSpec(num_epochs=1, batch_size=1),
+                optimizer=OptimizerSpec(name="AdamW", learning_rate=1e-5),
+                saver=SaveSpec(checkpoint_frequency=1, output_path=tmpdir),
+                instrumentation=None,
+                statistics=StatisticsSpec(),
+                examples=[],
+                full_finetune=FullFinetuneSpec(
+                    train_transformer=True,
+                    train_vae=False,
+                    train_text_encoder=False,
+                ),
+            )
+
+            assert spec.mode == TrainingMode.FULL
+            assert spec.full_finetune is not None
+            assert spec.full_finetune.train_transformer is True
+            assert spec.full_finetune.train_vae is False
+            assert spec.lora_layers is None  # Not used in full mode
+
+    def test_full_finetune_default_values(self):
+        """Test FullFinetuneSpec default values."""
+        from mflux.models.z_image.variants.training.state.training_spec import FullFinetuneSpec
+
+        spec = FullFinetuneSpec()
+        assert spec.train_transformer is True
+        assert spec.train_vae is False
+        assert spec.train_text_encoder is False
+        assert spec.gradient_checkpointing is False
+
+    def test_full_finetune_component_combinations(self):
+        """Test various component training combinations."""
+        from mflux.models.z_image.variants.training.state.training_spec import FullFinetuneSpec
+
+        # Just transformer (most common)
+        spec1 = FullFinetuneSpec(train_transformer=True, train_vae=False, train_text_encoder=False)
+        assert spec1.train_transformer is True
+
+        # Transformer + VAE
+        spec2 = FullFinetuneSpec(train_transformer=True, train_vae=True, train_text_encoder=False)
+        assert spec2.train_transformer is True
+        assert spec2.train_vae is True
+
+        # All components
+        spec3 = FullFinetuneSpec(train_transformer=True, train_vae=True, train_text_encoder=True)
+        assert spec3.train_transformer is True
+        assert spec3.train_vae is True
+        assert spec3.train_text_encoder is True
+
+
 @pytest.mark.slow
 class TestZImageLoRAExtraction:
     """Tests for LoRA weight extraction and loading."""

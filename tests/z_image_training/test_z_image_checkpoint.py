@@ -373,3 +373,261 @@ def test_checkpoint_path_structure():
 
         assert checkpoint_path.exists()
         assert checkpoint_path.name == "_checkpoints"
+
+
+@pytest.mark.fast
+class TestCheckpointPruning:
+    """Tests for checkpoint pruning functionality."""
+
+    def test_pruning_disabled_when_keep_last_zero(self):
+        """Test that pruning is disabled when keep_last_n_checkpoints=0."""
+        dataset = create_mock_dataset()
+        iterator = Iterator(dataset, batch_size=1, num_epochs=1, seed=42)
+        optimizer = MagicMock()
+        statistics = Statistics()
+
+        state = TrainingState(
+            iterator=iterator,
+            optimizer=optimizer,
+            statistics=statistics,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            spec = create_mock_training_spec(tmpdir)
+            spec.saver.keep_last_n_checkpoints = 0  # Disabled
+
+            # Create some fake checkpoint files
+            checkpoint_dir = Path(tmpdir) / TRAINING_PATH_CHECKPOINTS
+            checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+            for i in range(5):
+                (checkpoint_dir / f"{i:07d}_checkpoint.zip").touch()
+
+            # Pruning should not delete anything
+            deleted, failed = state._prune_old_checkpoints(spec)
+            assert deleted == []
+            assert failed == []
+            assert len(list(checkpoint_dir.glob("*_checkpoint.zip"))) == 5
+
+    def test_pruning_keeps_correct_count(self):
+        """Test that pruning keeps only the most recent N checkpoints."""
+        dataset = create_mock_dataset()
+        iterator = Iterator(dataset, batch_size=1, num_epochs=1, seed=42)
+        optimizer = MagicMock()
+        statistics = Statistics()
+
+        state = TrainingState(
+            iterator=iterator,
+            optimizer=optimizer,
+            statistics=statistics,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            spec = create_mock_training_spec(tmpdir)
+            spec.saver.keep_last_n_checkpoints = 3
+
+            # Create some fake checkpoint files
+            checkpoint_dir = Path(tmpdir) / TRAINING_PATH_CHECKPOINTS
+            checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+            for i in range(5):
+                (checkpoint_dir / f"{i:07d}_checkpoint.zip").touch()
+
+            # Pruning should delete 2 oldest, keep 3 newest
+            deleted, failed = state._prune_old_checkpoints(spec)
+            assert len(deleted) == 2
+            assert len(failed) == 0
+
+            remaining = sorted(checkpoint_dir.glob("*_checkpoint.zip"))
+            assert len(remaining) == 3
+            # Should keep 2, 3, 4 (newest)
+            assert remaining[0].name == "0000002_checkpoint.zip"
+            assert remaining[1].name == "0000003_checkpoint.zip"
+            assert remaining[2].name == "0000004_checkpoint.zip"
+
+    def test_pruning_deletes_oldest_keeps_newest(self):
+        """Test that oldest checkpoints are deleted, newest are kept."""
+        dataset = create_mock_dataset()
+        iterator = Iterator(dataset, batch_size=1, num_epochs=1, seed=42)
+        optimizer = MagicMock()
+        statistics = Statistics()
+
+        state = TrainingState(
+            iterator=iterator,
+            optimizer=optimizer,
+            statistics=statistics,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            spec = create_mock_training_spec(tmpdir)
+            spec.saver.keep_last_n_checkpoints = 2
+
+            checkpoint_dir = Path(tmpdir) / TRAINING_PATH_CHECKPOINTS
+            checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+            # Create checkpoints with various iteration numbers
+            for i in [10, 100, 50, 75, 200]:
+                (checkpoint_dir / f"{i:07d}_checkpoint.zip").touch()
+
+            deleted, failed = state._prune_old_checkpoints(spec)
+            assert len(failed) == 0
+
+            # Should delete 0000010, 0000050, 0000075 (oldest 3)
+            remaining = sorted(checkpoint_dir.glob("*_checkpoint.zip"))
+            assert len(remaining) == 2
+            # Should keep 100 and 200 (newest)
+            remaining_names = [p.name for p in remaining]
+            assert "0000100_checkpoint.zip" in remaining_names
+            assert "0000200_checkpoint.zip" in remaining_names
+
+    def test_pruning_no_deletion_when_under_limit(self):
+        """Test that no deletion occurs when count is under limit."""
+        dataset = create_mock_dataset()
+        iterator = Iterator(dataset, batch_size=1, num_epochs=1, seed=42)
+        optimizer = MagicMock()
+        statistics = Statistics()
+
+        state = TrainingState(
+            iterator=iterator,
+            optimizer=optimizer,
+            statistics=statistics,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            spec = create_mock_training_spec(tmpdir)
+            spec.saver.keep_last_n_checkpoints = 5
+
+            checkpoint_dir = Path(tmpdir) / TRAINING_PATH_CHECKPOINTS
+            checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+            # Create only 3 checkpoints
+            for i in range(3):
+                (checkpoint_dir / f"{i:07d}_checkpoint.zip").touch()
+
+            # No deletion should occur
+            deleted, failed = state._prune_old_checkpoints(spec)
+            assert deleted == []
+            assert failed == []
+            assert len(list(checkpoint_dir.glob("*_checkpoint.zip"))) == 3
+
+    def test_pruning_handles_missing_directory(self):
+        """Test that pruning handles missing checkpoint directory gracefully."""
+        dataset = create_mock_dataset()
+        iterator = Iterator(dataset, batch_size=1, num_epochs=1, seed=42)
+        optimizer = MagicMock()
+        statistics = Statistics()
+
+        state = TrainingState(
+            iterator=iterator,
+            optimizer=optimizer,
+            statistics=statistics,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            spec = create_mock_training_spec(tmpdir)
+            spec.saver.keep_last_n_checkpoints = 3
+            # Don't create the checkpoint directory
+
+            # Should return empty lists, not raise
+            deleted, failed = state._prune_old_checkpoints(spec)
+            assert deleted == []
+            assert failed == []
+
+    def test_pruning_handles_equal_to_limit(self):
+        """Test that pruning doesn't delete when exactly at limit."""
+        dataset = create_mock_dataset()
+        iterator = Iterator(dataset, batch_size=1, num_epochs=1, seed=42)
+        optimizer = MagicMock()
+        statistics = Statistics()
+
+        state = TrainingState(
+            iterator=iterator,
+            optimizer=optimizer,
+            statistics=statistics,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            spec = create_mock_training_spec(tmpdir)
+            spec.saver.keep_last_n_checkpoints = 3
+
+            checkpoint_dir = Path(tmpdir) / TRAINING_PATH_CHECKPOINTS
+            checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+            # Create exactly 3 checkpoints
+            for i in range(3):
+                (checkpoint_dir / f"{i:07d}_checkpoint.zip").touch()
+
+            # No deletion should occur
+            deleted, failed = state._prune_old_checkpoints(spec)
+            assert deleted == []
+            assert failed == []
+            assert len(list(checkpoint_dir.glob("*_checkpoint.zip"))) == 3
+
+
+@pytest.mark.fast
+class TestResumeScenarios:
+    """Tests for various resume scenarios."""
+
+    def test_mid_epoch_resume_position(self):
+        """Test that resuming mid-epoch restores correct position."""
+        dataset = create_mock_dataset(10)
+
+        # Create iterator and advance to mid-epoch
+        iterator1 = Iterator(dataset, batch_size=2, num_epochs=3, seed=42)
+        for _ in range(3):  # Advance 3 batches
+            next(iterator1)
+
+        # Save state
+        state_dict = iterator1.to_dict()
+
+        # Restore
+        iterator2 = Iterator.from_dict(state_dict, dataset)
+
+        # Position should be restored
+        assert iterator2._position == iterator1._position
+        assert iterator2._epoch == iterator1._epoch
+
+    def test_resume_with_different_batch_size_warning(self):
+        """Test that resuming with different batch_size preserves saved batch_size."""
+        dataset = create_mock_dataset(10)
+
+        # Create iterator with batch_size=2
+        iterator1 = Iterator(dataset, batch_size=2, num_epochs=3, seed=42)
+        for _ in range(3):
+            next(iterator1)
+
+        state_dict = iterator1.to_dict()
+
+        # Restore - batch_size comes from saved state, not constructor
+        iterator2 = Iterator.from_dict(state_dict, dataset)
+
+        # Batch size should match the saved state
+        assert iterator2.batch_size == 2
+
+    def test_rng_produces_same_sequence_after_resume(self):
+        """Test that RNG state produces identical sequence after resume."""
+        dataset = create_mock_dataset(20)
+
+        # Create iterator and advance
+        iterator1 = Iterator(dataset, batch_size=2, num_epochs=5, seed=42)
+        for _ in range(5):
+            next(iterator1)
+
+        # Save state
+        state_dict = iterator1.to_dict()
+
+        # Get next 5 batches from original
+        original_sequence = []
+        for _ in range(5):
+            batch = next(iterator1)
+            original_sequence.append([e.example_id for e in batch.examples])
+
+        # Restore and get same 5 batches
+        iterator2 = Iterator.from_dict(state_dict, dataset)
+        restored_sequence = []
+        for _ in range(5):
+            batch = next(iterator2)
+            restored_sequence.append([e.example_id for e in batch.examples])
+
+        # Sequences should be identical
+        assert original_sequence == restored_sequence

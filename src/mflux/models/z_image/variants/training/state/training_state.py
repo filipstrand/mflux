@@ -35,6 +35,95 @@ TRAINING_FILE_NAME_VALIDATION_IMAGE = "validation_image"
 
 TRAINING_PATH_VALIDATION_PLOT = "_validation/plots/"
 TRAINING_FILE_NAME_VALIDATION_LOSS = "loss"
+TRAINING_FILE_NAME_EARLY_STOPPING = "early_stopping"
+
+
+class EarlyStoppingState:
+    """State tracker for early stopping during training.
+
+    Monitors validation loss and triggers early stopping when no improvement
+    is seen for a specified number of validations (patience).
+    """
+
+    def __init__(self, patience: int, min_delta: float):
+        """Initialize early stopping state.
+
+        Args:
+            patience: Number of validations without improvement before stopping.
+            min_delta: Minimum improvement threshold to consider as improvement.
+        """
+        self.patience = patience
+        self.min_delta = min_delta
+        self.best_val_loss = float("inf")
+        self.patience_counter = 0
+        self.should_stop = False
+
+    def check(self, val_loss: float) -> bool:
+        """Check if training should stop based on validation loss.
+
+        Args:
+            val_loss: Current validation loss.
+
+        Returns:
+            True if training should stop, False otherwise.
+        """
+        # Once triggered, stay triggered - don't mutate state further
+        if self.should_stop:
+            return True
+
+        if val_loss < self.best_val_loss - self.min_delta:
+            self.best_val_loss = val_loss
+            self.patience_counter = 0
+        else:
+            self.patience_counter += 1
+            if self.patience_counter >= self.patience:
+                self.should_stop = True
+                logger.info(f"Early stopping: no improvement for {self.patience} validations")
+        return self.should_stop
+
+    def to_dict(self) -> dict:
+        """Serialize state to dictionary for checkpointing."""
+        return {
+            "best_val_loss": self.best_val_loss,
+            "patience_counter": self.patience_counter,
+            "should_stop": self.should_stop,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict, patience: int, min_delta: float) -> "EarlyStoppingState":
+        """Restore state from dictionary.
+
+        Args:
+            data: Dictionary from to_dict()
+            patience: Patience value from EarlyStoppingSpec
+            min_delta: Min delta value from EarlyStoppingSpec
+
+        Returns:
+            Restored EarlyStoppingState instance.
+
+        Note:
+            Values are validated and clamped to sensible ranges to handle
+            corrupted checkpoint data gracefully.
+        """
+        state = cls(patience=patience, min_delta=min_delta)
+
+        # Restore best_val_loss with validation
+        best_val_loss = data.get("best_val_loss", float("inf"))
+        if not isinstance(best_val_loss, (int, float)) or best_val_loss != best_val_loss:  # NaN check
+            best_val_loss = float("inf")
+        state.best_val_loss = float(best_val_loss)
+
+        # Restore patience_counter with validation (clamp to valid range)
+        patience_counter = data.get("patience_counter", 0)
+        if not isinstance(patience_counter, int) or patience_counter < 0:
+            patience_counter = 0
+        state.patience_counter = min(patience_counter, patience)  # Clamp to max patience
+
+        # Restore should_stop with validation
+        should_stop = data.get("should_stop", False)
+        state.should_stop = bool(should_stop)
+
+        return state
 
 
 class TrainingState:
@@ -45,12 +134,14 @@ class TrainingState:
         statistics: Statistics,
         ema=None,
         scheduler=None,
+        early_stopping: EarlyStoppingState | None = None,
     ):
         self.iterator = iterator
         self.optimizer = optimizer
         self.statistics = statistics
         self.ema = ema  # EMAModel | NoOpEMA | None
         self.scheduler = scheduler  # LRScheduler | None
+        self.early_stopping = early_stopping  # EarlyStoppingState | None
 
     def save(self, model: "ZImageBase", training_spec: TrainingSpec) -> None:
         """Save checkpoint with all training state."""
@@ -109,6 +200,18 @@ class TrainingState:
                     f"{self.iterator.num_iterations:07d}_{TRAINING_FILE_NAME_SCHEDULER}.safetensors"
                 )
 
+            # Save early stopping state if present
+            if self.early_stopping is not None:
+                early_stopping_path = (
+                    Path(temp_dir) / f"{self.iterator.num_iterations:07d}_{TRAINING_FILE_NAME_EARLY_STOPPING}.json"
+                )
+                with open(early_stopping_path, "w") as f:
+                    json.dump(self.early_stopping.to_dict(), f, indent=4)
+                paths.append(early_stopping_path)
+                checkpoint_files["early_stopping"] = (
+                    f"{self.iterator.num_iterations:07d}_{TRAINING_FILE_NAME_EARLY_STOPPING}.json"
+                )
+
             # Save individual components
             self.optimizer.save(optimizer_path)
             self.iterator.save(iterator_path)
@@ -134,6 +237,48 @@ class TrainingState:
                         zipf.write(file_path, file_path.name)
                     except FileNotFoundError:  # noqa: PERF203 - Intentional: TOCTOU safety
                         logger.warning(f"Could not save {file_path.name} to checkpoint - file not found")
+
+        # Prune old checkpoints if configured
+        deleted, failed = self._prune_old_checkpoints(training_spec)
+        if deleted:
+            logger.info(f"Pruned {len(deleted)} old checkpoint(s)")
+        if failed:
+            logger.warning(f"Failed to prune {len(failed)} checkpoint(s) - check disk space")
+
+    def _prune_old_checkpoints(self, training_spec: TrainingSpec) -> tuple[list[Path], list[Path]]:
+        """Remove old checkpoints, keeping only the most recent N.
+
+        Args:
+            training_spec: Training specification with saver.keep_last_n_checkpoints
+
+        Returns:
+            Tuple of (deleted paths, failed paths) for monitoring pruning health
+        """
+        keep_last = training_spec.saver.keep_last_n_checkpoints
+        if keep_last <= 0:
+            return [], []
+
+        checkpoint_dir = Path(training_spec.saver.output_path) / TRAINING_PATH_CHECKPOINTS
+        if not checkpoint_dir.exists():
+            return [], []
+
+        checkpoints = sorted(checkpoint_dir.glob("*_checkpoint.zip"))
+        if len(checkpoints) <= keep_last:
+            return [], []
+
+        to_delete = checkpoints[:-keep_last]
+        deleted = []
+        failed = []
+        for path in to_delete:
+            try:
+                path.unlink()
+                deleted.append(path)
+                logger.debug(f"Pruned checkpoint: {path.name}")
+            except OSError as e:  # noqa: PERF203 - Intentional: continue pruning other checkpoints on failure
+                logger.warning(f"Failed to delete {path}: {e}")
+                failed.append(path)
+
+        return deleted, failed
 
     def _save_full_model(self, model: "ZImageBase", path: Path) -> None:
         """Save full transformer model weights for full fine-tuning mode.
