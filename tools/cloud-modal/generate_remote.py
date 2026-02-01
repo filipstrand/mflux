@@ -80,7 +80,10 @@ def generate_image():
     image = flux.generate_image(
         seed=random.randint(0, int(1e9)),
         prompt="Fluffy letters M L X in a cloud formation. Behind the clouds is a clear blue sky.",
-        config=Config(num_inference_steps=15, height=1024, width=1024, guidance=3.5),
+        num_inference_steps=15,
+        height=1024,
+        width=1024,
+        guidance=3.5,
     )
     image.save(output_path)
     print(output_path)
