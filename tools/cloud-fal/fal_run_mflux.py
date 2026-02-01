@@ -15,6 +15,8 @@ class Input(BaseModel):
             "A charming Parisian street scene with its vibrant red awning and outdoor seating area, surrounded by quant shops and lush greenery under a bright blue sky."
         ],
     )
+    height: int = Field(description="Height in pixels", default=1024)
+    width: int = Field(description="Width in pixels", default=1024)
     guidance: float = Field(description="CFG Scale", default=3.5)
     steps: int = Field(description="Number of Inference Steps", default=20)
     seed: int = Field(description="Generation Seed", default=42)
@@ -74,7 +76,10 @@ class MFluxCudaModel(
         self.flux.generate_image(
             seed=random.randint(0, int(1e9)),
             prompt="Fluffy letters F A L in a cloud formation. Behind the clouds is a clear blue sky.",
-            config=Config(num_inference_steps=1, height=512, width=512, guidance=3.5),
+            num_inference_steps=1,
+            height=512,
+            width=512,
+            guidance=3.5,
         )
 
     @fal.endpoint("/")
@@ -87,7 +92,10 @@ class MFluxCudaModel(
         image = self.flux.generate_image(
             seed=input.seed,
             prompt=input.prompt,
-            config=Config(num_inference_steps=input.steps, height=512, width=512, guidance=input.guidance),
+            num_inference_steps=input.steps,
+            height=input.height,
+            width=input.width,
+            guidance=input.guidance,
         )
         output_dir = Path("/data/mflux-output")
         output_dir.mkdir(parents=True, exist_ok=True)
