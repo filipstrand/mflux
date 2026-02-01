@@ -14,11 +14,15 @@ Optimizations:
 """
 
 import logging
+from typing import TYPE_CHECKING
 
 import mlx.core as mx
 from tqdm import tqdm
 
 from mflux.models.common.config.config import Config
+
+if TYPE_CHECKING:
+    from PIL import Image
 from mflux.models.z_image.variants.training.modes.full_trainer import FullTrainer
 from mflux.models.z_image.variants.training.modes.lora_trainer import LoRATrainer
 from mflux.models.z_image.variants.training.optimization.compiled_train_step import CompiledTrainStep
@@ -35,7 +39,13 @@ from mflux.models.z_image.variants.training.z_image_base import ZImageBase
 logger = logging.getLogger(__name__)
 
 # Training loop constants
-MEMORY_CHECK_INTERVAL = 100  # Steps between memory monitoring checks
+#
+# MEMORY_CHECK_INTERVAL: Number of training steps between memory monitoring checks.
+# Set to 100 as a balance between monitoring granularity and overhead:
+# - Too frequent (e.g., 10): Adds unnecessary overhead from memory queries
+# - Too infrequent (e.g., 1000): May miss memory spikes that cause OOM
+# - 100 steps: ~1-2 seconds between checks at typical training speeds
+MEMORY_CHECK_INTERVAL = 100
 
 
 class ZImageTrainer:
@@ -129,6 +139,11 @@ class ZImageTrainer:
             with profiler.time_section("forward"):
                 loss, grads = train_step_function(batch)
 
+            # Evaluate only loss for logging - keep grads lazy for accumulation optimization
+            # MLX can fuse gradient operations across accumulation steps when grads stay lazy.
+            # The accumulated_grads are evaluated once accumulation is complete (see below).
+            mx.eval(loss)
+
             # Periodic memory monitoring
             if memory_monitor is not None and training_state.iterator.num_iterations % MEMORY_CHECK_INTERVAL == 0:
                 snapshot = memory_monitor.check()
@@ -156,6 +171,9 @@ class ZImageTrainer:
                 accumulation_count += 1
 
                 if accumulation_count >= accumulation_steps:
+                    # Force evaluation only when accumulation is complete
+                    # This prevents lazy graph buildup while minimizing sync overhead
+                    mx.eval(accumulated_grads)
                     # Average gradients (scale creates new dict, so free old one)
                     old_accumulated_grads = accumulated_grads
                     accumulated_grads = ZImageTrainer._scale_grads(accumulated_grads, 1.0 / accumulation_steps)
@@ -349,7 +367,7 @@ class ZImageTrainer:
         model: ZImageBase,
         training_spec: TrainingSpec,
         training_state: TrainingState,
-    ):
+    ) -> "Image.Image | None":
         """Generate a validation image during training.
 
         Returns:
@@ -380,27 +398,21 @@ class ZImageTrainer:
             return None
 
     @staticmethod
-    def _accumulate_grads(acc_grads: dict, new_grads: dict) -> dict:
-        """Accumulate gradients for gradient accumulation."""
-        result = {}
-        # Handle all keys from both dictionaries
-        all_keys = set(acc_grads.keys()) | set(new_grads.keys())
-        for key in all_keys:
-            if key in acc_grads and key in new_grads:
-                result[key] = acc_grads[key] + new_grads[key]
-            elif key in acc_grads:
-                result[key] = acc_grads[key]
-            else:
-                result[key] = new_grads[key]
-        return result
+    def _accumulate_grads(acc_grads: dict[str, mx.array], new_grads: dict[str, mx.array]) -> dict[str, mx.array]:
+        """Accumulate gradients for gradient accumulation.
+
+        Assumes gradient structures are static across training steps (same keys).
+        """
+        # Gradient structures are static - no need for set union
+        return {k: acc_grads[k] + new_grads[k] for k in acc_grads}
 
     @staticmethod
-    def _scale_grads(grads: dict, scale: float) -> dict:
+    def _scale_grads(grads: dict[str, mx.array], scale: float) -> dict[str, mx.array]:
         """Scale gradients by a factor."""
         return {k: v * scale for k, v in grads.items()}
 
     @staticmethod
-    def _clip_grad_norm(grads: dict, max_norm: float) -> dict | None:
+    def _clip_grad_norm(grads: dict[str, mx.array], max_norm: float) -> dict[str, mx.array] | None:
         """Clip gradients by global norm to prevent gradient explosion.
 
         Args:

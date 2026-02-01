@@ -7,6 +7,10 @@ Handles initialization of all training resources:
 - Training state management
 """
 
+import logging
+from pathlib import Path
+from typing import Optional
+
 import mlx.core.random as random
 
 from mflux.models.common.config.config import Config
@@ -22,6 +26,8 @@ from mflux.models.z_image.variants.training.state.training_state import Training
 from mflux.models.z_image.variants.training.statistics.statistics import Statistics
 from mflux.models.z_image.variants.training.z_image_base import ZImageBase
 
+logger = logging.getLogger(__name__)
+
 # Memory estimation constants (in GB) for Z-Image 6B model
 # Based on Z-Image-Base transformer with 6B parameters
 # Updated 2026-01 for 512GB Mac Studio target configuration
@@ -30,19 +36,27 @@ from mflux.models.z_image.variants.training.z_image_base import ZImageBase
 # - MODEL_BASE_MEMORY: 6B params × 2 bytes (bf16) = 12GB
 # - OPTIMIZER_FULL: Gradients (12GB) + AdamW state 2×12GB (m,v) = 36GB + margin = 48GB
 # - PER_EXAMPLE: ~2MB average for 512×512 latents + text embeddings
-# - PER_BATCH_ACTIVATIONS: ~15GB for transformer activations during forward/backward
+# - ACTIVATIONS_FULL: ~15GB per batch item for full fine-tuning (all layers need gradients)
+# - ACTIVATIONS_LORA: ~3GB per batch item for LoRA (only adapter params need gradients)
 # - LORA_PARAMS: Typical LoRA adds ~100M trainable params (rank 64, all attention)
 # - MLX_OVERHEAD: 1.5× for graph compilation buffers and peak memory spikes
+#
+# For LoRA training with quantized base model (INT8), activation memory is further reduced.
+# See memory_optimizer.py for detailed per-mode estimates.
 MODEL_BASE_MEMORY_GB = 12.0  # 6B params at bf16
 OPTIMIZER_FULL_MEMORY_GB = 48.0  # Gradients + optimizer state for full fine-tuning
 PER_EXAMPLE_MEMORY_MB = 2.0  # Approximate memory per encoded example in MB
-PER_BATCH_ACTIVATIONS_GB = 15.0  # Memory for activations per batch item
+PER_BATCH_ACTIVATIONS_FULL_GB = 15.0  # Memory for activations per batch item (full fine-tuning)
+PER_BATCH_ACTIVATIONS_LORA_GB = 3.0  # Memory for activations per batch item (LoRA mode)
 LORA_PARAMS_ESTIMATE = 100_000_000  # ~100M LoRA params typical configuration
 MLX_OVERHEAD_FACTOR = 1.5  # MLX graph overhead and peak memory spikes during backprop
 
 
 class ZImageTrainingInitializer:
     """Initializes all resources needed for Z-Image training."""
+
+    # Cached system memory value (memoized on first call)
+    _cached_system_memory_gb: Optional[float] = None
 
     @staticmethod
     def initialize(
@@ -68,7 +82,7 @@ class ZImageTrainingInitializer:
         random.seed(training_spec.seed)
 
         # Load the model
-        print("Loading Z-Image model...")
+        logger.info("Loading Z-Image model...")
         model_config = ModelConfig.z_image_base()
         model = ZImageBase(
             model_config=model_config,
@@ -86,16 +100,26 @@ class ZImageTrainingInitializer:
 
         # Apply LoRA layers if in LoRA mode
         if training_spec.mode == TrainingMode.LORA:
-            print("Applying LoRA layers to transformer...")
+            logger.info("Applying LoRA layers to transformer...")
             ZImageLoRALayers.from_spec(model=model, training_spec=training_spec)
 
         # Create optimizer
-        print("Setting up optimizer...")
+        logger.info("Setting up optimizer...")
         optimizer = Optimizer.from_spec(training_spec)
 
         # Prepare dataset with pre-computed embeddings
-        print("Preparing dataset (this may take a while for large datasets)...")
+        logger.info("Preparing dataset (this may take a while for large datasets)...")
         dataset_config = training_spec.dataset
+
+        # Resolve and validate cache path if provided
+        cache_path: Optional[Path] = None
+        if dataset_config and dataset_config.cache_path is not None:
+            cache_path = Path(dataset_config.cache_path).expanduser().resolve()
+            # Ensure parent directory exists or can be created
+            if not cache_path.parent.exists():
+                logger.info("Creating cache directory: %s", cache_path.parent)
+                cache_path.parent.mkdir(parents=True, exist_ok=True)
+
         dataset = Dataset.prepare_dataset(
             model=model,
             raw_data=training_spec.examples,
@@ -105,8 +129,9 @@ class ZImageTrainingInitializer:
             repeat_count=dataset_config.repeat_count if dataset_config else 1,
             random_crop=dataset_config.random_crop if dataset_config else False,
             seed=training_spec.seed,
+            cache_path=cache_path,
         )
-        print(f"Dataset prepared: {dataset.size()} examples")
+        logger.info("Dataset prepared: %d examples", dataset.size())
 
         # Create iterator
         iterator = Iterator.from_spec(
@@ -120,7 +145,7 @@ class ZImageTrainingInitializer:
         # Create EMA if enabled
         ema = None
         if training_spec.ema is not None and training_spec.ema.enabled:
-            print("Setting up EMA for weight smoothing...")
+            logger.info("Setting up EMA for weight smoothing...")
             ema = create_ema(
                 model=model,
                 enabled=True,
@@ -135,7 +160,7 @@ class ZImageTrainingInitializer:
             warmup_steps = training_spec.optimizer.warmup_steps
             if training_spec.optimizer.warmup_ratio > 0:
                 warmup_steps = int(total_steps * training_spec.optimizer.warmup_ratio)
-            print(f"Setting up {scheduler_type} LR scheduler...")
+            logger.info("Setting up %s LR scheduler...", scheduler_type)
             scheduler = create_scheduler(
                 name=scheduler_type,
                 optimizer=optimizer.optimizer,
@@ -155,26 +180,26 @@ class ZImageTrainingInitializer:
             scheduler=scheduler,
         )
 
-        print("\n=== Training Configuration ===")
-        print(f"Mode: {training_spec.mode.value}")
-        print("Model: Z-Image-Base")
-        print(f"Quantization: {training_spec.quantize or 'None (full precision)'}")
-        print(f"Resolution: {training_spec.width}x{training_spec.height}")
-        print(f"Steps: {training_spec.steps}")
-        print(f"Guidance: {training_spec.guidance}")
-        print(f"Batch size: {training_spec.training_loop.batch_size}")
-        print(f"Epochs: {training_spec.training_loop.num_epochs}")
-        print(f"Learning rate: {training_spec.optimizer.learning_rate}")
-        print(f"LR Scheduler: {training_spec.optimizer.scheduler_type}")
+        logger.info("=== Training Configuration ===")
+        logger.info("Mode: %s", training_spec.mode.value)
+        logger.info("Model: Z-Image-Base")
+        logger.info("Quantization: %s", training_spec.quantize or "None (full precision)")
+        logger.info("Resolution: %dx%d", training_spec.width, training_spec.height)
+        logger.info("Steps: %d", training_spec.steps)
+        logger.info("Guidance: %s", training_spec.guidance)
+        logger.info("Batch size: %d", training_spec.training_loop.batch_size)
+        logger.info("Epochs: %d", training_spec.training_loop.num_epochs)
+        logger.info("Learning rate: %s", training_spec.optimizer.learning_rate)
+        logger.info("LR Scheduler: %s", training_spec.optimizer.scheduler_type)
         ema_status = (
             f"enabled (decay={training_spec.ema.decay})"
             if training_spec.ema and training_spec.ema.enabled
             else "disabled"
         )
-        print(f"EMA: {ema_status}")
-        print(f"Total training examples: {dataset.size()}")
-        print(f"Output path: {training_spec.saver.output_path}")
-        print("=" * 30)
+        logger.info("EMA: %s", ema_status)
+        logger.info("Total training examples: %d", dataset.size())
+        logger.info("Output path: %s", training_spec.saver.output_path)
+        logger.info("=" * 30)
 
         return model, config, training_spec, training_state
 
@@ -204,9 +229,12 @@ class ZImageTrainingInitializer:
         else:
             estimates["optimizer"] = OPTIMIZER_FULL_MEMORY_GB
 
-        # Activations (batch dependent)
+        # Activations (batch dependent, varies by training mode)
         batch_size = training_spec.training_loop.batch_size
-        estimates["activations"] = batch_size * PER_BATCH_ACTIVATIONS_GB
+        activation_per_batch = (
+            PER_BATCH_ACTIVATIONS_LORA_GB if training_spec.mode == TrainingMode.LORA else PER_BATCH_ACTIVATIONS_FULL_GB
+        )
+        estimates["activations"] = batch_size * activation_per_batch
 
         # Total estimate with MLX overhead factor for peak memory spikes
         subtotal = sum(estimates.values())
@@ -215,20 +243,27 @@ class ZImageTrainingInitializer:
 
         return estimates
 
-    @staticmethod
-    def get_system_memory_gb() -> float:
-        """Get total system memory in GB.
+    @classmethod
+    def get_system_memory_gb(cls) -> float | None:
+        """Get total system memory in GB (memoized).
 
         Supports macOS (sysctl) and Linux (/proc/meminfo).
-        Returns 0.0 on unsupported platforms or detection failure.
+        Returns None on unsupported platforms or detection failure.
+
+        Result is cached after first call to avoid repeated subprocess calls.
 
         Returns:
-            Total system memory in GB, or 0.0 if detection fails.
+            Total system memory in GB, or None if detection fails.
         """
+        # Return cached value if available
+        if cls._cached_system_memory_gb is not None:
+            return cls._cached_system_memory_gb
+
         import platform
         import subprocess
 
         system = platform.system()
+        result_gb: float | None = None
 
         try:
             if system == "Darwin":  # macOS
@@ -237,20 +272,25 @@ class ZImageTrainingInitializer:
                     capture_output=True,
                     text=True,
                     timeout=5,
+                    shell=False,  # Explicit: prevent shell injection
                 )
                 if result.returncode == 0:
-                    return int(result.stdout.strip()) / (1024**3)
+                    result_gb = int(result.stdout.strip()) / (1024**3)
             elif system == "Linux":
                 with open("/proc/meminfo", "r") as f:
                     for line in f:
                         if line.startswith("MemTotal:"):
                             # MemTotal is in kB
                             kb = int(line.split()[1])
-                            return kb / (1024**2)
+                            result_gb = kb / (1024**2)
+                            break
             # Windows and other platforms not supported
         except (subprocess.TimeoutExpired, ValueError, OSError, IOError):
             pass
-        return 0.0
+
+        # Cache the result (even if None, to avoid repeated failed lookups)
+        cls._cached_system_memory_gb = result_gb
+        return result_gb
 
     @staticmethod
     def suggest_batch_size(
@@ -278,44 +318,41 @@ class ZImageTrainingInitializer:
 
         # Validate training spec has examples
         if not training_spec.examples:
-            print("Warning: No examples in training spec, defaulting to batch_size=1")
+            logger.warning("No examples in training spec, defaulting to batch_size=1")
             return 1
 
         total_memory_gb = ZImageTrainingInitializer.get_system_memory_gb()
 
-        if total_memory_gb <= 0:
-            print("Warning: Could not detect system memory, defaulting to batch_size=1")
+        if total_memory_gb is None:
+            logger.warning("Could not detect system memory, defaulting to batch_size=1")
             return 1
 
         available_memory_gb = total_memory_gb * safety_margin
-        print(f"Detected {total_memory_gb:.1f}GB system memory, using {available_memory_gb:.1f}GB for training")
+        logger.info("Detected %.1fGB system memory, using %.1fGB for training", total_memory_gb, available_memory_gb)
+
+        # Pre-compute static memory components (same for all batch sizes)
+        dataset_memory = (len(training_spec.examples) * PER_EXAMPLE_MEMORY_MB) / 1024
+        if training_spec.mode == TrainingMode.LORA:
+            lora_params = LORA_PARAMS_ESTIMATE if training_spec.lora_layers else 0
+            optimizer_memory = (lora_params * 2 * 2) / (1024**3)
+            activation_per_batch = PER_BATCH_ACTIVATIONS_LORA_GB
+        else:
+            optimizer_memory = OPTIMIZER_FULL_MEMORY_GB
+            activation_per_batch = PER_BATCH_ACTIVATIONS_FULL_GB
+
+        static_memory = MODEL_BASE_MEMORY_GB + dataset_memory + optimizer_memory
 
         # Test batch sizes from largest to smallest
         candidate_batch_sizes = [32, 16, 8, 4, 2, 1]
 
         for batch_size in candidate_batch_sizes:
-            # Create a modified spec with this batch size for estimation
-            # We estimate based on the key factors without creating a full spec
-            estimates = {
-                "model": MODEL_BASE_MEMORY_GB,
-                "dataset": (len(training_spec.examples) * PER_EXAMPLE_MEMORY_MB) / 1024,
-                "activations": batch_size * PER_BATCH_ACTIVATIONS_GB,
-            }
-
-            # Add optimizer estimate based on mode
-            if training_spec.mode == TrainingMode.LORA:
-                lora_params = LORA_PARAMS_ESTIMATE if training_spec.lora_layers else 0
-                estimates["optimizer"] = (lora_params * 2 * 2) / (1024**3)
-            else:
-                estimates["optimizer"] = OPTIMIZER_FULL_MEMORY_GB
-
-            total_estimate = sum(estimates.values())
+            total_estimate = static_memory + (batch_size * activation_per_batch)
 
             if total_estimate <= available_memory_gb:
-                print(f"Suggested batch_size={batch_size} (estimated {total_estimate:.1f}GB)")
+                logger.info("Suggested batch_size=%d (estimated %.1fGB)", batch_size, total_estimate)
                 return batch_size
 
-        print("Warning: Even batch_size=1 exceeds memory estimates, proceeding anyway")
+        logger.warning("Even batch_size=1 exceeds memory estimates, proceeding anyway")
         return 1
 
     @staticmethod
@@ -356,9 +393,9 @@ class ZImageTrainingInitializer:
 
         # Get system memory
         total_memory_gb = ZImageTrainingInitializer.get_system_memory_gb()
-        if total_memory_gb <= 0:
+        if total_memory_gb is None:
             total_memory_gb = 64.0  # Default assumption
-            print("Warning: Could not detect system memory, assuming 64GB")
+            logger.warning("Could not detect system memory, assuming 64GB")
 
         # Step 1: Find optimal batch size
         if run_test_forward and model is not None and config is not None:
@@ -406,8 +443,11 @@ class ZImageTrainingInitializer:
 
         # Step 5: Memory estimate
         estimates = ZImageTrainingInitializer.estimate_memory_usage(training_spec)
-        # Adjust for actual batch size
-        estimates["activations"] = actual_batch_size * PER_BATCH_ACTIVATIONS_GB
+        # Adjust for actual batch size based on training mode
+        activation_per_batch = (
+            PER_BATCH_ACTIVATIONS_LORA_GB if training_spec.mode == TrainingMode.LORA else PER_BATCH_ACTIVATIONS_FULL_GB
+        )
+        estimates["activations"] = actual_batch_size * activation_per_batch
         estimates["total"] = (
             estimates["model"] + estimates["dataset"] + estimates["optimizer"] + estimates["activations"]
         ) * MLX_OVERHEAD_FACTOR
@@ -416,16 +456,16 @@ class ZImageTrainingInitializer:
         # Step 6: Calculate effective batch size
         suggestions["effective_batch_size"] = actual_batch_size * suggestions["gradient_accumulation_steps"]
 
-        # Print summary
-        print("\n=== Auto-Tune Results ===")
-        print(f"System memory: {total_memory_gb:.1f}GB")
-        print(f"Suggested batch_size: {suggestions['batch_size']}")
-        print(f"Suggested learning_rate: {suggestions['learning_rate']:.2e}")
-        print(f"Suggested gradient_accumulation_steps: {suggestions['gradient_accumulation_steps']}")
-        print(f"Effective batch size: {suggestions['effective_batch_size']}")
-        print(f"Suggested sync_interval: {suggestions['sync_interval']}")
-        print(f"Estimated memory usage: {suggestions['memory_estimate_gb']:.1f}GB")
-        print("=" * 25)
+        # Log summary
+        logger.info("=== Auto-Tune Results ===")
+        logger.info("System memory: %.1fGB", total_memory_gb)
+        logger.info("Suggested batch_size: %d", suggestions["batch_size"])
+        logger.info("Suggested learning_rate: %.2e", suggestions["learning_rate"])
+        logger.info("Suggested gradient_accumulation_steps: %d", suggestions["gradient_accumulation_steps"])
+        logger.info("Effective batch size: %d", suggestions["effective_batch_size"])
+        logger.info("Suggested sync_interval: %d", suggestions["sync_interval"])
+        logger.info("Estimated memory usage: %.1fGB", suggestions["memory_estimate_gb"])
+        logger.info("=" * 25)
 
         return suggestions
 
@@ -492,7 +532,7 @@ class ZImageTrainingInitializer:
                 mx.synchronize()  # Force computation
 
                 # If we got here, this batch size works
-                print(f"Probed batch_size={batch_size}: Success (loss={float(loss):.4f})")
+                logger.info("Probed batch_size=%d: Success (loss=%.4f)", batch_size, float(loss))
 
                 # Clean up
                 del loss, test_batch
@@ -501,12 +541,12 @@ class ZImageTrainingInitializer:
                 return batch_size
 
             except Exception as e:  # noqa: BLE001 - Intentional: probing memory limits with various batch sizes
-                print(f"Probed batch_size={batch_size}: Failed ({type(e).__name__})")
+                logger.debug("Probed batch_size=%d: Failed (%s)", batch_size, type(e).__name__)
                 mx.synchronize()
                 continue
 
         # If we get here, even batch_size=1 failed - verify it's truly unusable
-        print("Warning: All batch sizes failed during probing. Verifying batch_size=1...")
+        logger.warning("All batch sizes failed during probing. Verifying batch_size=1...")
         try:
             # Final verification for batch_size=1
             if test_dataset.size() >= 1:
@@ -518,7 +558,7 @@ class ZImageTrainingInitializer:
                 loss = ZImageLoss.compute_loss(model, config, test_batch)
                 mx.synchronize()
                 del loss, test_batch
-                print("Verification passed: batch_size=1 works")
+                logger.info("Verification passed: batch_size=1 works")
                 return 1
         except Exception as e:  # noqa: BLE001
             raise RuntimeError(
