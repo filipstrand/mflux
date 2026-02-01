@@ -65,6 +65,8 @@ class MFluxCudaModel(
 ):
     machine_type = "GPU-B200"
 
+    warmup_generate_at_setup = False
+
     def setup(self) -> None:
         import random
 
@@ -72,15 +74,16 @@ class MFluxCudaModel(
         from mflux.models.flux.variants.txt2img.flux import Flux1
 
         self.flux = Flux1(model_config=ModelConfig.from_name("schnell"))
-        print("Warming up model with first run")
-        self.flux.generate_image(
-            seed=random.randint(0, int(1e9)),
-            prompt="Fluffy letters F A L in a cloud formation. Behind the clouds is a clear blue sky.",
-            num_inference_steps=1,
-            height=512,
-            width=512,
-            guidance=3.5,
-        )
+        if self.warmup_generate_at_setup:
+            print("Warming up model with first run")
+            self.flux.generate_image(
+                seed=random.randint(0, int(1e9)),
+                prompt="Fluffy letters F A L in a cloud formation. Behind the clouds is a clear blue sky.",
+                num_inference_steps=1,
+                height=512,
+                width=512,
+                guidance=3.5,
+            )
 
     @fal.endpoint("/")
     def image_to_video(self, input: Input) -> Output:
