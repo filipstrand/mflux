@@ -72,7 +72,10 @@ class ZImageTrainer:
         # - MLX graph compilation (15-40% speedup)
         # - Per-bucket caching for different aspect ratios
         # - Automatic cache management
-        enable_compilation = getattr(training_spec, "enable_compilation", True)
+        # Disable compilation by default - Batch objects contain non-array members
+        # (rng, examples list) that mx.compile() cannot trace through.
+        # TODO: Refactor to pass only arrays to the compiled function
+        enable_compilation = getattr(training_spec, "enable_compilation", False)
         compiled_train_step = CompiledTrainStep(model, config, enabled=enable_compilation)
         train_step_function = compiled_train_step
 
