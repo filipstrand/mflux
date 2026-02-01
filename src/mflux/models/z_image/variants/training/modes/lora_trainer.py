@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 from mlx import nn
+from mlx.utils import tree_flatten
 
 from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
 
@@ -42,13 +43,16 @@ class LoRATrainer:
     def count_trainable_parameters(model: "ZImageBase") -> tuple[int, int]:
         """Count trainable and total parameters.
 
+        Uses MLX's tree_flatten to iterate over parameters.
+
         Returns:
             (trainable_params, total_params)
         """
         trainable = 0
         total = 0
 
-        for name, param in model.named_parameters():
+        # Use tree_flatten to get (name, param) pairs from model parameters
+        for name, param in tree_flatten(model.parameters()):
             param_count = param.size
             total += param_count
             if "lora_A" in name or "lora_B" in name:
