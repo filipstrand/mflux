@@ -383,5 +383,70 @@ def load_vision_weights_to_encoder(encoder: Any) -> None:
 
     logger.info(f"Loaded {loaded_count} vision weights")
 
+    # Apply INT8 quantization to vision encoder if requested
+    if hasattr(encoder, "_quantize_vision") and encoder._quantize_vision:
+        quantize_vision_encoder(visual)
+        logger.info("Applied INT8 quantization to vision encoder")
+
     # Clean up stored weights
     encoder._vision_weights = None
+
+
+def quantize_vision_encoder(visual: Any, group_size: int = 64) -> None:
+    """Apply INT8 quantization to vision encoder weights.
+
+    Quantizes linear layers in the vision encoder to INT8 for
+    20-30% memory savings and potential speed improvement.
+
+    Only quantizes attention and MLP weights, preserves:
+    - LayerNorm weights (sensitivity to quantization)
+    - Biases (small memory footprint)
+    - Patch embedding (first layer, quality-critical)
+
+    Args:
+        visual: Vision transformer module
+        group_size: Quantization group size (default 64)
+    """
+    try:
+        from mlx import nn as mlx_nn
+
+        quantized_count = 0
+
+        # Quantize vision blocks
+        for block_idx, block in enumerate(visual.blocks):
+            # Quantize attention QKV and projection
+            if hasattr(block.attn, "qkv") and hasattr(block.attn.qkv, "weight"):
+                block.attn.qkv = mlx_nn.QuantizedLinear.from_linear(block.attn.qkv, group_size=group_size, bits=8)
+                quantized_count += 1
+
+            if hasattr(block.attn, "proj") and hasattr(block.attn.proj, "weight"):
+                block.attn.proj = mlx_nn.QuantizedLinear.from_linear(block.attn.proj, group_size=group_size, bits=8)
+                quantized_count += 1
+
+            # Quantize MLP layers
+            if hasattr(block.mlp, "linear_fc1") and hasattr(block.mlp.linear_fc1, "weight"):
+                block.mlp.linear_fc1 = mlx_nn.QuantizedLinear.from_linear(
+                    block.mlp.linear_fc1, group_size=group_size, bits=8
+                )
+                quantized_count += 1
+
+            if hasattr(block.mlp, "linear_fc2") and hasattr(block.mlp.linear_fc2, "weight"):
+                block.mlp.linear_fc2 = mlx_nn.QuantizedLinear.from_linear(
+                    block.mlp.linear_fc2, group_size=group_size, bits=8
+                )
+                quantized_count += 1
+
+        # Quantize merger MLP (but not the norm)
+        merger = visual.merger
+        if hasattr(merger, "linear_fc1") and hasattr(merger.linear_fc1, "weight"):
+            merger.linear_fc1 = mlx_nn.QuantizedLinear.from_linear(merger.linear_fc1, group_size=group_size, bits=8)
+            quantized_count += 1
+
+        if hasattr(merger, "linear_fc2") and hasattr(merger.linear_fc2, "weight"):
+            merger.linear_fc2 = mlx_nn.QuantizedLinear.from_linear(merger.linear_fc2, group_size=group_size, bits=8)
+            quantized_count += 1
+
+        logger.info(f"Quantized {quantized_count} vision encoder layers to INT8")
+
+    except (RuntimeError, ValueError, AttributeError) as e:
+        logger.warning(f"Vision quantization failed: {e}. Using full precision.")

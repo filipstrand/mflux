@@ -114,7 +114,17 @@ class ZImageTrainingInitializer:
         # Resolve and validate cache path if provided
         cache_path: Optional[Path] = None
         if dataset_config and dataset_config.cache_path is not None:
-            cache_path = Path(dataset_config.cache_path).expanduser().resolve()
+            raw_path = dataset_config.cache_path
+            cache_path = Path(raw_path).expanduser().resolve()
+
+            # Security: warn if path contains traversal patterns (user config, not blocked)
+            if ".." in raw_path:
+                logger.warning(
+                    "Cache path contains '..': %s -> resolved to %s",
+                    raw_path,
+                    cache_path,
+                )
+
             # Ensure parent directory exists or can be created
             if not cache_path.parent.exists():
                 logger.info("Creating cache directory: %s", cache_path.parent)

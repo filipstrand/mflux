@@ -16,10 +16,9 @@ def pool_last_token(
     It extracts the hidden state at the last valid (non-padded) position
     for each sequence in the batch.
 
-    Note:
-        Assumes attention masks have contiguous 1s followed by 0s (standard padding).
-        For such masks, sum(mask) - 1 gives the last valid token position directly,
-        avoiding the need for array flipping and improving performance.
+    Uses reverse indexing to match PyTorch's flip + argmax behavior,
+    handling non-contiguous masks correctly (e.g., when image placeholders
+    create gaps in the attention mask).
 
     Args:
         hidden_states: Hidden states [batch, seq_len, hidden_size]
@@ -36,9 +35,12 @@ def pool_last_token(
         >>> pooled.shape
         (2, 2048)
     """
-    # For contiguous masks (1s followed by 0s), sum gives sequence length
-    # Last valid position = sum - 1 (avoids array flipping overhead)
-    last_positions = mx.sum(attention_mask, axis=1).astype(mx.int32) - 1
+    # Match PyTorch's _pooling_last exactly using reverse indexing:
+    # MLX doesn't have flip, so we reverse the mask using [:, ::-1]
+    seq_len = attention_mask.shape[1]
+    flipped = attention_mask[:, ::-1]  # Reverse along sequence axis
+    last_one_positions = mx.argmax(flipped, axis=1).astype(mx.int32)
+    last_positions = seq_len - last_one_positions - 1
 
     # Gather the embeddings at the last positions
     batch_size = hidden_states.shape[0]
@@ -52,16 +54,19 @@ def pool_last_token(
 
 def normalize_embeddings(
     embeddings: mx.array,
-    eps: float = 1e-8,
+    eps: float = 1e-12,
 ) -> mx.array:
     """L2 normalize embeddings.
 
+    Matches PyTorch's F.normalize behavior exactly for numerical parity.
+
     Args:
         embeddings: Embeddings [batch, hidden_size]
-        eps: Small value to avoid division by zero (1e-8 for float16 compatibility)
+        eps: Small value to avoid division by zero (1e-12 matches PyTorch default)
 
     Returns:
         Normalized embeddings [batch, hidden_size]
     """
     norms = mx.sqrt(mx.sum(embeddings * embeddings, axis=-1, keepdims=True))
-    return embeddings / (norms + eps)
+    # Use max(norms, eps) like PyTorch instead of norms + eps
+    return embeddings / mx.maximum(norms, mx.array(eps))

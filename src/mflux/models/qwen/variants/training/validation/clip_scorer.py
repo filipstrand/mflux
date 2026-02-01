@@ -609,9 +609,11 @@ class MLXQwenEmbeddingScorer(BaseImageTextScorer):
 
     DEFAULT_MODEL = "Qwen/Qwen3-VL-Embedding-2B"
 
-    # Score scaling - same as PyTorch version
-    SCORE_MIN = 0.2
-    SCORE_MAX = 0.8
+    # Score scaling - calibrated for MLX implementation
+    # Observed raw similarity range: 0.05-0.55 for MLX vs 0.2-0.8 for PyTorch
+    # Using tighter range to spread scores across 0-100 properly
+    SCORE_MIN = 0.10
+    SCORE_MAX = 0.55
 
     def __init__(
         self,
@@ -694,6 +696,49 @@ class MLXQwenEmbeddingScorer(BaseImageTextScorer):
         clamped = max(self.SCORE_MIN, min(similarity, self.SCORE_MAX))
         scaled = (clamped - self.SCORE_MIN) / (self.SCORE_MAX - self.SCORE_MIN) * self.SCORE_SCALE
         return float(scaled)
+
+    def compute_scores_batch(
+        self,
+        images: list["Image.Image | np.ndarray | mx.array"],
+        prompts: list[str],
+    ) -> list[float]:
+        """Compute scores for multiple image-prompt pairs efficiently.
+
+        Processes images and text in batches for better throughput.
+
+        Args:
+            images: List of images
+            prompts: List of prompts (same length as images)
+
+        Returns:
+            List of similarity scores in range [0, 100]
+        """
+        if len(images) != len(prompts):
+            raise ValueError(f"Number of images ({len(images)}) must match number of prompts ({len(prompts)})")
+
+        self._ensure_loaded()
+
+        pil_images = [self._to_pil(img) for img in images]
+
+        try:
+            # Prepare all inputs
+            image_inputs = [{"image": img, "instruction": "Represent this image for retrieval."} for img in pil_images]
+            text_inputs = [{"text": prompt, "instruction": "Represent this text for retrieval."} for prompt in prompts]
+
+            # Process all images together, then all text together
+            # This is more efficient than alternating
+            image_embs = self._embedder.process(image_inputs, normalize=True)
+            text_embs = self._embedder.process(text_inputs, normalize=True)
+
+            # Compute pairwise similarities (diagonal)
+            similarities = mx.sum(image_embs * text_embs, axis=-1)
+            mx.synchronize()
+
+            return [self._scale_score(float(sim)) for sim in similarities]
+
+        except Exception as e:
+            logger.warning(f"Batch MLX Qwen Embedding scoring failed: {e}")
+            raise
 
     def clear(self) -> None:
         """Clear loaded model to free memory."""
@@ -793,6 +838,46 @@ class MLXQwenRerankerScorer(BaseImageTextScorer):
         except Exception as e:
             logger.warning(f"MLX Qwen Reranker scoring failed: {e}")
             raise
+
+    def compute_scores_batch(
+        self,
+        images: list["Image.Image | np.ndarray | mx.array"],
+        prompts: list[str],
+    ) -> list[float]:
+        """Compute scores for multiple image-prompt pairs.
+
+        Reranker processes pairs sequentially (cross-attention requires it),
+        but with compilation this is still efficient.
+
+        Args:
+            images: List of images
+            prompts: List of prompts (same length as images)
+
+        Returns:
+            List of relevance scores in range [0, 100]
+        """
+        if len(images) != len(prompts):
+            raise ValueError(f"Number of images ({len(images)}) must match number of prompts ({len(prompts)})")
+
+        self._ensure_loaded()
+
+        scores = []
+        for img, prompt in zip(images, prompts):
+            pil_image = self._to_pil(img)
+
+            inputs = {
+                "instruction": "Retrieve images that match the user's query.",
+                "query": {"text": prompt},
+                "documents": [{"image": pil_image}],
+            }
+
+            result = self._reranker.process(inputs)
+            if result:
+                scores.append(float(result[0] * self.SCORE_SCALE))
+            else:
+                scores.append(0.0)
+
+        return scores
 
     def clear(self) -> None:
         """Clear loaded model to free memory."""

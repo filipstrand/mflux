@@ -133,6 +133,10 @@ class ZImageTrainer:
         ema = training_state.ema
         scheduler = training_state.scheduler
 
+        # Cache validation batch to avoid re-fetching on each validation step
+        # Validation data doesn't change during training, so caching is safe
+        cached_validation_batch = None
+
         # Main training loop
         for batch in batches:
             # Compute loss and gradients
@@ -252,10 +256,14 @@ class ZImageTrainer:
             # Plot loss periodically
             if training_state.should_plot_loss(training_spec):
                 deferred_sync.force_sync()  # Ensure all updates complete before validation
-                validation_batch = training_state.iterator.get_validation_batch()
+
+                # Use cached validation batch to avoid re-fetching on each validation step
+                if cached_validation_batch is None:
+                    cached_validation_batch = training_state.iterator.get_validation_batch()
+
                 try:
                     with profiler.time_section("validation"):
-                        validation_loss = ZImageLoss.compute_validation_loss(model, config, validation_batch)
+                        validation_loss = ZImageLoss.compute_validation_loss(model, config, cached_validation_batch)
                     validation_loss_float = float(validation_loss)
                     training_state.statistics.append_values(
                         step=training_state.iterator.num_iterations,
@@ -270,7 +278,7 @@ class ZImageTrainer:
                             training_state.save(model, training_spec)
                             return  # Exit training loop
                 finally:
-                    del validation_batch
+                    # Note: validation_batch is cached, don't delete it
                     if "validation_loss" in locals():
                         del validation_loss
 
