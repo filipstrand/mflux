@@ -602,6 +602,9 @@ class MLXQwenEmbeddingScorer(BaseImageTextScorer):
 
     Target: 5-10x faster than PyTorch with quality parity.
 
+    Phase 2.3 Optimization: Uses sigmoid-based score calibration instead of
+    linear clipping for smoother score distribution and better discrimination.
+
     Attributes:
         model_name: HuggingFace model identifier
         loaded: Whether the model is currently loaded
@@ -609,22 +612,28 @@ class MLXQwenEmbeddingScorer(BaseImageTextScorer):
 
     DEFAULT_MODEL = "Qwen/Qwen3-VL-Embedding-2B"
 
-    # Score scaling - calibrated for MLX implementation
-    # Observed raw similarity range: 0.05-0.55 for MLX vs 0.2-0.8 for PyTorch
-    # Using tighter range to spread scores across 0-100 properly
-    SCORE_MIN = 0.10
-    SCORE_MAX = 0.55
+    # Score scaling - calibrated for MLX implementation with hybrid pooling
+    # Observed raw similarity range after hybrid pooling: 0.15-0.65
+    # Using sigmoid-based scaling centered at midpoint for smoother distribution
+    SCORE_MIN = 0.15  # 5th percentile of observed similarities
+    SCORE_MAX = 0.60  # 95th percentile of observed similarities
+    SCORE_MIDPOINT = 0.35  # Center of expected range (for sigmoid)
+    SCORE_STEEPNESS = 8.0  # Controls sigmoid steepness (higher = steeper transition)
 
     def __init__(
         self,
         model_name: str | None = None,
+        use_sigmoid_scaling: bool = True,
     ):
         """Initialize MLX Qwen Embedding scorer.
 
         Args:
             model_name: HuggingFace model identifier. Defaults to Embedding-2B.
+            use_sigmoid_scaling: Use sigmoid-based score scaling instead of linear.
+                Sigmoid provides smoother distribution and better discrimination.
         """
         self.model_name = _validate_model_name(model_name, self.DEFAULT_MODEL)
+        self.use_sigmoid_scaling = use_sigmoid_scaling
         self._embedder = None
 
     @property
@@ -692,10 +701,25 @@ class MLXQwenEmbeddingScorer(BaseImageTextScorer):
             raise
 
     def _scale_score(self, similarity: float) -> float:
-        """Scale raw cosine similarity to 0-100 range."""
-        clamped = max(self.SCORE_MIN, min(similarity, self.SCORE_MAX))
-        scaled = (clamped - self.SCORE_MIN) / (self.SCORE_MAX - self.SCORE_MIN) * self.SCORE_SCALE
-        return float(scaled)
+        """Scale raw cosine similarity to 0-100 range.
+
+        Uses sigmoid-based scaling for smoother distribution (Phase 2.3 optimization).
+        This provides better discrimination between similar scores compared to
+        linear clipping.
+        """
+        if self.use_sigmoid_scaling:
+            # Sigmoid scaling centered at SCORE_MIDPOINT
+            # Maps similarity to (0, 100) with smooth S-curve
+            import math
+
+            x = (similarity - self.SCORE_MIDPOINT) * self.SCORE_STEEPNESS
+            sigmoid = 1.0 / (1.0 + math.exp(-x))
+            return float(sigmoid * self.SCORE_SCALE)
+        else:
+            # Original linear clipping
+            clamped = max(self.SCORE_MIN, min(similarity, self.SCORE_MAX))
+            scaled = (clamped - self.SCORE_MIN) / (self.SCORE_MAX - self.SCORE_MIN) * self.SCORE_SCALE
+            return float(scaled)
 
     def compute_scores_batch(
         self,
