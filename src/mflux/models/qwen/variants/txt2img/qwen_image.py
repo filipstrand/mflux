@@ -55,6 +55,7 @@ class QwenImage(nn.Module):
         image_strength: float | None = None,
         scheduler: str = "linear",
         negative_prompt: str | None = None,
+        guidance_rescale: float = 0.7,
     ) -> GeneratedImage:
         # HIGH PRIORITY FIX: Validate guidance parameter range to prevent numerical instability
         if not (0.0 <= guidance <= 50.0):
@@ -182,8 +183,8 @@ class QwenImage(nn.Module):
                 # Split results back to positive and negative
                 noise, noise_negative = mx.split(batched_noise, 2, axis=0)
 
-                # Compute guided noise
-                guided_noise = QwenImage.compute_guided_noise(noise, noise_negative, config.guidance)
+                # Compute guided noise with optional rescaling
+                guided_noise = QwenImage.compute_guided_noise(noise, noise_negative, config.guidance, guidance_rescale)
 
                 # 5.t Take one denoise step
                 latents = config.scheduler.step(noise=guided_noise, timestep=t, latents=latents)
@@ -235,20 +236,69 @@ class QwenImage(nn.Module):
         noise: mx.array,
         noise_negative: mx.array,
         guidance: float,
+        rescale_cfg: float = 0.7,
     ) -> mx.array:
-        combined = noise_negative + guidance * (noise - noise_negative)
-        # CRITICAL FIX: Prevent numerical instability in rescaling
-        # Use dtype-appropriate epsilon and safe division with degenerate case handling
-        eps = 1e-6 if noise.dtype == mx.float32 else 1e-4
-        cond_norm = mx.sqrt(mx.sum(noise * noise, axis=-1, keepdims=True) + eps)
-        noise_norm = mx.sqrt(mx.sum(combined * combined, axis=-1, keepdims=True) + eps)
+        """Compute classifier-free guidance with optional rescaling.
 
-        # Prevent both division by near-zero AND multiplication overflow
-        # If noise_norm is too small, use identity scaling (no rescaling)
-        ratio = mx.where(
-            noise_norm > eps * 10,  # Only rescale if noise_norm is sufficiently large
-            cond_norm / noise_norm,
-            mx.ones_like(noise_norm),  # Identity scaling for degenerate case
+        CFG rescaling helps reduce color oversaturation at high guidance values
+        by blending the rescaled output with the original output.
+
+        Args:
+            noise: Positive (conditioned) noise prediction
+            noise_negative: Negative (unconditioned) noise prediction
+            guidance: CFG guidance scale (typically 3.5-7.5)
+            rescale_cfg: Rescale factor in [0, 1]. 0 = no rescale, 1 = full rescale.
+                        Default 0.7 provides good balance. Set to 0 to disable.
+
+        Returns:
+            Guided and optionally rescaled noise prediction
+
+        Reference:
+            "Common Diffusion Noise Schedules and Sample Steps are Flawed"
+            https://arxiv.org/abs/2305.08891
+        """
+        # Standard CFG combination
+        combined = noise_negative + guidance * (noise - noise_negative)
+
+        # Skip rescaling if disabled
+        if rescale_cfg <= 0.0:
+            return combined
+
+        # Numerical stability constants for CFG rescaling
+        # float32: 1e-6 is ~10x sqrt(machine epsilon) for safe division
+        # float16/bfloat16: 1e-4 compensates for reduced mantissa precision (7-10 bits vs 23)
+        CFG_EPSILON_FP32 = 1e-6
+        CFG_EPSILON_FP16 = 1e-4
+        SAFE_THRESHOLD_MULTIPLIER = 10  # Margin above epsilon for safe division
+
+        eps = CFG_EPSILON_FP32 if noise.dtype == mx.float32 else CFG_EPSILON_FP16
+        safe_threshold = eps * SAFE_THRESHOLD_MULTIPLIER
+
+        # Calculate RMS (root mean square) for rescaling
+        # Using mean(x²) instead of full variance for efficiency
+        noise_std = mx.sqrt(mx.mean(noise * noise, axis=-1, keepdims=True) + eps)
+        combined_std = mx.sqrt(mx.mean(combined * combined, axis=-1, keepdims=True) + eps)
+
+        # Calculate rescale factor to match original noise statistics
+        # Use 1.0 when combined_std is too small to avoid numerical issues
+        rescale_factor = mx.where(
+            combined_std > safe_threshold,
+            noise_std / combined_std,
+            mx.ones_like(combined_std),
         )
-        noise = combined * ratio
-        return noise
+
+        # Guard against NaN/Inf from edge cases (e.g., all-zero inputs)
+        rescale_factor = mx.where(
+            mx.isnan(rescale_factor) | mx.isinf(rescale_factor),
+            mx.ones_like(rescale_factor),
+            rescale_factor,
+        )
+
+        # Apply rescaling with blend factor
+        rescaled = combined * rescale_factor
+
+        # Blend between original CFG and rescaled CFG
+        # rescale_cfg=0: original CFG, rescale_cfg=1: full rescale
+        result = rescale_cfg * rescaled + (1.0 - rescale_cfg) * combined
+
+        return result

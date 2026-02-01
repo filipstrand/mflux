@@ -44,6 +44,12 @@ class QwenWeightMapping(WeightMapping):
                 to_pattern="time_text_embed.timestep_embedder.linear_2.bias",
                 from_pattern=["time_text_embed.timestep_embedder.linear_2.bias"],
             ),
+            # Optional: For Qwen-Image-Layered with use_additional_t_cond=true
+            WeightTarget(
+                to_pattern="time_text_embed.addition_t_embedding.weight",
+                from_pattern=["time_text_embed.addition_t_embedding.weight"],
+                required=False,
+            ),
             WeightTarget(
                 to_pattern="norm_out.linear.weight",
                 from_pattern=["norm_out.linear.weight"],

@@ -1,3 +1,4 @@
+from .dpm_plus_plus_2m_karras import DPMPlusPlusSingleStepKarrasScheduler, DPMPlusPlusTwoMKarrasScheduler
 from .flow_match_euler_discrete_scheduler import FlowMatchEulerDiscreteScheduler
 from .linear_scheduler import LinearScheduler
 from .seedvr2_euler_scheduler import SeedVR2EulerScheduler
@@ -6,6 +7,8 @@ __all__ = [
     "LinearScheduler",
     "FlowMatchEulerDiscreteScheduler",
     "SeedVR2EulerScheduler",
+    "DPMPlusPlusTwoMKarrasScheduler",
+    "DPMPlusPlusSingleStepKarrasScheduler",
 ]
 
 
@@ -25,6 +28,13 @@ SCHEDULER_REGISTRY = {
     "FlowMatchEulerDiscreteScheduler": FlowMatchEulerDiscreteScheduler,
     "seedvr2_euler": SeedVR2EulerScheduler,
     "SeedVR2EulerScheduler": SeedVR2EulerScheduler,
+    # DPM++ schedulers for improved quality
+    "dpm++_2m_karras": DPMPlusPlusTwoMKarrasScheduler,
+    "dpm_plus_plus_2m_karras": DPMPlusPlusTwoMKarrasScheduler,
+    "DPMPlusPlusTwoMKarrasScheduler": DPMPlusPlusTwoMKarrasScheduler,
+    "dpm++_1m_karras": DPMPlusPlusSingleStepKarrasScheduler,
+    "dpm_plus_plus_1m_karras": DPMPlusPlusSingleStepKarrasScheduler,
+    "DPMPlusPlusSingleStepKarrasScheduler": DPMPlusPlusSingleStepKarrasScheduler,
 }
 
 
