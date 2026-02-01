@@ -8,6 +8,7 @@ Key differences from 7B model:
 - hidden_size: 2048 (vs 3584)
 - num_attention_heads: 16 (vs 28)
 - intermediate_size: 8192 (vs 18944)
+- Vision: 24 blocks (vs 32), LayerNorm (vs RMSNorm)
 """
 
 import mlx.core as mx
@@ -15,9 +16,9 @@ from mlx import nn
 
 from mflux.models.qwen.model.qwen_text_encoder.qwen_rms_norm import QwenRMSNorm
 from mflux.models.qwen.model.qwen_text_encoder.qwen_rope import QwenRotaryEmbedding
-from mflux.models.qwen.model.qwen_text_encoder.qwen_vision_transformer import VisionTransformer
 
 from .qwen3_vl_2b_encoder_layer import Qwen3VL2BEncoderLayer
+from .qwen3_vl_vision import Qwen3VL2BVisionTransformer
 
 
 class Qwen3VL2BEncoder(nn.Module):
@@ -27,21 +28,22 @@ class Qwen3VL2BEncoder(nn.Module):
     The vision transformer is optional and loaded separately.
     """
 
-    # 2B model configuration
-    VOCAB_SIZE = 152064
+    # 2B model configuration (from HuggingFace config.json)
+    VOCAB_SIZE = 151936  # Actual vocab size from weights
     HIDDEN_SIZE = 2048
     NUM_HIDDEN_LAYERS = 28
     NUM_ATTENTION_HEADS = 16
-    NUM_KEY_VALUE_HEADS = 4
+    NUM_KEY_VALUE_HEADS = 8  # 8 (not 4) - from k_proj shape (1024, 2048)
     INTERMEDIATE_SIZE = 8192
     MAX_POSITION_EMBEDDINGS = 128000
     ROPE_THETA = 1000000.0
     RMS_NORM_EPS = 1e-6
 
-    # Vision configuration (same as 7B)
-    VISION_EMBED_DIM = 1280
-    VISION_DEPTH = 32
+    # Vision configuration for 2B models
+    VISION_EMBED_DIM = 1024  # 2B uses 1024 (7B uses 1280)
+    VISION_DEPTH = 24  # 2B uses 24 blocks (not 32)
     VISION_NUM_HEADS = 16
+    VISION_MLP_RATIO = 4.0  # Standard 4x (not SwiGLU)
 
     def __init__(
         self,
@@ -101,17 +103,16 @@ class Qwen3VL2BEncoder(nn.Module):
         This also loads stored vision weights if available.
         """
         if self.visual is None and self._include_vision:
-            self.visual = VisionTransformer(
-                patch_size=14,
+            self.visual = Qwen3VL2BVisionTransformer(
+                patch_size=16,
                 temporal_patch_size=2,
                 in_channels=3,
                 embed_dim=self.VISION_EMBED_DIM,
                 depth=self.VISION_DEPTH,
                 num_heads=self.VISION_NUM_HEADS,
+                mlp_ratio=self.VISION_MLP_RATIO,
                 hidden_size=self.hidden_size,
                 spatial_merge_size=2,
-                window_size=112,
-                fullatt_block_indexes=[7, 15, 23, 31],
             )
 
             # Load stored vision weights if available

@@ -36,12 +36,12 @@ MAX_LENGTH = 10240  # Reranker uses longer context
 class Qwen3VLRerankerConfig:
     """Configuration for Qwen3-VL Reranker model."""
 
-    # Model architecture (2B variant)
-    vocab_size: int = 152064
+    # Model architecture (2B variant - from HuggingFace weights)
+    vocab_size: int = 151936  # Actual from embed_tokens.weight
     hidden_size: int = 2048
     num_hidden_layers: int = 28
     num_attention_heads: int = 16
-    num_key_value_heads: int = 4
+    num_key_value_heads: int = 8  # 8, not 4 - from k_proj shape
     intermediate_size: int = 8192
     max_position_embeddings: int = 128000
     rope_theta: float = 1000000.0
@@ -355,7 +355,7 @@ class Qwen3VLReranker:
         else:
             videos, video_metadata = None, None
 
-        # Tokenize with truncation handling
+        # Tokenize with truncation handling (must use "pt" as processor doesn't support "np" directly)
         inputs = self.processor(
             text=text,
             images=images,
@@ -365,20 +365,20 @@ class Qwen3VLReranker:
             max_length=self.config.max_length,
             padding=True,
             do_resize=False,
-            return_tensors="np",
+            return_tensors="pt",
             **video_kwargs,
         )
 
-        # Convert to MLX arrays
+        # Convert PyTorch tensors to MLX arrays via numpy
         result = {
-            "input_ids": mx.array(inputs["input_ids"]),
-            "attention_mask": mx.array(inputs["attention_mask"]),
+            "input_ids": mx.array(inputs["input_ids"].numpy()),
+            "attention_mask": mx.array(inputs["attention_mask"].numpy()),
         }
 
         if "pixel_values" in inputs and inputs["pixel_values"] is not None:
-            result["pixel_values"] = mx.array(inputs["pixel_values"])
+            result["pixel_values"] = mx.array(inputs["pixel_values"].numpy())
         if "image_grid_thw" in inputs and inputs["image_grid_thw"] is not None:
-            result["image_grid_thw"] = mx.array(inputs["image_grid_thw"])
+            result["image_grid_thw"] = mx.array(inputs["image_grid_thw"].numpy())
 
         return result
 

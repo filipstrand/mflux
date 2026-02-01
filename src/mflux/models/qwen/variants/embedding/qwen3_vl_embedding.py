@@ -37,20 +37,20 @@ MAX_LENGTH = 8192  # Maximum sequence length in tokens
 class Qwen3VLEmbeddingConfig:
     """Configuration for Qwen3-VL Embedding model."""
 
-    # Model architecture (2B variant)
-    vocab_size: int = 152064
+    # Model architecture (2B variant - from HuggingFace weights)
+    vocab_size: int = 151936  # Actual from embed_tokens.weight
     hidden_size: int = 2048
     num_hidden_layers: int = 28
     num_attention_heads: int = 16
-    num_key_value_heads: int = 4
+    num_key_value_heads: int = 8  # 8, not 4 - from k_proj shape (1024, 2048)
     intermediate_size: int = 8192
     max_position_embeddings: int = 128000
     rope_theta: float = 1000000.0
     rms_norm_eps: float = 1e-6
 
-    # Vision configuration
-    vision_embed_dim: int = 1280
-    vision_depth: int = 32
+    # Vision configuration (2B specific)
+    vision_embed_dim: int = 1024  # 2B uses 1024 (not 1280)
+    vision_depth: int = 24  # 2B uses 24 blocks (not 32)
     vision_num_heads: int = 16
 
     # Inference configuration
@@ -322,7 +322,7 @@ class Qwen3VLEmbedder:
         else:
             videos, video_metadata = None, None
 
-        # Tokenize
+        # Tokenize (must use "pt" as processor doesn't support "np" directly)
         inputs = self.processor(
             text=text,
             images=images,
@@ -332,20 +332,20 @@ class Qwen3VLEmbedder:
             max_length=self.config.max_length,
             padding=True,
             do_resize=False,
-            return_tensors="np",
+            return_tensors="pt",
             **video_kwargs,
         )
 
-        # Convert to MLX arrays
+        # Convert PyTorch tensors to MLX arrays via numpy
         result = {
-            "input_ids": mx.array(inputs["input_ids"]),
-            "attention_mask": mx.array(inputs["attention_mask"]),
+            "input_ids": mx.array(inputs["input_ids"].numpy()),
+            "attention_mask": mx.array(inputs["attention_mask"].numpy()),
         }
 
         if "pixel_values" in inputs and inputs["pixel_values"] is not None:
-            result["pixel_values"] = mx.array(inputs["pixel_values"])
+            result["pixel_values"] = mx.array(inputs["pixel_values"].numpy())
         if "image_grid_thw" in inputs and inputs["image_grid_thw"] is not None:
-            result["image_grid_thw"] = mx.array(inputs["image_grid_thw"])
+            result["image_grid_thw"] = mx.array(inputs["image_grid_thw"].numpy())
 
         return result
 

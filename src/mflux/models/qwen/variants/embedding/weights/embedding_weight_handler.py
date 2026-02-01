@@ -115,30 +115,45 @@ class EmbeddingWeightHandler:
         weights: dict[str, mx.array],
         quantize_vision: bool,
     ) -> None:
-        """Map HuggingFace weights to MLX model structure."""
+        """Map HuggingFace weights to MLX model structure.
+
+        Qwen3-VL uses prefixes:
+        - model.language_model.embed_tokens.weight
+        - model.language_model.layers.{n}.*
+        - model.language_model.norm.weight
+        - model.visual.*
+        """
         # Get the encoder from the model
         encoder = model.encoder
 
-        # Mapping patterns
-        # HF format: model.embed_tokens.weight, model.layers.{n}.*, model.norm.weight
-        # MLX format: encoder.embed_tokens.weight, encoder.layers.{n}.*, encoder.norm.weight
+        # Detect weight prefix (Qwen3-VL uses model.language_model.*)
+        if "model.language_model.embed_tokens.weight" in weights:
+            lang_prefix = "model.language_model"
+            vision_prefix = "model.visual"
+        elif "model.embed_tokens.weight" in weights:
+            lang_prefix = "model"
+            vision_prefix = "visual"
+        else:
+            raise ValueError("Unknown weight format - cannot find embed_tokens.weight")
 
         loaded_count = 0
         skipped_count = 0
 
         # Embed tokens
-        if "model.embed_tokens.weight" in weights:
-            encoder.embed_tokens.weight = weights["model.embed_tokens.weight"]
+        embed_key = f"{lang_prefix}.embed_tokens.weight"
+        if embed_key in weights:
+            encoder.embed_tokens.weight = weights[embed_key]
             loaded_count += 1
 
         # Final norm
-        if "model.norm.weight" in weights:
-            encoder.norm.weight = weights["model.norm.weight"]
+        norm_key = f"{lang_prefix}.norm.weight"
+        if norm_key in weights:
+            encoder.norm.weight = weights[norm_key]
             loaded_count += 1
 
         # Transformer layers
         for layer_idx, layer in enumerate(encoder.layers):
-            prefix = f"model.layers.{layer_idx}"
+            prefix = f"{lang_prefix}.layers.{layer_idx}"
 
             # Layer norms
             if f"{prefix}.input_layernorm.weight" in weights:
@@ -148,15 +163,12 @@ class EmbeddingWeightHandler:
                 layer.post_attention_layernorm.weight = weights[f"{prefix}.post_attention_layernorm.weight"]
                 loaded_count += 1
 
-            # Attention
+            # Attention (Qwen3-VL has no bias, has QK norms)
             attn = layer.self_attn
             attn_mappings = [
                 ("q_proj.weight", "q_proj", "weight"),
-                ("q_proj.bias", "q_proj", "bias"),
                 ("k_proj.weight", "k_proj", "weight"),
-                ("k_proj.bias", "k_proj", "bias"),
                 ("v_proj.weight", "v_proj", "weight"),
-                ("v_proj.bias", "v_proj", "bias"),
                 ("o_proj.weight", "o_proj", "weight"),
             ]
 
@@ -165,6 +177,14 @@ class EmbeddingWeightHandler:
                 if hf_key in weights:
                     setattr(getattr(attn, attr_name), weight_name, weights[hf_key])
                     loaded_count += 1
+
+            # QK normalization (Qwen3-VL specific)
+            if hasattr(attn, "q_norm") and f"{prefix}.self_attn.q_norm.weight" in weights:
+                attn.q_norm.weight = weights[f"{prefix}.self_attn.q_norm.weight"]
+                loaded_count += 1
+            if hasattr(attn, "k_norm") and f"{prefix}.self_attn.k_norm.weight" in weights:
+                attn.k_norm.weight = weights[f"{prefix}.self_attn.k_norm.weight"]
+                loaded_count += 1
 
             # MLP
             mlp = layer.mlp
@@ -184,13 +204,17 @@ class EmbeddingWeightHandler:
         # Store vision weights for later loading
         vision_weights = {}
         for key, value in weights.items():
-            if key.startswith("visual."):
-                vision_weights[key] = value
-                skipped_count += 1  # Counted as skipped until init_vision
+            if key.startswith(f"{vision_prefix}."):
+                # Normalize to "visual." prefix for load_vision_weights_to_encoder
+                normalized_key = "visual." + key[len(vision_prefix) + 1 :]
+                vision_weights[normalized_key] = value
+                skipped_count += 1
 
         # Store vision weights on encoder for later
         encoder._vision_weights = vision_weights
         encoder._quantize_vision = quantize_vision
+        # Store embed_tokens for weight-tied lm_head
+        encoder._embed_tokens_weight = weights.get(embed_key)
 
         logger.info(f"Loaded {loaded_count} weights, {skipped_count} vision weights pending")
 
@@ -202,12 +226,29 @@ class EmbeddingWeightHandler:
         """Load the binary classification score weight for reranker.
 
         The score weight is computed as: lm_head[yes_token] - lm_head[no_token]
-        """
-        lm_head_key = "lm_head.weight"
-        if lm_head_key not in weights:
-            raise ValueError("lm_head.weight not found - required for reranker")
 
-        lm_head = weights[lm_head_key]
+        Qwen3-VL uses weight tying (tie_word_embeddings=True), so lm_head
+        shares weights with embed_tokens.
+        """
+        # Try different possible locations for lm_head weights
+        lm_head = None
+        for key in [
+            "lm_head.weight",
+            "model.language_model.lm_head.weight",
+            # Weight tying: lm_head = embed_tokens
+            "model.language_model.embed_tokens.weight",
+            "model.embed_tokens.weight",
+        ]:
+            if key in weights:
+                lm_head = weights[key]
+                logger.debug(f"Using {key} as lm_head for reranker scoring")
+                break
+
+        if lm_head is None:
+            raise ValueError(
+                "Could not find lm_head or embed_tokens weight for reranker. "
+                "Available keys: " + ", ".join(list(weights.keys())[:5]) + "..."
+            )
 
         # Get yes/no token IDs from tokenizer
         try:
@@ -218,15 +259,15 @@ class EmbeddingWeightHandler:
             no_id = tokenizer.encode("no", add_special_tokens=False)[0]
         except (ImportError, OSError, KeyError, IndexError) as e:
             logger.warning(f"Could not get token IDs from tokenizer: {e}")
-            # Fallback to common token IDs (Qwen vocabulary)
-            # These IDs are specific to Qwen tokenizers - validate model compatibility
+            # Fallback to common token IDs (Qwen3 vocabulary)
+            # These IDs are specific to Qwen3 tokenizers - validate model compatibility
             if not self.model_name_or_path.startswith("Qwen"):
                 logger.warning(
                     f"Using hardcoded Qwen token IDs for non-Qwen model '{self.model_name_or_path}'. "
                     "This may produce incorrect reranker scores."
                 )
-            yes_id = 9891  # "yes" in Qwen tokenizer
-            no_id = 2201  # "no" in Qwen tokenizer
+            yes_id = 9454  # "yes" in Qwen3 tokenizer
+            no_id = 2152  # "no" in Qwen3 tokenizer
 
         # Compute score weight: yes - no
         score_weight = lm_head[yes_id] - lm_head[no_id]
@@ -240,6 +281,12 @@ def load_vision_weights_to_encoder(encoder: Any) -> None:
     """Load stored vision weights into the encoder's vision transformer.
 
     This should be called after encoder.init_vision().
+
+    Qwen3-VL-2B vision architecture:
+    - 24 blocks with LayerNorm (not RMSNorm), standard MLP (not SwiGLU)
+    - Patch embed: conv3d with bias
+    - Block MLP: linear_fc1 -> GELU -> linear_fc2
+    - Merger: norm -> linear_fc1 -> GELU -> linear_fc2
     """
     if not hasattr(encoder, "_vision_weights") or encoder._vision_weights is None:
         logger.warning("No vision weights stored - skipping vision weight loading")
@@ -249,27 +296,27 @@ def load_vision_weights_to_encoder(encoder: Any) -> None:
         raise RuntimeError("Vision transformer not initialized. Call init_vision() first.")
 
     weights = encoder._vision_weights
-    # Note: quantize_vision flag is stored but not yet implemented
-    # quantize = getattr(encoder, "_quantize_vision", False)
     loaded_count = 0
 
     visual = encoder.visual
 
-    # Patch embedding
+    # Patch embedding (with bias)
     if "visual.patch_embed.proj.weight" in weights:
-        # Transpose for MLX conv
+        # Transpose for MLX conv3d: HF [out, in, D, H, W] -> MLX [out, D, H, W, in]
         w = weights["visual.patch_embed.proj.weight"]
-        # HF: [out, in, T, H, W] -> MLX: [out, H, W, T, in]
         if len(w.shape) == 5:
-            w = mx.transpose(w, (0, 3, 4, 2, 1))
+            w = mx.transpose(w, (0, 2, 3, 4, 1))
         visual.patch_embed.proj.weight = w
+        loaded_count += 1
+    if "visual.patch_embed.proj.bias" in weights:
+        visual.patch_embed.proj.bias = weights["visual.patch_embed.proj.bias"]
         loaded_count += 1
 
     # Vision blocks
     for block_idx, block in enumerate(visual.blocks):
         prefix = f"visual.blocks.{block_idx}"
 
-        # QKV
+        # Attention QKV
         if f"{prefix}.attn.qkv.weight" in weights:
             block.attn.qkv.weight = weights[f"{prefix}.attn.qkv.weight"]
             loaded_count += 1
@@ -285,46 +332,53 @@ def load_vision_weights_to_encoder(encoder: Any) -> None:
             block.attn.proj.bias = weights[f"{prefix}.attn.proj.bias"]
             loaded_count += 1
 
-        # MLP
-        mlp_mappings = [
-            ("mlp.gate_proj.weight", "gate_proj", "weight"),
-            ("mlp.gate_proj.bias", "gate_proj", "bias"),
-            ("mlp.up_proj.weight", "up_proj", "weight"),
-            ("mlp.up_proj.bias", "up_proj", "bias"),
-            ("mlp.down_proj.weight", "down_proj", "weight"),
-            ("mlp.down_proj.bias", "down_proj", "bias"),
-        ]
+        # MLP (standard 2-layer: linear_fc1 -> linear_fc2)
+        if f"{prefix}.mlp.linear_fc1.weight" in weights:
+            block.mlp.linear_fc1.weight = weights[f"{prefix}.mlp.linear_fc1.weight"]
+            loaded_count += 1
+        if f"{prefix}.mlp.linear_fc1.bias" in weights:
+            block.mlp.linear_fc1.bias = weights[f"{prefix}.mlp.linear_fc1.bias"]
+            loaded_count += 1
+        if f"{prefix}.mlp.linear_fc2.weight" in weights:
+            block.mlp.linear_fc2.weight = weights[f"{prefix}.mlp.linear_fc2.weight"]
+            loaded_count += 1
+        if f"{prefix}.mlp.linear_fc2.bias" in weights:
+            block.mlp.linear_fc2.bias = weights[f"{prefix}.mlp.linear_fc2.bias"]
+            loaded_count += 1
 
-        for hf_suffix, attr_name, weight_name in mlp_mappings:
-            hf_key = f"{prefix}.{hf_suffix}"
-            if hf_key in weights:
-                setattr(getattr(block.mlp, attr_name), weight_name, weights[hf_key])
-                loaded_count += 1
-
-        # Layer norms
+        # Layer norms (with bias - LayerNorm not RMSNorm)
         if f"{prefix}.norm1.weight" in weights:
             block.norm1.weight = weights[f"{prefix}.norm1.weight"]
+            loaded_count += 1
+        if f"{prefix}.norm1.bias" in weights:
+            block.norm1.bias = weights[f"{prefix}.norm1.bias"]
             loaded_count += 1
         if f"{prefix}.norm2.weight" in weights:
             block.norm2.weight = weights[f"{prefix}.norm2.weight"]
             loaded_count += 1
+        if f"{prefix}.norm2.bias" in weights:
+            block.norm2.bias = weights[f"{prefix}.norm2.bias"]
+            loaded_count += 1
 
-    # Merger
+    # Merger (Qwen3-VL-2B uses norm + linear_fc1 + linear_fc2)
     merger = visual.merger
-    if "visual.merger.ln_q.weight" in weights:
-        merger.ln_q.weight = weights["visual.merger.ln_q.weight"]
+    if "visual.merger.norm.weight" in weights:
+        merger.norm.weight = weights["visual.merger.norm.weight"]
         loaded_count += 1
-    if "visual.merger.mlp.0.weight" in weights:
-        merger.mlp_0.weight = weights["visual.merger.mlp.0.weight"]
+    if "visual.merger.norm.bias" in weights:
+        merger.norm.bias = weights["visual.merger.norm.bias"]
         loaded_count += 1
-    if "visual.merger.mlp.0.bias" in weights:
-        merger.mlp_0.bias = weights["visual.merger.mlp.0.bias"]
+    if "visual.merger.linear_fc1.weight" in weights:
+        merger.linear_fc1.weight = weights["visual.merger.linear_fc1.weight"]
         loaded_count += 1
-    if "visual.merger.mlp.2.weight" in weights:
-        merger.mlp_1.weight = weights["visual.merger.mlp.2.weight"]
+    if "visual.merger.linear_fc1.bias" in weights:
+        merger.linear_fc1.bias = weights["visual.merger.linear_fc1.bias"]
         loaded_count += 1
-    if "visual.merger.mlp.2.bias" in weights:
-        merger.mlp_1.bias = weights["visual.merger.mlp.2.bias"]
+    if "visual.merger.linear_fc2.weight" in weights:
+        merger.linear_fc2.weight = weights["visual.merger.linear_fc2.weight"]
+        loaded_count += 1
+    if "visual.merger.linear_fc2.bias" in weights:
+        merger.linear_fc2.bias = weights["visual.merger.linear_fc2.bias"]
         loaded_count += 1
 
     logger.info(f"Loaded {loaded_count} vision weights")
