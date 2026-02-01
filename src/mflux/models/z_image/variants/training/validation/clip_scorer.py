@@ -100,7 +100,7 @@ class CLIPScorer:
             self._model = CLIPModel.from_pretrained(self.model_name)
 
             # Move to evaluation mode
-            self._model.eval_mode = True
+            self._model.train(False)
 
             logger.info("CLIP model loaded successfully")
 
