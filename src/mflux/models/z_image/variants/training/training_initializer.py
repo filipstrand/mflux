@@ -69,7 +69,7 @@ class ZImageTrainingInitializer:
 
         # Load the model
         print("Loading Z-Image model...")
-        model_config = ModelConfig.z_image()
+        model_config = ModelConfig.z_image_base()
         model = ZImageBase(
             model_config=model_config,
             quantize=training_spec.quantize,

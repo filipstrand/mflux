@@ -56,7 +56,7 @@ class ZImageBase(nn.Module):
         super().__init__()
         # Use Z-Image base config (not turbo)
         if model_config is None:
-            model_config = ModelConfig.z_image()
+            model_config = ModelConfig.z_image_base()
 
         ZImageInitializer.init(
             model=self,

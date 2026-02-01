@@ -123,14 +123,20 @@ class ZImageLoRALayers:
         block = getattr(transformer, block_attr)[block_idx]
         parts = layer_type.split(".")
 
-        # Navigate to parent
+        # Navigate to parent (handle numeric indices in path)
         current = block
         for part in parts[:-1]:
-            current = getattr(current, part)
+            if part.isdigit():
+                current = current[int(part)]
+            else:
+                current = getattr(current, part)
 
-        # Set the final attribute
+        # Set the final attribute (handle numeric index for list assignment)
         final_attr = parts[-1]
-        if is_list:
+        if final_attr.isdigit():
+            # List index assignment (e.g., to_out[0])
+            current[int(final_attr)] = lora_layer
+        elif is_list:
             getattr(current, final_attr)[0] = lora_layer
         else:
             setattr(current, final_attr, lora_layer)
@@ -141,14 +147,18 @@ class ZImageLoRALayers:
 
         Args:
             obj: The root object to traverse
-            attr_path: Dot-separated attribute path (e.g., "attention.to_q")
+            attr_path: Dot-separated attribute path (e.g., "attention.to_q" or "attention.to_out.0")
 
         Returns:
             The attribute value at the specified path
         """
         attrs = attr_path.split(".")
         for attr in attrs:
-            obj = getattr(obj, attr)
+            # Handle numeric indices for list access (e.g., "to_out.0")
+            if attr.isdigit():
+                obj = obj[int(attr)]
+            else:
+                obj = getattr(obj, attr)
         return obj
 
     @staticmethod
