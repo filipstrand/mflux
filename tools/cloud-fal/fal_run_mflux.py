@@ -87,8 +87,6 @@ class MFluxCudaModel(
         import time
         from pathlib import Path
 
-        from mflux.config.config import Config
-
         image = self.flux.generate_image(
             seed=input.seed,
             prompt=input.prompt,
