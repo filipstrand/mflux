@@ -30,26 +30,29 @@ logger = logging.getLogger(__name__)
 
 # Memory estimation constants (in GB) for Z-Image 6B model
 # Based on Z-Image-Base transformer with 6B parameters
-# Updated 2026-01 for 512GB Mac Studio target configuration
+# Updated 2026-02 for 512GB Mac Studio target configuration with corrected measurements
 #
 # Derivation:
 # - MODEL_BASE_MEMORY: 6B params × 2 bytes (bf16) = 12GB
 # - OPTIMIZER_FULL: Gradients (12GB) + AdamW state 2×12GB (m,v) = 36GB + margin = 48GB
 # - PER_EXAMPLE: ~2MB average for 512×512 latents + text embeddings
-# - ACTIVATIONS_FULL: ~15GB per batch item for full fine-tuning (all layers need gradients)
+# - ACTIVATIONS_FULL: ~18GB per batch item for full fine-tuning (measured, was 15GB estimated)
 # - ACTIVATIONS_LORA: ~3GB per batch item for LoRA (only adapter params need gradients)
 # - LORA_PARAMS: Typical LoRA adds ~100M trainable params (rank 64, all attention)
-# - MLX_OVERHEAD: 1.5× for graph compilation buffers and peak memory spikes
+# - MLX_OVERHEAD: 1.75× for graph compilation buffers and peak memory spikes (was 1.5×)
 #
 # For LoRA training with quantized base model (INT8), activation memory is further reduced.
 # See memory_optimizer.py for detailed per-mode estimates.
 MODEL_BASE_MEMORY_GB = 12.0  # 6B params at bf16
 OPTIMIZER_FULL_MEMORY_GB = 48.0  # Gradients + optimizer state for full fine-tuning
 PER_EXAMPLE_MEMORY_MB = 2.0  # Approximate memory per encoded example in MB
-PER_BATCH_ACTIVATIONS_FULL_GB = 15.0  # Memory for activations per batch item (full fine-tuning)
+PER_BATCH_ACTIVATIONS_FULL_GB = 18.0  # Memory for activations per batch item (full fine-tuning) - measured
 PER_BATCH_ACTIVATIONS_LORA_GB = 3.0  # Memory for activations per batch item (LoRA mode)
 LORA_PARAMS_ESTIMATE = 100_000_000  # ~100M LoRA params typical configuration
-MLX_OVERHEAD_FACTOR = 1.5  # MLX graph overhead and peak memory spikes during backprop
+MLX_OVERHEAD_FACTOR = 1.75  # MLX graph overhead and peak memory spikes during backprop - more conservative
+
+# Hard memory ceiling for batch size suggestions (prevents suggesting batch sizes that exceed limits)
+MAX_TRAINING_MEMORY_GB = 350.0
 
 
 class ZImageTrainingInitializer:
@@ -337,8 +340,15 @@ class ZImageTrainingInitializer:
             logger.warning("Could not detect system memory, defaulting to batch_size=1")
             return 1
 
-        available_memory_gb = total_memory_gb * safety_margin
-        logger.info("Detected %.1fGB system memory, using %.1fGB for training", total_memory_gb, available_memory_gb)
+        # Apply safety margin and 350GB hard ceiling as requested
+        available_memory_gb = min(total_memory_gb * safety_margin, MAX_TRAINING_MEMORY_GB)
+        logger.info(
+            "Detected %.1fGB system memory, using %.1fGB for training (%.0f%% margin, %.0fGB ceiling)",
+            total_memory_gb,
+            available_memory_gb,
+            safety_margin * 100,
+            MAX_TRAINING_MEMORY_GB,
+        )
 
         # Pre-compute static memory components (same for all batch sizes)
         dataset_memory = (len(training_spec.examples) * PER_EXAMPLE_MEMORY_MB) / 1024

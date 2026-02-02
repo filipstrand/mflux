@@ -13,10 +13,11 @@ from mflux.models.z_image.variants.training.state.zip_util import ZipUtil
 logger = logging.getLogger(__name__)
 
 # Maximum number of examples to use for validation loss computation.
-# Kept small (10) to avoid memory pressure during training validation.
-# For systems with more memory (512GB+), this could be increased to 50-100
-# for more representative validation metrics at the cost of longer validation time.
-VALIDATION_BATCH_MAX_SIZE = 10
+# Reduced from 10 to 4 to avoid memory pressure during training validation.
+# Each validation example uses ~18GB for activations during forward pass,
+# so 4 examples = ~72GB spike vs 10 examples = ~180GB spike.
+# This keeps validation within safe memory bounds on 512GB systems.
+VALIDATION_BATCH_MAX_SIZE = 4
 
 if TYPE_CHECKING:
     from mflux.models.z_image.variants.training.dataset.aspect_ratio_sampler import AspectRatioSampler

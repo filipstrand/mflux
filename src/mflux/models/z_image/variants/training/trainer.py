@@ -27,6 +27,7 @@ from mflux.models.z_image.variants.training.modes.full_trainer import FullTraine
 from mflux.models.z_image.variants.training.modes.lora_trainer import LoRATrainer
 from mflux.models.z_image.variants.training.optimization.compiled_train_step import CompiledTrainStep
 from mflux.models.z_image.variants.training.optimization.deferred_sync import create_synchronizer
+from mflux.models.z_image.variants.training.optimization.memory_guard import create_memory_guard
 from mflux.models.z_image.variants.training.optimization.memory_monitor import create_memory_monitor
 from mflux.models.z_image.variants.training.optimization.z_image_loss import ZImageLoss
 from mflux.models.z_image.variants.training.state.training_spec import TrainingMode, TrainingSpec
@@ -104,6 +105,15 @@ class ZImageTrainer:
         )
         memory_monitor = create_memory_monitor(enabled=enable_memory_monitoring)
 
+        # Setup memory guard (hard limit with auto-pause at 340GB)
+        # This is always enabled as a safety net - it only triggers when memory
+        # actually exceeds the limit, so there's no overhead during normal operation
+        memory_guard = create_memory_guard(
+            enabled=True,
+            hard_limit_gb=340.0,
+            resume_threshold_gb=300.0,
+        )
+
         # Setup CLIP scorer for validation (measures prompt-image alignment)
         enable_clip_score = training_spec.instrumentation is not None and getattr(
             training_spec.instrumentation, "compute_clip_score", False
@@ -139,6 +149,10 @@ class ZImageTrainer:
 
         # Main training loop
         for batch in batches:
+            # Check memory and auto-pause if over 340GB limit
+            if memory_guard is not None:
+                memory_guard.check_and_wait()
+
             # Compute loss and gradients
             with profiler.time_section("forward"):
                 loss, grads = train_step_function(batch)
@@ -167,10 +181,12 @@ class ZImageTrainer:
                     # First step: move grads to accumulated_grads (same reference)
                     accumulated_grads = grads
                 else:
-                    # Subsequent steps: accumulate and free the new grads
-                    old_accumulated_grads = accumulated_grads
-                    accumulated_grads = ZImageTrainer._accumulate_grads(accumulated_grads, grads)
-                    del old_accumulated_grads  # Free old accumulated dict
+                    # Subsequent steps: in-place accumulation to avoid doubling memory
+                    # Previous approach created a new dict which briefly doubled memory:
+                    # accumulated_grads = {k: acc[k] + grads[k] for k in acc}  # Creates new dict!
+                    # Fix: accumulate in-place by updating values directly
+                    for k in accumulated_grads:
+                        accumulated_grads[k] = accumulated_grads[k] + grads[k]
                     del grads  # Free immediately after accumulation
                 accumulation_count += 1
 
@@ -361,6 +377,15 @@ class ZImageTrainer:
                 f"{mem_stats['warning_count']} warnings, {mem_stats['critical_count']} critical, "
                 f"peak utilization: {mem_stats['peak_utilization']:.1%}"
             )
+
+        # Log memory guard statistics
+        if memory_guard is not None:
+            guard_stats = memory_guard.get_stats()
+            if guard_stats["pause_count"] > 0:
+                logger.warning(
+                    f"Memory guard paused training {guard_stats['pause_count']} times, "
+                    f"total wait: {guard_stats['total_wait_time_seconds']:.1f}s"
+                )
 
         # Log profiler report if enabled
         if enable_profiling:

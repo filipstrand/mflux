@@ -8,6 +8,9 @@ __all__ = [
     "DeferredSynchronizer",
     "EMAModel",
     "LinearWarmupLR",
+    "MemoryGuard",
+    "MemoryGuardConfig",
+    "MemoryGuardTimeoutError",
     "MemoryOptimizer",
     "MixedPrecisionAdam",
     "NoOpEMA",
@@ -15,6 +18,7 @@ __all__ = [
     "Optimizer",
     "ZImageLoss",
     "create_ema",
+    "create_memory_guard",
     "create_scheduler",
 ]
 
@@ -81,4 +85,20 @@ def __getattr__(name):
         from mflux.models.z_image.variants.training.optimization.lr_scheduler import create_scheduler
 
         return create_scheduler
+    if name == "MemoryGuard":
+        from mflux.models.z_image.variants.training.optimization.memory_guard import MemoryGuard
+
+        return MemoryGuard
+    if name == "MemoryGuardConfig":
+        from mflux.models.z_image.variants.training.optimization.memory_guard import MemoryGuardConfig
+
+        return MemoryGuardConfig
+    if name == "create_memory_guard":
+        from mflux.models.z_image.variants.training.optimization.memory_guard import create_memory_guard
+
+        return create_memory_guard
+    if name == "MemoryGuardTimeoutError":
+        from mflux.models.z_image.variants.training.optimization.memory_guard import MemoryGuardTimeoutError
+
+        return MemoryGuardTimeoutError
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
