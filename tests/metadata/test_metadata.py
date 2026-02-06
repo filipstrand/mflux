@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from mflux.models.z_image.variants.turbo.z_image_turbo import ZImageTurbo
+from mflux.models.z_image.variants import ZImageTurbo
 from mflux.utils.metadata_reader import MetadataReader
 
 

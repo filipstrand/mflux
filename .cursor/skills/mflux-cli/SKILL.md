@@ -75,7 +75,7 @@ Because README examples can drift, prefer verifying support against the current 
 
 ### Training
 
-- DreamBooth LoRA finetuning.
+- LoRA finetuning.
 
 ### Utilities
 

@@ -1,0 +1,31 @@
+{
+  "model": "z-image-turbo",
+  "data": "../../../src/mflux/models/common/training/_example/images",
+  "seed": 42,
+  "steps": 4,
+  "guidance": 0.0,
+  "quantize": 4,
+  "max_resolution": 512,
+  "training_loop": {
+    "num_epochs": 1,
+    "batch_size": 1
+  },
+  "optimizer": {
+    "name": "AdamW",
+    "learning_rate": 1e-4
+  },
+  "checkpoint": {
+    "output_path": "tests/training/tmp",
+    "save_frequency": 1
+  },
+  "lora_layers": {
+    "targets": [
+      { "module_path": "layers.{block}.attention.to_q", "blocks": { "indices": [0] }, "rank": 4 },
+      { "module_path": "layers.{block}.attention.to_k", "blocks": { "indices": [0] }, "rank": 4 },
+      { "module_path": "layers.{block}.attention.to_v", "blocks": { "indices": [0] }, "rank": 4 },
+      { "module_path": "layers.{block}.attention.to_out.0", "blocks": { "indices": [0] }, "rank": 4 }
+    ]
+  }
+}
+
+

@@ -2,10 +2,6 @@ import json
 
 
 def _extract_iptc_tag_value(iptc_binary: bytes, tag_id: int) -> bytes | None:
-    """
-    IPTC IIM segments are encoded as:
-      0x1C 0x02 <tag_id> <len_hi> <len_lo> <value_bytes...>
-    """
     i = 0
     while i + 5 <= len(iptc_binary):
         if iptc_binary[i] == 0x1C and iptc_binary[i + 1] == 0x02:

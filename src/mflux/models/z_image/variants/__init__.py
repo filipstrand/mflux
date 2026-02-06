@@ -1,3 +1,5 @@
-from mflux.models.z_image.variants.turbo import ZImageTurbo
+from mflux.models.z_image.variants.z_image import ZImage
 
-__all__ = ["ZImageTurbo"]
+ZImageTurbo = ZImage
+
+__all__ = ["ZImage", "ZImageTurbo"]

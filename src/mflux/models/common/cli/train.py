@@ -1,6 +1,6 @@
 from mflux.cli.parser.parsers import CommandLineParser
-from mflux.models.flux.variants.dreambooth.dreambooth import DreamBooth
-from mflux.models.flux.variants.dreambooth.dreambooth_initializer import DreamBoothInitializer
+from mflux.models.common.training.runner import TrainingRunner
+from mflux.models.common.training.state.training_spec import TrainingSpec
 from mflux.utils.exceptions import StopTrainingException
 
 
@@ -12,22 +12,28 @@ def main():
     parser.add_training_arguments()
     args = parser.parse_args()
 
-    # 1. Initialize the required resources
-    flux, config, training_spec, training_state = DreamBoothInitializer.initialize(
-        config_path=args.train_config,
-        checkpoint_path=args.train_checkpoint,
-    )
+    config_path = args.config
+    resume_path = args.resume
+    if config_path is not None and not config_path.exists():
+        parser.error(f"Config file not found: {config_path}")
+    if resume_path is not None and not resume_path.exists():
+        parser.error(f"Checkpoint not found: {resume_path}")
 
-    # 2. Start the training process
+    if args.dry_run:
+        TrainingSpec.resolve(
+            config_path=str(config_path) if config_path is not None else None,
+            resume_path=str(resume_path) if resume_path is not None else None,
+            create_output_dir=False,
+        )
+        print("✅ Training config validated.")
+        return
+
     try:
-        DreamBooth.train(
-            flux=flux,
-            config=config,
-            training_spec=training_spec,
-            training_state=training_state,
+        TrainingRunner.train(
+            config_path=str(config_path) if config_path is not None else None,
+            resume_path=str(resume_path) if resume_path is not None else None,
         )
     except StopTrainingException as stop_exc:
-        training_state.save(flux, training_spec)
         print(stop_exc)
 
 

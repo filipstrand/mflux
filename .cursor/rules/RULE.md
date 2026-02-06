@@ -26,6 +26,17 @@ These rules exist to make agent work in this repo **predictable, verifiable, and
 
 - Use the repo workflows (`/lint`, `/format`, `/check`) which map to the Makefile targets.
 
+## Code style
+
+- Avoid docstrings; prefer clear naming and focused helpers.
+- Add comments only when logic is non-obvious; keep them short.
+- Consider deeper modules and clear APIs over over-fragmented tiny functions; weigh the tradeoff.
+- Prefer composition over inheritance when practical; avoid deep class hierarchies.
+- Static methods are fine when they clarify stateless helpers.
+- Avoid free-standing functions in Python modules; prefer placing helpers on proper classes (even if static).
+- Keep private methods (leading underscore) at the bottom of classes; public APIs at the top.
+- Use type hints consistently for public APIs.
+
 ## Releases
 
 - When preparing a release, prefer `/release-prep` and the `mflux-release` skill.
@@ -43,6 +54,18 @@ These rules exist to make agent work in this repo **predictable, verifiable, and
 - Keep changes tight, and prefer **verifiable goals** (tests/lint/build) over speculation.
 - If the task scope changes materially, stop and re-align rather than continuing in a confused state.
 - When users ask for CLI usage (e.g., “Can you help me generate an image using z-image?”), use the `mflux-cli` skill.
+
+## Bug/behavior reporting format (chat)
+
+- When reporting bugs or behaviors, always use a simple story format.
+- Use separate "Scenario" sections for separate issues.
+- Each scenario must be step-by-step and end with a one-line "Fix:".
+
+Example:
+Scenario — Late preview crash
+1) User starts edit training without data/preview.*.
+2) Run crashes on first preview step.
+Fix: Validate preview image at config load.
 
 ## Skills
 

@@ -1,7 +1,8 @@
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.parser.parsers import CommandLineParser
+from mflux.models.common.config import ModelConfig
 from mflux.models.z_image.latent_creator import ZImageLatentCreator
-from mflux.models.z_image.variants.turbo.z_image_turbo import ZImageTurbo
+from mflux.models.z_image.variants.z_image import ZImage
 from mflux.utils.dimension_resolver import DimensionResolver
 from mflux.utils.exceptions import PromptFileReadError, StopImageGenerationException
 from mflux.utils.prompt_util import PromptUtil
@@ -19,7 +20,8 @@ def main():
     args = parser.parse_args()
 
     # 1. Load the model
-    model = ZImageTurbo(
+    model = ZImage(
+        model_config=ModelConfig.z_image_turbo(),
         quantize=args.quantize,
         model_path=args.model_path,
         lora_paths=args.lora_paths,
@@ -48,9 +50,12 @@ def main():
                 prompt=PromptUtil.read_prompt(args),
                 width=width,
                 height=height,
+                guidance=args.guidance,
                 image_path=args.image_path,
                 num_inference_steps=args.steps,
                 image_strength=args.image_strength,
+                scheduler=args.scheduler,
+                negative_prompt=args.negative_prompt,
             )
             # 4. Save the image
             image.save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)

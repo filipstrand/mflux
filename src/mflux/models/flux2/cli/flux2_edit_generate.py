@@ -25,14 +25,17 @@ def main():
     if getattr(args, "negative_prompt", ""):
         parser.error("--negative-prompt is not supported for FLUX.2. Focus on describing what you want.")
 
+    model_name = args.model or "flux2-klein-4b"
+    model_config = ModelConfig.from_name(model_name=model_name)
+
     if args.guidance is None:
         args.guidance = 1.0
-    if args.guidance != 1.0:
-        parser.error("--guidance is not supported for FLUX.2. Use --guidance 1.0.")
+    is_distilled = "base" not in model_config.model_name.lower()
+    if args.guidance != 1.0 and is_distilled:
+        parser.error("--guidance is only supported for FLUX.2 base models. Use --guidance 1.0.")
 
-    model_name = args.model or "flux2-klein-4b"
     model = Flux2KleinEdit(
-        model_config=ModelConfig.from_name(model_name=model_name),
+        model_config=model_config,
         quantize=args.quantize,
         model_path=args.model_path,
         lora_paths=args.lora_paths,

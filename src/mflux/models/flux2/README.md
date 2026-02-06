@@ -8,13 +8,30 @@ All the standard modes such as img2img, LoRA and quantizations are supported for
 ![FLUX.2 Klein Example](../../assets/flux2_klein.jpg)
 
 ## Example
-The following uses the 9B model to generate a photorealistic hummingbird image:
+The following uses the distilled 9B model to generate a photorealistic hummingbird image in a small number of steps:
 
 ```sh
 mflux-generate-flux2 \
   --model flux2-klein-9b \
   --prompt "Photorealistic close-up of a hummingbird hovering near red flowers, frozen wings, detailed feathers, soft green background bokeh, high shutter speed look." \
   --steps 4 \
+  --seed 640563507 \
+  --width 1024 \
+  --height 560
+```
+
+## Base model example
+Base (non-distilled) FLUX.2 models use more steps and allow guidance > 1.0:
+
+> [!WARNING]
+> Base (non-distilled) FLUX.2 Klein models are typically slower and worse for general image editing, but can be successfully used for training.
+
+```sh
+mflux-generate-flux2 \
+  --model flux2-klein-base-9b \
+  --prompt "A red fox resting in fresh snow under soft winter light, detailed fur, gentle bokeh, natural color grading." \
+  --steps 50 \
+  --guidance 1.5 \
   --seed 640563507 \
   --width 1024 \
   --height 560
@@ -78,4 +95,69 @@ image.save("flux2_edit.png")
 
 ## Notes
 - FLUX.2 does not support `--negative-prompt` or CFG-style guidance. Use `--guidance 1.0`.
-- Supported variants: `flux2-klein-4b` (default) and `flux2-klein-9b`.
+- Supported distilled variants: `flux2-klein-4b` (default) and `flux2-klein-9b`. Distilled models run in fewer steps than base.
+
+## Training
+Training also supports `flux2-klein-base-4b` and `flux2-klein-base-9b`.
+
+### Fine-tuning
+Use `mflux-train` with a training config. The configuration mirrors Flux training, but uses a Flux2 model name and FlowMatch steps. For the data/images folder layout, see the common training docs ([Training (LoRA)](../common/README.md#training-lora)).
+
+Example (base model defaults to 50 steps):
+
+```json
+{
+  "model": "flux2-klein-base-9b",
+  "data": "images/",
+  "seed": 42,
+  "steps": 50,
+  "guidance": 1.0,
+  "quantize": 4,
+  "training_loop": { "num_epochs": 1, "batch_size": 1, "timestep_low": 4, "timestep_high": 50 },
+  "optimizer": { "name": "AdamW", "learning_rate": 1e-4 },
+  "checkpoint": { "output_path": "~/Desktop/flux2-train", "save_frequency": 1 },
+  "monitoring": {
+    "plot_frequency": 1,
+    "generate_image_frequency": 100
+  },
+  "lora_layers": {
+    "targets": [
+      { "module_path": "transformer_blocks.{block}.attn.to_q", "blocks": { "start": 0, "end": 1 }, "rank": 4 },
+      { "module_path": "transformer_blocks.{block}.attn.to_k", "blocks": { "start": 0, "end": 1 }, "rank": 4 },
+      { "module_path": "transformer_blocks.{block}.attn.to_v", "blocks": { "start": 0, "end": 1 }, "rank": 4 }
+    ]
+  }
+}
+```
+
+Run training:
+
+```sh
+mflux-train --config /path/to/train_flux2_base.json
+```
+
+### Edit fine-tuning (image-conditioned)
+For edit-style training (image in + prompt → image out), use auto-discovery with paired `*_out.*` and `*_in.*` files plus `*_in.txt` prompts. Edit training is supported for Flux2 Klein base models. Preview prompts come from `data/preview*.txt` and the preview images are `data/preview*.{png,jpg,jpeg,webp}`.
+
+```json
+{
+  "model": "flux2-klein-base-4b",
+  "data": "images/",
+  "seed": 42,
+  "steps": 50,
+  "guidance": 1.0,
+  "quantize": 4,
+  "training_loop": { "num_epochs": 1, "batch_size": 1, "timestep_low": 4, "timestep_high": 50 },
+  "optimizer": { "name": "AdamW", "learning_rate": 1e-4 },
+  "checkpoint": { "output_path": "~/Desktop/flux2-edit-train", "save_frequency": 1 },
+  "monitoring": {
+    "plot_frequency": 1,
+    "generate_image_frequency": 100
+  },
+  "lora_layers": {
+    "targets": [
+      { "module_path": "transformer_blocks.{block}.attn.to_q", "blocks": { "start": 0, "end": 1 }, "rank": 4 }
+    ]
+  }
+}
+```

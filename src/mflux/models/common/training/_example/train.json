@@ -1,0 +1,43 @@
+{
+  "model": "z-image-turbo",
+  "data": "images/",
+  "seed": 4,
+  "steps": 9,
+  "guidance": 0.0,
+  "quantize": 8,
+  "max_resolution": 512,
+  "low_ram": false,
+  "training_loop": {
+    "num_epochs": 50,
+    "batch_size": 1,
+    "timestep_low": 4,
+    "timestep_high": 9
+  },
+  "optimizer": {
+    "name": "AdamW",
+    "learning_rate": 1e-4
+  },
+  "checkpoint": {
+    "save_frequency": 15,
+    "output_path": "training"
+  },
+  "monitoring": {
+    "preview_width": 1280,
+    "preview_height": 720,
+    "plot_frequency": 1,
+    "generate_image_frequency": 15
+  },
+  "lora_layers": {
+    "targets": [
+      { "module_path": "layers.{block}.attention.to_q", "blocks": { "start": 0, "end": 30 }, "rank": 16 },
+      { "module_path": "layers.{block}.attention.to_k", "blocks": { "start": 0, "end": 30 }, "rank": 16 },
+      { "module_path": "layers.{block}.attention.to_v", "blocks": { "start": 0, "end": 30 }, "rank": 16 },
+      { "module_path": "layers.{block}.attention.to_out.0", "blocks": { "start": 0, "end": 30 }, "rank": 16 },
+      { "module_path": "layers.{block}.feed_forward.w1", "blocks": { "start": 0, "end": 30 }, "rank": 16 },
+      { "module_path": "layers.{block}.feed_forward.w2", "blocks": { "start": 0, "end": 30 }, "rank": 16 },
+      { "module_path": "layers.{block}.feed_forward.w3", "blocks": { "start": 0, "end": 30 }, "rank": 16 },
+      { "module_path": "cap_embedder.1", "rank": 16 },
+      { "module_path": "all_final_layer.2-1.linear", "rank": 16 }
+    ]
+  }
+}

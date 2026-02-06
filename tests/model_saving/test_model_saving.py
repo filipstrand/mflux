@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from mflux.models.common.weights.loading.weight_loader import WeightLoader
-from mflux.models.z_image.variants.turbo.z_image_turbo import ZImageTurbo
+from mflux.models.z_image.variants import ZImageTurbo
 from mflux.utils.version_util import VersionUtil
 
 PATH = "tests/4bit/"
