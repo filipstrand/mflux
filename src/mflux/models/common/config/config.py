@@ -36,7 +36,7 @@ class Config:
         self._num_inference_steps = num_inference_steps
         self._height = 16 * (height // 16)
         self._width = 16 * (width // 16)
-        self._guidance = guidance
+        self._guidance = 0.0 if guidance is None else float(guidance)
         self._image_path = Path(image_path) if isinstance(image_path, str) else image_path
         self._image_strength = image_strength
         self._depth_image_path = Path(depth_image_path) if isinstance(depth_image_path, str) else depth_image_path

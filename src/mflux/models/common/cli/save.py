@@ -4,7 +4,7 @@ from mflux.models.fibo.variants.txt2img.fibo import FIBO
 from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.models.flux2.variants.txt2img.flux2_klein import Flux2Klein
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
-from mflux.models.z_image.variants.turbo.z_image_turbo import ZImageTurbo
+from mflux.models.z_image import ZImage, ZImageTurbo
 
 
 def main():
@@ -20,8 +20,10 @@ def main():
         model_class = QwenImage
     elif "fibo" in model_name_lower:
         model_class = FIBO
-    elif "z-image" in model_name_lower or "zimage" in model_name_lower:
+    elif "z-image-turbo" in model_name_lower or "zimage-turbo" in model_name_lower:
         model_class = ZImageTurbo
+    elif "z-image" in model_name_lower or "zimage" in model_name_lower:
+        model_class = ZImage
     elif "flux2" in model_name_lower or "flux.2" in model_name_lower:
         model_class = Flux2Klein
     else:

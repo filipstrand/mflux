@@ -75,7 +75,9 @@ Load and compare tensors. For each checkpoint, report:
 - **max_abs_diff**, **mean_abs_diff**
 - **max_rel_diff** (guarding division by zero)
 - Pass/fail with a clearly stated **rtol/atol**
-- It is also very instructive to look at actual tensor value, say the first 10 elements.
+- It is **more important to inspect actual tensor values** (e.g., first 10 elements) than rely on summary stats.
+- Statistics can mislead; small-looking stats can hide systematic drift or sign flips.
+- Prefer **runtime tensor dumps** over code reading; code can use different conventions yet still represent the same math.
 
 Suggested tolerance starting points (adjust per component):
 - **fp32 comparisons**: `atol=1e-5`, `rtol=1e-5`
@@ -92,7 +94,10 @@ If a checkpoint fails:
 - **Dtype casting**: reference silently upcasts to fp32 for norm/softmax; MLX path stays in fp16.
 - **RoPE details**: position ids, reshape order, whether cos/sin are broadcast over heads vs sequence.
 - **Scheduler math**: timestep indexing, sigma/alpha definitions, and off-by-one step order.
+- **Scheduler config**: compare sigma schedules directly.
 - **Seed/RNG**: ensure you aren’t comparing stochastic paths (dropout, noise sampling) without controlling RNG.
+- **Device dtype**: MPS `float16` can produce NaNs; prefer `bfloat16` for reference dumps if you see NaNs.
+- **Do not use CPU** for comparisons; always keep reference runs on MPS to avoid misleading behavior.
 
 ## Artifact Hygiene
 

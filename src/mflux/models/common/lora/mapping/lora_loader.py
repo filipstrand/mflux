@@ -28,6 +28,7 @@ class LoRALoader:
         transformer: nn.Module,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
+        role: str | None = None,
     ) -> tuple[list[str], list[float]]:
         resolved_paths = LoraResolution.resolve_paths(lora_paths)
         if not resolved_paths:
@@ -42,7 +43,7 @@ class LoRALoader:
         print(f"📦 Loading {len(resolved_paths)} LoRA file(s)...")
 
         for lora_file, scale in zip(resolved_paths, resolved_scales):
-            LoRALoader._apply_single_lora(transformer, lora_file, scale, lora_mapping)
+            LoRALoader._apply_single_lora(transformer, lora_file, scale, lora_mapping, role=role)
 
         print("✅ All LoRA weights applied successfully")
 
@@ -54,6 +55,8 @@ class LoRALoader:
         lora_file: str,
         scale: float,
         lora_mapping: list[LoRATarget],
+        *,
+        role: str | None,
     ) -> None:
         # Load the LoRA weights
         if not Path(lora_file).exists():
@@ -72,7 +75,9 @@ class LoRALoader:
         pattern_mappings = LoRALoader._build_pattern_mappings(lora_mapping)
 
         # Apply LoRA using the mappings (allows multiple targets per source)
-        applied_count, matched_keys = LoRALoader._apply_lora_with_mapping(transformer, weights, scale, pattern_mappings)
+        applied_count, matched_keys = LoRALoader._apply_lora_with_mapping(
+            transformer, weights, scale, pattern_mappings, role=role
+        )
 
         # Report results
         total_keys = len(weights)
@@ -136,6 +141,8 @@ class LoRALoader:
         weights: dict,
         scale: float,
         pattern_mappings: list[PatternMatch],
+        *,
+        role: str | None,
     ) -> tuple[int, set]:
         applied_count = 0
         lora_data_by_target: dict[str, dict] = {}
@@ -174,7 +181,7 @@ class LoRALoader:
 
         # Apply LoRA to each target
         for target_path, lora_data in lora_data_by_target.items():
-            if LoRALoader._apply_lora_matrices_to_target(transformer, target_path, lora_data, scale):
+            if LoRALoader._apply_lora_matrices_to_target(transformer, target_path, lora_data, scale, role=role):
                 applied_count += 1
 
         return applied_count, matched_keys
@@ -196,7 +203,9 @@ class LoRALoader:
             return None
 
     @staticmethod
-    def _apply_lora_matrices_to_target(transformer: nn.Module, target_path: str, lora_data: dict, scale: float) -> bool:
+    def _apply_lora_matrices_to_target(
+        transformer: nn.Module, target_path: str, lora_data: dict, scale: float, *, role: str | None
+    ) -> bool:
         # Navigate to the target layer
         current_module = transformer
         path_parts = target_path.split(".")
@@ -243,6 +252,7 @@ class LoRALoader:
             if is_lora_linear:
                 print(f"   🔀 Fusing with existing LoRA at {target_path}")
                 lora_layer = LoRALinear.from_linear(current_module.linear, r=lora_A.shape[1], scale=effective_scale)
+                lora_layer._mflux_lora_role = role
                 lora_layer.lora_A = lora_A
                 lora_layer.lora_B = lora_B
                 if "alpha" in lora_data:
@@ -254,6 +264,7 @@ class LoRALoader:
                 lora_layer = LoRALinear.from_linear(
                     current_module.base_linear, r=lora_A.shape[1], scale=effective_scale
                 )
+                lora_layer._mflux_lora_role = role
                 lora_layer.lora_A = lora_A
                 lora_layer.lora_B = lora_B
                 if "alpha" in lora_data:
@@ -265,6 +276,7 @@ class LoRALoader:
             else:
                 # First LoRA on this layer
                 lora_layer = LoRALinear.from_linear(current_module, r=lora_A.shape[1], scale=effective_scale)
+                lora_layer._mflux_lora_role = role
                 lora_layer.lora_A = lora_A
                 lora_layer.lora_B = lora_B
                 if "alpha" in lora_data:

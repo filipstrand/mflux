@@ -188,8 +188,26 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--config-from-metadata", "-C", type=Path, required=False, default=argparse.SUPPRESS, help="Re-use the parameters from prior metadata. Params from metadata are secondary to other args you provide.")
 
     def add_training_arguments(self) -> None:
-        self.add_argument("--train-config", type=str, required=False, help="Local path of the training configuration file")
-        self.add_argument("--train-checkpoint", type=str, required=False, help="Local path of the checkpoint file which specifies how to continue the training process")
+        train_group = self.add_mutually_exclusive_group(required=True)
+        train_group.add_argument(
+            "--config",
+            dest="config",
+            type=Path,
+            required=False,
+            help="Local path of the training configuration file.",
+        )
+        train_group.add_argument(
+            "--resume",
+            dest="resume",
+            type=Path,
+            required=False,
+            help="Path to a training checkpoint zip to resume.",
+        )
+        self.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Validate training config/checkpoint and exit.",
+        )
 
     def add_info_arguments(self) -> None:
         self.add_argument("image_path", type=str, help="Path to the image file to inspect")
@@ -198,8 +216,8 @@ class CommandLineParser(argparse.ArgumentParser):
         namespace = super().parse_args()
 
         # Check if either training arguments are provided
-        has_training_args = (hasattr(namespace, "train_config") and namespace.train_config is not None) or \
-                            (hasattr(namespace, "train_checkpoint") and namespace.train_checkpoint is not None)
+        has_training_args = (hasattr(namespace, "config") and namespace.config is not None) or \
+                            (hasattr(namespace, "resume") and namespace.resume is not None)
 
         # Only enforce model requirement for path if we're not in training mode
         if hasattr(namespace, "path") and namespace.path is not None and namespace.model is None and not has_training_args:

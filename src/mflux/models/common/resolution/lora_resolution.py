@@ -67,7 +67,30 @@ class LoraResolution:
 
     @staticmethod
     def _is_collection_format(path: str) -> bool:
-        return ":" in path and "/" in path
+        # Supported forms:
+        # - HuggingFace collection-like: "org/repo:filename.safetensors"
+        # - ai-toolkit style (explicit): "hf:org/repo/filename.safetensors"
+        if path.startswith("hf:"):
+            remainder = path[3:]
+            if ":" in remainder and "/" in remainder:
+                return True
+            if remainder.count("/") == 2 and not remainder.startswith(("./", "../", "~/")):
+                return True
+            return False
+        if ":" in path and "/" in path:
+            return True
+        return False
+
+    @staticmethod
+    def _split_collection_path(path: str) -> tuple[str, str]:
+        if path.startswith("hf:"):
+            path = path[3:]
+        if ":" in path:
+            repo_id, filename = path.split(":", 1)
+            return repo_id, filename
+        # ai-toolkit style: org/repo/filename
+        repo_id, filename = path.rsplit("/", 1)
+        return repo_id, filename
 
     @staticmethod
     def _is_hf_format(path: str) -> bool:
@@ -82,7 +105,7 @@ class LoraResolution:
         if check == "is_collection_cached":
             if not LoraResolution._is_collection_format(path):
                 return False
-            repo_id, filename = path.split(":", 1)
+            repo_id, filename = LoraResolution._split_collection_path(path)
             return LoraResolution._is_collection_in_cache(repo_id, filename)
         if check == "is_collection_format":
             return LoraResolution._is_collection_format(path)
@@ -136,10 +159,10 @@ class LoraResolution:
         if action == LoraAction.REGISTRY:
             return str(LoraResolution._registry[path])
         if action == LoraAction.HUGGINGFACE_COLLECTION_CACHED:
-            repo_id, filename = path.split(":", 1)
+            repo_id, filename = LoraResolution._split_collection_path(path)
             return LoraResolution._load_collection_from_cache(repo_id, filename)
         if action == LoraAction.HUGGINGFACE_COLLECTION:
-            repo_id, filename = path.split(":", 1)
+            repo_id, filename = LoraResolution._split_collection_path(path)
             return LoraResolution._download_collection(repo_id, filename)
         if action == LoraAction.HUGGINGFACE_REPO_CACHED:
             return LoraResolution._load_repo_from_cache(path)

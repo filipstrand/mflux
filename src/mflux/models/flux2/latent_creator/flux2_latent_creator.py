@@ -23,10 +23,6 @@ class Flux2LatentCreator:
 
     @staticmethod
     def unpack_latents(latents: mx.array, height: int, width: int, vae_scale_factor: int = 8) -> mx.array:
-        """
-        Convert packed Flux2 latents (B, seq, C) into 4D packed-latent layout (B, C, H, W)
-        where H=W=floor(image_dim / (vae_scale_factor * 2)).
-        """
         if latents.ndim == 4:
             return latents
 

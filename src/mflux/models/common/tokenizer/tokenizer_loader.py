@@ -128,16 +128,6 @@ class TokenizerLoader:
 
     @staticmethod
     def _load_qwen2_tokenizer_workaround(tokenizer_path: Path, cls):
-        """Load Qwen2Tokenizer with explicit vocab and merges data.
-
-        In transformers 5.0, Qwen2Tokenizer builds its internal BPE tokenizer from the
-        `vocab` and `merges` parameters BEFORE calling super().__init__(). The `vocab_file`
-        and `merges_file` parameters are only passed to the parent class for saving purposes
-        and are NOT automatically loaded. We must load and parse these files ourselves.
-
-        We also need to load special tokens from tokenizer_config.json to ensure tokens like
-        <|im_start|>, <|im_end|>, <|vision_start|>, etc. are properly registered.
-        """
         import json
 
         from tokenizers import AddedToken

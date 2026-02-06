@@ -23,6 +23,7 @@ class CompletionGenerator:
             "mflux-generate-qwen",
             "mflux-generate-qwen-edit",
             "mflux-generate-fibo",
+            "mflux-generate-z-image",
             "mflux-generate-z-image-turbo",
             "mflux-refine-fibo",
             "mflux-inspire-fibo",

@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from mflux.models.common.lora.mapping.lora_saver import LoRASaver
-from mflux.models.z_image.variants.turbo.z_image_turbo import ZImageTurbo
+from mflux.models.z_image.variants import ZImageTurbo
 from mflux.utils.image_compare import ImageCompare
 
 PATH = "tests/4bit/"
