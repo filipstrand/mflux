@@ -311,6 +311,10 @@ AVAILABLE_MODELS = {
             "num_attention_heads": 24,
             "joint_attention_dim": 7680,
         },
+        text_encoder_overrides={
+            "hidden_size": 2560,
+            "intermediate_size": 9728,
+        },
     ),
     "flux2-klein-9b": ModelConfig(
         priority=12,
@@ -357,6 +361,10 @@ AVAILABLE_MODELS = {
             "num_single_layers": 20,
             "num_attention_heads": 24,
             "joint_attention_dim": 7680,
+        },
+        text_encoder_overrides={
+            "hidden_size": 2560,
+            "intermediate_size": 9728,
         },
     ),
     "flux2-klein-base-9b": ModelConfig(
