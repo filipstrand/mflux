@@ -55,7 +55,7 @@ class Flux2Initializer:
     def _init_models(model) -> None:
         model.vae = Flux2VAE()
         model.transformer = Flux2Transformer(**model.model_config.transformer_overrides)
-        model.text_encoder = Qwen3TextEncoder()
+        model.text_encoder = Qwen3TextEncoder(**model.model_config.text_encoder_overrides)
 
     @staticmethod
     def _apply_weights(model, weights: LoadedWeights, quantize: int | None) -> None:

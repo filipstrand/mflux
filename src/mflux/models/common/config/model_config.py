@@ -22,6 +22,7 @@ class ModelConfig:
         supports_guidance: bool | None,
         requires_sigma_shift: bool | None,
         transformer_overrides: dict | None = None,
+        text_encoder_overrides: dict | None = None,
     ):
         self.aliases = aliases
         self.model_name = model_name
@@ -34,6 +35,7 @@ class ModelConfig:
         self.requires_sigma_shift = requires_sigma_shift
         self.priority = priority
         self.transformer_overrides = transformer_overrides or {}
+        self.text_encoder_overrides = text_encoder_overrides or {}
 
     @staticmethod
     @lru_cache
@@ -309,6 +311,10 @@ AVAILABLE_MODELS = {
             "num_attention_heads": 24,
             "joint_attention_dim": 7680,
         },
+        text_encoder_overrides={
+            "hidden_size": 2560,
+            "intermediate_size": 9728,
+        },
     ),
     "flux2-klein-9b": ModelConfig(
         priority=12,
@@ -326,6 +332,10 @@ AVAILABLE_MODELS = {
             "num_single_layers": 24,
             "num_attention_heads": 32,
             "joint_attention_dim": 12288,
+        },
+        text_encoder_overrides={
+            "hidden_size": 4096,
+            "intermediate_size": 12288,
         },
     ),
     "flux2-klein-base-4b": ModelConfig(
@@ -352,6 +362,10 @@ AVAILABLE_MODELS = {
             "num_attention_heads": 24,
             "joint_attention_dim": 7680,
         },
+        text_encoder_overrides={
+            "hidden_size": 2560,
+            "intermediate_size": 9728,
+        },
     ),
     "flux2-klein-base-9b": ModelConfig(
         priority=14,
@@ -376,6 +390,10 @@ AVAILABLE_MODELS = {
             "num_single_layers": 24,
             "num_attention_heads": 32,
             "joint_attention_dim": 12288,
+        },
+        text_encoder_overrides={
+            "hidden_size": 4096,
+            "intermediate_size": 12288,
         },
     ),
     "qwen-image": ModelConfig(
