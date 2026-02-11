@@ -15,9 +15,9 @@ source-exclude = [
 [project]
 name = "mflux"
 version = "0.16.0"
-description = "A MLX port of FLUX based on the Huggingface Diffusers implementation."
+description = "MLX native implementations of state-of-the-art generative image models."
 readme = "README.md"
-keywords = ["diffusers", "flux", "mlx"]
+keywords = ["flux", "ai", "ml", "transformers", "mlx", "huggingface", "apple-silicon", "diffusers", "qwen", "qwen-image", "seedvr2", "z-image"]
 authors = [{ name = "Filip Strand", email = "strand.filip@gmail.com" }]
 maintainers = [{ name = "Filip Strand", email = "strand.filip@gmail.com" }]
 license = { file = "LICENSE" }
