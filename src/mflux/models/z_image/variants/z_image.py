@@ -97,13 +97,16 @@ class ZImage(nn.Module):
         # 3. Create callback context and call before_loop
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
+        predict = self._predict(self.transformer)
 
         for t in config.time_steps:
             try:
                 # 4.t Predict the noise
-                noise = self._predict_noise(
+                sigma_t = config.scheduler.sigmas[t].reshape((1,))
+                timestep = mx.ones_like(sigma_t) - sigma_t
+                noise = predict(
                     latents=latents,
-                    t=t,
+                    timestep=timestep,
                     sigmas=config.scheduler.sigmas,
                     text_encodings=text_encodings,
                     negative_encodings=negative_encodings,
@@ -166,32 +169,6 @@ class ZImage(nn.Module):
         )
         return text_encodings, negative_encodings
 
-    def _predict_noise(
-        self,
-        *,
-        latents: mx.array,
-        t: int,
-        sigmas: mx.array,
-        text_encodings: mx.array,
-        negative_encodings: mx.array | None,
-        guidance: float,
-    ) -> mx.array:
-        noise = self.transformer(
-            t=t,
-            x=latents,
-            cap_feats=text_encodings,
-            sigmas=sigmas,
-        )
-        if negative_encodings is None:
-            return noise
-        negative_noise = self.transformer(
-            t=t,
-            x=latents,
-            cap_feats=negative_encodings,
-            sigmas=sigmas,
-        )
-        return noise + guidance * (noise - negative_noise)
-
     def _decode_latents(self, *, latents: mx.array, config: Config) -> mx.array:
         unpacked = ZImageLatentCreator.unpack_latents(latents, config.height, config.width)
         return VAEUtil.decode(vae=self.vae, latent=unpacked, tiling_config=self.tiling_config)
@@ -203,3 +180,32 @@ class ZImage(nn.Module):
             base_path=base_path,
             weight_definition=ZImageWeightDefinition,
         )
+
+    @staticmethod
+    def _predict(transformer: ZImageTransformer):
+        @mx.compile
+        def predict(
+            latents: mx.array,
+            timestep: mx.array,
+            sigmas: mx.array,
+            text_encodings: mx.array,
+            negative_encodings: mx.array | None,
+            guidance: float,
+        ) -> mx.array:
+            noise = transformer(
+                timestep=timestep,
+                x=latents,
+                cap_feats=text_encodings,
+                sigmas=sigmas,
+            )
+            if negative_encodings is None:
+                return noise
+            negative_noise = transformer(
+                timestep=timestep,
+                x=latents,
+                cap_feats=negative_encodings,
+                sigmas=sigmas,
+            )
+            return noise + guidance * (noise - negative_noise)
+
+        return predict

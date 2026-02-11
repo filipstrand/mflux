@@ -93,10 +93,11 @@ class Flux2KleinEdit(nn.Module):
         # 4. Denoising loop
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
+        predict = self._predict(self.transformer)
         for t in config.time_steps:
             try:
                 # 4.t Predict the noise
-                noise = self._predict_noise(
+                noise = predict(
                     latents=latents,
                     image_latents=image_latents,
                     latent_ids=latent_ids,
@@ -105,7 +106,6 @@ class Flux2KleinEdit(nn.Module):
                     text_ids=text_ids,
                     negative_prompt_embeds=negative_prompt_embeds,
                     negative_text_ids=negative_text_ids,
-                    config=config,
                     guidance=guidance,
                     timestep=config.scheduler.timesteps[t],
                 )
@@ -162,43 +162,45 @@ class Flux2KleinEdit(nn.Module):
             )
         return prompt_embeds, text_ids, negative_prompt_embeds, negative_text_ids
 
-    def _predict_noise(
-        self,
-        *,
-        latents: mx.array,
-        image_latents: mx.array,
-        latent_ids: mx.array,
-        image_latent_ids: mx.array,
-        prompt_embeds: mx.array,
-        text_ids: mx.array,
-        negative_prompt_embeds: mx.array | None,
-        negative_text_ids: mx.array | None,
-        config: Config,
-        guidance: float,
-        timestep: mx.array,
-    ) -> mx.array:
-        hidden_states = mx.concatenate([latents, image_latents], axis=1)
-        img_ids = mx.concatenate([latent_ids, image_latent_ids], axis=1)
+    @staticmethod
+    def _predict(transformer):
+        @mx.compile
+        def predict(
+            latents: mx.array,
+            image_latents: mx.array,
+            latent_ids: mx.array,
+            image_latent_ids: mx.array,
+            prompt_embeds: mx.array,
+            text_ids: mx.array,
+            negative_prompt_embeds: mx.array | None,
+            negative_text_ids: mx.array | None,
+            guidance: float,
+            timestep: mx.array,
+        ) -> mx.array:
+            hidden_states = mx.concatenate([latents, image_latents], axis=1)
+            img_ids = mx.concatenate([latent_ids, image_latent_ids], axis=1)
 
-        noise = self.transformer(
-            hidden_states=hidden_states,
-            encoder_hidden_states=prompt_embeds,
-            timestep=timestep,
-            img_ids=img_ids,
-            txt_ids=text_ids,
-            guidance=None,
-        )
-        # Only keep the prediction for the generated latents (drop reference tokens)
-        noise = noise[:, : latents.shape[1]]
-        if negative_prompt_embeds is not None and negative_text_ids is not None:
-            negative_noise = self.transformer(
+            noise = transformer(
                 hidden_states=hidden_states,
-                encoder_hidden_states=negative_prompt_embeds,
+                encoder_hidden_states=prompt_embeds,
                 timestep=timestep,
                 img_ids=img_ids,
-                txt_ids=negative_text_ids,
+                txt_ids=text_ids,
                 guidance=None,
             )
-            negative_noise = negative_noise[:, : latents.shape[1]]
-            noise = negative_noise + guidance * (noise - negative_noise)
-        return noise
+            # Only keep the prediction for the generated latents (drop reference tokens)
+            noise = noise[:, : latents.shape[1]]
+            if negative_prompt_embeds is not None and negative_text_ids is not None:
+                negative_noise = transformer(
+                    hidden_states=hidden_states,
+                    encoder_hidden_states=negative_prompt_embeds,
+                    timestep=timestep,
+                    img_ids=img_ids,
+                    txt_ids=negative_text_ids,
+                    guidance=None,
+                )
+                negative_noise = negative_noise[:, : latents.shape[1]]
+                noise = negative_noise + guidance * (noise - negative_noise)
+            return noise
+
+        return predict

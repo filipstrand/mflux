@@ -54,12 +54,25 @@ class ZImageTransformer(nn.Module):
         self.layers = [ZImageTransformerBlock(dim, n_heads, norm_eps, qk_norm) for _ in range(n_layers)]  # fmt: off
         self.rope_embedder = RopeEmbedder(theta=rope_theta, axes_dims=axes_dims, axes_lens=axes_lens)
 
-    def __call__(self, x: mx.array, t: int, sigmas: mx.array, cap_feats: mx.array) -> mx.array:
+    def __call__(
+        self,
+        x: mx.array,
+        timestep: mx.array | float | int,
+        sigmas: mx.array,
+        cap_feats: mx.array,
+    ) -> mx.array:
         key = f"{self.patch_size}-{self.f_patch_size}"
 
         # Time embedding
-        t_value = mx.array([1.0 - sigmas[t].item()])
-        t_emb = self.t_embedder(t_value * self.t_scale)
+        if not isinstance(timestep, mx.array):
+            if isinstance(timestep, int):
+                sigma_t = sigmas[timestep].reshape((1,))
+                timestep = mx.ones_like(sigma_t) - sigma_t
+            else:
+                timestep = mx.array(timestep, dtype=mx.float32)
+        if timestep.ndim == 0:
+            timestep = timestep.reshape((1,))
+        t_emb = self.t_embedder(timestep.astype(mx.float32) * self.t_scale)
 
         # Patchify image and caption
         x_emb, cap_emb, x_size, x_pos_ids, cap_pos_ids, x_pad_mask, cap_pad_mask = ZImageTransformer._patchify(

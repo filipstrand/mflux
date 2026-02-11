@@ -1,4 +1,5 @@
 import math
+from functools import partial
 from typing import TYPE_CHECKING
 
 import mlx.core as mx
@@ -7,6 +8,13 @@ if TYPE_CHECKING:
     from mflux.models.common.config.config import Config
 
 from mflux.models.common.schedulers.base_scheduler import BaseScheduler
+
+
+@partial(mx.compile, shapeless=True)
+def _step(noise, latents, s1, s2):
+    dt = (s1 - s2).astype(latents.dtype)
+    noise = noise.astype(latents.dtype)
+    return latents + dt * noise
 
 
 class FlowMatchEulerDiscreteScheduler(BaseScheduler):
@@ -106,8 +114,7 @@ class FlowMatchEulerDiscreteScheduler(BaseScheduler):
 
     def step(self, noise: mx.array, timestep: int, latents: mx.array, **kwargs) -> mx.array:
         sigmas = kwargs.get("sigmas", self._sigmas)
-        dt = sigmas[timestep + 1] - sigmas[timestep]
-        return latents + dt * noise
+        return _step(noise, latents, sigmas[timestep + 1], sigmas[timestep])
 
     def scale_model_input(self, latents: mx.array, t: int) -> mx.array:
         return latents

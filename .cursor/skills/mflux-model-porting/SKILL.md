@@ -10,6 +10,7 @@ Provide a repeatable, MLX-focused workflow for porting ML models (typically from
 ## Principles
 - Match the reference implementation first; prove correctness before cleanup.
 - Lock correctness with deterministic tests before refactoring.
+- During the initial port, avoid premature performance work (e.g., `mx.compile`, kernel fusion tweaks, scheduler micro-optimizations); add optimizations only after correctness is locked.
 - Refactor toward shared components and clean APIs once tests are green.
 - PyTorch and MLX RNGs are different; for strict parity checks, export the *exact* initial noise/latents from the reference and load them in MLX instead of relying on matching integer seeds.
 
@@ -22,6 +23,7 @@ Provide a repeatable, MLX-focused workflow for porting ML models (typically from
    - Add the model package skeleton and a variant class + initializer.
    - Follow standard mflux initializer/weight-loading style; review recent ports like `z_image_turbo` and `flux2_klein` for structure and naming.
    - Wire weight definitions/mappings early so loading is exercised (implement quantization in the initializer, but skip it during early runs).
+   - Keep the first implementation simple and explicit; defer `mx.compile` and other speed-focused changes until deterministic parity is passing.
    - When defining explicit weight mappings, inspect actual tensor values from the model in the Hugging Face cache to confirm names and shapes.
    - Add a minimal hardcoded runner for quick iteration (two tiny scripts: one in the reference repo, one in mflux), seeded with diffusers-style defaults (e.g., 1024×1024, default prompt).
    - Add lightweight shape checks close to the code paths.
