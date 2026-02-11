@@ -9,79 +9,80 @@ from tests.image_generation.test_generate_image_fibo import OWL_PROMPT, OWL_PROM
 
 INSPIRE_PROMPT = """
 {
-  "short_description": "A charming, stylized illustration of a young owl perched on a thick, gnarled tree branch. The owl is depicted with large, expressive eyes and soft, feathered textures. It is surrounded by a dense, atmospheric forest with tall, dark trees and a subtle hint of moonlight filtering through the canopy. The overall impression is one of innocence and nocturnal wonder, rendered in a painterly, fantasy style.",
+  "short_description": "A charming, stylized illustration of a young owl perched on a thick, gnarled tree branch. The owl is facing forward with large, expressive eyes and its wings are slightly tucked. The background depicts a dark, mystical forest with silhouetted trees and a subtle, glowing moon or light source, creating an enchanting and slightly mysterious atmosphere. The overall aesthetic is whimsical and serene.",
   "objects": [
     {
-      "description": "A young owl with large, round, dark eyes that have bright white highlights, giving it an innocent and curious expression. Its plumage is a soft, mottled grey and brown, with distinct feather patterns. It has small, sharp yellow talons and a pointed, yellow beak.",
+      "description": "A young, fluffy owl with large, round, dark eyes and prominent ear tufts. Its plumage is a mix of soft grays, whites, and browns, with detailed feather patterns.",
       "location": "center",
       "relationship": "perched on a tree branch",
       "relative_size": "medium within frame",
-      "shape_and_color": "round body, large head, predominantly grey and brown with yellow accents",
-      "texture": "soft, feathery, detailed",
-      "appearance_details": "Its wings are folded close to its body, and its feet are gripping the branch firmly.",
+      "shape_and_color": "Round body, large eyes, predominantly grey and brown.",
+      "texture": "soft, fluffy feathers",
+      "appearance_details": "Its gaze is direct and engaging. The beak is small and yellow.",
       "number_of_objects": 1,
       "pose": "Sitting upright, facing forward.",
-      "expression": "innocent, curious",
+      "expression": "curious and calm",
       "action": "perching",
       "gender": "neutral",
-      "skin_tone_and_texture": "N/A (owl)",
       "orientation": "upright"
     },
     {
-      "description": "A thick, ancient tree branch, twisted and textured, providing a perch for the owl. It is dark brown with visible wood grain and some mossy or lichen-like growth in places.",
+      "description": "A thick, ancient tree branch with a rough, textured surface. It is dark brown and appears sturdy, providing a perch for the owl.",
       "location": "bottom-center foreground",
       "relationship": "supports the owl",
       "relative_size": "large",
-      "shape_and_color": "curved, irregular shape, dark brown",
-      "texture": "rough, woody, textured",
-      "appearance_details": "The branch extends across the lower part of the frame, with smaller twigs branching off.",
+      "shape_and_color": "Irregular, thick, dark brown.",
+      "texture": "rough, bark-like",
+      "appearance_details": "The branch has visible knots and grooves.",
       "number_of_objects": 1,
-      "orientation": "horizontal, slightly angled"
+      "orientation": "horizontal"
     },
     {
-      "description": "A cluster of stylized, dark tree trunks forming a dense forest background. They are tall and slender, with a rough, dark texture.",
-      "location": "background",
-      "relationship": "surrounds the owl and branch",
-      "relative_size": "large",
-      "shape_and_color": "vertical, cylindrical shapes, dark brown and black",
-      "texture": "rough, bark-like",
-      "appearance_details": "Some trees have faint glowing elements, possibly representing distant lights or magical flora.",
+      "description": "A cluster of stylized mushrooms with rounded caps and thin stems, appearing in muted yellow and brown tones.",
+      "location": "bottom-right midground",
+      "relationship": "growing near the base of a tree trunk",
+      "relative_size": "small",
+      "shape_and_color": "Rounded caps, thin stems, yellow and brown.",
+      "texture": "smooth caps, slightly textured stems",
+      "appearance_details": "They are small and somewhat whimsical in shape.",
+      "number_of_objects": 3,
       "orientation": "vertical"
     },
     {
-      "description": "Silhouetted branches and foliage, rendered in dark tones, creating a sense of depth and enclosure within the forest.",
-      "location": "midground and background",
-      "relationship": "forms the forest environment",
-      "relative_size": "medium to large",
-      "shape_and_color": "varied organic shapes, dark blues, purples, and blacks",
-      "texture": "soft, painterly",
-      "appearance_details": "Some elements have a subtle glow, adding to the mystical atmosphere.",
-      "orientation": "varied"
+      "description": "A large, dark tree trunk on the right side of the frame, with a rough bark texture.",
+      "location": "right midground",
+      "relationship": "part of the forest environment, framing the scene",
+      "relative_size": "large",
+      "shape_and_color": "Vertical, dark brown.",
+      "texture": "rough bark",
+      "appearance_details": "It is partially obscured by shadow.",
+      "number_of_objects": 1,
+      "orientation": "vertical"
     }
   ],
-  "background_setting": "A mystical, dark forest at night. Tall, ancient trees with gnarled branches dominate the scene, with a hint of a pale, glowing orb (possibly a moon or magical light source) visible through the canopy in the upper left.",
+  "background_setting": "A dense, dark forest with tall, silhouetted trees. Bare branches create a complex pattern against a deep blue, moonlit sky. The ground is covered in dark foliage and scattered with small, glowing blue elements that resemble fireflies or magical lights.",
   "lighting": {
-    "conditions": "dim, atmospheric night lighting",
-    "direction": "soft, diffused light from the upper left, with some ambient glow from within the forest",
-    "shadows": "soft, elongated shadows contributing to the depth and mood"
+    "conditions": "moonlit night",
+    "direction": "backlit and side-lit from the left",
+    "shadows": "soft, elongated shadows cast by the trees and the owl"
   },
   "aesthetics": {
-    "composition": "centered composition with the owl as the primary focal point, balanced by the tree branch below and the forest backdrop",
-    "color_scheme": "predominantly cool, dark tones with accents of yellow and soft glowing highlights",
-    "mood_atmosphere": "enchanting, serene, mysterious, innocent",
+    "composition": "centered framing of the owl, with the forest creating a natural frame",
+    "color_scheme": "cool color palette dominated by blues, grays, and dark browns, with subtle warm accents from the owl and mushrooms",
+    "mood_atmosphere": "enchanting, serene, mysterious",
     "aesthetic_score": "very high",
     "preference_score": "very high"
   },
   "photographic_characteristics": {
     "depth_of_field": "shallow, with the background softly blurred",
-    "focus": "sharp focus on the owl and the branch",
+    "focus": "sharp focus on the owl",
     "camera_angle": "eye-level",
     "lens_focal_length": "standard lens (e.g., 50mm)"
   },
   "style_medium": "digital illustration",
   "text_render": [],
-  "context": "This image is suitable for a children's book illustration, a fantasy-themed graphic, or a decorative piece evoking a sense of nature and magic.",
-  "artistic_style": "painterly, fantasy, stylized"
+  "context": "This image is suitable for a children's book illustration, a fantasy-themed graphic, or a decorative piece for a nature lover.",
+  "artistic_style": "stylized, whimsical, detailed"
 }
 """
 

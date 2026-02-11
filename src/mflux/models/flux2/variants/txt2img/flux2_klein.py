@@ -82,17 +82,17 @@ class Flux2Klein(nn.Module):
         # 3. Denoising loop
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
+        predict = self._predict(self.transformer)
         for t in config.time_steps:
             try:
                 # 3.t Predict the noise
-                noise = self._predict_noise(
+                noise = predict(
                     latents=latents,
                     latent_ids=latent_ids,
                     prompt_embeds=prompt_embeds,
                     text_ids=text_ids,
                     negative_prompt_embeds=negative_prompt_embeds,
                     negative_text_ids=negative_text_ids,
-                    config=config,
                     guidance=guidance,
                     timestep=config.scheduler.timesteps[t],
                 )
@@ -172,39 +172,6 @@ class Flux2Klein(nn.Module):
             )
         return self._prepare_img2img_latents(seed=seed, config=config)
 
-    def _predict_noise(
-        self,
-        *,
-        latents: mx.array,
-        latent_ids: mx.array,
-        prompt_embeds: mx.array,
-        text_ids: mx.array,
-        negative_prompt_embeds: mx.array | None,
-        negative_text_ids: mx.array | None,
-        config: Config,
-        guidance: float,
-        timestep: mx.array,
-    ) -> mx.array:
-        noise = self.transformer(
-            hidden_states=latents,
-            encoder_hidden_states=prompt_embeds,
-            timestep=timestep,
-            img_ids=latent_ids,
-            txt_ids=text_ids,
-            guidance=None,
-        )
-        if negative_prompt_embeds is not None and negative_text_ids is not None:
-            negative_noise = self.transformer(
-                hidden_states=latents,
-                encoder_hidden_states=negative_prompt_embeds,
-                timestep=timestep,
-                img_ids=latent_ids,
-                txt_ids=negative_text_ids,
-                guidance=None,
-            )
-            noise = negative_noise + guidance * (noise - negative_noise)
-        return noise
-
     def _prepare_img2img_latents(
         self,
         *,
@@ -275,3 +242,38 @@ class Flux2Klein(nn.Module):
             base_path=base_path,
             weight_definition=Flux2KleinWeightDefinition,
         )
+
+    @staticmethod
+    def _predict(transformer):
+        @mx.compile
+        def predict(
+            latents: mx.array,
+            latent_ids: mx.array,
+            prompt_embeds: mx.array,
+            text_ids: mx.array,
+            negative_prompt_embeds: mx.array | None,
+            negative_text_ids: mx.array | None,
+            guidance: float,
+            timestep: mx.array,
+        ):
+            noise = transformer(
+                hidden_states=latents,
+                encoder_hidden_states=prompt_embeds,
+                timestep=timestep,
+                img_ids=latent_ids,
+                txt_ids=text_ids,
+                guidance=None,
+            )
+            if negative_prompt_embeds is not None and negative_text_ids is not None:
+                negative_noise = transformer(
+                    hidden_states=latents,
+                    encoder_hidden_states=negative_prompt_embeds,
+                    timestep=timestep,
+                    img_ids=latent_ids,
+                    txt_ids=negative_text_ids,
+                    guidance=None,
+                )
+                noise = negative_noise + guidance * (noise - negative_noise)
+            return noise
+
+        return predict
