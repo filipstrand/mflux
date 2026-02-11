@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-02-11
+
+### ✨ Improvements
+
+- **Completely rewritten training system**: Rebuild LoRA training end-to-end, replacing the DreamBooth-specific implementation with a new common training stack (dataset, state, optimizer, runner, and statistics) shared across model families.
+- **New base-model support for training and inference**: Add support for `flux2-klein-base-4b`, `flux2-klein-base-9b`, and `z-image` (in addition to `z-image-turbo`) with dedicated FLUX.2 and Z-Image training adapters.
+- **Performance tuning**: Improve core scheduler/model execution paths used by FLUX.2 and Z-Image.
+
+### 🐛 Bug Fixes
+
+- **FLUX.2 Klein 9B text encoder overrides**: Fix override resolution/application in the FLUX.2 initializer/config flow.
+
+### 🧰 DX & Maintenance
+
+- **FLUX.1 legacy cleanup**: Remove legacy FLUX.1 image-generation tests/resources and retire unused helper tools.
+- **Dependency alignment**: Update install guidance for stable `transformers` 5.0 and refresh lockfile/dependency metadata.
+
+### 📝 Documentation
+
+- **Training docs refresh**: Expand and update training docs/README sections for common training, FLUX.2, and Z-Image.
+- **Install troubleshooting**: Add troubleshooting guidance for `hf_transfer` installation issues.
+
+### 👩‍💻 Contributors
+
+- **Filip Strand (@filipstrand)**
+- **Xin (@q3g)**
+
+---
+
 ## [0.15.5] - 2026-01-26
 
 ### ✨ Improvements
