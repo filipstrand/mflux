@@ -15,6 +15,7 @@ from mflux.models.flux2.model.flux2_transformer.transformer import Flux2Transfor
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 from mflux.models.flux2.variants.edit.flux2_klein_edit_helpers import _Flux2KleinEditHelpers
 from mflux.models.flux2.weights.flux2_weight_definition import Flux2KleinWeightDefinition
+from mflux.utils.apple_silicon import AppleSiliconUtil
 from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
@@ -245,7 +246,6 @@ class Flux2Klein(nn.Module):
 
     @staticmethod
     def _predict(transformer):
-        @mx.compile
         def predict(
             latents: mx.array,
             latent_ids: mx.array,
@@ -276,4 +276,6 @@ class Flux2Klein(nn.Module):
                 noise = negative_noise + guidance * (noise - negative_noise)
             return noise
 
-        return predict
+        if AppleSiliconUtil.is_m1_or_m2():
+            return predict
+        return mx.compile(predict)
