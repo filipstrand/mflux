@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.1] - 2026-02-11
+
+### 🐛 Performance regression fixes
+
+- **M1/M2 inference performance fallback**: Disable model-level `mx.compile` prediction wrappers for Z-Image and FLUX.2 on Apple M1/M2 to avoid observed 0.16 regressions on older Apple Silicon while preserving compiled paths on newer chips.
+
+---
+
 ## [0.16.0] - 2026-02-11
 
 ### ✨ Improvements

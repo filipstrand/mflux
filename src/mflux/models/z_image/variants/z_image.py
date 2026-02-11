@@ -16,6 +16,7 @@ from mflux.models.z_image.model.z_image_transformer.transformer import ZImageTra
 from mflux.models.z_image.model.z_image_vae.vae import VAE
 from mflux.models.z_image.weights.z_image_weight_definition import ZImageWeightDefinition
 from mflux.models.z_image.z_image_initializer import ZImageInitializer
+from mflux.utils.apple_silicon import AppleSiliconUtil
 from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.image_util import ImageUtil
 
@@ -183,7 +184,6 @@ class ZImage(nn.Module):
 
     @staticmethod
     def _predict(transformer: ZImageTransformer):
-        @mx.compile
         def predict(
             latents: mx.array,
             timestep: mx.array,
@@ -208,4 +208,6 @@ class ZImage(nn.Module):
             )
             return noise + guidance * (noise - negative_noise)
 
-        return predict
+        if AppleSiliconUtil.is_m1_or_m2():
+            return predict
+        return mx.compile(predict)

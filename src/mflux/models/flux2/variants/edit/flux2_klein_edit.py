@@ -10,6 +10,7 @@ from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3
 from mflux.models.flux2.model.flux2_transformer.transformer import Flux2Transformer
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 from mflux.models.flux2.variants.edit.flux2_klein_edit_helpers import _Flux2KleinEditHelpers
+from mflux.utils.apple_silicon import AppleSiliconUtil
 from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
@@ -164,7 +165,6 @@ class Flux2KleinEdit(nn.Module):
 
     @staticmethod
     def _predict(transformer):
-        @mx.compile
         def predict(
             latents: mx.array,
             image_latents: mx.array,
@@ -188,7 +188,6 @@ class Flux2KleinEdit(nn.Module):
                 txt_ids=text_ids,
                 guidance=None,
             )
-            # Only keep the prediction for the generated latents (drop reference tokens)
             noise = noise[:, : latents.shape[1]]
             if negative_prompt_embeds is not None and negative_text_ids is not None:
                 negative_noise = transformer(
@@ -203,4 +202,6 @@ class Flux2KleinEdit(nn.Module):
                 noise = negative_noise + guidance * (noise - negative_noise)
             return noise
 
-        return predict
+        if AppleSiliconUtil.is_m1_or_m2():
+            return predict
+        return mx.compile(predict)
