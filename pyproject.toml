@@ -14,7 +14,7 @@ source-exclude = [
 
 [project]
 name = "mflux"
-version = "0.15.5"
+version = "0.16.0"
 description = "A MLX port of FLUX based on the Huggingface Diffusers implementation."
 readme = "README.md"
 keywords = ["diffusers", "flux", "mlx"]
