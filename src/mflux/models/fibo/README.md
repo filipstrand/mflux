@@ -13,7 +13,7 @@ Most text-to-image models excel at imagination—but not control. FIBO is traine
 - **Strong prompt adherence**: High alignment on PRISM-style evaluations
 - **Enterprise-grade**: 100% licensed data with governance, repeatability, and legal clarity
 
-## The three modes: Generate, Refine, and Inspire
+## The four modes: Generate, Edit, Refine, and Inspire
 
 ### Generate
 While the actual prompt input to FIBO is a structured JSON file, the generate command provides an interface to input pure text prompts. These are then expanded into structured JSON prompts using FIBO's Vision-Language Model (VLM) before being passed to the diffusion model for image generation.
@@ -258,6 +258,35 @@ image.save("owl_white.png")
 </details>
 
 It is worth noting that refine does not work the same way as other editing techniques like Flux Kontext or Qwen Image Edit. Instead of modifying an existing image, it modifies the underlying **structured prompt** to produce a new image.
+
+### Edit
+FIBO Edit supports direct image-conditioned editing using a structured JSON prompt that includes an `edit_instruction` field.
+
+```sh
+mflux-generate-fibo-edit \
+    --image-path owl_original.png \
+    --prompt-file owl_brown.json \
+    --edit-instruction "Make the owl white and add round glasses while keeping composition unchanged." \
+    --width 1024 \
+    --height 560 \
+    --steps 20 \
+    --guidance 4.0 \
+    --seed 42 \
+    --output owl_white_edit.png
+```
+
+Optional localized editing is supported with a mask:
+
+```sh
+mflux-generate-fibo-edit \
+    --image-path owl_original.png \
+    --mask-path owl_mask.png \
+    --prompt-file owl_brown.json \
+    --edit-instruction "Replace only the owl with a white owl wearing glasses." \
+    --steps 20 \
+    --seed 42 \
+    --output owl_masked_edit.png
+```
 
 ### Inspire
 Provide an image instead of text. FIBO's vision-language model extracts a detailed, structured prompt, blends it with your creative intent, and produces related images—ideal for inspiration without overreliance on the original.
