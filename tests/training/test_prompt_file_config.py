@@ -390,6 +390,50 @@ def test_preview_prompt_files_are_loaded_in_name_order(tmp_path: Path):
 
 
 @pytest.mark.fast
+def test_edit_autodiscovery_monitoring_fallback_uses_first_input_image(tmp_path: Path):
+    data_dir = tmp_path / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    (data_dir / "01_in.jpeg").write_bytes(b"")
+    (data_dir / "01_in.txt").write_text("edit one\n", encoding="utf-8")
+    (data_dir / "01_out.jpeg").write_bytes(b"")
+    (data_dir / "02_in.jpeg").write_bytes(b"")
+    (data_dir / "02_in.txt").write_text("edit two\n", encoding="utf-8")
+    (data_dir / "02_out.jpeg").write_bytes(b"")
+
+    conf = {
+        "model": "dev",
+        "seed": 42,
+        "steps": 20,
+        "guidance": 3.0,
+        "quantize": 4,
+        "training_loop": {"num_epochs": 1, "batch_size": 1},
+        "optimizer": {"name": "AdamW", "learning_rate": 1e-4},
+        "checkpoint": {"output_path": str(tmp_path / "out"), "save_frequency": 10},
+        "monitoring": {
+            "plot_frequency": 1,
+            "generate_image_frequency": 20,
+        },
+        "lora_layers": {
+            "targets": [
+                {
+                    "module_path": "transformer_blocks.{block}.attn.to_q",
+                    "blocks": {"start": 0, "end": 1},
+                    "rank": 4,
+                }
+            ]
+        },
+        "data": "data",
+    }
+
+    spec = TrainingSpec.from_conf(conf, str(tmp_path / "train.json"), new_folder=False)
+    assert spec.is_edit is True
+    assert spec.monitoring is not None
+    assert spec.monitoring.preview_prompts == ["edit one"]
+    assert spec.monitoring.preview_images is not None
+    assert [p.name for p in spec.monitoring.preview_images] == ["01_in.jpeg"]
+
+
+@pytest.mark.fast
 def test_validation_prompt_file_is_rejected(tmp_path: Path):
     data_dir = tmp_path / "data"
     data_dir.mkdir(parents=True, exist_ok=True)

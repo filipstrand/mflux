@@ -381,8 +381,13 @@ class TrainingSpec:
             raise ValueError("Edit training requires input_image for every data item.")
         if is_edit and monitoring is not None:
             # For edit training, if preview prompts were explicitly provided (not fallback), require matching preview images.
-            # If using fallback, preview images are optional.
-            if not using_fallback_prompts:
+            # If using fallback, use the first input image as the preview conditioning image.
+            if using_fallback_prompts:
+                first_input_image = data[0].input_image
+                if first_input_image is None:
+                    raise ValueError("Edit training fallback preview requires input_image in discovered data.")
+                monitoring.preview_images = [first_input_image]
+            else:
                 # Require preview images for each explicit preview prompt
                 if not preview_image_paths:
                     raise ValueError(
