@@ -4,8 +4,8 @@
   "seed": 4,
   "steps": 9,
   "guidance": 0.0,
-  "quantize": 8,
-  "max_resolution": 512,
+  "quantize": null,
+  "max_resolution": 1024,
   "low_ram": false,
   "training_loop": {
     "num_epochs": 50,

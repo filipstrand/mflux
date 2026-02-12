@@ -101,7 +101,7 @@ image.save("flux2_edit.png")
 Training also supports `flux2-klein-base-4b` and `flux2-klein-base-9b`.
 
 ### Fine-tuning
-Use `mflux-train` with a training config. The configuration mirrors Flux training, but uses a Flux2 model name and FlowMatch steps. For the data/images folder layout, see the common training docs ([Training (LoRA)](../common/README.md#training-lora)).
+Use `mflux-train` with a training config. For the data/images folder layout, see the common [training docs](../common/README.md#training-lora).
 
 Example (base model defaults to 50 steps):
 
@@ -110,21 +110,34 @@ Example (base model defaults to 50 steps):
   "model": "flux2-klein-base-9b",
   "data": "images/",
   "seed": 42,
-  "steps": 50,
+  "steps": 40,
   "guidance": 1.0,
-  "quantize": 4,
-  "training_loop": { "num_epochs": 1, "batch_size": 1, "timestep_low": 4, "timestep_high": 50 },
+  "quantize": null,
+  "low_ram": false,
+  "max_resolution": 1024,
+  "training_loop": { "num_epochs": 100, "batch_size": 1, "timestep_low": 25, "timestep_high": 40 },
   "optimizer": { "name": "AdamW", "learning_rate": 1e-4 },
-  "checkpoint": { "output_path": "~/Desktop/flux2-train", "save_frequency": 1 },
+  "checkpoint": { "output_path": "train", "save_frequency": 25 },
   "monitoring": {
     "plot_frequency": 1,
-    "generate_image_frequency": 100
+    "generate_image_frequency": 20
   },
   "lora_layers": {
     "targets": [
-      { "module_path": "transformer_blocks.{block}.attn.to_q", "blocks": { "start": 0, "end": 1 }, "rank": 4 },
-      { "module_path": "transformer_blocks.{block}.attn.to_k", "blocks": { "start": 0, "end": 1 }, "rank": 4 },
-      { "module_path": "transformer_blocks.{block}.attn.to_v", "blocks": { "start": 0, "end": 1 }, "rank": 4 }
+      { "module_path": "transformer_blocks.{block}.attn.to_q", "blocks": { "start": 0, "end": 5 }, "rank": 16 },
+      { "module_path": "transformer_blocks.{block}.attn.to_k", "blocks": { "start": 0, "end": 5 }, "rank": 16 },
+      { "module_path": "transformer_blocks.{block}.attn.to_v", "blocks": { "start": 0, "end": 5 }, "rank": 16 },
+      { "module_path": "transformer_blocks.{block}.attn.to_out", "blocks": { "start": 0, "end": 5 }, "rank": 16 },
+      { "module_path": "transformer_blocks.{block}.attn.add_q_proj", "blocks": { "start": 0, "end": 5 }, "rank": 16 },
+      { "module_path": "transformer_blocks.{block}.attn.add_k_proj", "blocks": { "start": 0, "end": 5 }, "rank": 16 },
+      { "module_path": "transformer_blocks.{block}.attn.add_v_proj", "blocks": { "start": 0, "end": 5 }, "rank": 16 },
+      { "module_path": "transformer_blocks.{block}.attn.to_add_out", "blocks": { "start": 0, "end": 5 }, "rank": 16 },
+      { "module_path": "transformer_blocks.{block}.ff.linear_in", "blocks": { "start": 0, "end": 5 }, "rank": 16 },
+      { "module_path": "transformer_blocks.{block}.ff.linear_out", "blocks": { "start": 0, "end": 5 }, "rank": 16 },
+      { "module_path": "transformer_blocks.{block}.ff_context.linear_in", "blocks": { "start": 0, "end": 5 }, "rank": 16 },
+      { "module_path": "transformer_blocks.{block}.ff_context.linear_out", "blocks": { "start": 0, "end": 5 }, "rank": 16 },
+      { "module_path": "single_transformer_blocks.{block}.attn.to_qkv_mlp_proj", "blocks": { "start": 0, "end": 20 }, "rank": 16 },
+      { "module_path": "single_transformer_blocks.{block}.attn.to_out", "blocks": { "start": 0, "end": 20 }, "rank": 16 }
     ]
   }
 }
@@ -133,31 +146,9 @@ Example (base model defaults to 50 steps):
 Run training:
 
 ```sh
-mflux-train --config /path/to/train_flux2_base.json
+mflux-train --config /path/to/train.json
 ```
 
 ### Edit fine-tuning (image-conditioned)
-For edit-style training (image in + prompt → image out), use auto-discovery with paired `*_out.*` and `*_in.*` files plus `*_in.txt` prompts. Edit training is supported for Flux2 Klein base models. Preview prompts come from `data/preview*.txt` and the preview images are `data/preview*.{png,jpg,jpeg,webp}`.
+ The config looks identical for edit-based training and only differs in how the training data is prepared and named. For edit-style training (image in + prompt → image out), use auto-discovery with paired `*_out.*` and `*_in.*` files plus `*_in.txt` prompts, see the [training docs](../common/README.md#training-lora) for examples. Edit training is supported for Flux2 Klein base models. Preview prompts come from `data/preview*.txt` and the preview images are `data/preview*.{png,jpg,jpeg,webp}`.
 
-```json
-{
-  "model": "flux2-klein-base-4b",
-  "data": "images/",
-  "seed": 42,
-  "steps": 50,
-  "guidance": 1.0,
-  "quantize": 4,
-  "training_loop": { "num_epochs": 1, "batch_size": 1, "timestep_low": 4, "timestep_high": 50 },
-  "optimizer": { "name": "AdamW", "learning_rate": 1e-4 },
-  "checkpoint": { "output_path": "~/Desktop/flux2-edit-train", "save_frequency": 1 },
-  "monitoring": {
-    "plot_frequency": 1,
-    "generate_image_frequency": 100
-  },
-  "lora_layers": {
-    "targets": [
-      { "module_path": "transformer_blocks.{block}.attn.to_q", "blocks": { "start": 0, "end": 1 }, "rank": 4 }
-    ]
-  }
-}
-```
