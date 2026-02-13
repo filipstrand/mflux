@@ -62,7 +62,7 @@ class Flux2TrainingAdapter(Flux2BaseTrainingAdapter):
                 num_inference_steps=steps,
                 height=height,
                 width=width,
-                guidance=1.0,
+                guidance=self._guidance,
             )
         self._flux2.prompt_cache = {}
         return image.image
