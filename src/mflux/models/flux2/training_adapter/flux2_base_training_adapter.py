@@ -29,6 +29,7 @@ class Flux2BaseTrainingAdapter(TrainingAdapter):
     ):
         self._model_config = model_config
         self._flux2 = model_factory(model_config, quantize)
+        self._guidance: float = 1.0
 
     def model(self):
         return self._flux2
@@ -37,6 +38,7 @@ class Flux2BaseTrainingAdapter(TrainingAdapter):
         return self._flux2.transformer
 
     def create_config(self, training_spec: TrainingSpec, *, width: int, height: int) -> Config:
+        self._guidance = training_spec.guidance
         return Config(
             model_config=self._model_config,
             num_inference_steps=training_spec.steps,

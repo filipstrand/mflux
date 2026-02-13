@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.3] - 2026-02-14
+
+### 🐛 Bug Fixes
+
+- **Z-Image training preview guidance**: Fix Z-Image (non-turbo) training previews so they use the configured guidance value instead of defaulting to 0.0, ensuring preview quality matches actual CFG behavior.
+- **FLUX.2 training preview guidance**: Fix FLUX.2 training previews (txt2img and edit) so they use the configured guidance value instead of forcing 1.0.
+
+---
+
 ## [0.16.2] - 2026-02-12
 
 ### 🐛 Bug Fixes

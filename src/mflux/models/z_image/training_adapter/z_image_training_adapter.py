@@ -23,6 +23,7 @@ class ZImageTrainingAdapter(TrainingAdapter):
     def __init__(self, *, model_config: ModelConfig, quantize: int | None):
         self._model_config = model_config
         self._z = ZImage(quantize=quantize, model_config=model_config)
+        self._guidance: float | None = None
 
     def model(self):
         return self._z
@@ -31,6 +32,7 @@ class ZImageTrainingAdapter(TrainingAdapter):
         return self._z.transformer
 
     def create_config(self, training_spec: TrainingSpec, *, width: int, height: int) -> Config:
+        self._guidance = training_spec.guidance
         return Config(
             model_config=self._model_config,
             num_inference_steps=training_spec.steps,
@@ -83,7 +85,12 @@ class ZImageTrainingAdapter(TrainingAdapter):
         # Show samples without the training adapter, matching inference behavior.
         with self._assistant_disabled():
             return self._z.generate_image(
-                seed=seed, prompt=prompt, num_inference_steps=steps, height=height, width=width
+                seed=seed,
+                prompt=prompt,
+                num_inference_steps=steps,
+                height=height,
+                width=width,
+                guidance=self._guidance,
             )
 
     def save_lora_adapter(self, *, path: Path, training_spec: TrainingSpec) -> None:  # noqa: ARG002

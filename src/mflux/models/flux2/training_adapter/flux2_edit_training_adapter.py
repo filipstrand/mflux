@@ -95,7 +95,7 @@ class Flux2EditTrainingAdapter(Flux2BaseTrainingAdapter):
                 num_inference_steps=steps,
                 height=height,
                 width=width,
-                guidance=1.0,
+                guidance=self._guidance,
                 image_paths=image_paths,
             )
         return image.image
