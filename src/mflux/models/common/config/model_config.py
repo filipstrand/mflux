@@ -476,7 +476,7 @@ AVAILABLE_MODELS = {
     "seedvr2-7b": ModelConfig(
         priority=21,
         aliases=["seedvr2-7b", "seedvr2-7B"],
-        model_name="AInVFX/SeedVR2_comfyUI",
+        model_name="numz/SeedVR2_comfyUI",
         base_model=None,
         controlnet_model=None,
         custom_transformer_model=None,
