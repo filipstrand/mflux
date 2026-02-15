@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import gc
 import random
+import tempfile
 from pathlib import Path
 
 import mlx.core as mx
 from mlx import nn
+from mlx.utils import tree_unflatten
 from PIL import Image as PILImage
 from tqdm import tqdm
 
@@ -120,7 +123,7 @@ class TrainingTrainer:
         )
 
         if training_spec.monitoring is not None and training_state.iterator.num_iterations == 0:
-            TrainingTrainer._generate_previews(adapter, training_spec, training_state)
+            TrainingTrainer._generate_previews_with_optimizer_offload(adapter, training_spec, training_state)
             validation_batch = training_state.iterator.get_validation_batch()
             validation_loss = TrainingTrainer.compute_loss(adapter, training_spec, base_config, validation_batch)
             training_state.statistics.append_values(step=training_state.iterator.num_iterations, loss=float(validation_loss))  # fmt: off
@@ -147,7 +150,7 @@ class TrainingTrainer:
                 del validation_loss
 
             if training_state.should_generate_image(training_spec):
-                TrainingTrainer._generate_previews(adapter, training_spec, training_state)
+                TrainingTrainer._generate_previews_with_optimizer_offload(adapter, training_spec, training_state)
 
             if training_state.should_save(training_spec):
                 training_state.save(adapter, training_spec)
@@ -227,3 +230,25 @@ class TrainingTrainer:
                 )
             )
             del image
+
+    @staticmethod
+    def _generate_previews_with_optimizer_offload(
+        adapter: TrainingAdapter,
+        training_spec: TrainingSpec,
+        training_state: TrainingState,
+    ) -> None:
+        optimizer = training_state.optimizer
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            offload_path = Path(tmp_dir) / "optimizer_offload.safetensors"
+            optimizer.save(offload_path)
+            optimizer.optimizer.state = []
+
+            gc.collect()
+            mx.clear_cache()
+            try:
+                TrainingTrainer._generate_previews(adapter, training_spec, training_state)
+            finally:
+                restored_state = tree_unflatten(list(mx.load(str(offload_path)).items()))
+                optimizer.optimizer.state = restored_state
+                gc.collect()
+                mx.clear_cache()
