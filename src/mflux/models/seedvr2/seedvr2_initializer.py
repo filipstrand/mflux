@@ -18,10 +18,11 @@ class SeedVR2Initializer:
         model_path: str | None = None,
     ) -> None:
         path = model_path if model_path else model_config.model_name
+        weight_definition = SeedVR2WeightDefinition.resolve(model_config)
         SeedVR2Initializer._init_config(model, model_config)
-        weights = SeedVR2Initializer._load_weights(path)
-        SeedVR2Initializer._init_models(model)
-        SeedVR2Initializer._apply_weights(model, weights, quantize)
+        weights = SeedVR2Initializer._load_weights(path, weight_definition)
+        SeedVR2Initializer._init_models(model, model_config)
+        SeedVR2Initializer._apply_weights(model, weights, quantize, weight_definition)
 
     @staticmethod
     def _init_config(model, model_config: ModelConfig) -> None:
@@ -30,23 +31,23 @@ class SeedVR2Initializer:
         model.tiling_config = TilingConfig()
 
     @staticmethod
-    def _load_weights(model_path: str) -> LoadedWeights:
+    def _load_weights(model_path: str, weight_definition) -> LoadedWeights:
         return WeightLoader.load(
-            weight_definition=SeedVR2WeightDefinition,
+            weight_definition=weight_definition,
             model_path=model_path,
         )
 
     @staticmethod
-    def _init_models(model) -> None:
+    def _init_models(model, model_config: ModelConfig) -> None:
         model.vae = SeedVR2VAE()
-        model.transformer = SeedVR2Transformer()
+        model.transformer = SeedVR2Transformer(**(model_config.transformer_overrides or {}))
 
     @staticmethod
-    def _apply_weights(model, weights: LoadedWeights, quantize: int | None) -> None:
+    def _apply_weights(model, weights: LoadedWeights, quantize: int | None, weight_definition) -> None:
         model.bits = WeightApplier.apply_and_quantize(
             weights=weights,
             quantize_arg=quantize,
-            weight_definition=SeedVR2WeightDefinition,
+            weight_definition=weight_definition,
             models={
                 "transformer": model.transformer,
                 "vae": model.vae,

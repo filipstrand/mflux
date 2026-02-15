@@ -16,6 +16,8 @@ class MMAttention(nn.Module):
         qk_bias: bool = False,
         qk_norm_eps: float = 1e-5,
         rope_dim: int = 128,
+        rope_freqs_for: str = "lang",
+        rope_on_text: bool = True,
         shared_weights: bool = False,
         window: tuple[int, int, int] = (4, 3, 3),
         shift: bool = False,
@@ -27,6 +29,7 @@ class MMAttention(nn.Module):
         self.scale = head_dim**-0.5
         self.window = window
         self.shift = shift
+        self.rope_on_text = rope_on_text
 
         inner_dim = heads * head_dim
 
@@ -46,7 +49,7 @@ class MMAttention(nn.Module):
             self.norm_q_txt = RMSNorm(head_dim, eps=qk_norm_eps)
             self.norm_k_txt = RMSNorm(head_dim, eps=qk_norm_eps)
 
-        self.rope = RoPEModule(dim=rope_dim)
+        self.rope = RoPEModule(dim=rope_dim, freqs_for=rope_freqs_for)
 
     def __call__(self, vid, txt, vid_shape, txt_shape):
         B, L, Bt, Lt = vid.shape[0], vid.shape[1], txt.shape[0], txt.shape[1]
@@ -67,14 +70,21 @@ class MMAttention(nn.Module):
         q_txt_rep, k_txt_rep, v_txt_rep = qkv_t_rep[:, 0], qkv_t_rep[:, 1], qkv_t_rep[:, 2]
 
         # 3. Apply RoPE
-        q_vid, k_vid, q_txt_rep, k_txt_rep = self.rope(
-            vid_q=q_vid,
-            vid_k=k_vid,
-            vid_shape=partitioner.window_shapes,
-            txt_q=q_txt_rep,
-            txt_k=k_txt_rep,
-            txt_shape=mx.repeat(txt_shape, mx.array(counts), axis=0),
-        )
+        if self.rope_on_text:
+            q_vid, k_vid, q_txt_rep, k_txt_rep = self.rope(
+                vid_q=q_vid,
+                vid_k=k_vid,
+                vid_shape=partitioner.window_shapes,
+                txt_q=q_txt_rep,
+                txt_k=k_txt_rep,
+                txt_shape=mx.repeat(txt_shape, mx.array(counts), axis=0),
+            )
+        else:
+            q_vid, k_vid = self.rope(
+                vid_q=q_vid,
+                vid_k=k_vid,
+                vid_shape=partitioner.window_shapes,
+            )
 
         # 4. Attention
         vid_lens = mx.prod(partitioner.window_shapes, axis=1)

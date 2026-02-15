@@ -6,8 +6,7 @@ from mflux.models.common.weights.mapping.weight_transforms import WeightTransfor
 
 class SeedVR2WeightMapping(WeightMapping):
     @staticmethod
-    def get_transformer_mapping() -> List[WeightTarget]:
-        num_blocks = 32
+    def get_transformer_mapping(num_blocks: int = 32) -> List[WeightTarget]:
         return [
             WeightTarget(
                 to_pattern="vid_in.proj.weight",
@@ -151,6 +150,12 @@ class SeedVR2WeightMapping(WeightMapping):
                 required=False,
             ),
             WeightTarget(
+                to_pattern="blocks.{block}.mlp.vid.proj_in.bias",
+                from_pattern=["blocks.{block}.mlp.vid.proj_in.bias"],
+                max_blocks=num_blocks,
+                required=False,
+            ),
+            WeightTarget(
                 to_pattern="blocks.{block}.mlp.vid.proj_in_gate.weight",
                 from_pattern=["blocks.{block}.mlp.vid.proj_in_gate.weight"],
                 max_blocks=num_blocks,
@@ -163,8 +168,20 @@ class SeedVR2WeightMapping(WeightMapping):
                 required=False,
             ),
             WeightTarget(
+                to_pattern="blocks.{block}.mlp.vid.proj_out.bias",
+                from_pattern=["blocks.{block}.mlp.vid.proj_out.bias"],
+                max_blocks=num_blocks,
+                required=False,
+            ),
+            WeightTarget(
                 to_pattern="blocks.{block}.mlp.txt.proj_in.weight",
                 from_pattern=["blocks.{block}.mlp.txt.proj_in.weight"],
+                max_blocks=num_blocks,
+                required=False,
+            ),
+            WeightTarget(
+                to_pattern="blocks.{block}.mlp.txt.proj_in.bias",
+                from_pattern=["blocks.{block}.mlp.txt.proj_in.bias"],
                 max_blocks=num_blocks,
                 required=False,
             ),
@@ -181,8 +198,20 @@ class SeedVR2WeightMapping(WeightMapping):
                 required=False,
             ),
             WeightTarget(
+                to_pattern="blocks.{block}.mlp.txt.proj_out.bias",
+                from_pattern=["blocks.{block}.mlp.txt.proj_out.bias"],
+                max_blocks=num_blocks,
+                required=False,
+            ),
+            WeightTarget(
                 to_pattern="blocks.{block}.mlp.all.proj_in.weight",
                 from_pattern=["blocks.{block}.mlp.all.proj_in.weight"],
+                max_blocks=num_blocks,
+                required=False,
+            ),
+            WeightTarget(
+                to_pattern="blocks.{block}.mlp.all.proj_in.bias",
+                from_pattern=["blocks.{block}.mlp.all.proj_in.bias"],
                 max_blocks=num_blocks,
                 required=False,
             ),
@@ -195,6 +224,12 @@ class SeedVR2WeightMapping(WeightMapping):
             WeightTarget(
                 to_pattern="blocks.{block}.mlp.all.proj_out.weight",
                 from_pattern=["blocks.{block}.mlp.all.proj_out.weight"],
+                max_blocks=num_blocks,
+                required=False,
+            ),
+            WeightTarget(
+                to_pattern="blocks.{block}.mlp.all.proj_out.bias",
+                from_pattern=["blocks.{block}.mlp.all.proj_out.bias"],
                 max_blocks=num_blocks,
                 required=False,
             ),

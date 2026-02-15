@@ -14,9 +14,12 @@ class TransformerBlock(nn.Module):
         heads: int = 20,
         head_dim: int = 128,
         expand_ratio: int = 4,
+        mlp_type: str = "swiglu",
         norm_eps: float = 1e-5,
         qk_bias: bool = False,
         rope_dim: int = 128,
+        rope_freqs_for: str = "lang",
+        rope_on_text: bool = True,
         shared_weights: bool = False,
         is_last_layer: bool = False,
         window: tuple[int, int, int] = (4, 3, 3),
@@ -37,6 +40,8 @@ class TransformerBlock(nn.Module):
             qk_bias=qk_bias,
             qk_norm_eps=norm_eps,
             rope_dim=rope_dim,
+            rope_freqs_for=rope_freqs_for,
+            rope_on_text=rope_on_text,
             shared_weights=shared_weights,
             window=window,
             shift=shift,
@@ -48,6 +53,7 @@ class TransformerBlock(nn.Module):
             expand_ratio=expand_ratio,
             shared_weights=shared_weights,
             is_last_layer=is_last_layer,
+            mlp_type=mlp_type,
         )
 
         self.ada = AdaModulation(

@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 
 from mflux.cli.parser.parsers import CommandLineParser
-from mflux.models.seedvr2.cli.seedvr2_upscale import _expand_image_paths
+from mflux.models.seedvr2.cli.seedvr2_upscale import _expand_image_paths, _resolve_seedvr2_model
 from mflux.utils.scale_factor import ScaleFactor
 
 
@@ -132,3 +132,56 @@ def test_seedvr2_expands_directories_and_files_in_order(tmp_path):
     file_image.touch()
 
     assert _expand_image_paths([dir_images, file_image]) == [dir_image, file_image]
+
+
+@pytest.mark.fast
+def test_seedvr2_model_resolution_defaults_to_3b():
+    model_config, model_path = _resolve_seedvr2_model(model_arg=None, model_path=None)
+    assert "seedvr2-3b" in model_config.aliases
+    assert model_path is None
+
+
+@pytest.mark.fast
+def test_seedvr2_model_resolution_supports_7b_alias():
+    model_config, model_path = _resolve_seedvr2_model(model_arg="seedvr2-7b", model_path="seedvr2-7b")
+    assert "seedvr2-7b" in model_config.aliases
+    assert model_path is None
+
+
+@pytest.mark.fast
+def test_seedvr2_model_resolution_infers_7b_from_custom_path():
+    model_config, model_path = _resolve_seedvr2_model(
+        model_arg="/tmp/seedvr2_ema_7b_fp16.safetensors",
+        model_path="/tmp/seedvr2_ema_7b_fp16.safetensors",
+    )
+    assert "seedvr2-7b" in model_config.aliases
+    assert model_path == "/tmp/seedvr2_ema_7b_fp16.safetensors"
+
+
+@pytest.mark.fast
+def test_seedvr2_model_resolution_detects_7b_directory(tmp_path):
+    model_dir = tmp_path / "seedvr2"
+    model_dir.mkdir()
+    (model_dir / "seedvr2_ema_7b_fp16.safetensors").touch()
+    model_config, model_path = _resolve_seedvr2_model(
+        model_arg=str(model_dir),
+        model_path=str(model_dir),
+    )
+    assert "seedvr2-7b" in model_config.aliases
+    assert model_path == str(model_dir)
+
+
+@pytest.mark.fast
+def test_seedvr2_model_resolution_prefers_local_3b_when_directory_contains_only_3b(tmp_path):
+    parent = tmp_path / "contains-7b-in-parent-name"
+    parent.mkdir()
+    model_dir = parent / "seedvr2"
+    model_dir.mkdir()
+    (model_dir / "seedvr2_ema_3b_fp16.safetensors").touch()
+
+    model_config, model_path = _resolve_seedvr2_model(
+        model_arg=str(model_dir),
+        model_path=str(model_dir),
+    )
+    assert "seedvr2-3b" in model_config.aliases
+    assert model_path == str(model_dir)
