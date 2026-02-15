@@ -56,23 +56,32 @@ class RoPEModule(nn.Module):
         rope_dim: int = 3,
         freqs_for: str = "lang",
     ) -> tuple[mx.array, mx.array]:
-        max_temporal = int(mx.max(vid_shape[:, 0]))
-        max_height = int(mx.max(vid_shape[:, 1]))
-        max_width = int(mx.max(vid_shape[:, 2]))
-
-        clamp_temporal = min(max_temporal + 16, 1024)
-        clamp_height = min(max_height + 4, 128)
-        clamp_width = min(max_width + 4, 128)
-
-        vid_freqs_full = RoPEModule._get_axial_freqs(
-            freqs, clamp_temporal, clamp_height, clamp_width, freqs_for=freqs_for
-        )
-
         vid_freq_list = []
-        for b in range(vid_shape.shape[0]):
-            f, h, w = int(vid_shape[b, 0]), int(vid_shape[b, 1]), int(vid_shape[b, 2])
-            vid_freq = vid_freqs_full[:f, :h, :w].reshape(-1, vid_freqs_full.shape[-1])
-            vid_freq_list.append(vid_freq)
+        if freqs_for == "pixel":
+            # For pixel-space RoPE, the position grid is normalized with linspace(-1, 1).
+            # We must use exact dimensions per sample/window; slicing a larger precomputed grid
+            # changes spacing and introduces spatial bias.
+            for b in range(vid_shape.shape[0]):
+                f, h, w = int(vid_shape[b, 0]), int(vid_shape[b, 1]), int(vid_shape[b, 2])
+                vid_freq = RoPEModule._get_axial_freqs(freqs, f, h, w, freqs_for=freqs_for).reshape(-1, freqs.size * 2 * rope_dim)
+                vid_freq_list.append(vid_freq)
+        else:
+            max_temporal = int(mx.max(vid_shape[:, 0]))
+            max_height = int(mx.max(vid_shape[:, 1]))
+            max_width = int(mx.max(vid_shape[:, 2]))
+
+            clamp_temporal = min(max_temporal + 16, 1024)
+            clamp_height = min(max_height + 4, 128)
+            clamp_width = min(max_width + 4, 128)
+
+            vid_freqs_full = RoPEModule._get_axial_freqs(
+                freqs, clamp_temporal, clamp_height, clamp_width, freqs_for=freqs_for
+            )
+
+            for b in range(vid_shape.shape[0]):
+                f, h, w = int(vid_shape[b, 0]), int(vid_shape[b, 1]), int(vid_shape[b, 2])
+                vid_freq = vid_freqs_full[:f, :h, :w].reshape(-1, vid_freqs_full.shape[-1])
+                vid_freq_list.append(vid_freq)
 
         vid_freqs = mx.concatenate(vid_freq_list, axis=0)
 
@@ -142,32 +151,45 @@ class RoPEModule(nn.Module):
         rope_dim: int = 3,
         freqs_for: str = "lang",
     ) -> tuple[mx.array, mx.array, mx.array, mx.array]:
-        max_temporal = int(mx.max(vid_shape[:, 0] + txt_shape[:, 0]))
-        max_height = int(mx.max(vid_shape[:, 1]))
-        max_width = int(mx.max(vid_shape[:, 2]))
-        max_txt_len = int(mx.max(txt_shape[:, 0]))
-
-        clamp_temporal = min(max_temporal + 16, 1024)
-        clamp_height = min(max_height + 4, 128)
-        clamp_width = min(max_width + 4, 128)
-
-        vid_freqs_full = RoPEModule._get_axial_freqs(
-            freqs, clamp_temporal, clamp_height, clamp_width, freqs_for=freqs_for
-        )
-        txt_freqs_1d = RoPEModule._get_axial_freqs(freqs, min(max_txt_len + 16, 1024), freqs_for=freqs_for)
-
         vid_freq_list = []
         txt_freq_list = []
+        if freqs_for == "pixel":
+            # Same rationale as _apply_rope_3d: compute exact grids in pixel mode.
+            for b in range(vid_shape.shape[0]):
+                f, h, w = int(vid_shape[b, 0]), int(vid_shape[b, 1]), int(vid_shape[b, 2])
+                txt_len = int(txt_shape[b, 0])
 
-        for b in range(vid_shape.shape[0]):
-            f, h, w = int(vid_shape[b, 0]), int(vid_shape[b, 1]), int(vid_shape[b, 2])
-            txt_len = int(txt_shape[b, 0])
+                full = RoPEModule._get_axial_freqs(freqs, txt_len + f, h, w, freqs_for=freqs_for)
+                vid_freq = full[txt_len : txt_len + f, :h, :w].reshape(-1, full.shape[-1])
+                txt_freq = RoPEModule._get_axial_freqs(freqs, txt_len, freqs_for=freqs_for)
+                txt_freq = mx.tile(txt_freq, (1, rope_dim))
 
-            vid_freq = vid_freqs_full[txt_len : txt_len + f, :h, :w].reshape(-1, vid_freqs_full.shape[-1])
-            txt_freq = mx.tile(txt_freqs_1d[:txt_len], (1, rope_dim))
+                vid_freq_list.append(vid_freq)
+                txt_freq_list.append(txt_freq)
+        else:
+            max_temporal = int(mx.max(vid_shape[:, 0] + txt_shape[:, 0]))
+            max_height = int(mx.max(vid_shape[:, 1]))
+            max_width = int(mx.max(vid_shape[:, 2]))
+            max_txt_len = int(mx.max(txt_shape[:, 0]))
 
-            vid_freq_list.append(vid_freq)
-            txt_freq_list.append(txt_freq)
+            clamp_temporal = min(max_temporal + 16, 1024)
+            clamp_height = min(max_height + 4, 128)
+            clamp_width = min(max_width + 4, 128)
+
+            vid_freqs_full = RoPEModule._get_axial_freqs(
+                freqs, clamp_temporal, clamp_height, clamp_width, freqs_for=freqs_for
+            )
+            txt_freqs_1d = RoPEModule._get_axial_freqs(freqs, min(max_txt_len + 16, 1024), freqs_for=freqs_for)
+
+            for b in range(vid_shape.shape[0]):
+                f, h, w = int(vid_shape[b, 0]), int(vid_shape[b, 1]), int(vid_shape[b, 2])
+                txt_len = int(txt_shape[b, 0])
+
+                vid_freq = vid_freqs_full[txt_len : txt_len + f, :h, :w].reshape(-1, vid_freqs_full.shape[-1])
+                txt_freq = mx.tile(txt_freqs_1d[:txt_len], (1, rope_dim))
+
+                vid_freq_list.append(vid_freq)
+                txt_freq_list.append(txt_freq)
 
         vid_freqs = mx.concatenate(vid_freq_list, axis=0)
         txt_freqs = mx.concatenate(txt_freq_list, axis=0)
