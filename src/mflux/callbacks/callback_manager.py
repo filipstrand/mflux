@@ -1,5 +1,7 @@
 from argparse import Namespace
 
+import mlx.core as mx
+
 from mflux.callbacks.instances.battery_saver import BatterySaver
 from mflux.callbacks.instances.canny_saver import CannyImageSaver
 from mflux.callbacks.instances.depth_saver import DepthImageSaver
@@ -62,12 +64,28 @@ class CallbackManager:
     @staticmethod
     def _register_memory_saver(args: Namespace, model) -> MemorySaver | None:
         memory_saver = None
+        cache_limit_bytes = CallbackManager._resolve_cache_limit_bytes(getattr(args, "cache_limit_gb", None))
         if args.low_ram:
             seeds = getattr(args, "seed", []) or []
             images = getattr(args, "image_path", [])
             if not isinstance(images, list):
                 images = [images] if images is not None else []
             keep_transformer = len(seeds) > 1 or len(images) > 1
-            memory_saver = MemorySaver(model=model, keep_transformer=keep_transformer, args=args)
+            memory_saver = MemorySaver(
+                model=model,
+                keep_transformer=keep_transformer,
+                cache_limit_bytes=cache_limit_bytes or 1000**3,
+                args=args,
+            )
             model.callbacks.register(memory_saver)
+        elif cache_limit_bytes is not None:
+            mx.set_cache_limit(cache_limit_bytes)
+            mx.clear_cache()
+            mx.reset_peak_memory()
         return memory_saver
+
+    @staticmethod
+    def _resolve_cache_limit_bytes(cache_limit_gb: float | None) -> int | None:
+        if cache_limit_gb is None:
+            return None
+        return int(cache_limit_gb * (1000**3))
