@@ -12,6 +12,8 @@ class AppleSiliconUtil:
         if platform.machine() not in {"arm64", "aarch64"}:
             return False
         chip_name = cls._get_chip_name().lower()
+        if "max" in chip_name or "ultra" in chip_name:
+            return False
         return "apple m1" in chip_name or "apple m2" in chip_name
 
     @classmethod
