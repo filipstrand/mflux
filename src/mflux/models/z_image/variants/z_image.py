@@ -56,6 +56,9 @@ class ZImage(nn.Module):
         image_strength: float | None = None,
         scheduler: str | None = None,
         negative_prompt: str | None = None,
+        shift: float | None = None,
+        mcf_max_change: float | None = None,
+        sigma_schedule: str = "linear",
     ) -> Image.Image:
         supports_guidance = bool(self.model_config.supports_guidance)
         if not supports_guidance:
@@ -74,6 +77,9 @@ class ZImage(nn.Module):
             image_strength=image_strength,
             model_config=self.model_config,
             num_inference_steps=num_inference_steps,
+            shift=shift,
+            mcf_max_change=mcf_max_change,
+            sigma_schedule=sigma_schedule,
         )
         # 1. Create the initial latents
         latents = LatentCreator.create_for_txt2img_or_img2img(
@@ -115,7 +121,19 @@ class ZImage(nn.Module):
                 )
 
                 # 5.t Take one denoise step
-                latents = config.scheduler.step(noise=noise, timestep=t, latents=latents)
+                new_latents = config.scheduler.step(noise=noise, timestep=t, latents=latents)
+
+                # 5.t+ MCF (Mean Change Factor) clamping
+                if config.mcf_max_change is not None and config.mcf_max_change > 0:
+                    change = new_latents - latents
+                    mean_change = mx.mean(mx.abs(change))
+                    scale = mx.minimum(
+                        mx.array(1.0),
+                        mx.array(config.mcf_max_change) / mx.maximum(mean_change, mx.array(1e-8)),
+                    )
+                    new_latents = latents + change * scale
+
+                latents = new_latents
 
                 # 6.t Call subscribers in-loop
                 ctx.in_loop(t, latents)

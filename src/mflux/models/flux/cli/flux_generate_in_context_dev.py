@@ -68,7 +68,7 @@ def main():
             )
             # 4. Save the image
             output_path = Path(args.output.format(seed=seed))
-            image.get_right_half().save(path=output_path, export_json_metadata=args.metadata)
+            image.get_right_half().save(path=output_path)
             if args.save_full_image:
                 image.save(path=output_path.with_stem(output_path.stem + "_full"))
 
