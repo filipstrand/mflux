@@ -11,6 +11,7 @@ SeedVR2 is more recent and the preferred method for high-fidelity upscaling and 
 
 ```sh
 mflux-upscale-seedvr2 \
+  --model seedvr2-7b \
   --image-path "input.png" \
   --resolution 2160 \
   --softness 0.5
@@ -34,7 +35,7 @@ image.save("input_upscaled.png")
 ```
 </details>
 
-This will upscale the image such that the shortest side is 2160 pixels while maintaining the aspect ratio.
+This will upscale the image such that the shortest side is 2160 pixels while maintaining the aspect ratio. If `--model` is omitted, MFLUX defaults to `seedvr2-3b`.
 
 Instead of specifying a target resolution, you can also use `--resolution 2x` or `--resolution 3x` to upscale by a factor of 2 or 3 respectively.
 
@@ -145,4 +146,3 @@ image.save("image_upscaled.png")
 </details>
 
 </details>
-
