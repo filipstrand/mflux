@@ -18,6 +18,7 @@ This README covers stable, shared patterns. For model-specific usage, see each m
 - [Metadata reuse](#metadata-reuse)
 - [Metadata inspection](#metadata-inspection)
 - [Resource and inspection options](#resource-and-inspection-options)
+- [MLX cache limit](#mlx-cache-limit)
 - [Cache locations](#cache-locations)
 - [Capabilities by task](#capabilities-by-task)
 - [Command reference](#command-reference)
@@ -519,6 +520,24 @@ image = model.generate_image(
 image.save("image.png")
 ```
 </details>
+
+---
+
+## MLX cache limit
+
+Use `--mlx-cache-limit-gb` to cap MLX cache usage.
+
+```sh
+mflux-generate-z-image-turbo \
+  --model z-image-turbo \
+  --steps 9 \
+  --prompt "a portrait" \
+  --mlx-cache-limit-gb 2.5
+```
+
+- Value must be positive (`> 0`).
+- The value is converted internally using decimal gigabytes (`GB * 1000^3`).
+- Works in both normal mode and `--low-ram` mode.
 
 ---
 
