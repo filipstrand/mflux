@@ -64,7 +64,7 @@ class CallbackManager:
     @staticmethod
     def _register_memory_saver(args: Namespace, model) -> MemorySaver | None:
         memory_saver = None
-        cache_limit_bytes = CallbackManager._resolve_cache_limit_bytes(getattr(args, "cache_limit_gb", None))
+        cache_limit_bytes = CallbackManager._resolve_cache_limit_bytes(getattr(args, "mlx_cache_limit_gb", None))
         if args.low_ram:
             seeds = getattr(args, "seed", []) or []
             images = getattr(args, "image_path", [])
@@ -85,7 +85,7 @@ class CallbackManager:
         return memory_saver
 
     @staticmethod
-    def _resolve_cache_limit_bytes(cache_limit_gb: float | None) -> int | None:
-        if cache_limit_gb is None:
+    def _resolve_cache_limit_bytes(mlx_cache_limit_gb: float | None) -> int | None:
+        if mlx_cache_limit_gb is None:
             return None
-        return int(cache_limit_gb * (1000**3))
+        return int(mlx_cache_limit_gb * (1000**3))
