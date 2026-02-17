@@ -159,12 +159,16 @@ class ZImageI2LPipeline:
         images: list[Image.Image],
         output_path: str | Path = "lora.safetensors",
         lora_scale: float = 1.0,
+        target_rank: int | None = None,
     ) -> Path:
         """Full pipeline: encode images and save LoRA weights.
 
         Args:
             images: List of style reference images.
             output_path: Where to save the generated .safetensors file.
+            lora_scale: Scale factor for LoRA weights.
+            target_rank: Target LoRA rank (must be multiple of 4).
+                If None, uses 4 * num_images (natural merge rank).
 
         Returns:
             Path to the saved LoRA file.
@@ -178,6 +182,26 @@ class ZImageI2LPipeline:
         embeddings = self.encode_images(images)
         encode_time = time.time() - t0
         print(f"  Encoding done in {encode_time:.1f}s")
+
+        # Determine repetitions to reach target rank
+        base_rank = 4
+        num_images = len(images)
+        natural_rank = base_rank * num_images
+
+        if target_rank is not None:
+            if target_rank % base_rank != 0:
+                raise ValueError(f"target_rank must be a multiple of {base_rank}, got {target_rank}")
+            repeats = max(1, (target_rank + natural_rank - 1) // natural_rank)  # ceil division
+            if repeats > 1:
+                print(
+                    f"  Repeating embeddings {repeats}x to reach rank {natural_rank * repeats} (target: {target_rank})"
+                )
+                embeddings = mx.concatenate([embeddings] * repeats, axis=0)
+        else:
+            target_rank = natural_rank
+
+        effective_rank = base_rank * embeddings.shape[0]
+        print(f"  Output LoRA rank: {effective_rank}")
 
         # Decode to LoRA
         print("Generating LoRA weights...")

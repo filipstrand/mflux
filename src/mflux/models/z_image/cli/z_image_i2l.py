@@ -73,6 +73,16 @@ The generated LoRA can then be used with mflux-generate-z-image-turbo:
         help="Scale factor applied to all LoRA weights before saving. "
         "Values > 1.0 amplify the style effect, < 1.0 soften it. Default: 1.0",
     )
+    parser.add_argument(
+        "--rank",
+        "-r",
+        type=int,
+        default=None,
+        help="Target LoRA rank. Base rank is 4 per image. With N images, "
+        "default rank is 4*N (e.g. 16 for 4 images). Set this to override: "
+        "each image will be repeated ceil(rank / (4*N)) times to reach the "
+        "target. Valid values: multiples of 4. Typical: 4, 16, 32, 64, 128.",
+    )
 
     args = parser.parse_args()
 
@@ -92,7 +102,7 @@ The generated LoRA can then be used with mflux-generate-z-image-turbo:
 
     # Create pipeline and generate LoRA
     pipeline = ZImageI2LPipeline.from_pretrained()
-    pipeline.generate_lora(images=images, output_path=args.output, lora_scale=args.lora_scale)
+    pipeline.generate_lora(images=images, output_path=args.output, lora_scale=args.lora_scale, target_rank=args.rank)
 
 
 if __name__ == "__main__":
