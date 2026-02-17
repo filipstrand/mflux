@@ -33,5 +33,7 @@ class Siglip2VisionEmbeddings(nn.Module):
         x = mx.transpose(x, (0, 2, 1))  # (B, N, embed_dim)
 
         position_ids = mx.arange(self.num_patches)
-        x = x + self.position_embedding(position_ids)
+        x = (
+            x + self.position_embedding(position_ids)[None, :, :]
+        )  # (1, N, embed_dim) -> broadcast with (B, N, embed_dim)
         return x
