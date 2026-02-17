@@ -83,7 +83,7 @@ def load_siglip2_weights(precision: mx.Dtype = mx.bfloat16) -> dict:
         if key.endswith(".weight"):
             if len(tensor.shape) == 4:
                 tensor = _transpose_conv2d(tensor)
-            elif len(tensor.shape) == 2:
+            elif len(tensor.shape) == 2 and "embedding" not in key:
                 tensor = _transpose_linear(tensor)
 
         transformed[key] = tensor
