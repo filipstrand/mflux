@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.5] - 2026-02-17
+
+### ✨ Improvements
+
+- **FLUX.2 Klein img2img CLI parity**: Add `--image-path` and `--image-strength` to `mflux-generate-flux2`, enabling init-image driven generation with the same CLI pattern used in other generators.
+- **MLX cache control**: Add `--mlx-cache-limit-gb` to cap MLX cache usage without requiring full `--low-ram` mode.
+
+### 📝 Documentation
+
+- **Common CLI docs**: Document `--mlx-cache-limit-gb` behavior and usage in the shared model README.
+
+### 👩‍💻 Contributors
+
+- **@terribilissimo**
+- **@icelaglace**
+
+---
+
 ## [0.16.4] - 2026-02-15
 
 ### 🐛 Bug Fixes
