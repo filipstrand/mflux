@@ -70,8 +70,8 @@ class LoRATrainerBlock(nn.Module):
         for pattern, layer in zip(self.lora_patterns, self.layers):
             name = pattern[0]
             lora_a, lora_b = layer(x)
-            lora[f"{self.prefix}.{self.block_id}.{name}.lora_A.default.weight"] = lora_a
-            lora[f"{self.prefix}.{self.block_id}.{name}.lora_B.default.weight"] = lora_b
+            lora[f"{self.prefix}.{self.block_id}.{name}.lora_A.weight"] = lora_a
+            lora[f"{self.prefix}.{self.block_id}.{name}.lora_B.weight"] = lora_b
         return lora
 
 
