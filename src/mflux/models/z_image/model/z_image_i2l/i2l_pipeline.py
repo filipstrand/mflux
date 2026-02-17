@@ -115,13 +115,19 @@ class ZImageI2LPipeline:
         return mx.concatenate([siglip2_stack, dinov3_stack], axis=-1)  # (N, 5632)
 
     def decode_to_lora(self, embeddings: mx.array) -> dict[str, mx.array]:
-        """Decode embeddings into LoRA weights, averaging across images.
+        """Decode embeddings into LoRA weights, concatenating across images.
+
+        Following the DiffSynth-Studio merge strategy: lora_A matrices are
+        concatenated along axis 0 (increasing rank), lora_B along axis 1,
+        and lora_A is scaled by alpha=1/N.
+
+        With N images and base rank 4, the output has effective rank 4*N.
 
         Args:
             embeddings: (N, 5632) concatenated image embeddings.
 
         Returns:
-            Dictionary of LoRA weight tensors, averaged over all images.
+            Dictionary of merged LoRA weight tensors.
         """
         num_images = embeddings.shape[0]
         all_loras = []
@@ -131,15 +137,20 @@ class ZImageI2LPipeline:
             mx.eval(lora)
             all_loras.append(lora)
 
-        # Average LoRA weights across all images (alpha = 1/N)
         if len(all_loras) == 1:
             return all_loras[0]
 
-        merged = {}
+        # Merge by concatenation (DiffSynth-Studio strategy)
         alpha = 1.0 / num_images
-        keys = all_loras[0].keys()
-        for key in keys:
-            merged[key] = sum(lora[key] for lora in all_loras) * alpha
+        merged = {}
+        lora_a_keys = [k for k in all_loras[0].keys() if ".lora_A." in k]
+
+        for key_a in lora_a_keys:
+            key_b = key_a.replace(".lora_A.", ".lora_B.")
+            # Concat lora_A along axis 0: [rank, dim] x N -> [rank*N, dim]
+            merged[key_a] = mx.concatenate([lora[key_a] for lora in all_loras], axis=0) * alpha
+            # Concat lora_B along axis 1: [dim, rank] x N -> [dim, rank*N]
+            merged[key_b] = mx.concatenate([lora[key_b] for lora in all_loras], axis=1)
 
         return merged
 
