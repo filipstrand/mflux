@@ -16,6 +16,7 @@ def main():
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
     parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
+    parser.add_image_to_image_arguments(required=False)
     parser.add_output_arguments()
     args = parser.parse_args()
 
@@ -49,7 +50,7 @@ def main():
         width, height = DimensionResolver.resolve(
             width=args.width,
             height=args.height,
-            reference_image_path=None,
+            reference_image_path=args.image_path,
         )
 
         for seed in args.seed:
@@ -59,7 +60,9 @@ def main():
                 width=width,
                 height=height,
                 guidance=args.guidance,
+                image_path=args.image_path,
                 num_inference_steps=args.steps,
+                image_strength=args.image_strength,
                 scheduler="flow_match_euler_discrete",
             )
             ImageUtil.save_image(
