@@ -1,7 +1,7 @@
 """CLI entrypoint for Z-Image Image-to-LoRA (i2L).
 
 Usage:
-    mflux-z-image-i2l --image-path ./style_images/ --output style_lora.safetensors
+    mflux-z-image-i2l --image-path ./style_images --output style_lora.safetensors
     mflux-z-image-i2l --image-path img1.jpg img2.jpg --output style_lora.safetensors
 """
 
@@ -42,10 +42,10 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  mflux-z-image-i2l --image-path ./my_style/
-  mflux-z-image-i2l --image-path ./my_style/ --output my_style.safetensors
+  mflux-z-image-i2l --image-path ./my_style
+  mflux-z-image-i2l --image-path ./my_style --output my_style.safetensors
   mflux-z-image-i2l --image-path img1.jpg img2.jpg img3.jpg img4.jpg
-  mflux-z-image-i2l --image-path ./style_a/ ./style_b/photo.png
+  mflux-z-image-i2l --image-path ./style_a ./style_b/photo.png
 
 The generated LoRA can then be used with mflux-generate-z-image-turbo:
   mflux-generate-z-image-turbo --prompt "a cat" --lora-paths style.safetensors
