@@ -14,6 +14,7 @@ class SeedVR2UpscaleTestHelper:
         output_image_path: str,
         input_image_path: str,
         *,
+        model_config: ModelConfig | None = None,
         tiling_config: TilingConfig | None = None,
         seed: int = 42,
         resolution: int = 320,
@@ -28,7 +29,7 @@ class SeedVR2UpscaleTestHelper:
             model = SeedVR2(
                 quantize=quantize,
                 model_path=None,
-                model_config=ModelConfig.seedvr2_3b(),
+                model_config=model_config or ModelConfig.seedvr2_3b(),
             )
             if tiling_config is not None:
                 model.tiling_config = tiling_config
