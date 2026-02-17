@@ -41,9 +41,15 @@ Instead of specifying a target resolution, you can also use `--resolution 2x` or
 
 You can also adjust the `--softness` parameter (0.0 to 1.0) to control input pre-downsampling, which can help achieve smoother upscaling results. A value of 0.0 (default) disables pre-downsampling, while higher values up to 1.0 increase the downsampling factor (up to 8x internally) before upscaling. A value of `0.5` is often a good starting point.
 
+> [!NOTE]
+> Upscaling to very large resolutions can require a lot of memory. If you run into memory pressure, try `--low-ram` or set an MLX cache limit with `--mlx-cache-limit-gb 16` (replace `16` with a value that fits your machine).
+
 ## Upscale a Directory
 
 Pass a directory to `--image-path` to upscale every image inside.
+
+> [!WARNING]
+> `--low-ram` is not supported when upscaling a directory. That mode offloads the transformer after each image, which conflicts with the folder-processing flow.
 
 ```sh
 mflux-upscale-seedvr2 \
