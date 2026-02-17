@@ -142,6 +142,11 @@ class ModelConfig:
     def seedvr2_3b() -> "ModelConfig":
         return AVAILABLE_MODELS["seedvr2-3b"]
 
+    @staticmethod
+    @lru_cache
+    def seedvr2_7b() -> "ModelConfig":
+        return AVAILABLE_MODELS["seedvr2-7b"]
+
     def x_embedder_input_dim(self) -> int:
         if "Fill" in self.model_name:
             return 384
@@ -467,5 +472,29 @@ AVAILABLE_MODELS = {
         max_sequence_length=None,
         supports_guidance=True,
         requires_sigma_shift=None,
+    ),
+    "seedvr2-7b": ModelConfig(
+        priority=21,
+        aliases=["seedvr2-7b", "seedvr2-7B"],
+        model_name="numz/SeedVR2_comfyUI",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=None,
+        max_sequence_length=None,
+        supports_guidance=True,
+        requires_sigma_shift=None,
+        transformer_overrides={
+            "vid_dim": 3072,
+            "heads": 24,
+            "num_layers": 36,
+            "mm_layers": 36,
+            "rope_dim": 64,
+            "rope_on_text": False,
+            "rope_freqs_for": "pixel",
+            "mlp_type": "normal",
+            "use_output_ada": False,
+            "last_layer_vid_only": False,
+        },
     ),
 }

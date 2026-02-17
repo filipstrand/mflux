@@ -20,6 +20,11 @@ class SeedVR2Transformer(nn.Module):
         heads: int = 20,
         head_dim: int = 128,
         expand_ratio: int = 4,
+        mlp_type: str = "swiglu",
+        rope_on_text: bool = True,
+        rope_freqs_for: str = "lang",
+        use_output_ada: bool = True,
+        last_layer_vid_only: bool = True,
         norm_eps: float = 1e-5,
         patch_size: tuple = (1, 2, 2),
         num_layers: int = 32,
@@ -37,6 +42,8 @@ class SeedVR2Transformer(nn.Module):
         self.emb_dim = emb_dim
         self.num_layers = num_layers
         self.mm_layers = mm_layers
+        self.use_output_ada = use_output_ada
+        self.last_layer_vid_only = last_layer_vid_only
 
         self.vid_in = PatchIn(
             in_channels=vid_in_channels,
@@ -55,7 +62,7 @@ class SeedVR2Transformer(nn.Module):
         self.blocks = []
         for i in range(num_layers):
             shared_weights = i >= mm_layers
-            is_last_layer = i == num_layers - 1
+            is_last_layer = self.last_layer_vid_only and i == num_layers - 1
             shift = i % 2 == 1
 
             self.blocks.append(
@@ -65,9 +72,12 @@ class SeedVR2Transformer(nn.Module):
                     heads=heads,
                     head_dim=head_dim,
                     expand_ratio=expand_ratio,
+                    mlp_type=mlp_type,
                     norm_eps=norm_eps,
                     qk_bias=False,
                     rope_dim=rope_dim,
+                    rope_freqs_for=rope_freqs_for,
+                    rope_on_text=rope_on_text,
                     shared_weights=shared_weights,
                     is_last_layer=is_last_layer,
                     window=window,
@@ -75,10 +85,10 @@ class SeedVR2Transformer(nn.Module):
                 )
             )
 
-        self.vid_out_norm = RMSNorm(vid_dim, eps=norm_eps)
-
-        self.out_shift = mx.zeros((vid_dim,))
-        self.out_scale = mx.ones((vid_dim,))
+        if use_output_ada:
+            self.vid_out_norm = RMSNorm(vid_dim, eps=norm_eps)
+            self.out_shift = mx.zeros((vid_dim,))
+            self.out_scale = mx.ones((vid_dim,))
 
         self.vid_out = PatchOut(
             out_channels=vid_out_channels,
@@ -107,8 +117,9 @@ class SeedVR2Transformer(nn.Module):
                 txt_shape=txt_shape,
             )
 
-        vid = self.vid_out_norm(vid)
-        vid = self._apply_out_ada(vid, emb=emb)
+        if self.use_output_ada:
+            vid = self.vid_out_norm(vid)
+            vid = self._apply_out_ada(vid, emb=emb)
         vid, vid_shape = self.vid_out(vid, vid_shape)
         return vid
 
