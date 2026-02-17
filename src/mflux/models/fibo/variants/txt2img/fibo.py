@@ -53,7 +53,7 @@ class FIBO(nn.Module):
         guidance: float = 4.0,
         image_path: Path | str | None = None,
         image_strength: float | None = None,
-        scheduler: str = "linear",
+        scheduler: str = "flow_match_euler_discrete",
         negative_prompt: str | None = None,
     ) -> GeneratedImage:
         # 0. Create a new config based on the model type and input parameters
