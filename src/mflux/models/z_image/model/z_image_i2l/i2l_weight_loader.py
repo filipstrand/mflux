@@ -28,13 +28,6 @@ def _download_weights(repo_id: str, filename: str) -> Path:
     return Path(hf_hub_download(repo_id=repo_id, filename=filename))
 
 
-def _transpose_linear(tensor: mx.array) -> mx.array:
-    """Transpose a 2D weight matrix from PyTorch [out, in] to MLX [in, out]."""
-    if len(tensor.shape) == 2:
-        return tensor.T
-    return tensor
-
-
 def _transpose_conv2d(tensor: mx.array) -> mx.array:
     """Transpose Conv2d weight from PyTorch [out, in, kH, kW] to MLX [out, kH, kW, in]."""
     if len(tensor.shape) == 4:
@@ -59,11 +52,11 @@ def load_siglip2_weights(precision: mx.Dtype = mx.bfloat16) -> dict:
 
         # Handle the fused in_proj_weight/bias in the pooling head
         if key == "head.attention.in_proj_weight":
-            # [4608, 1536] -> 3 x [1536, 1536] (then transpose each)
+            # [4608, 1536] -> 3 x [1536, 1536]
             q, k, v = mx.split(tensor, 3, axis=0)
-            transformed["head.query_proj.weight"] = q.T
-            transformed["head.key_proj.weight"] = k.T
-            transformed["head.value_proj.weight"] = v.T
+            transformed["head.query_proj.weight"] = q
+            transformed["head.key_proj.weight"] = k
+            transformed["head.value_proj.weight"] = v
             continue
         elif key == "head.attention.in_proj_bias":
             # [4608] -> 3 x [1536]
@@ -73,18 +66,15 @@ def load_siglip2_weights(precision: mx.Dtype = mx.bfloat16) -> dict:
             transformed["head.value_proj.bias"] = v
             continue
         elif key == "head.attention.out_proj.weight":
-            transformed["head.out_proj.weight"] = tensor.T
+            transformed["head.out_proj.weight"] = tensor
             continue
         elif key == "head.attention.out_proj.bias":
             transformed["head.out_proj.bias"] = tensor
             continue
 
-        # Standard transforms
-        if key.endswith(".weight"):
-            if len(tensor.shape) == 4:
-                tensor = _transpose_conv2d(tensor)
-            elif len(tensor.shape) == 2 and "embedding" not in key:
-                tensor = _transpose_linear(tensor)
+        # Transpose Conv2d weights only
+        if key.endswith(".weight") and len(tensor.shape) == 4:
+            tensor = _transpose_conv2d(tensor)
 
         transformed[key] = tensor
 
@@ -114,12 +104,9 @@ def load_dinov3_weights(precision: mx.Dtype = mx.bfloat16) -> dict:
         # Rename lambda1 -> gamma for LayerScale
         key = key.replace(".lambda1", ".gamma")
 
-        # Standard transforms
-        if key.endswith(".weight"):
-            if len(tensor.shape) == 4:
-                tensor = _transpose_conv2d(tensor)
-            elif len(tensor.shape) == 2:
-                tensor = _transpose_linear(tensor)
+        # Transpose Conv2d weights only
+        if key.endswith(".weight") and len(tensor.shape) == 4:
+            tensor = _transpose_conv2d(tensor)
 
         transformed[key] = tensor
 
@@ -137,11 +124,6 @@ def load_i2l_decoder_weights(precision: mx.Dtype = mx.bfloat16) -> dict:
 
     transformed = {}
     for key, tensor in raw.items():
-        tensor = tensor.astype(precision)
-
-        if key.endswith(".weight") and len(tensor.shape) == 2:
-            tensor = _transpose_linear(tensor)
-
-        transformed[key] = tensor
+        transformed[key] = tensor.astype(precision)
 
     return tree_unflatten(list(transformed.items()))
