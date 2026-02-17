@@ -147,6 +147,7 @@ class ZImageI2LPipeline:
         self,
         images: list[Image.Image],
         output_path: str | Path = "lora.safetensors",
+        lora_scale: float = 1.0,
     ) -> Path:
         """Full pipeline: encode images and save LoRA weights.
 
@@ -174,6 +175,11 @@ class ZImageI2LPipeline:
         decode_time = time.time() - t0
         print(f"  Decoding done in {decode_time:.1f}s")
         print(f"  Generated {len(lora)} LoRA weight tensors")
+
+        # Apply scale
+        if lora_scale != 1.0:
+            print(f"  Applying LoRA scale: {lora_scale}")
+            lora = {k: v * lora_scale for k, v in lora.items()}
 
         # Save as safetensors (convert MLX bfloat16 -> float32 -> torch bfloat16)
         print(f"Saving to {output_path}...")
