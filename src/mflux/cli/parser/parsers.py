@@ -1,5 +1,6 @@
 import argparse
 import json
+import math
 import random
 import time
 import typing as t
@@ -9,6 +10,24 @@ from mflux.cli.defaults import defaults as ui_defaults
 from mflux.models.common.resolution.lora_resolution import LoraResolution
 from mflux.models.flux.variants.in_context.utils.in_context_loras import LORA_NAME_MAP
 from mflux.utils import box_values, scale_factor
+
+ASPECT_RATIOS = {
+    "1:1":  (1, 1),
+    "4:3":  (4, 3),
+    "3:4":  (3, 4),
+    "3:2":  (3, 2),
+    "2:3":  (2, 3),
+    "16:9": (16, 9),
+    "9:16": (9, 16),
+    "18:9": (18, 9),
+    "9:18": (9, 18),
+    "21:9": (21, 9),
+    "9:21": (9, 21),
+}
+
+
+def _ceil16(value):
+    return math.ceil(value / 16) * 16
 
 
 class ModelSpecAction(argparse.Action):
@@ -116,6 +135,13 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--seed", type=int, default=None, nargs='+', help="Specify 1+ Entropy Seeds (Default is 1 time-based random-seed)")
         self.add_argument("--auto-seeds", type=int, default=-1, help="Auto generate N Entropy Seeds (random ints between 0 and 1 billion")
         self.add_argument("--scheduler", type=str, default="linear", help="Choose from implemented schedulers (linear only for now). Or bring your own: 'your_package.some_module.FooScheduler'")
+        self.add_argument("--shift", type=float, default=None, help="Override the automatic sigma shift (mu) value. By default, mu is computed from image dimensions. Higher values push the noise schedule towards higher noise levels.")
+        self.add_argument("--mcf-max-change", type=float, default=None, help="MCF (Mean Change Factor) sampler: maximum allowed mean absolute change per denoising step. If a step's change exceeds this threshold, it is scaled down. Typical values: 0.05-0.50. Default: disabled.")
+        sigma_group = self.add_mutually_exclusive_group()
+        sigma_group.add_argument("--cosine", action="store_true", help="Use smooth cosine sigma schedule: S-curve that allocates more steps at high/low noise")
+        sigma_group.add_argument("--karras", action="store_true", help="Use Karras sigma schedule (concentrates steps toward the end of denoising for finer details)")
+        sigma_group.add_argument("--exponential", action="store_true", help="Use exponential sigma schedule (logarithmic spacing between sigma_max and sigma_min)")
+        self.add_argument("--aspect", type=str, default=None, choices=list(ASPECT_RATIOS.keys()), help="Aspect ratio preset (e.g. 16:9, 3:2). If combined with only --width or --height, the other is auto-computed.")
         self._add_image_generator_common_arguments(supports_dimension_scale_factor=supports_dimension_scale_factor)
         if supports_metadata_config:
             self.add_metadata_config()
@@ -165,7 +191,7 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--redux-image-strengths", type=float, nargs="*", default=None, help="Strength values (between 0.0 and 1.0) for each reference image. Default is 1.0 for all images.")
 
     def add_output_arguments(self) -> None:
-        self.add_argument("--metadata", action="store_true", help="Export image metadata as a JSON file.")
+        self.add_argument("--saveinfo", action="store_true", help="Save with descriptive filename: Timestamp_Seed_S{Steps}_{LoRA}_{Scheduler}_{SigmaArgs}.png")
         self.add_argument("--output", type=str, default="image.png", help="The filename for the output image. Default is \"image.png\".")
         self.add_argument('--stepwise-image-output-dir', type=str, default=None, help='[EXPERIMENTAL] Output dir to write step-wise images and their final composite image to. This feature may change in future versions.')
 
@@ -366,5 +392,35 @@ class CommandLineParser(argparse.ArgumentParser):
             namespace.model_path = None if namespace.model in ui_defaults.MODEL_CHOICES else namespace.model
         else:
             namespace.model_path = None
+
+        # Resolve sigma_schedule from mutually exclusive flags
+        if self.supports_image_generation:
+            if getattr(namespace, "cosine", False):
+                namespace.sigma_schedule = "cosine"
+            elif getattr(namespace, "karras", False):
+                namespace.sigma_schedule = "karras"
+            elif getattr(namespace, "exponential", False):
+                namespace.sigma_schedule = "exponential"
+            else:
+                namespace.sigma_schedule = "linear"
+
+        # Resolve --aspect ratio with auto-dimension computation
+        if self.supports_image_generation and getattr(namespace, "aspect", None) is not None:
+            w_ratio, h_ratio = ASPECT_RATIOS[namespace.aspect]
+            ratio = w_ratio / h_ratio
+            default_w = self.get_default("width")
+            default_h = self.get_default("height")
+            width_explicit = (namespace.width != default_w) if not isinstance(namespace.width, scale_factor.ScaleFactor) else False
+            height_explicit = (namespace.height != default_h) if not isinstance(namespace.height, scale_factor.ScaleFactor) else False
+            target_pixels = ui_defaults.WIDTH * ui_defaults.HEIGHT
+            if width_explicit and not height_explicit:
+                namespace.height = _ceil16(namespace.width / ratio)
+            elif height_explicit and not width_explicit:
+                namespace.width = _ceil16(namespace.height * ratio)
+            elif not width_explicit and not height_explicit:
+                h = (target_pixels / ratio) ** 0.5
+                w = h * ratio
+                namespace.width = _ceil16(w)
+                namespace.height = _ceil16(h)
 
         return namespace

@@ -27,6 +27,9 @@ class Config:
         masked_image_path: Path | str | None = None,
         controlnet_strength: float | None = None,
         scheduler: str = "linear",
+        shift: float | None = None,
+        mcf_max_change: float | None = None,
+        sigma_schedule: str = "linear",
     ):
         # Ensure dimensions are multiples of 16
         if width % 16 != 0 or height % 16 != 0:
@@ -47,6 +50,9 @@ class Config:
         self._masked_image_path = Path(masked_image_path) if isinstance(masked_image_path, str) else masked_image_path
         self._controlnet_strength = controlnet_strength
         self._scheduler_str = scheduler
+        self._shift = shift
+        self._mcf_max_change = mcf_max_change
+        self._sigma_schedule = sigma_schedule
         self._scheduler = None
         self._time_steps = None
 
@@ -132,6 +138,18 @@ class Config:
     @property
     def controlnet_strength(self) -> float | None:
         return self._controlnet_strength
+
+    @property
+    def shift(self) -> float | None:
+        return self._shift
+
+    @property
+    def mcf_max_change(self) -> float | None:
+        return self._mcf_max_change
+
+    @property
+    def sigma_schedule(self) -> str:
+        return self._sigma_schedule
 
     @property
     def scheduler(self):

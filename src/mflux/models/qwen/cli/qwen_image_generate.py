@@ -61,7 +61,7 @@ def main():
                 image_strength=args.image_strength,
             )
             # 4. Save the image
-            image.save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)
+            image.save(path=args.output.format(seed=seed))
     except (StopImageGenerationException, PromptFileReadError) as exc:
         print(exc)
     finally:
