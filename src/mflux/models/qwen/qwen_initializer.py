@@ -58,7 +58,7 @@ class QwenImageInitializer:
         model.tokenizers["qwen_vl"] = QwenVisionLanguageTokenizer(
             processor=processor,
             max_length=1024,
-            use_picture_prefix=True,
+            use_picture_prefix=False,
         )
         model.qwen_vl_encoder = QwenVisionLanguageEncoder(encoder=model.text_encoder.encoder)
 
