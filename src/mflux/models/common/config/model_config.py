@@ -23,6 +23,11 @@ class ModelConfig:
         requires_sigma_shift: bool | None,
         transformer_overrides: dict | None = None,
         text_encoder_overrides: dict | None = None,
+        sigma_base_shift: float = 0.5,
+        sigma_max_shift: float = 1.15,
+        sigma_base_seq_len: int = 256,
+        sigma_max_seq_len: int = 4096,
+        sigma_shift_terminal: float | None = None,
     ):
         self.aliases = aliases
         self.model_name = model_name
@@ -36,6 +41,11 @@ class ModelConfig:
         self.priority = priority
         self.transformer_overrides = transformer_overrides or {}
         self.text_encoder_overrides = text_encoder_overrides or {}
+        self.sigma_base_shift = sigma_base_shift
+        self.sigma_max_shift = sigma_max_shift
+        self.sigma_base_seq_len = sigma_base_seq_len
+        self.sigma_max_seq_len = sigma_max_seq_len
+        self.sigma_shift_terminal = sigma_shift_terminal
 
     @staticmethod
     @lru_cache
@@ -411,7 +421,10 @@ AVAILABLE_MODELS = {
         num_train_steps=None,
         max_sequence_length=None,
         supports_guidance=None,
-        requires_sigma_shift=None,
+        requires_sigma_shift=True,
+        sigma_max_shift=0.9,
+        sigma_max_seq_len=8192,
+        sigma_shift_terminal=0.02,
     ),
     "qwen-image-edit": ModelConfig(
         priority=16,
@@ -423,7 +436,10 @@ AVAILABLE_MODELS = {
         num_train_steps=None,
         max_sequence_length=None,
         supports_guidance=None,
-        requires_sigma_shift=None,
+        requires_sigma_shift=True,
+        sigma_max_shift=0.9,
+        sigma_max_seq_len=8192,
+        sigma_shift_terminal=0.02,
     ),
     "fibo": ModelConfig(
         priority=17,
