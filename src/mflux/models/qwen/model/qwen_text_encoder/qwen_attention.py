@@ -61,15 +61,12 @@ class QwenAttention(nn.Module):
             key_states = QwenAttention._repeat_kv(key_states, self.num_key_value_groups)
             value_states = QwenAttention._repeat_kv(value_states, self.num_key_value_groups)
 
-        attn_weights = mx.matmul(query_states, key_states.transpose(0, 1, 3, 2)) * self.scaling
-
-        if attention_mask is not None:
-            causal_mask = attention_mask[:, :, :, : key_states.shape[-2]]
-            attn_weights = attn_weights + causal_mask
-
-        # Softmax and output
-        attn_weights = mx.softmax(attn_weights.astype(mx.float32), axis=-1).astype(query_states.dtype)
-        attn_output = mx.matmul(attn_weights, value_states)
+        mask = attention_mask[:, :, :, : key_states.shape[-2]].astype(query_states.dtype) if attention_mask is not None else None
+        attn_output = mx.fast.scaled_dot_product_attention(
+            query_states, key_states, value_states,
+            scale=self.scaling,
+            mask=mask,
+        )
         attn_output = attn_output.transpose(0, 2, 1, 3).reshape(bsz, q_len, self.hidden_size)
         attn_output = self.o_proj(attn_output)
         return attn_output
