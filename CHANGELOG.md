@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.6] - 2026-02-20
+
+### ✨ Improvements
+
+- **SeedVR2 7B support**: Add support for the SeedVR2 7B upscaler variant.
+- **Qwen-Image parity with diffusers**: Align Qwen-Image behavior more closely with the diffusers reference implementation.
+- **FIBO scheduler default**: Default FIBO `generate_image` to `flow_match_euler_discrete`.
+
+### 🧰 DX & Maintenance
+
+- **Repo tooling cleanup**: Remove unused Cursor command wrappers from the repository.
+- **SeedVR2 7B test coverage**: Add image test support for the new SeedVR2 7B path.
+
+### 👩‍💻 Contributors
+
+- **@ciaranbor**
+- **@icelaglace**
+- **@filipstrand**
+
+---
+
 ## [0.16.5] - 2026-02-17
 
 ### ✨ Improvements
