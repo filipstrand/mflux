@@ -35,13 +35,21 @@ class FiboTransformer(nn.Module):
         hidden_states: mx.array,
         encoder_hidden_states: mx.array,
         text_encoder_layers: list[mx.array],
+        conditioning_seq_len: int = 0,
+        conditioning_image_ids: mx.array | None = None,
     ) -> mx.array:
         # 1. Create embeddings
         hidden_states = FiboTransformer._handle_classifier_free_guidance(hidden_states, encoder_hidden_states)
         hidden_states = self.x_embedder(hidden_states)
         encoder_hidden_states = self.context_embedder(encoder_hidden_states)
         time_embeddings = FiboTransformer._compute_time_embeddings(t, config, hidden_states.shape[0], hidden_states.dtype, self.time_embed)  # fmt: off
-        image_rotary_emb = FiboTransformer._compute_rotary_embeddings(encoder_hidden_states, self.pos_embed, config, hidden_states.dtype)  # fmt: off
+        image_rotary_emb = FiboTransformer._compute_rotary_embeddings(
+            encoder_hidden_states=encoder_hidden_states,
+            pos_embed=self.pos_embed,
+            config=config,
+            dtype=hidden_states.dtype,
+            conditioning_image_ids=conditioning_image_ids,
+        )
 
         # 2. Compute attention mask
         attention_mask = FiboTransformer._compute_attention_mask(
@@ -49,6 +57,7 @@ class FiboTransformer(nn.Module):
             batch_size=hidden_states.shape[0],
             encoder_hidden_states=encoder_hidden_states,
             max_tokens=encoder_hidden_states.shape[1],
+            conditioning_seq_len=conditioning_seq_len,
         )
 
         # 3. Project the fibo-specific text encoder layers
@@ -165,10 +174,15 @@ class FiboTransformer(nn.Module):
         pos_embed: FiboEmbedND,
         config: Config,
         dtype: mx.Dtype,
+        conditioning_image_ids: mx.array | None = None,
     ) -> mx.array:
         max_tokens = encoder_hidden_states.shape[1]
         txt_ids = mx.zeros((max_tokens, 3), dtype=dtype)
         img_ids = FiboTransformer._prepare_latent_image_ids(height=config.height, width=config.width, dtype=dtype)
+        if conditioning_image_ids is not None:
+            if conditioning_image_ids.ndim == 3:
+                conditioning_image_ids = conditioning_image_ids[0]
+            img_ids = mx.concatenate([img_ids, conditioning_image_ids.astype(dtype)], axis=0)
 
         if txt_ids.ndim == 3 and txt_ids.shape[0] == 1:
             txt_ids = txt_ids[0]
@@ -212,6 +226,7 @@ class FiboTransformer(nn.Module):
         config: Config,
         encoder_hidden_states: mx.array,
         max_tokens: int,
+        conditioning_seq_len: int = 0,
     ) -> mx.array:
         vae_scale_factor = 16
         latent_height = config.height // vae_scale_factor
@@ -219,7 +234,13 @@ class FiboTransformer(nn.Module):
         latent_seq_len = latent_height * latent_width
         prompt_attention_mask = mx.ones((batch_size, max_tokens), dtype=mx.float32)
         latent_attention_mask = mx.ones((batch_size, latent_seq_len), dtype=mx.float32)
-        attention_mask_2d = mx.concatenate([prompt_attention_mask, latent_attention_mask], axis=1)
+        if conditioning_seq_len > 0:
+            conditioning_attention_mask = mx.ones((batch_size, conditioning_seq_len), dtype=mx.float32)
+            attention_mask_2d = mx.concatenate(
+                [prompt_attention_mask, latent_attention_mask, conditioning_attention_mask], axis=1
+            )
+        else:
+            attention_mask_2d = mx.concatenate([prompt_attention_mask, latent_attention_mask], axis=1)
         attention_mask = FiboTransformer._prepare_attention_mask(attention_mask_2d)
         attention_mask = attention_mask.astype(encoder_hidden_states.dtype)
         return attention_mask
