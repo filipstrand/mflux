@@ -57,10 +57,13 @@ class FIBO(nn.Module):
         negative_prompt: str | None = None,
     ) -> GeneratedImage:
         # 0. Create a new config based on the model type and input parameters
+        effective_guidance = guidance
+        if "fibo-lite" in self.model_config.aliases:
+            effective_guidance = 1.0  # distilled model, cond-only
         config = Config(
             width=width,
             height=height,
-            guidance=guidance,
+            guidance=effective_guidance,
             scheduler=scheduler,
             image_path=image_path,
             image_strength=image_strength,
@@ -89,6 +92,7 @@ class FIBO(nn.Module):
             negative_prompt=negative_prompt,
             tokenizer=self.tokenizers["fibo"],
             text_encoder=self.text_encoder,
+            guidance=config.guidance,
         )
 
         # 3. Create callback context and call before_loop
@@ -105,7 +109,8 @@ class FIBO(nn.Module):
                     text_encoder_layers=text_encoder_layers,
                     encoder_hidden_states=encoder_hidden_states,
                 )
-                noise = FIBO._apply_classifier_free_guidance(noise, config.guidance)
+                if config.guidance != 1.0:
+                    noise = FIBO._apply_classifier_free_guidance(noise, config.guidance)
 
                 # 5.t Take one denoise step
                 latents = config.scheduler.step(noise=noise, timestep=t, latents=latents)

@@ -14,16 +14,11 @@ class PromptEncoder:
         negative_prompt: str | None,
         tokenizer: Tokenizer,
         text_encoder: SmolLM3_3B_TextEncoder,
+        guidance: float = 4.0,
     ) -> tuple[str, mx.array, List[mx.array]]:
-        # 0. Set default negative prompt if not provided
-        if negative_prompt is None or negative_prompt == "":
-            negative_prompt = "ugly, blurry, low quality"
-
-        # 1. Convert prompt to JSON format
         json.loads(prompt)
         json_prompt = prompt
 
-        # 2. Get prompt embeddings for positive and negative prompt
         prompt_embeds, prompt_layers, prompt_attention_mask = PromptEncoder._get_prompt_embeds(
             prompt=json_prompt,
             tokenizer=tokenizer,
@@ -32,6 +27,18 @@ class PromptEncoder:
             max_sequence_length=2048,
             tokenization_prefix="positive",
         )
+
+        if guidance == 1.0:
+            encoder_hidden_states, prompt_layers = PromptEncoder._prepare_positive_only_output(
+                prompt_embeds=prompt_embeds,
+                prompt_layers=prompt_layers,
+                prompt_attention_mask=prompt_attention_mask,
+            )
+            return json_prompt, encoder_hidden_states, prompt_layers
+
+        if negative_prompt is None or negative_prompt == "":
+            negative_prompt = "ugly, blurry, low quality"
+
         neg_prompt_embeds, neg_prompt_layers, neg_prompt_attention_mask = PromptEncoder._get_prompt_embeds(
             prompt=negative_prompt,
             tokenizer=tokenizer,
@@ -53,6 +60,27 @@ class PromptEncoder:
             neg_prompt_layers=neg_prompt_layers,
         )
         return json_prompt, encoder_hidden_states, prompt_layers
+
+    @staticmethod
+    def _prepare_positive_only_output(
+        prompt_embeds: mx.array,
+        prompt_layers: List[mx.array],
+        prompt_attention_mask: mx.array,
+    ) -> tuple[mx.array, List[mx.array]]:
+        """Prepare encoder output when guidance=1.0 (no negative prompt, positive only)."""
+        max_tokens = prompt_embeds.shape[1]
+        encoder_hidden_states, _ = PromptEncoder._pad_embedding(
+            prompt_embeds=prompt_embeds,
+            max_tokens=max_tokens,
+            attention_mask=prompt_attention_mask,
+        )
+        prompt_layers = [PromptEncoder._pad_embedding(layer, max_tokens)[0] for layer in prompt_layers]
+        total_num_layers_transformer = 46
+        if len(prompt_layers) >= total_num_layers_transformer:
+            prompt_layers = prompt_layers[len(prompt_layers) - total_num_layers_transformer :]
+        else:
+            prompt_layers = prompt_layers + [prompt_layers[-1]] * (total_num_layers_transformer - len(prompt_layers))
+        return encoder_hidden_states, prompt_layers
 
     @staticmethod
     def _get_encoder_hidden_states(neg_prompt_attention_mask, neg_prompt_embeds, prompt_attention_mask, prompt_embeds):

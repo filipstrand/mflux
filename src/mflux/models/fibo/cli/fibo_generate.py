@@ -1,6 +1,7 @@
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.defaults import defaults as ui_defaults
 from mflux.cli.parser.parsers import CommandLineParser
+from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.fibo.latent_creator.fibo_latent_creator import FiboLatentCreator
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
 from mflux.models.fibo.variants.txt2img.util import FiboUtil
@@ -22,7 +23,15 @@ def main():
 
     # 0. Set default guidance value if not provided by user
     if args.guidance is None:
-        args.guidance = ui_defaults.GUIDANCE_SCALE
+        if args.model == "fibo-lite":
+            args.guidance = 1.0  # distilled, no CFG
+        elif args.model == "fibo":
+            args.guidance = 5.0  # base FIBO typical
+        else:
+            args.guidance = ui_defaults.GUIDANCE_SCALE
+
+    resolved_model_name = args.model if args.model in ui_defaults.MODEL_CHOICES else "fibo"
+    model_config = ModelConfig.from_name(model_name=resolved_model_name, base_model=args.base_model)
 
     json_prompt = FiboUtil.get_json_prompt(args, quantize=args.quantize)
 
@@ -30,6 +39,7 @@ def main():
     fibo = FIBO(
         quantize=args.quantize,
         model_path=args.model_path,
+        model_config=model_config,
     )
 
     # 2. Register callbacks

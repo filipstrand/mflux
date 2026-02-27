@@ -1,5 +1,6 @@
 import pytest
 
+from mflux.models.common.config import ModelConfig
 from tests.image_generation.helpers.image_generation_fibo_test_helper import ImageGeneratorFiboTestHelper
 
 OWL_PROMPT = """
@@ -122,4 +123,19 @@ class TestImageGeneratorFibo:
             width=640,
             guidance=4.0,
             quantize=8,
+        )
+
+    @pytest.mark.slow
+    def test_image_generation_fibo_lite(self):
+        ImageGeneratorFiboTestHelper.assert_matches_reference_image(
+            reference_image_path="reference_fibo_lite.png",
+            output_image_path="output_fibo_lite.png",
+            prompt=OWL_PROMPT,
+            steps=8,
+            seed=42,
+            height=352,
+            width=640,
+            guidance=1.0,
+            quantize=8,
+            model_config=ModelConfig.fibo_lite(),
         )

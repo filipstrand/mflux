@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
+from mflux.models.common.config import ModelConfig
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
 from mflux.utils.image_compare import ImageCompare
 
@@ -20,8 +21,9 @@ class ImageGeneratorFiboTestHelper:
         negative_prompt: Optional[str] = None,
         mismatch_threshold: Optional[float] = None,
         quantize: Optional[int] = None,
+        model_config: Optional[ModelConfig] = None,
     ):
-        # resolve paths
+        model_config = model_config or ModelConfig.fibo()
         reference_image_path = ImageGeneratorFiboTestHelper.resolve_path(reference_image_path)
         output_image_path = ImageGeneratorFiboTestHelper.resolve_path(output_image_path)
 
@@ -30,6 +32,7 @@ class ImageGeneratorFiboTestHelper:
             model = FIBO(
                 quantize=quantize,
                 model_path=None,
+                model_config=model_config,
             )
 
             # Step 2: Generate image from prompt

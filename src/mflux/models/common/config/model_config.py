@@ -139,6 +139,11 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
+    def fibo_lite() -> "ModelConfig":
+        return AVAILABLE_MODELS["fibo-lite"]
+
+    @staticmethod
+    @lru_cache
     def z_image_turbo() -> "ModelConfig":
         return AVAILABLE_MODELS["z-image-turbo"]
 
@@ -453,8 +458,20 @@ AVAILABLE_MODELS = {
         supports_guidance=True,
         requires_sigma_shift=False,
     ),
-    "z-image": ModelConfig(
+    "fibo-lite": ModelConfig(
         priority=18,
+        aliases=["fibo-lite", "fibo_lite"],
+        model_name="briaai/Fibo-lite",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,
+        requires_sigma_shift=False,
+    ),
+    "z-image": ModelConfig(
+        priority=19,
         aliases=["z-image", "zimage"],
         model_name="Tongyi-MAI/Z-Image",
         base_model=None,
@@ -466,7 +483,7 @@ AVAILABLE_MODELS = {
         requires_sigma_shift=True,
     ),
     "z-image-turbo": ModelConfig(
-        priority=19,
+        priority=20,
         aliases=["z-image-turbo", "zimage-turbo"],
         model_name="Tongyi-MAI/Z-Image-Turbo",
         base_model=None,
@@ -478,7 +495,7 @@ AVAILABLE_MODELS = {
         requires_sigma_shift=True,
     ),
     "seedvr2-3b": ModelConfig(
-        priority=20,
+        priority=21,
         aliases=["seedvr2-3b", "seedvr2"],
         model_name="numz/SeedVR2_comfyUI",
         base_model=None,
@@ -490,7 +507,7 @@ AVAILABLE_MODELS = {
         requires_sigma_shift=None,
     ),
     "seedvr2-7b": ModelConfig(
-        priority=21,
+        priority=22,
         aliases=["seedvr2-7b", "seedvr2-7B"],
         model_name="numz/SeedVR2_comfyUI",
         base_model=None,
