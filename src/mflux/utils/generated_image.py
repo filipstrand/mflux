@@ -152,7 +152,8 @@ class GeneratedImage:
         return [round(scale, 2) for scale in self.redux_image_strengths]
 
     def _is_fibo_model(self) -> bool:
-        return self.model_config.model_name == "briaai/FIBO" or str(self.model_config.base_model) == "fibo"
+        name = self.model_config.model_name
+        return name == "briaai/FIBO" or name == "briaai/Fibo-lite" or str(self.model_config.base_model) == "fibo"
 
     def _save_prompt_file(self, image_path: str | Path, overwrite: bool) -> None:
         file_path = Path(image_path)

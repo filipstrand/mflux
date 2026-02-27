@@ -13,6 +13,38 @@ Most text-to-image models excel at imagination—but not control. FIBO is traine
 - **Strong prompt adherence**: High alignment on PRISM-style evaluations
 - **Enterprise-grade**: 100% licensed data with governance, repeatability, and legal clarity
 
+## FIBO Lite
+
+[FIBO Lite](https://huggingface.co/briaai/Fibo-lite) is a two-stage distilled variant combining CFG distillation and SCFM for fast few-step generation. Use `--model fibo-lite` for ~10x speed: 8 steps, `guidance=1.0`, no negative prompt needed. Slight quality tradeoff vs. base FIBO.
+
+```sh
+mflux-generate-fibo \
+  --model fibo-lite \
+  --prompt "A tiny watercolor robot in a garden" \
+  --steps 8 \
+  --seed 42
+```
+
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.models.common.config import ModelConfig
+from mflux.models.fibo.variants.txt2img.fibo import FIBO
+from mflux.models.fibo_vlm.model.fibo_vlm import FiboVLM
+
+vlm = FiboVLM()
+json_prompt = vlm.generate(prompt="A tiny watercolor robot in a garden", seed=42)
+model = FIBO(model_config=ModelConfig.fibo_lite())
+image = model.generate_image(
+    seed=42,
+    prompt=json_prompt,
+    num_inference_steps=8,
+)
+image.save("robot_lite.png")
+```
+</details>
+
 ## The three modes: Generate, Refine, and Inspire
 
 ### Generate
@@ -334,5 +366,5 @@ image.save("bird_inspired.png")
 
 ## Notes
 > [!WARNING]
-> FIBO requires downloading the `briaai/FIBO` model weights (~24GB) and the `briaai/FIBO-vlm` vision-language model (~8GB), totaling ~32GB for the full model, or use quantization for smaller sizes.
+> FIBO requires downloading the `briaai/FIBO` or `briaai/FIBO-lite` model weights (~24GB) and the `briaai/FIBO-vlm` vision-language model (~8GB), totaling ~32GB for the full model, or use quantization for smaller sizes.
 
