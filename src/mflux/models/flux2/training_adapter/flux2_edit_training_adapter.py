@@ -13,11 +13,11 @@ from mflux.models.flux2.variants.edit.flux2_klein_edit_helpers import _Flux2Klei
 
 
 class Flux2EditTrainingAdapter(Flux2BaseTrainingAdapter):
-    def __init__(self, *, model_config: ModelConfig, quantize: int | None):
+    def __init__(self, *, model_config: ModelConfig, quantize: int | None, model_path: str | None = None):
         super().__init__(
             model_config=model_config,
             quantize=quantize,
-            model_factory=lambda cfg, q: Flux2KleinEdit(model_config=cfg, quantize=q),
+            model_factory=lambda cfg, q: Flux2KleinEdit(model_config=cfg, quantize=q, model_path=model_path),
         )
 
     def encode_data(

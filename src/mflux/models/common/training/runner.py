@@ -69,11 +69,14 @@ class TrainingRunner:
         if training_spec.is_edit and not is_flux2_base:
             raise ValueError("Edit training currently supports only FLUX.2-klein-base models.")
         if is_zimage:
-            adapter = ZImageTrainingAdapter(model_config=model_config, quantize=training_spec.quantize)
+            adapter = ZImageTrainingAdapter(model_config=model_config, quantize=training_spec.quantize,
+                                            model_path=training_spec.model_path)
         elif training_spec.is_edit:
-            adapter = Flux2EditTrainingAdapter(model_config=model_config, quantize=training_spec.quantize)
+            adapter = Flux2EditTrainingAdapter(model_config=model_config, quantize=training_spec.quantize,
+                                               model_path=training_spec.model_path)
         elif is_flux2:
-            adapter = Flux2TrainingAdapter(model_config=model_config, quantize=training_spec.quantize)
+            adapter = Flux2TrainingAdapter(model_config=model_config, quantize=training_spec.quantize,
+                                           model_path=training_spec.model_path)
         else:
             raise ValueError("Flux1 training is no longer supported.")
 

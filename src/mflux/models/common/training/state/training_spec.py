@@ -208,6 +208,7 @@ class MonitoringSpec:
 @dataclass
 class TrainingSpec:
     model: str
+    model_path: str | None
     seed: int
     steps: int
     guidance: float
@@ -406,6 +407,7 @@ class TrainingSpec:
 
         return TrainingSpec(
             model=config["model"],
+            model_path=config.get("model_path"),
             seed=config["seed"],
             steps=steps,
             guidance=guidance,

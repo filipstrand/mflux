@@ -20,9 +20,9 @@ from mflux.utils.version_util import VersionUtil
 
 
 class ZImageTrainingAdapter(TrainingAdapter):
-    def __init__(self, *, model_config: ModelConfig, quantize: int | None):
+    def __init__(self, *, model_config: ModelConfig, quantize: int | None, model_path: str | None = None):
         self._model_config = model_config
-        self._z = ZImage(quantize=quantize, model_config=model_config)
+        self._z = ZImage(quantize=quantize, model_config=model_config, model_path=model_path)
         self._guidance: float | None = None
 
     def model(self):
