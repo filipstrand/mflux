@@ -24,7 +24,7 @@ Because README examples can drift, prefer verifying support against the current 
 
 ## Best practices when constructing CLI calls
 
-- **Inference steps**: When constructing a CLI call for any model, check `MODEL_INFERENCE_STEPS` to use the recommended number of steps for that model (unless the user explicitly specifies how many steps they want).
+- **Inference steps**: When constructing a CLI call for any model, *always* check `MODEL_INFERENCE_STEPS` and use the model's default/recommended step count unless the user explicitly asks for a different value. This is especially important for distilled/non-base variants (for example `fibo-lite`, `z-image-turbo`, and other `*-turbo`/`*-lite` models), where using full/base-model step counts is usually counterproductive.
 - **Resource/inspection flags**: Mention `--low-ram` to reduce memory usage and `--stepwise-image-output-dir` for stepwise outputs when useful.
 - **Python API requests**: If a user asks for the Python API, treat the equivalent CLI script as the best starting reference for the underlying parameters and defaults.
 
