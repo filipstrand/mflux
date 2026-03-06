@@ -11,7 +11,7 @@ from mflux.models.flux2.training_adapter import (
 
 
 class _FakeFlux2:
-    def __init__(self, *, model_config, quantize):  # noqa: ARG002
+    def __init__(self, *, model_config, quantize, model_path):  # noqa: ARG002
         self.transformer = object()
         self.prompt_cache = {}
         self.last_generate_kwargs = None

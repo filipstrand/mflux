@@ -8,7 +8,7 @@ from mflux.models.z_image.training_adapter import z_image_training_adapter as z_
 
 
 class _FakeZImage:
-    def __init__(self, *, quantize, model_config):  # noqa: ARG002
+    def __init__(self, *, quantize, model_config, model_path):  # noqa: ARG002
         self.transformer = object()
         self.last_generate_kwargs = None
 

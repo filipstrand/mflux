@@ -289,6 +289,7 @@ For multi-LoRA, pass multiple paths and scales. For library usage, set `LORA_LIB
 - Training supports normal (txt2img) and edit modes; the mode is auto-detected from your data folder layout (see examples below).
 - Expected layout: a config file plus a data folder with images and optional prompt files.
 - **Edit mode limitation**: Edit training currently supports only FLUX.2-klein-base models (`flux2-klein-base-4b` or `flux2-klein-base-9b`).
+- To train a local copy of a model, you can specify the path to that model in the training spec JSON alongside the `model` using the `model_path` key.
 - For model-specific config fields, see the [Z-Image README](../z_image/README.md) and [FLUX.2 README](../flux2/README.md).
 
 CLI example using the repo training sample ([train.json](training/_example/train.json)):
@@ -358,7 +359,7 @@ Each checkpoint zip (e.g., `0000030_checkpoint.zip`) is a self-contained snapsho
 
 ## Output files
 
-Use `--output` to set the output filename. When generating multiple seeds or images, MFLUX appends suffixes automatically. 
+Use `--output` to set the output filename. When generating multiple seeds or images, MFLUX appends suffixes automatically.
 ```sh
 mflux-generate-z-image-turbo \
   --model z-image-turbo \
