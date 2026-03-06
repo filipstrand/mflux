@@ -15,33 +15,69 @@ class ZImageLoRAMapping(LoRAMapping):
         return [
             LoRATarget(
                 model_path="all_x_embedder.2-1",
-                possible_up_patterns=["diffusion_model.all_x_embedder.2-1.lora_B.weight"],
-                possible_down_patterns=["diffusion_model.all_x_embedder.2-1.lora_A.weight"],
+                possible_up_patterns=[
+                    "diffusion_model.all_x_embedder.2-1.lora_B.weight",
+                    "transformer.all_x_embedder.2-1.lora_B.weight",
+                ],
+                possible_down_patterns=[
+                    "diffusion_model.all_x_embedder.2-1.lora_A.weight",
+                    "transformer.all_x_embedder.2-1.lora_A.weight",
+                ],
             ),
             LoRATarget(
                 model_path="all_final_layer.2-1.linear",
-                possible_up_patterns=["diffusion_model.all_final_layer.2-1.linear.lora_B.weight"],
-                possible_down_patterns=["diffusion_model.all_final_layer.2-1.linear.lora_A.weight"],
+                possible_up_patterns=[
+                    "diffusion_model.all_final_layer.2-1.linear.lora_B.weight",
+                    "transformer.all_final_layer.2-1.linear.lora_B.weight",
+                ],
+                possible_down_patterns=[
+                    "diffusion_model.all_final_layer.2-1.linear.lora_A.weight",
+                    "transformer.all_final_layer.2-1.linear.lora_A.weight",
+                ],
             ),
             LoRATarget(
                 model_path="all_final_layer.2-1.adaLN_modulation.0",
-                possible_up_patterns=["diffusion_model.all_final_layer.2-1.adaLN_modulation.1.lora_B.weight"],
-                possible_down_patterns=["diffusion_model.all_final_layer.2-1.adaLN_modulation.1.lora_A.weight"],
+                possible_up_patterns=[
+                    "diffusion_model.all_final_layer.2-1.adaLN_modulation.1.lora_B.weight",
+                    "transformer.all_final_layer.2-1.adaLN_modulation.1.lora_B.weight",
+                ],
+                possible_down_patterns=[
+                    "diffusion_model.all_final_layer.2-1.adaLN_modulation.1.lora_A.weight",
+                    "transformer.all_final_layer.2-1.adaLN_modulation.1.lora_A.weight",
+                ],
             ),
             LoRATarget(
                 model_path="cap_embedder.1",
-                possible_up_patterns=["diffusion_model.cap_embedder.1.lora_B.weight"],
-                possible_down_patterns=["diffusion_model.cap_embedder.1.lora_A.weight"],
+                possible_up_patterns=[
+                    "diffusion_model.cap_embedder.1.lora_B.weight",
+                    "transformer.cap_embedder.1.lora_B.weight",
+                ],
+                possible_down_patterns=[
+                    "diffusion_model.cap_embedder.1.lora_A.weight",
+                    "transformer.cap_embedder.1.lora_A.weight",
+                ],
             ),
             LoRATarget(
                 model_path="t_embedder.linear1",
-                possible_up_patterns=["diffusion_model.t_embedder.mlp.0.lora_B.weight"],
-                possible_down_patterns=["diffusion_model.t_embedder.mlp.0.lora_A.weight"],
+                possible_up_patterns=[
+                    "diffusion_model.t_embedder.mlp.0.lora_B.weight",
+                    "transformer.t_embedder.mlp.0.lora_B.weight",
+                ],
+                possible_down_patterns=[
+                    "diffusion_model.t_embedder.mlp.0.lora_A.weight",
+                    "transformer.t_embedder.mlp.0.lora_A.weight",
+                ],
             ),
             LoRATarget(
                 model_path="t_embedder.linear2",
-                possible_up_patterns=["diffusion_model.t_embedder.mlp.2.lora_B.weight"],
-                possible_down_patterns=["diffusion_model.t_embedder.mlp.2.lora_A.weight"],
+                possible_up_patterns=[
+                    "diffusion_model.t_embedder.mlp.2.lora_B.weight",
+                    "transformer.t_embedder.mlp.2.lora_B.weight",
+                ],
+                possible_down_patterns=[
+                    "diffusion_model.t_embedder.mlp.2.lora_A.weight",
+                    "transformer.t_embedder.mlp.2.lora_A.weight",
+                ],
             ),
         ]
 
@@ -53,6 +89,8 @@ class ZImageLoRAMapping(LoRAMapping):
                 possible_up_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.adaLN_modulation.0.lora_B.weight",
                     f"diffusion_model.{layer_type}.{{block}}.adaLN_modulation.0.lora_up.weight",
+                    f"transformer.{layer_type}.{{block}}.adaLN_modulation.0.lora_B.weight",
+                    f"transformer.{layer_type}.{{block}}.adaLN_modulation.0.lora_up.weight",
                     f"{layer_type}.{{block}}.adaLN_modulation.0.lora_B.weight",
                     f"{layer_type}.{{block}}.adaLN_modulation.0.lora_up.weight",
                     f"lora_unet_{layer_type}_{{block}}_adaLN_modulation_0.lora_up.weight",
@@ -60,12 +98,15 @@ class ZImageLoRAMapping(LoRAMapping):
                 possible_down_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.adaLN_modulation.0.lora_A.weight",
                     f"diffusion_model.{layer_type}.{{block}}.adaLN_modulation.0.lora_down.weight",
+                    f"transformer.{layer_type}.{{block}}.adaLN_modulation.0.lora_A.weight",
+                    f"transformer.{layer_type}.{{block}}.adaLN_modulation.0.lora_down.weight",
                     f"{layer_type}.{{block}}.adaLN_modulation.0.lora_A.weight",
                     f"{layer_type}.{{block}}.adaLN_modulation.0.lora_down.weight",
                     f"lora_unet_{layer_type}_{{block}}_adaLN_modulation_0.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.adaLN_modulation.0.alpha",
+                    f"transformer.{layer_type}.{{block}}.adaLN_modulation.0.alpha",
                     f"{layer_type}.{{block}}.adaLN_modulation.0.alpha",
                     f"lora_unet_{layer_type}_{{block}}_adaLN_modulation_0.alpha",
                 ],
@@ -75,6 +116,8 @@ class ZImageLoRAMapping(LoRAMapping):
                 possible_up_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_q.lora_B.weight",
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_q.lora_up.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.to_q.lora_B.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.to_q.lora_up.weight",
                     f"{layer_type}.{{block}}.attention.to_q.lora_B.weight",
                     f"{layer_type}.{{block}}.attention.to_q.lora_up.weight",
                     f"lora_unet_{layer_type}_{{block}}_attention_to_q.lora_up.weight",
@@ -82,12 +125,15 @@ class ZImageLoRAMapping(LoRAMapping):
                 possible_down_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_q.lora_A.weight",
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_q.lora_down.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.to_q.lora_A.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.to_q.lora_down.weight",
                     f"{layer_type}.{{block}}.attention.to_q.lora_A.weight",
                     f"{layer_type}.{{block}}.attention.to_q.lora_down.weight",
                     f"lora_unet_{layer_type}_{{block}}_attention_to_q.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_q.alpha",
+                    f"transformer.{layer_type}.{{block}}.attention.to_q.alpha",
                     f"{layer_type}.{{block}}.attention.to_q.alpha",
                     f"lora_unet_{layer_type}_{{block}}_attention_to_q.alpha",
                 ],
@@ -97,6 +143,8 @@ class ZImageLoRAMapping(LoRAMapping):
                 possible_up_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_k.lora_B.weight",
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_k.lora_up.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.to_k.lora_B.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.to_k.lora_up.weight",
                     f"{layer_type}.{{block}}.attention.to_k.lora_B.weight",
                     f"{layer_type}.{{block}}.attention.to_k.lora_up.weight",
                     f"lora_unet_{layer_type}_{{block}}_attention_to_k.lora_up.weight",
@@ -104,12 +152,15 @@ class ZImageLoRAMapping(LoRAMapping):
                 possible_down_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_k.lora_A.weight",
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_k.lora_down.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.to_k.lora_A.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.to_k.lora_down.weight",
                     f"{layer_type}.{{block}}.attention.to_k.lora_A.weight",
                     f"{layer_type}.{{block}}.attention.to_k.lora_down.weight",
                     f"lora_unet_{layer_type}_{{block}}_attention_to_k.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_k.alpha",
+                    f"transformer.{layer_type}.{{block}}.attention.to_k.alpha",
                     f"{layer_type}.{{block}}.attention.to_k.alpha",
                     f"lora_unet_{layer_type}_{{block}}_attention_to_k.alpha",
                 ],
@@ -119,6 +170,8 @@ class ZImageLoRAMapping(LoRAMapping):
                 possible_up_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_v.lora_B.weight",
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_v.lora_up.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.to_v.lora_B.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.to_v.lora_up.weight",
                     f"{layer_type}.{{block}}.attention.to_v.lora_B.weight",
                     f"{layer_type}.{{block}}.attention.to_v.lora_up.weight",
                     f"lora_unet_{layer_type}_{{block}}_attention_to_v.lora_up.weight",
@@ -126,12 +179,15 @@ class ZImageLoRAMapping(LoRAMapping):
                 possible_down_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_v.lora_A.weight",
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_v.lora_down.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.to_v.lora_A.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.to_v.lora_down.weight",
                     f"{layer_type}.{{block}}.attention.to_v.lora_A.weight",
                     f"{layer_type}.{{block}}.attention.to_v.lora_down.weight",
                     f"lora_unet_{layer_type}_{{block}}_attention_to_v.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_v.alpha",
+                    f"transformer.{layer_type}.{{block}}.attention.to_v.alpha",
                     f"{layer_type}.{{block}}.attention.to_v.alpha",
                     f"lora_unet_{layer_type}_{{block}}_attention_to_v.alpha",
                 ],
@@ -143,6 +199,10 @@ class ZImageLoRAMapping(LoRAMapping):
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_out.0.lora_up.weight",
                     f"diffusion_model.{layer_type}.{{block}}.attention.out.lora_B.weight",
                     f"diffusion_model.{layer_type}.{{block}}.attention.out.lora_up.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.to_out.0.lora_B.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.to_out.0.lora_up.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.out.lora_B.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.out.lora_up.weight",
                     f"{layer_type}.{{block}}.attention.to_out.0.lora_B.weight",
                     f"{layer_type}.{{block}}.attention.to_out.0.lora_up.weight",
                     f"lora_unet_{layer_type}_{{block}}_attention_to_out_0.lora_up.weight",
@@ -152,6 +212,10 @@ class ZImageLoRAMapping(LoRAMapping):
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_out.0.lora_down.weight",
                     f"diffusion_model.{layer_type}.{{block}}.attention.out.lora_A.weight",
                     f"diffusion_model.{layer_type}.{{block}}.attention.out.lora_down.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.to_out.0.lora_A.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.to_out.0.lora_down.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.out.lora_A.weight",
+                    f"transformer.{layer_type}.{{block}}.attention.out.lora_down.weight",
                     f"{layer_type}.{{block}}.attention.to_out.0.lora_A.weight",
                     f"{layer_type}.{{block}}.attention.to_out.0.lora_down.weight",
                     f"lora_unet_{layer_type}_{{block}}_attention_to_out_0.lora_down.weight",
@@ -159,6 +223,8 @@ class ZImageLoRAMapping(LoRAMapping):
                 possible_alpha_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.attention.to_out.0.alpha",
                     f"diffusion_model.{layer_type}.{{block}}.attention.out.alpha",
+                    f"transformer.{layer_type}.{{block}}.attention.to_out.0.alpha",
+                    f"transformer.{layer_type}.{{block}}.attention.out.alpha",
                     f"{layer_type}.{{block}}.attention.to_out.0.alpha",
                     f"lora_unet_{layer_type}_{{block}}_attention_to_out_0.alpha",
                 ],
@@ -168,6 +234,8 @@ class ZImageLoRAMapping(LoRAMapping):
                 possible_up_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w1.lora_B.weight",
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w1.lora_up.weight",
+                    f"transformer.{layer_type}.{{block}}.feed_forward.w1.lora_B.weight",
+                    f"transformer.{layer_type}.{{block}}.feed_forward.w1.lora_up.weight",
                     f"{layer_type}.{{block}}.feed_forward.w1.lora_B.weight",
                     f"{layer_type}.{{block}}.feed_forward.w1.lora_up.weight",
                     f"lora_unet_{layer_type}_{{block}}_feed_forward_w1.lora_up.weight",
@@ -175,12 +243,15 @@ class ZImageLoRAMapping(LoRAMapping):
                 possible_down_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w1.lora_A.weight",
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w1.lora_down.weight",
+                    f"transformer.{layer_type}.{{block}}.feed_forward.w1.lora_A.weight",
+                    f"transformer.{layer_type}.{{block}}.feed_forward.w1.lora_down.weight",
                     f"{layer_type}.{{block}}.feed_forward.w1.lora_A.weight",
                     f"{layer_type}.{{block}}.feed_forward.w1.lora_down.weight",
                     f"lora_unet_{layer_type}_{{block}}_feed_forward_w1.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w1.alpha",
+                    f"transformer.{layer_type}.{{block}}.feed_forward.w1.alpha",
                     f"{layer_type}.{{block}}.feed_forward.w1.alpha",
                     f"lora_unet_{layer_type}_{{block}}_feed_forward_w1.alpha",
                 ],
@@ -190,6 +261,8 @@ class ZImageLoRAMapping(LoRAMapping):
                 possible_up_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w2.lora_B.weight",
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w2.lora_up.weight",
+                    f"transformer.{layer_type}.{{block}}.feed_forward.w2.lora_B.weight",
+                    f"transformer.{layer_type}.{{block}}.feed_forward.w2.lora_up.weight",
                     f"{layer_type}.{{block}}.feed_forward.w2.lora_B.weight",
                     f"{layer_type}.{{block}}.feed_forward.w2.lora_up.weight",
                     f"lora_unet_{layer_type}_{{block}}_feed_forward_w2.lora_up.weight",
@@ -197,12 +270,15 @@ class ZImageLoRAMapping(LoRAMapping):
                 possible_down_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w2.lora_A.weight",
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w2.lora_down.weight",
+                    f"transformer.{layer_type}.{{block}}.feed_forward.w2.lora_A.weight",
+                    f"transformer.{layer_type}.{{block}}.feed_forward.w2.lora_down.weight",
                     f"{layer_type}.{{block}}.feed_forward.w2.lora_A.weight",
                     f"{layer_type}.{{block}}.feed_forward.w2.lora_down.weight",
                     f"lora_unet_{layer_type}_{{block}}_feed_forward_w2.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w2.alpha",
+                    f"transformer.{layer_type}.{{block}}.feed_forward.w2.alpha",
                     f"{layer_type}.{{block}}.feed_forward.w2.alpha",
                     f"lora_unet_{layer_type}_{{block}}_feed_forward_w2.alpha",
                 ],
@@ -212,6 +288,8 @@ class ZImageLoRAMapping(LoRAMapping):
                 possible_up_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w3.lora_B.weight",
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w3.lora_up.weight",
+                    f"transformer.{layer_type}.{{block}}.feed_forward.w3.lora_B.weight",
+                    f"transformer.{layer_type}.{{block}}.feed_forward.w3.lora_up.weight",
                     f"{layer_type}.{{block}}.feed_forward.w3.lora_B.weight",
                     f"{layer_type}.{{block}}.feed_forward.w3.lora_up.weight",
                     f"lora_unet_{layer_type}_{{block}}_feed_forward_w3.lora_up.weight",
@@ -219,12 +297,15 @@ class ZImageLoRAMapping(LoRAMapping):
                 possible_down_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w3.lora_A.weight",
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w3.lora_down.weight",
+                    f"transformer.{layer_type}.{{block}}.feed_forward.w3.lora_A.weight",
+                    f"transformer.{layer_type}.{{block}}.feed_forward.w3.lora_down.weight",
                     f"{layer_type}.{{block}}.feed_forward.w3.lora_A.weight",
                     f"{layer_type}.{{block}}.feed_forward.w3.lora_down.weight",
                     f"lora_unet_{layer_type}_{{block}}_feed_forward_w3.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     f"diffusion_model.{layer_type}.{{block}}.feed_forward.w3.alpha",
+                    f"transformer.{layer_type}.{{block}}.feed_forward.w3.alpha",
                     f"{layer_type}.{{block}}.feed_forward.w3.alpha",
                     f"lora_unet_{layer_type}_{{block}}_feed_forward_w3.alpha",
                 ],
