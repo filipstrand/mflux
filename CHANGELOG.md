@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.8] - 2026-03-06
+
+### ✨ Improvements
+
+- **Local-model LoRA training**: Allow LoRA training to work when the base model is supplied from a local path, including the FLUX.2 and Z-Image training adapters.
+
+### 📝 Documentation
+
+- **Distilled-model step defaults**: Clarify CLI guidance so examples prefer model default inference steps unless the user intentionally overrides them.
+
+### 👩‍💻 Contributors
+
+- **@waldheinz**
+
+---
+
 ## [0.16.7] - 2026-03-02
 
 ### 🎨 New Model Support
