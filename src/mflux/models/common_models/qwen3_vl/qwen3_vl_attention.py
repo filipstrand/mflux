@@ -6,6 +6,8 @@ from mlx.core.fast import scaled_dot_product_attention
 
 from mflux.models.common_models.qwen3_vl.qwen3_vl_rms_norm import Qwen3VLRMSNorm
 
+Qwen3VLKVCache = tuple[mx.array, mx.array, int]
+
 
 class Qwen3VLAttention(nn.Module):
     def __init__(
@@ -40,8 +42,9 @@ class Qwen3VLAttention(nn.Module):
         hidden_states: mx.array,
         attention_mask: mx.array | None = None,
         position_embeddings: tuple[mx.array, mx.array] | None = None,
-        past_key_value: tuple[mx.array, mx.array] | None = None,
-    ) -> mx.array | tuple[mx.array, tuple[mx.array, mx.array]]:
+        past_key_value: Qwen3VLKVCache | None = None,
+        max_cache_length: int | None = None,
+    ) -> mx.array | tuple[mx.array, Qwen3VLKVCache]:
         bsz, q_len, _ = hidden_states.shape
 
         q_proj = self.q_proj(hidden_states)
@@ -68,20 +71,55 @@ class Qwen3VLAttention(nn.Module):
                 sin=sin,
             )
 
-        cache_key_states = key_states
-        cache_value_states = value_states
+        if past_key_value is None:
+            if max_cache_length is None:
+                cache_key_states = key_states
+                cache_value_states = value_states
+                cache_length = q_len
+            else:
+                cache_shape = (bsz, self.num_key_value_heads, max_cache_length, self.head_dim)
+                cache_key_states = mx.zeros(cache_shape, dtype=key_states.dtype)
+                cache_value_states = mx.zeros(cache_shape, dtype=value_states.dtype)
+                start_indices = mx.array([0, 0, 0, 0], dtype=mx.int32)
+                cache_key_states = mx.slice_update(
+                    cache_key_states,
+                    key_states,
+                    start_indices=start_indices,
+                    axes=(0, 1, 2, 3),
+                )
+                cache_value_states = mx.slice_update(
+                    cache_value_states,
+                    value_states,
+                    start_indices=start_indices,
+                    axes=(0, 1, 2, 3),
+                )
+                cache_length = q_len
+        else:
+            cache_key_states, cache_value_states, existing_cache_length = past_key_value
+            start_indices = mx.array([0, 0, existing_cache_length, 0], dtype=mx.int32)
+            cache_key_states = mx.slice_update(
+                cache_key_states,
+                key_states,
+                start_indices=start_indices,
+                axes=(0, 1, 2, 3),
+            )
+            cache_value_states = mx.slice_update(
+                cache_value_states,
+                value_states,
+                start_indices=start_indices,
+                axes=(0, 1, 2, 3),
+            )
+            cache_length = existing_cache_length + q_len
 
-        if past_key_value is not None:
-            past_key, past_value = past_key_value
-            cache_key_states = mx.concatenate([past_key, cache_key_states], axis=2)
-            cache_value_states = mx.concatenate([past_value, cache_value_states], axis=2)
+        valid_key_states = cache_key_states[:, :, :cache_length, :]
+        valid_value_states = cache_value_states[:, :, :cache_length, :]
 
         if self.num_key_value_heads != self.num_attention_heads:
-            key_states = Qwen3VLAttention._repeat_kv(cache_key_states, self.num_key_value_groups)
-            value_states = Qwen3VLAttention._repeat_kv(cache_value_states, self.num_key_value_groups)
+            key_states = Qwen3VLAttention._repeat_kv(valid_key_states, self.num_key_value_groups)
+            value_states = Qwen3VLAttention._repeat_kv(valid_value_states, self.num_key_value_groups)
         else:
-            key_states = cache_key_states
-            value_states = cache_value_states
+            key_states = valid_key_states
+            value_states = valid_value_states
 
         attn_mask = None
         if attention_mask is not None:
@@ -104,7 +142,7 @@ class Qwen3VLAttention(nn.Module):
         attn_output = attn_output.astype(query_states.dtype)
         attn_output = attn_output.transpose(0, 2, 1, 3).reshape(bsz, q_len, self.num_attention_heads * self.head_dim)
         attn_output = self.o_proj(attn_output)
-        return attn_output, (cache_key_states, cache_value_states)
+        return attn_output, (cache_key_states, cache_value_states, cache_length)
 
     @staticmethod
     def _repeat_kv(hidden_states: mx.array, n_rep: int) -> mx.array:

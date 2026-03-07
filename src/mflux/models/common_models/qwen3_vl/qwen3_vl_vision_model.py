@@ -68,7 +68,12 @@ class Qwen3VLVisionModel(nn.Module):
             for _ in range(len(self.deepstack_visual_indexes))
         ]
 
-    def __call__(self, hidden_states: mx.array, grid_thw: mx.array) -> tuple[mx.array, list[mx.array]]:
+    def __call__(
+        self,
+        hidden_states: mx.array,
+        grid_thw: mx.array,
+        return_deepstack: bool = False,
+    ) -> tuple[mx.array, list[mx.array] | None]:
         hidden_states = self.patch_embed(hidden_states)
         pos_embeds = Qwen3VLVisionModel._fast_pos_embed_interpolate(self.spatial_merge_size, self.pos_embed, self.num_grid_per_side, grid_thw)  # fmt: off
         hidden_states = hidden_states + pos_embeds
@@ -94,7 +99,7 @@ class Qwen3VLVisionModel(nn.Module):
         )
 
         # Process through blocks
-        deepstack_image_embeds = []
+        deepstack_image_embeds = [] if return_deepstack else None
         for layer_idx, block in enumerate(self.blocks):
             hidden_states = block(
                 hidden_states,
@@ -102,8 +107,7 @@ class Qwen3VLVisionModel(nn.Module):
                 position_embeddings=position_embeddings,
             )
 
-            # Collect deepstack features
-            if layer_idx in self.deepstack_visual_indexes:
+            if return_deepstack and layer_idx in self.deepstack_visual_indexes:
                 deepstack_idx = self.deepstack_visual_indexes.index(layer_idx)
                 deepstack_embeds = self.deepstack_merger_list[deepstack_idx](hidden_states)
                 deepstack_image_embeds.append(deepstack_embeds)

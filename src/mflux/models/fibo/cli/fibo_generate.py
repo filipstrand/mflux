@@ -6,7 +6,7 @@ from mflux.models.fibo.latent_creator.fibo_latent_creator import FiboLatentCreat
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
 from mflux.models.fibo.variants.txt2img.util import FiboUtil
 from mflux.utils.dimension_resolver import DimensionResolver
-from mflux.utils.exceptions import PromptFileReadError, StopImageGenerationException
+from mflux.utils.exceptions import ModelConfigError, PromptFileReadError, StopImageGenerationException
 from mflux.utils.prompt_util import PromptUtil
 
 
@@ -15,23 +15,26 @@ def main():
     parser = CommandLineParser(description="Generate an image using FIBO model.")
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
+    parser.set_defaults(model="fibo")
     parser.add_lora_arguments()
     parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
     parser.add_image_to_image_arguments(required=False)
     parser.add_output_arguments()
     args = parser.parse_args()
 
+    try:
+        model_config = ModelConfig.from_name(model_name=args.model, base_model=args.base_model)
+    except ModelConfigError:
+        model_config = ModelConfig.fibo()
+
     # 0. Set default guidance value if not provided by user
     if args.guidance is None:
-        if args.model == "fibo-lite":
+        if "fibo-lite" in model_config.aliases:
             args.guidance = 1.0  # distilled, no CFG
-        elif args.model == "fibo":
+        elif "fibo" in model_config.aliases:
             args.guidance = 5.0  # base FIBO typical
         else:
             args.guidance = ui_defaults.GUIDANCE_SCALE
-
-    resolved_model_name = args.model if args.model in ui_defaults.MODEL_CHOICES else "fibo"
-    model_config = ModelConfig.from_name(model_name=resolved_model_name, base_model=args.base_model)
 
     json_prompt = FiboUtil.get_json_prompt(args, quantize=args.quantize)
 

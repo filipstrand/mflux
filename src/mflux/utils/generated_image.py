@@ -106,11 +106,13 @@ class GeneratedImage:
     ) -> None:
         from mflux.utils.image_util import ImageUtil
 
+        final_path = ImageUtil.resolve_output_path(path=path, overwrite=overwrite)
+
         # Always save prompt file for FIBO models
         if self._is_fibo_model():
-            self._save_prompt_file(path, overwrite)
+            self._save_prompt_file(final_path, overwrite=True)
 
-        ImageUtil.save_image(self.image, path, self._get_metadata(), export_json_metadata, overwrite)
+        ImageUtil.save_image(self.image, final_path, self._get_metadata(), export_json_metadata, overwrite=True)
 
     def save_with_heatmap(
         self,
@@ -153,7 +155,12 @@ class GeneratedImage:
 
     def _is_fibo_model(self) -> bool:
         name = self.model_config.model_name
-        return name == "briaai/FIBO" or name == "briaai/Fibo-lite" or str(self.model_config.base_model) == "fibo"
+        return (
+            name == "briaai/FIBO"
+            or name == "briaai/Fibo-lite"
+            or name == "briaai/Fibo-Edit"
+            or str(self.model_config.base_model) == "fibo"
+        )
 
     def _save_prompt_file(self, image_path: str | Path, overwrite: bool) -> None:
         file_path = Path(image_path)

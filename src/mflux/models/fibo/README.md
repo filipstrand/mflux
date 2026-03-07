@@ -45,7 +45,7 @@ image.save("robot_lite.png")
 ```
 </details>
 
-## The three modes: Generate, Refine, and Inspire
+## The four modes: Generate, Edit, Refine, and Inspire
 
 ### Generate
 While the actual prompt input to FIBO is a structured JSON file, the generate command provides an interface to input pure text prompts. These are then expanded into structured JSON prompts using FIBO's Vision-Language Model (VLM) before being passed to the diffusion model for image generation.
@@ -83,7 +83,7 @@ model = FIBO(model_config=ModelConfig.fibo())
 image = model.generate_image(
     seed=42,
     prompt=json_prompt,
-    num_inference_steps=20,
+    num_inference_steps=50,
     width=1200,
     height=540,
     guidance=4.0,
@@ -101,7 +101,7 @@ mflux-generate-fibo \
     --prompt-file animal_bakers.json \
     --width 1200 \
     --height 540 \
-    --steps 20 \
+    --steps 50 \
     --guidance 4.0 \
     --seed 42 \
     --output animal_bakers.png
@@ -122,7 +122,7 @@ model = FIBO(model_config=ModelConfig.fibo())
 image = model.generate_image(
     seed=42,
     prompt=structured_prompt,
-    num_inference_steps=20,
+    num_inference_steps=50,
     width=1200,
     height=540,
     guidance=4.0,
@@ -280,7 +280,7 @@ model = FIBO(model_config=ModelConfig.fibo(), quantize=4)
 image = model.generate_image(
     seed=42,
     prompt=structured_prompt,
-    num_inference_steps=20,
+    num_inference_steps=50,
     width=1024,
     height=560,
     guidance=4.0,
@@ -290,6 +290,35 @@ image.save("owl_white.png")
 </details>
 
 It is worth noting that refine does not work the same way as other editing techniques like Flux Kontext or Qwen Image Edit. Instead of modifying an existing image, it modifies the underlying **structured prompt** to produce a new image.
+
+### Edit
+FIBO Edit supports direct image-conditioned editing using a structured JSON prompt that includes an `edit_instruction` field.
+
+```sh
+mflux-generate-fibo-edit \
+    --image-path owl_original.png \
+    --prompt-file owl_brown.json \
+    --edit-instruction "Make the owl white and add round glasses while keeping composition unchanged." \
+    --width 1024 \
+    --height 560 \
+    --steps 50 \
+    --guidance 4.0 \
+    --seed 42 \
+    --output owl_white_edit.png
+```
+
+Optional localized editing is supported with a mask:
+
+```sh
+mflux-generate-fibo-edit \
+    --image-path owl_original.png \
+    --mask-path owl_mask.png \
+    --prompt-file owl_brown.json \
+    --edit-instruction "Replace only the owl with a white owl wearing glasses." \
+    --steps 50 \
+    --seed 42 \
+    --output owl_masked_edit.png
+```
 
 ### Inspire
 Provide an image instead of text. FIBO's vision-language model extracts a detailed, structured prompt, blends it with your creative intent, and produces related images—ideal for inspiration without overreliance on the original.
@@ -333,7 +362,7 @@ mflux-generate-fibo \
     --prompt-file bird_inspired.json \
     --width 1024 \
     --height 672 \
-    --steps 20 \
+    --steps 50 \
     --guidance 4.0 \
     --seed 42 \
     -q 8 \
@@ -355,7 +384,7 @@ model = FIBO(model_config=ModelConfig.fibo(), quantize=8)
 image = model.generate_image(
     seed=42,
     prompt=structured_prompt,
-    num_inference_steps=20,
+    num_inference_steps=50,
     width=1024,
     height=672,
     guidance=4.0,

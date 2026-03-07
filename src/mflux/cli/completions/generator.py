@@ -23,6 +23,7 @@ class CompletionGenerator:
             "mflux-generate-qwen",
             "mflux-generate-qwen-edit",
             "mflux-generate-fibo",
+            "mflux-generate-fibo-edit",
             "mflux-generate-z-image",
             "mflux-generate-z-image-turbo",
             "mflux-refine-fibo",
@@ -160,6 +161,29 @@ class CompletionGenerator:
             parser.add_lora_arguments()
             parser.add_image_generator_arguments(supports_metadata_config=True)
             parser.add_image_to_image_arguments()
+            parser.add_output_arguments()
+
+        elif command == "mflux-generate-fibo-edit":
+            parser.add_general_arguments()
+            parser.add_model_arguments(require_model_arg=False)
+            parser.set_defaults(model="fibo-edit")
+            parser.add_lora_arguments()
+            parser.add_image_generator_arguments(
+                supports_metadata_config=True,
+                supports_dimension_scale_factor=True,
+            )
+            parser.add_argument(
+                "--image-path", type=Path, required=False, help="Local path to source image for editing."
+            )
+            parser.add_argument(
+                "--mask-path", type=Path, default=None, help="Optional mask image path for localized edits."
+            )
+            parser.add_argument(
+                "--edit-instruction",
+                type=str,
+                default=None,
+                help="Optional edit instruction. Used when prompt JSON does not already include `edit_instruction`.",
+            )
             parser.add_output_arguments()
 
         elif command == "mflux-generate-z-image-turbo":

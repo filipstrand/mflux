@@ -23,10 +23,6 @@ class FlowMatchEulerDiscreteScheduler(BaseScheduler):
         self.model_config = config.model_config
         self.num_train_timesteps = 1000
         self.shift_terminal = 0.02
-        self.base_shift = 0.5
-        self.max_shift = 0.9
-        self.base_image_seq_len = 256
-        self.max_image_seq_len = 8192
         self._sigmas, self._timesteps = self._compute_timesteps_and_sigmas()
 
     @property
@@ -43,14 +39,25 @@ class FlowMatchEulerDiscreteScheduler(BaseScheduler):
             num_inference_steps=self.config.num_inference_steps,
         )
 
-    def _compute_mu(self) -> float:
-        h_patches = self.config.height // 16
-        w_patches = self.config.width // 16
-        seq_len = h_patches * w_patches
-        m = (self.max_shift - self.base_shift) / (self.max_image_seq_len - self.base_image_seq_len)
-        b = self.base_shift - m * self.base_image_seq_len
-        mu = m * seq_len + b
-        return mu
+    def set_mu(self, mu: float) -> None:
+        num_steps = self.config.num_inference_steps
+        sigmas = mx.linspace(1.0, 1.0 / num_steps, num_steps, dtype=mx.float32)
+        sigmas = FlowMatchEulerDiscreteScheduler._time_shift_exponential_array(mu, 1.0, sigmas)
+        self._timesteps = sigmas * self.num_train_timesteps
+        sigmas = mx.concatenate([sigmas, mx.zeros((1,), dtype=sigmas.dtype)], axis=0)
+        self._sigmas = sigmas
+
+    @staticmethod
+    def _compute_linear_mu(
+        image_seq_len: int,
+        base_seq_len: int = 256,
+        max_seq_len: int = 4096,
+        base_shift: float = 0.5,
+        max_shift: float = 1.15,
+    ) -> float:
+        m = (max_shift - base_shift) / (max_seq_len - base_seq_len)
+        b = base_shift - m * base_seq_len
+        return float(m * image_seq_len + b)
 
     @staticmethod
     def get_timesteps_and_sigmas(
