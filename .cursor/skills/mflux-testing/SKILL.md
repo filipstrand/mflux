@@ -13,11 +13,12 @@ This repo uses pytest with image-producing tests. Always preserve outputs for in
 
 ## Instructions
 
-- Prefer the existing Cursor commands:
-  - `/test-fast` (fast tests, no image generation)
-  - `/test-slow` (slow tests, image generation)
-  - `/test` (full suite)
-- Always keep `MFLUX_PRESERVE_TEST_OUTPUT=1` on test runs (already built into the commands).
+- Prefer the Makefile test targets:
+  - `make test-fast` (fast tests, no image generation)
+  - `make test-slow` (slow tests, image generation)
+  - `make test` (full suite)
+- Always keep `MFLUX_PRESERVE_TEST_OUTPUT=1` on test runs (already built into the Makefile test targets).
+- If a change affects defaults, config resolution, metadata fields, or CLI behavior, add or update tests that cover the changed behavior directly instead of relying only on manual verification.
 - If tests fail:
   - Summarize the failing test names and the key assertion output.
   - Point to any generated images/artifacts on disk for manual review.

@@ -14,11 +14,11 @@ This repo expects macOS arm64 and prefers `uv` + Makefile targets.
 ## Instructions
 
 - Prefer Makefile targets:
-  - Install: `/install` (or `make install`)
-  - Lint: `/lint` (or `make lint`)
-  - Format: `/format` (or `make format`)
-  - Pre-commit suite: `/check` (or `make check`)
-  - Build: `/build` (or `make build`)
+  - Install: `make install`
+  - Lint: `make lint`
+  - Format: `make format`
+  - Pre-commit suite: `make check`
+  - Build: `make build`
 - Prefer `uv run ...` for running Python commands to ensure the correct environment.
-- When running tests, keep `MFLUX_PRESERVE_TEST_OUTPUT=1` enabled (the `/test*` commands do this).
+- When running tests, keep `MFLUX_PRESERVE_TEST_OUTPUT=1` enabled (the Makefile test targets already do this).
 

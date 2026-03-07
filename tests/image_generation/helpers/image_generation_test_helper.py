@@ -55,7 +55,6 @@ class ImageGeneratorTestHelper:
                 "seed": seed,
                 "prompt": prompt,
                 "num_inference_steps": steps,
-                "image_strength": image_strength,
                 "height": height or 1024,
                 "width": width or 1024,
             }
@@ -69,6 +68,9 @@ class ImageGeneratorTestHelper:
             # Add guidance if provided
             if guidance is not None:
                 generate_kwargs["guidance"] = guidance
+
+            if image_strength is not None:
+                generate_kwargs["image_strength"] = image_strength
 
             # Add negative_prompt for Qwen models
             if model_class == QwenImage and negative_prompt is not None:

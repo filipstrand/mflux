@@ -422,13 +422,21 @@ for seed in seeds:
 
 ## Metadata reuse
 
-Reuse prior generation parameters from a metadata JSON:
+Run a generation with `--metadata` to emit a metadata sidecar next to the image, then reuse those parameters in a follow-up run. The sidecar filename uses the `.metadata.json` suffix:
 
 ```sh
 mflux-generate-z-image-turbo \
   --model z-image-turbo \
   --steps 9 \
-  --config-from-metadata ./image.json \
+  --metadata \
+  --output ./image.png
+```
+
+```sh
+mflux-generate-z-image-turbo \
+  --model z-image-turbo \
+  --steps 9 \
+  --config-from-metadata ./image.metadata.json \
   --prompt "Same composition, warmer light"
 ```
 
@@ -441,7 +449,7 @@ import json
 from mflux.models.common.config import ModelConfig
 from mflux.models.z_image import ZImageTurbo
 
-with open("./image.json", "r") as handle:
+with open("./image.metadata.json", "r") as handle:
     metadata = json.load(handle)
 
 model = ZImageTurbo(model_config=ModelConfig.z_image_turbo())
