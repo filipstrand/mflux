@@ -49,9 +49,9 @@ class Qwen3VLUtil:
 
         # Avoid unnecessary conversion if already mx.array
         if isinstance(input_ids, mx.array):
-            generated_ids = input_ids
+            prompt_ids = input_ids
         else:
-            generated_ids = mx.array(input_ids)
+            prompt_ids = mx.array(input_ids)
 
         if attention_mask is None:
             attention_mask = mx.ones_like(input_ids).astype(mx.int32)
@@ -67,21 +67,24 @@ class Qwen3VLUtil:
 
         # Pre-allocate reusable arrays for efficiency
         ones_1x1 = mx.ones((batch_size, 1), dtype=mx.int32)
+        max_cache_length = int(prompt_ids.shape[1] + max_new_tokens)
 
         # Initialize KV cache
         past_key_values = None
-        iteration_count = 0
+        generated_token_columns: list[mx.array] = []
+        generated_token_history: list[list[int]] = [[] for _ in range(batch_size)]
+        current_input_ids = prompt_ids
 
         for iteration in range(max_new_tokens):
             # On first iteration: process full sequence
             # On subsequent iterations: only process new token (use cache)
             if past_key_values is None:
                 # First iteration: process full input sequence
-                decoder_input_ids = generated_ids
+                decoder_input_ids = prompt_ids
                 decoder_attention_mask = attention_mask
             else:
                 # Subsequent iterations: only process the new token
-                decoder_input_ids = generated_ids[:, -1:]  # Only last token
+                decoder_input_ids = current_input_ids
                 decoder_attention_mask = ones_1x1  # Reuse pre-allocated array
 
             # Forward pass with KV cache
@@ -91,6 +94,7 @@ class Qwen3VLUtil:
                 "attention_mask": decoder_attention_mask,
                 "use_cache": True,
                 "past_key_values": past_key_values,
+                "max_cache_length": max_cache_length,
             }
             if past_key_values is None:
                 # First iteration: include image data if present
@@ -122,24 +126,23 @@ class Qwen3VLUtil:
 
             next_tokens = mx.stack(next_tokens, axis=0)
             next_tokens = mx.expand_dims(next_tokens, axis=1)
-
-            generated_ids = mx.concatenate([generated_ids, next_tokens], axis=1)
-            attention_mask = mx.concatenate([attention_mask, ones_1x1], axis=1)  # Reuse pre-allocated array
-            iteration_count += 1
+            generated_token_columns.append(next_tokens)
+            current_input_ids = next_tokens
+            sampled_token_ids = np.array(next_tokens[:, 0]).tolist()
+            for i, token_id in enumerate(sampled_token_ids):
+                generated_token_history[i].append(int(token_id))
 
             # Check for stop token sequences (only check last max_stop_len tokens for efficiency)
             should_stop = False
             matched_stop_sequence = None
             if stop_token_sequences and max_stop_len > 0:
-                # Only convert the last max_stop_len tokens to numpy (much more efficient)
-                if generated_ids.shape[1] >= max_stop_len:
-                    last_tokens_mx = generated_ids[0, -max_stop_len:]
-                    last_tokens_np = np.array(last_tokens_mx)
+                last_tokens_history = generated_token_history[0]
+                if len(last_tokens_history) >= max_stop_len:
+                    last_tokens_np = last_tokens_history[-max_stop_len:]
                     for stop_sequence in stop_token_sequences:
                         seq_len = len(stop_sequence)
                         if len(last_tokens_np) >= seq_len:
-                            # Check if the last seq_len tokens match this stop sequence
-                            tokens_to_check = last_tokens_np[-seq_len:].tolist()
+                            tokens_to_check = last_tokens_np[-seq_len:]
                             if tokens_to_check == stop_sequence:
                                 should_stop = True
                                 matched_stop_sequence = stop_sequence
@@ -149,7 +152,14 @@ class Qwen3VLUtil:
                 # Exclude the stop sequence from the output (match PyTorch behavior)
                 if matched_stop_sequence is not None:
                     seq_len = len(matched_stop_sequence)
-                    generated_ids = generated_ids[:, :-seq_len]
+                    if seq_len > 0:
+                        generated_token_columns = generated_token_columns[:-seq_len]
+                        for history in generated_token_history:
+                            del history[-seq_len:]
                 break
 
-        return generated_ids
+        if not generated_token_columns:
+            return prompt_ids
+
+        generated_suffix = mx.concatenate(generated_token_columns, axis=1)
+        return mx.concatenate([prompt_ids, generated_suffix], axis=1)

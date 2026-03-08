@@ -5,7 +5,7 @@ from mlx import nn
 
 from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
-from mflux.models.common.latent_creator.latent_creator import Img2Img, LatentCreator
+from mflux.models.common.schedulers.flow_match_euler_discrete_scheduler import FlowMatchEulerDiscreteScheduler
 from mflux.models.common.vae.vae_util import VAEUtil
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.fibo.fibo_initializer import FIBOInitializer
@@ -14,13 +14,14 @@ from mflux.models.fibo.model.fibo_text_encoder.prompt_encoder import PromptEncod
 from mflux.models.fibo.model.fibo_text_encoder.smol_lm3_3b_text_encoder import SmolLM3_3B_TextEncoder
 from mflux.models.fibo.model.fibo_transformer import FiboTransformer
 from mflux.models.fibo.model.fibo_vae.wan_2_2_vae import Wan2_2_VAE
+from mflux.models.fibo.variants.edit.util import FiboEditUtil
 from mflux.models.fibo.weights.fibo_weight_definition import FIBOWeightDefinition
 from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
 
 
-class FIBO(nn.Module):
+class FIBOEdit(nn.Module):
     vae: Wan2_2_VAE
     transformer: FiboTransformer
     text_encoder: SmolLM3_3B_TextEncoder
@@ -31,7 +32,7 @@ class FIBO(nn.Module):
         model_path: str | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
-        model_config: ModelConfig = ModelConfig.fibo(),
+        model_config: ModelConfig = ModelConfig.fibo_edit(),
     ):
         super().__init__()
         FIBOInitializer.init(
@@ -47,46 +48,31 @@ class FIBO(nn.Module):
         self,
         seed: int,
         prompt: str,
+        image_path: Path | str,
+        mask_path: Path | str | None = None,
         num_inference_steps: int = 50,
         height: int = 1024,
         width: int = 1024,
         guidance: float = 4.0,
-        image_path: Path | str | None = None,
-        image_strength: float | None = None,
         scheduler: str = "flow_match_euler_discrete",
         negative_prompt: str | None = None,
     ) -> GeneratedImage:
-        # 0. Create a new config based on the model type and input parameters
-        effective_guidance = guidance
-        if "fibo-lite" in self.model_config.aliases:
-            effective_guidance = 1.0  # distilled model, cond-only
+        prompt = FiboEditUtil.ensure_edit_instruction(prompt)
+
         config = Config(
             width=width,
             height=height,
-            guidance=effective_guidance,
+            guidance=guidance,
             scheduler=scheduler,
             image_path=image_path,
-            image_strength=image_strength,
             model_config=self.model_config,
             num_inference_steps=num_inference_steps,
         )
+        if hasattr(config.scheduler, "set_mu"):
+            mu = FlowMatchEulerDiscreteScheduler._compute_linear_mu(config.image_seq_len)
+            config.scheduler.set_mu(mu)
 
-        # 1. Create the initial latents
-        latents = LatentCreator.create_for_txt2img_or_img2img(
-            seed=seed,
-            width=config.width,
-            height=config.height,
-            img2img=Img2Img(
-                vae=self.vae,
-                latent_creator=FiboLatentCreator,
-                image_path=config.image_path,
-                sigmas=config.scheduler.sigmas,
-                init_time_step=config.init_time_step,
-                tiling_config=self.tiling_config,
-            ),
-        )
-
-        # 2. Encode the prompt
+        latents = FiboLatentCreator.create_noise(seed=seed, width=config.width, height=config.height)
         json_prompt, encoder_hidden_states, text_encoder_layers = PromptEncoder.encode_prompt(
             prompt=prompt,
             negative_prompt=negative_prompt,
@@ -95,42 +81,54 @@ class FIBO(nn.Module):
             guidance=config.guidance,
         )
 
-        # 3. Create callback context and call before_loop
+        edit_image = FiboEditUtil.load_edit_image(
+            image_path=image_path,
+            width=config.width,
+            height=config.height,
+            mask_path=mask_path,
+        )
+        conditioning_latents = FiboEditUtil.encode_conditioning_image(
+            vae=self.vae,
+            image=edit_image,
+            height=config.height,
+            width=config.width,
+            tiling_config=self.tiling_config,
+        )
+        conditioning_image_ids = FiboEditUtil.create_conditioning_image_ids(
+            height=config.height,
+            width=config.width,
+            dtype=encoder_hidden_states.dtype,
+        )
+
         ctx = self.callbacks.start(seed=seed, prompt=json_prompt, config=config)
         ctx.before_loop(latents)
 
         for t in config.time_steps:
             try:
-                # 4.t Predict the noise
+                hidden_states = mx.concatenate([latents, conditioning_latents], axis=1)
                 noise = self.transformer(
                     t=t,
                     config=config,
-                    hidden_states=latents,
+                    hidden_states=hidden_states,
                     text_encoder_layers=text_encoder_layers,
                     encoder_hidden_states=encoder_hidden_states,
+                    conditioning_seq_len=conditioning_latents.shape[1],
+                    conditioning_image_ids=conditioning_image_ids,
                 )
+                noise = noise[:, : latents.shape[1]]
                 if config.guidance != 1.0:
-                    noise = FIBO._apply_classifier_free_guidance(noise, config.guidance)
-
-                # 5.t Take one denoise step
+                    noise = FIBOEdit._apply_classifier_free_guidance(noise, config.guidance)
                 latents = config.scheduler.step(noise=noise, timestep=t, latents=latents)
-
-                # 6.t Call subscribers in-loop
                 ctx.in_loop(t, latents)
-
-                # (Optional) Evaluate to enable progress tracking
                 mx.eval(latents)
-
             except KeyboardInterrupt:  # noqa: PERF203
                 ctx.interruption(t, latents)
                 raise StopImageGenerationException(
                     f"Stopping image generation at step {t + 1}/{config.num_inference_steps}"
                 )
 
-        # 7. Call subscribers after loop
         ctx.after_loop(latents)
 
-        # 8. Decode the latent array and return the image
         latents = FiboLatentCreator.unpack_latents(latents, config.height, config.width)
         decoded = VAEUtil.decode(vae=self.vae, latent=latents, tiling_config=self.tiling_config)
         return ImageUtil.to_image(
@@ -140,8 +138,9 @@ class FIBO(nn.Module):
             prompt=json_prompt,
             quantization=self.bits,
             image_path=config.image_path,
-            image_strength=config.image_strength,
+            masked_image_path=mask_path,
             generation_time=config.time_steps.format_dict["elapsed"],
+            negative_prompt=negative_prompt,
         )
 
     @staticmethod

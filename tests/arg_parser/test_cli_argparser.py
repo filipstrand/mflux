@@ -7,6 +7,7 @@ import pytest
 
 from mflux.cli.defaults import defaults as ui_defaults
 from mflux.cli.parser.parsers import CommandLineParser
+from mflux.models.fibo.cli.fibo_edit import _resolve_fibo_edit_model_config
 from mflux.utils.box_values import BoxValues
 
 
@@ -1002,6 +1003,7 @@ def mflux_fibo_parser() -> CommandLineParser:
     parser = CommandLineParser(description="Generate an image using FIBO model.")
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
+    parser.set_defaults(model="fibo")
     parser.add_lora_arguments()
     parser.add_image_generator_arguments(supports_metadata_config=True)
     parser.add_image_to_image_arguments(required=False)
@@ -1020,6 +1022,8 @@ def test_fibo_args(mflux_fibo_parser, mflux_fibo_minimal_argv):
     with patch("sys.argv", mflux_fibo_minimal_argv):
         args = mflux_fibo_parser.parse_args()
         assert args.prompt == '{"scene": "a forest"}'
+        assert args.model == "fibo"
+        assert args.steps == 50
 
     # Test with negative prompt
     with patch("sys.argv", mflux_fibo_minimal_argv + ["--negative-prompt", "blurry, low quality"]):
@@ -1030,6 +1034,197 @@ def test_fibo_args(mflux_fibo_parser, mflux_fibo_minimal_argv):
     with patch("sys.argv", mflux_fibo_minimal_argv + ["--image-path", "input.png"]):
         args = mflux_fibo_parser.parse_args()
         assert args.image_path == Path("input.png")
+
+
+@pytest.mark.fast
+def test_fibo_args_restore_model_from_metadata_even_with_cli_default(mflux_fibo_parser, temp_dir):
+    metadata_file = temp_dir / "fibo_metadata.json"
+    metadata_file.write_text(
+        json.dumps(
+            {
+                "model": "briaai/Fibo-lite",
+                "prompt": '{"scene": "a forest"}',
+                "seed": 42,
+                "steps": 8,
+            }
+        )
+    )
+
+    with patch("sys.argv", ["mflux-generate-fibo", "--config-from-metadata", metadata_file.as_posix()]):
+        args = mflux_fibo_parser.parse_args()
+        assert args.model == "briaai/Fibo-lite"
+        assert args.model_path == "briaai/Fibo-lite"
+        assert args.steps == 8
+
+
+@pytest.mark.fast
+def test_fibo_args_cli_model_equals_syntax_overrides_metadata(mflux_fibo_parser, temp_dir):
+    metadata_file = temp_dir / "fibo_model_equals_metadata.json"
+    metadata_file.write_text(
+        json.dumps(
+            {
+                "model": "briaai/Fibo-lite",
+                "prompt": '{"scene": "a forest"}',
+                "seed": 42,
+                "steps": 8,
+            }
+        )
+    )
+
+    with patch(
+        "sys.argv",
+        [
+            "mflux-generate-fibo",
+            '--prompt={"scene":"a forest"}',
+            "--model=fibo",
+            "--config-from-metadata",
+            metadata_file.as_posix(),
+        ],
+    ):
+        args = mflux_fibo_parser.parse_args()
+        assert args.model == "fibo"
+
+
+@pytest.mark.fast
+def test_fibo_args_cli_model_short_concat_syntax_overrides_metadata(mflux_fibo_parser, temp_dir):
+    metadata_file = temp_dir / "fibo_model_short_concat_metadata.json"
+    metadata_file.write_text(
+        json.dumps(
+            {
+                "model": "briaai/Fibo-lite",
+                "prompt": '{"scene": "a forest"}',
+                "seed": 42,
+                "steps": 8,
+            }
+        )
+    )
+
+    with patch(
+        "sys.argv",
+        [
+            "mflux-generate-fibo",
+            '--prompt={"scene":"a forest"}',
+            "-mfibo",
+            "--config-from-metadata",
+            metadata_file.as_posix(),
+        ],
+    ):
+        args = mflux_fibo_parser.parse_args()
+        assert args.model == "fibo"
+
+
+@pytest.fixture
+def mflux_fibo_edit_parser() -> CommandLineParser:
+    parser = CommandLineParser(description="Generate an edited image using Bria FIBO Edit.")
+    parser.add_general_arguments()
+    parser.add_model_arguments(require_model_arg=False)
+    parser.set_defaults(model="fibo-edit")
+    parser.add_lora_arguments()
+    parser.add_image_generator_arguments(supports_metadata_config=True, require_prompt=False)
+    parser.add_argument("--image-path", type=Path, required=False)
+    parser.add_argument("--mask-path", type=Path, default=None)
+    parser.add_output_arguments()
+    return parser
+
+
+@pytest.mark.fast
+def test_fibo_edit_args(mflux_fibo_edit_parser):
+    with patch(
+        "sys.argv",
+        [
+            "mflux-generate-fibo-edit",
+            "--prompt",
+            '{"short_description": "cat", "edit_instruction": "Turn the cat white"}',
+            "--image-path",
+            "input.png",
+        ],
+    ):
+        args = mflux_fibo_edit_parser.parse_args()
+        assert args.model == "fibo-edit"
+        assert args.steps == 50
+        assert args.image_path == Path("input.png")
+
+
+@pytest.mark.fast
+def test_fibo_edit_args_can_parse_without_prompt_for_runtime_validation(mflux_fibo_edit_parser):
+    with patch(
+        "sys.argv",
+        [
+            "mflux-generate-fibo-edit",
+            "--image-path",
+            "input.png",
+        ],
+    ):
+        args = mflux_fibo_edit_parser.parse_args()
+        assert args.prompt is None
+        assert args.prompt_file is None
+        assert args.image_path == Path("input.png")
+
+
+@pytest.mark.fast
+def test_fibo_edit_args_restore_image_and_mask_from_metadata(mflux_fibo_edit_parser, temp_dir):
+    metadata_file = temp_dir / "fibo_edit_metadata.json"
+    metadata_file.write_text(
+        json.dumps(
+            {
+                "model": "fibo-edit",
+                "prompt": '{"short_description": "cat", "edit_instruction": "Turn the cat white"}',
+                "image_path": "input.png",
+                "masked_image_path": "mask.png",
+                "seed": 42,
+                "steps": 20,
+            }
+        )
+    )
+
+    with patch("sys.argv", ["mflux-generate-fibo-edit", "--config-from-metadata", metadata_file.as_posix()]):
+        args = mflux_fibo_edit_parser.parse_args()
+        assert args.image_path == "input.png"
+        assert args.mask_path == "mask.png"
+
+
+@pytest.mark.fast
+def test_fibo_edit_args_restore_model_from_metadata_even_with_cli_default(mflux_fibo_edit_parser, temp_dir):
+    metadata_file = temp_dir / "fibo_edit_model_metadata.json"
+    metadata_file.write_text(
+        json.dumps(
+            {
+                "model": "briaai/Fibo-Edit",
+                "prompt": '{"short_description": "cat", "edit_instruction": "Turn the cat white"}',
+                "image_path": "input.png",
+                "seed": 42,
+                "steps": 20,
+            }
+        )
+    )
+
+    with patch("sys.argv", ["mflux-generate-fibo-edit", "--config-from-metadata", metadata_file.as_posix()]):
+        args = mflux_fibo_edit_parser.parse_args()
+        assert args.model == "briaai/Fibo-Edit"
+        assert args.model_path == "briaai/Fibo-Edit"
+        assert args.image_path == "input.png"
+
+
+@pytest.mark.fast
+def test_fibo_edit_rejects_non_edit_model_restored_from_metadata(mflux_fibo_edit_parser, temp_dir):
+    metadata_file = temp_dir / "fibo_edit_incompatible_model_metadata.json"
+    metadata_file.write_text(
+        json.dumps(
+            {
+                "model": "briaai/FIBO",
+                "prompt": '{"short_description": "cat", "edit_instruction": "Turn the cat white"}',
+                "image_path": "input.png",
+                "seed": 42,
+                "steps": 20,
+            }
+        )
+    )
+
+    with patch("sys.argv", ["mflux-generate-fibo-edit", "--config-from-metadata", metadata_file.as_posix()]):
+        args = mflux_fibo_edit_parser.parse_args()
+
+    with pytest.raises(SystemExit):
+        _resolve_fibo_edit_model_config(mflux_fibo_edit_parser, args)
 
 
 # ============================================================================

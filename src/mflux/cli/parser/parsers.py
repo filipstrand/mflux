@@ -1,6 +1,7 @@
 import argparse
 import json
 import random
+import sys
 import time
 import typing as t
 from pathlib import Path
@@ -223,6 +224,19 @@ class CommandLineParser(argparse.ArgumentParser):
     def add_info_arguments(self) -> None:
         self.add_argument("image_path", type=str, help="Path to the image file to inspect")
 
+    @staticmethod
+    def _option_was_provided(*option_names: str) -> bool:
+        argv = sys.argv[1:]
+        for token in argv:
+            if token in option_names:
+                return True
+            for option in option_names:
+                if option.startswith("--") and token.startswith(f"{option}="):
+                    return True
+                if option.startswith("-") and not option.startswith("--") and len(option) == 2 and token.startswith(option) and token != option:
+                    return True
+        return False
+
     def parse_args(self) -> argparse.Namespace:  # type: ignore
         namespace = super().parse_args()
 
@@ -237,9 +251,10 @@ class CommandLineParser(argparse.ArgumentParser):
         if getattr(namespace, "config_from_metadata", False):
             prior_gen_metadata = json.load(namespace.config_from_metadata.open("rt"))
 
-            if namespace.model is None:
-                # when not provided by CLI flag, find it in the config file
-                namespace.model = prior_gen_metadata.get("model", None)
+            if hasattr(namespace, "model") and not self._option_was_provided("--model", "-m"):
+                # When --model was not provided explicitly, metadata should win
+                # even if the parser set a command-specific default model.
+                namespace.model = prior_gen_metadata.get("model", namespace.model)
 
             if namespace.base_model is None:
                 namespace.base_model = prior_gen_metadata.get("base_model", None)
@@ -278,9 +293,15 @@ class CommandLineParser(argparse.ArgumentParser):
                     # merge the loras from cli and config file
                     namespace.lora_scales = prior_gen_metadata.get("lora_scales", []) + namespace.lora_scales
 
+            if hasattr(namespace, "image_path") and namespace.image_path is None:
+                namespace.image_path = prior_gen_metadata.get("image_path", None)
+
+            if hasattr(namespace, "mask_path") and namespace.mask_path is None:
+                namespace.mask_path = (
+                    prior_gen_metadata.get("masked_image_path", None) or prior_gen_metadata.get("mask_path", None)
+                )
+
             if self.supports_image_to_image:
-                if namespace.image_path is None:
-                    namespace.image_path = prior_gen_metadata.get("image_path", None)
                 if namespace.image_strength == self.get_default("image_strength") and (img_strength_from_metadata := prior_gen_metadata.get("image_strength", None)):
                     namespace.image_strength = img_strength_from_metadata
 

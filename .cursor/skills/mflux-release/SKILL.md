@@ -13,8 +13,6 @@ Releases are prepared in-repo; tagging/publishing is handled by GitHub Actions.
 
 ## Instructions
 
-- Prefer the existing Cursor command:
-  - `/release-prep`
 - Checklist:
   - Bump version in `pyproject.toml`
   - Review commits since last release tag:

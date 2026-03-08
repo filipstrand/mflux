@@ -20,6 +20,21 @@ log = logging.getLogger(__name__)
 
 class ImageUtil:
     @staticmethod
+    def resolve_output_path(path: str | Path, overwrite: bool = False) -> Path:
+        file_path = Path(path)
+        if overwrite:
+            return file_path
+
+        file_name = file_path.stem
+        file_extension = file_path.suffix
+        counter = 1
+        while file_path.exists():
+            new_name = f"{file_name}_{counter}{file_extension}"
+            file_path = file_path.with_name(new_name)
+            counter += 1
+        return file_path
+
+    @staticmethod
     def to_image(
         decoded_latents: mx.array,
         config: Config,
@@ -218,27 +233,19 @@ class ImageUtil:
         export_json_metadata: bool = False,
         overwrite: bool = False,
     ) -> None:
-        file_path = Path(path)
+        file_path = ImageUtil.resolve_output_path(path=path, overwrite=overwrite)
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_name = file_path.stem
-        file_extension = file_path.suffix
-
-        # If a file already exists and overwrite is False, create a new name with a counter
-        if not overwrite:
-            counter = 1
-            while file_path.exists():
-                new_name = f"{file_name}_{counter}{file_extension}"
-                file_path = file_path.with_name(new_name)
-                counter += 1
 
         try:
             # Save image without metadata first
             image.save(file_path)
             log.info(f"Image saved successfully at: {file_path}")
 
-            # Optionally save json metadata file
+            # Export metadata to a dedicated sidecar path so it never
+            # collides with model-specific JSON artifacts like FIBO prompts.
             if export_json_metadata:
-                with open(f"{file_path.with_suffix('.json')}", "w") as json_file:
+                metadata_path = file_path.with_suffix(".metadata.json")
+                with open(metadata_path, "w") as json_file:
                     json.dump(metadata, json_file, indent=4)
 
             # Embed metadata in multiple formats for maximum compatibility
