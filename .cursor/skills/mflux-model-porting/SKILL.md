@@ -57,8 +57,12 @@ Provide a repeatable, MLX-focused workflow for porting ML models (typically from
 6. **Finalize**
    - Re-run tests and basic perf checks.
    - Add CLI/pipeline defaults and completions later, once core output is stable.
+   - Ensure the model is wired into the standard surfaces:
+     - `ModelConfig` entry + aliases
+     - Thin model CLI entrypoint that uses shared parser/config/callback patterns
+     - README following the structure and tone of existing model READMEs
+     - Python API example that matches the CLI/defaults
    - Document any new mapping rules, shape constraints, or tolerances.
-   - Create a model README that follows the structure of existing model READMEs.
 
 ## Tooling expectations
 - Use `uv` for running scripts and tests: `uv run <command>`.
@@ -68,3 +72,4 @@ Provide a repeatable, MLX-focused workflow for porting ML models (typically from
 - Deterministic MLX test that verifies correctness.
 - Documented weight mapping, shape constraints, and any known tolerances.
 - Cleaned, shared components aligned with mflux style.
+- Standard mflux surfaces in place: config aliases, thin CLI, and a README/examples pass aligned with the final behavior.

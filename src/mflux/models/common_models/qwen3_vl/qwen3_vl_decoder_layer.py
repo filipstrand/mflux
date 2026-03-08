@@ -1,7 +1,7 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.common_models.qwen3_vl.qwen3_vl_attention import Qwen3VLAttention
+from mflux.models.common_models.qwen3_vl.qwen3_vl_attention import Qwen3VLAttention, Qwen3VLKVCache
 from mflux.models.common_models.qwen3_vl.qwen3_vl_mlp import Qwen3VLMLP
 from mflux.models.common_models.qwen3_vl.qwen3_vl_rms_norm import Qwen3VLRMSNorm
 
@@ -44,8 +44,9 @@ class Qwen3VLDecoderLayer(nn.Module):
         hidden_states: mx.array,
         attention_mask: mx.array | None = None,
         position_embeddings: tuple[mx.array, mx.array] | None = None,
-        past_key_value: tuple[mx.array, mx.array] | None = None,
-    ) -> mx.array | tuple[mx.array, tuple[mx.array, mx.array]]:
+        past_key_value: Qwen3VLKVCache | None = None,
+        max_cache_length: int | None = None,
+    ) -> mx.array | tuple[mx.array, Qwen3VLKVCache]:
         residual = hidden_states
         hidden_states = self.input_layernorm(hidden_states)
         attn_output, past_key_value = self.self_attn(
@@ -53,6 +54,7 @@ class Qwen3VLDecoderLayer(nn.Module):
             attention_mask=attention_mask,
             position_embeddings=position_embeddings,
             past_key_value=past_key_value,
+            max_cache_length=max_cache_length,
         )
         hidden_states = residual + attn_output
         residual = hidden_states

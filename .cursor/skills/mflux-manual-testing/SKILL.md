@@ -37,7 +37,7 @@ uv tool install --force --editable --reinstall .
 - **Low-RAM path** (if relevant): run with `--low-ram` and confirm:
   - generation completes
   - output quality is sane (no unexpected all-noise output)
-- **Metadata** (if relevant): run with `--metadata` and confirm the `.json` is emitted and looks consistent.
+- **Metadata** (if relevant): run with `--metadata` and confirm the `.metadata.json` sidecar is emitted and looks consistent.
 
 ## Output review (human-in-the-loop)
 

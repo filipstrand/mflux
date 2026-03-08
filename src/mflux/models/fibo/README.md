@@ -45,7 +45,7 @@ image.save("robot_lite.png")
 ```
 </details>
 
-## The three modes: Generate, Refine, and Inspire
+## The four modes: Generate, Edit, Refine, and Inspire
 
 ### Generate
 While the actual prompt input to FIBO is a structured JSON file, the generate command provides an interface to input pure text prompts. These are then expanded into structured JSON prompts using FIBO's Vision-Language Model (VLM) before being passed to the diffusion model for image generation.
@@ -83,7 +83,7 @@ model = FIBO(model_config=ModelConfig.fibo())
 image = model.generate_image(
     seed=42,
     prompt=json_prompt,
-    num_inference_steps=20,
+    num_inference_steps=50,
     width=1200,
     height=540,
     guidance=4.0,
@@ -101,7 +101,7 @@ mflux-generate-fibo \
     --prompt-file animal_bakers.json \
     --width 1200 \
     --height 540 \
-    --steps 20 \
+    --steps 50 \
     --guidance 4.0 \
     --seed 42 \
     --output animal_bakers.png
@@ -122,7 +122,7 @@ model = FIBO(model_config=ModelConfig.fibo())
 image = model.generate_image(
     seed=42,
     prompt=structured_prompt,
-    num_inference_steps=20,
+    num_inference_steps=50,
     width=1200,
     height=540,
     guidance=4.0,
@@ -280,7 +280,7 @@ model = FIBO(model_config=ModelConfig.fibo(), quantize=4)
 image = model.generate_image(
     seed=42,
     prompt=structured_prompt,
-    num_inference_steps=20,
+    num_inference_steps=50,
     width=1024,
     height=560,
     guidance=4.0,
@@ -333,7 +333,7 @@ mflux-generate-fibo \
     --prompt-file bird_inspired.json \
     --width 1024 \
     --height 672 \
-    --steps 20 \
+    --steps 50 \
     --guidance 4.0 \
     --seed 42 \
     -q 8 \
@@ -355,7 +355,7 @@ model = FIBO(model_config=ModelConfig.fibo(), quantize=8)
 image = model.generate_image(
     seed=42,
     prompt=structured_prompt,
-    num_inference_steps=20,
+    num_inference_steps=50,
     width=1024,
     height=672,
     guidance=4.0,
@@ -364,7 +364,139 @@ image.save("bird_inspired.png")
 ```
 </details>
 
+---
+
+### FIBO-Edit
+FIBO Edit supports direct image-conditioned editing using a plain-text edit instruction plus a source image.
+The CLI will convert the instruction + image into a structured JSON prompt automatically.
+
+![FIBO Edit Example](../../assets/fibo_edit_example.jpg)
+
+```sh
+mflux-generate-fibo-edit \
+    --image-path reference_upscaled.png \
+    --prompt "Make the hand fistbump the camera instead of showing a flat palm." \
+    --width 640 \
+    --height 384 \
+    --steps 30 \
+    --guidance 3.5 \
+    --seed 42 \
+    --output fibo_edit_fistbump.png
+```
+
+<details>
+<summary>Python API</summary>
+
+```python
+from pathlib import Path
+
+from mflux.models.common.config import ModelConfig
+from mflux.models.fibo.variants.edit import FIBOEdit
+from mflux.models.fibo_vlm.model.fibo_vlm import FiboVLM
+from mflux.models.fibo_vlm.model.util import FiboVLMUtil
+
+vlm = FiboVLM(quantize=8)
+structured_prompt = vlm.edit(
+    image=FiboVLMUtil.load_image(Path("image.png")),
+    edit_instruction="Make the hand fistbump the camera instead of showing a flat palm.",
+    seed=42,
+)
+
+model = FIBOEdit(model_config=ModelConfig.fibo_edit(), quantize=8)
+image = model.generate_image(
+    seed=42,
+    prompt=structured_prompt,
+    image_path="image.png",
+    num_inference_steps=30,
+    width=640,
+    height=384,
+    guidance=3.5,
+)
+image.save("fibo_edit_fistbump.png")
+```
+</details>
+
+Optional localized editing is supported with a mask:
+
+![FIBO Edit Mask Example](../../assets/fibo_edit_mask_example.jpg)
+
+```sh
+mflux-generate-fibo-edit \
+    --image-path reference_upscaled.png \
+    --mask-path hand_mask.png \
+    --prompt "Make only the masked hand fistbump the camera and keep the rest of the image unchanged." \
+    --steps 30 \
+    --guidance 3.5 \
+    --seed 42 \
+    --output fibo_edit_fistbump_masked.png
+```
+
+Advanced use: you can still pass a full structured JSON prompt via `--prompt` or `--prompt-file`.
+When doing so, make sure the JSON includes `edit_instruction`.
+
+<details>
+<summary>Example full edit JSON</summary>
+
+```json
+{
+  "short_description": "A close-up shot of a Black man's hand making a fistbump gesture towards the camera. He is wearing a plain white t-shirt. The background is a softly blurred indoor setting with a window and curtains.",
+  "objects": [
+    {
+      "description": "A Black man's hand, with visible knuckles and skin texture, making a fistbump gesture.",
+      "location": "center foreground",
+      "relationship": "The hand is the primary subject, making contact with the camera.",
+      "relative_size": "large within frame",
+      "shape_and_color": "Human hand shape, dark brown skin tone.",
+      "texture": "Smooth skin with visible knuckles.",
+      "appearance_details": "Fingers are curled into a fist, thumb is extended.",
+      "orientation": "facing forward, fist extended towards the viewer"
+    },
+    {
+      "description": "A Black man's torso and lower face, partially visible, wearing a white t-shirt.",
+      "location": "center midground",
+      "relationship": "The man is the owner of the hand, providing context for the gesture.",
+      "relative_size": "medium",
+      "shape_and_color": "Human torso and face shape, dark brown skin tone, white shirt.",
+      "texture": "Smooth skin, soft fabric of the t-shirt.",
+      "appearance_details": "He has a short beard and mustache. His expression is serious and direct.",
+      "pose": "Upper body visible, arm extended forward for a fistbump.",
+      "expression": "serious, direct gaze",
+      "clothing": "plain white crew-neck t-shirt",
+      "action": "fistbumping the camera",
+      "gender": "male",
+      "skin_tone_and_texture": "dark brown, smooth skin",
+      "orientation": "upright, facing forward"
+    }
+  ],
+  "background_setting": "A softly blurred indoor setting, featuring a light gray wall on the left, a window with natural light streaming through on the right, and sheer white curtains partially drawn.",
+  "lighting": {
+    "conditions": "bright indoor lighting, natural light from a window",
+    "direction": "side-lit from right",
+    "shadows": "soft shadows are cast on the left side of the hand and face, indicating light from the right window."
+  },
+  "aesthetics": {
+    "composition": "centered, portrait composition with the hand as the focal point",
+    "color_scheme": "neutral tones with a pop of white from the shirt and natural light.",
+    "mood_atmosphere": "direct, engaging, slightly serious.",
+    "photographic_characteristics": {
+      "depth_of_field": "shallow",
+      "focus": "sharp focus on the hand and face, with a blurred background",
+      "camera_angle": "eye-level",
+      "lens_focal_length": "standard lens (e.g., 35mm-50mm)"
+    },
+    "style_medium": "photograph",
+    "artistic_style": "realistic, naturalistic",
+    "preference_score": "very high",
+    "aesthetic_score": "very high"
+  },
+  "context": "This is a portrait photograph, potentially for a social media profile, a casual greeting, or a promotional image emphasizing a direct and engaging interaction.",
+  "edit_instruction": "Make the hand fistbump the camera instead of showing a flat palm."
+}
+```
+</details>
+
+
 ## Notes
 > [!WARNING]
-> FIBO requires downloading the `briaai/FIBO` or `briaai/FIBO-lite` model weights (~24GB) and the `briaai/FIBO-vlm` vision-language model (~8GB), totaling ~32GB for the full model, or use quantization for smaller sizes.
+> FIBO and FIBO-Edit requires downloading the `briaai/FIBO` or `briaai/FIBO-lite` model weights (~24GB) and the `briaai/FIBO-vlm` vision-language model (~8GB), totaling ~32GB for the full model, or use quantization for smaller sizes.
 

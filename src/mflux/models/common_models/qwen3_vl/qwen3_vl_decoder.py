@@ -1,6 +1,7 @@
 import mlx.core as mx
 from mlx import nn
 
+from mflux.models.common_models.qwen3_vl.qwen3_vl_attention import Qwen3VLKVCache
 from mflux.models.common_models.qwen3_vl.qwen3_vl_decoder_layer import Qwen3VLDecoderLayer
 from mflux.models.common_models.qwen3_vl.qwen3_vl_rms_norm import Qwen3VLRMSNorm
 from mflux.models.common_models.qwen3_vl.qwen3_vl_rope import Qwen3VLRotaryEmbedding
@@ -67,8 +68,9 @@ class Qwen3VLDecoder(nn.Module):
         pixel_values: mx.array | None = None,
         image_grid_thw: mx.array | None = None,
         use_cache: bool = False,
-        past_key_values: list[tuple[mx.array, mx.array]] | None = None,
-    ) -> mx.array | tuple[mx.array, list[tuple[mx.array, mx.array]]]:
+        past_key_values: list[Qwen3VLKVCache] | None = None,
+        max_cache_length: int | None = None,
+    ) -> mx.array | tuple[mx.array, list[Qwen3VLKVCache]]:
         batch_size, seq_len = input_ids.shape
 
         # Get embeddings
@@ -105,7 +107,7 @@ class Qwen3VLDecoder(nn.Module):
 
         # Position embeddings
         if use_cache and past_key_values is not None:
-            cached_seq_len = past_key_values[0][0].shape[2] if len(past_key_values) > 0 else 0
+            cached_seq_len = past_key_values[0][2] if len(past_key_values) > 0 else 0
             cache_position = mx.arange(cached_seq_len, cached_seq_len + seq_len, dtype=mx.int32)
         else:
             cache_position = mx.arange(seq_len, dtype=mx.int32)
@@ -149,6 +151,7 @@ class Qwen3VLDecoder(nn.Module):
                 attention_mask_4d,
                 position_embeddings,
                 past_key_value=layer_past,
+                max_cache_length=max_cache_length,
             )
 
             if use_cache:
@@ -173,7 +176,7 @@ class Qwen3VLDecoder(nn.Module):
             raise RuntimeError("Vision transformer not initialized. Call load_visual_weights() first.")
 
         # Vision model can handle the original dtype (usually float16)
-        image_embeds, _ = self.visual(pixel_values, image_grid_thw)  # Ignore deepstack for now
+        image_embeds, _ = self.visual(pixel_values, image_grid_thw, return_deepstack=False)
         original_split_sizes = image_grid_thw.prod(axis=-1).astype(mx.int32)
         spatial_merge_size = self.visual.spatial_merge_size
         split_sizes = (original_split_sizes // (spatial_merge_size**2)).astype(mx.int32)
