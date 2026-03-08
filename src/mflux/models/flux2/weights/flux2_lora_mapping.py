@@ -20,6 +20,46 @@ class Flux2LoRAMapping(LoRAMapping):
         return targets
 
     @staticmethod
+    def _with_default_weight_patterns(*patterns: str) -> list[str]:
+        expanded_patterns: list[str] = []
+
+        for pattern in patterns:
+            expanded_patterns.append(pattern)
+
+            if pattern.endswith(".lora_A.weight"):
+                expanded_patterns.append(pattern.removesuffix(".lora_A.weight") + ".lora_A.default.weight")
+            elif pattern.endswith(".lora_B.weight"):
+                expanded_patterns.append(pattern.removesuffix(".lora_B.weight") + ".lora_B.default.weight")
+
+        return expanded_patterns
+
+    @staticmethod
+    def _with_diffusion_double_block_patterns(*patterns: str) -> list[str]:
+        expanded_patterns: list[str] = []
+
+        for pattern in patterns:
+            expanded_patterns.append(pattern)
+
+            if pattern.startswith("base_model.model.double_blocks."):
+                expanded_patterns.append(
+                    pattern.replace("base_model.model.double_blocks.", "diffusion_model.double_blocks.", 1)
+                )
+
+        return expanded_patterns
+
+    @staticmethod
+    def _with_diffusion_single_block_patterns(*patterns: str) -> list[str]:
+        expanded_patterns: list[str] = []
+
+        for pattern in patterns:
+            expanded_patterns.append(pattern)
+
+            if pattern.startswith("base_model.model.single_blocks."):
+                expanded_patterns.append(pattern.replace("base_model.model.single_blocks.", "diffusion_model.single_blocks.", 1))
+
+        return expanded_patterns
+
+    @staticmethod
     def _get_global_targets() -> list[LoRATarget]:
         return [
             LoRATarget(
@@ -334,7 +374,7 @@ class Flux2LoRAMapping(LoRAMapping):
         return [
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.to_q",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.attn.to_q.lora_B.weight",
                     "transformer_blocks.{block}.attn.to_q.lora_up.weight",
                     "transformer.transformer_blocks.{block}.attn.to_q.lora_B.weight",
@@ -342,8 +382,8 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.attn.to_q.lora_B.weight",
                     "diffusion_model.transformer_blocks.{block}.attn.to_q.lora_up.weight",
                     "lora_unet_transformer_blocks_{block}_attn_to_q.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.attn.to_q.lora_A.weight",
                     "transformer_blocks.{block}.attn.to_q.lora_down.weight",
                     "transformer.transformer_blocks.{block}.attn.to_q.lora_A.weight",
@@ -351,7 +391,7 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.attn.to_q.lora_A.weight",
                     "diffusion_model.transformer_blocks.{block}.attn.to_q.lora_down.weight",
                     "lora_unet_transformer_blocks_{block}_attn_to_q.lora_down.weight",
-                ],
+                ),
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.attn.to_q.alpha",
                     "transformer.transformer_blocks.{block}.attn.to_q.alpha",
@@ -361,7 +401,7 @@ class Flux2LoRAMapping(LoRAMapping):
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.to_k",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.attn.to_k.lora_B.weight",
                     "transformer_blocks.{block}.attn.to_k.lora_up.weight",
                     "transformer.transformer_blocks.{block}.attn.to_k.lora_B.weight",
@@ -369,8 +409,8 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.attn.to_k.lora_B.weight",
                     "diffusion_model.transformer_blocks.{block}.attn.to_k.lora_up.weight",
                     "lora_unet_transformer_blocks_{block}_attn_to_k.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.attn.to_k.lora_A.weight",
                     "transformer_blocks.{block}.attn.to_k.lora_down.weight",
                     "transformer.transformer_blocks.{block}.attn.to_k.lora_A.weight",
@@ -378,7 +418,7 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.attn.to_k.lora_A.weight",
                     "diffusion_model.transformer_blocks.{block}.attn.to_k.lora_down.weight",
                     "lora_unet_transformer_blocks_{block}_attn_to_k.lora_down.weight",
-                ],
+                ),
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.attn.to_k.alpha",
                     "transformer.transformer_blocks.{block}.attn.to_k.alpha",
@@ -388,7 +428,7 @@ class Flux2LoRAMapping(LoRAMapping):
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.to_v",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.attn.to_v.lora_B.weight",
                     "transformer_blocks.{block}.attn.to_v.lora_up.weight",
                     "transformer.transformer_blocks.{block}.attn.to_v.lora_B.weight",
@@ -396,8 +436,8 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.attn.to_v.lora_B.weight",
                     "diffusion_model.transformer_blocks.{block}.attn.to_v.lora_up.weight",
                     "lora_unet_transformer_blocks_{block}_attn_to_v.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.attn.to_v.lora_A.weight",
                     "transformer_blocks.{block}.attn.to_v.lora_down.weight",
                     "transformer.transformer_blocks.{block}.attn.to_v.lora_A.weight",
@@ -405,7 +445,7 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.attn.to_v.lora_A.weight",
                     "diffusion_model.transformer_blocks.{block}.attn.to_v.lora_down.weight",
                     "lora_unet_transformer_blocks_{block}_attn_to_v.lora_down.weight",
-                ],
+                ),
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.attn.to_v.alpha",
                     "transformer.transformer_blocks.{block}.attn.to_v.alpha",
@@ -415,7 +455,7 @@ class Flux2LoRAMapping(LoRAMapping):
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.to_out",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.attn.to_out.lora_B.weight",
                     "transformer_blocks.{block}.attn.to_out.lora_up.weight",
                     "transformer_blocks.{block}.attn.to_out.0.lora_B.weight",  # HF-style
@@ -430,8 +470,8 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.attn.to_out.0.lora_up.weight",  # HF-style
                     "lora_unet_transformer_blocks_{block}_attn_to_out.lora_up.weight",
                     "lora_unet_transformer_blocks_{block}_attn_to_out_0.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.attn.to_out.lora_A.weight",
                     "transformer_blocks.{block}.attn.to_out.lora_down.weight",
                     "transformer_blocks.{block}.attn.to_out.0.lora_A.weight",  # HF-style
@@ -446,7 +486,7 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.attn.to_out.0.lora_down.weight",  # HF-style
                     "lora_unet_transformer_blocks_{block}_attn_to_out.lora_down.weight",
                     "lora_unet_transformer_blocks_{block}_attn_to_out_0.lora_down.weight",
-                ],
+                ),
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.attn.to_out.alpha",
                     "transformer_blocks.{block}.attn.to_out.0.alpha",
@@ -460,7 +500,7 @@ class Flux2LoRAMapping(LoRAMapping):
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.add_q_proj",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.attn.add_q_proj.lora_B.weight",
                     "transformer_blocks.{block}.attn.add_q_proj.lora_up.weight",
                     "transformer.transformer_blocks.{block}.attn.add_q_proj.lora_B.weight",
@@ -468,8 +508,8 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.attn.add_q_proj.lora_B.weight",
                     "diffusion_model.transformer_blocks.{block}.attn.add_q_proj.lora_up.weight",
                     "lora_unet_transformer_blocks_{block}_attn_add_q_proj.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.attn.add_q_proj.lora_A.weight",
                     "transformer_blocks.{block}.attn.add_q_proj.lora_down.weight",
                     "transformer.transformer_blocks.{block}.attn.add_q_proj.lora_A.weight",
@@ -477,7 +517,7 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.attn.add_q_proj.lora_A.weight",
                     "diffusion_model.transformer_blocks.{block}.attn.add_q_proj.lora_down.weight",
                     "lora_unet_transformer_blocks_{block}_attn_add_q_proj.lora_down.weight",
-                ],
+                ),
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.attn.add_q_proj.alpha",
                     "transformer.transformer_blocks.{block}.attn.add_q_proj.alpha",
@@ -487,7 +527,7 @@ class Flux2LoRAMapping(LoRAMapping):
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.add_k_proj",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.attn.add_k_proj.lora_B.weight",
                     "transformer_blocks.{block}.attn.add_k_proj.lora_up.weight",
                     "transformer.transformer_blocks.{block}.attn.add_k_proj.lora_B.weight",
@@ -495,8 +535,8 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.attn.add_k_proj.lora_B.weight",
                     "diffusion_model.transformer_blocks.{block}.attn.add_k_proj.lora_up.weight",
                     "lora_unet_transformer_blocks_{block}_attn_add_k_proj.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.attn.add_k_proj.lora_A.weight",
                     "transformer_blocks.{block}.attn.add_k_proj.lora_down.weight",
                     "transformer.transformer_blocks.{block}.attn.add_k_proj.lora_A.weight",
@@ -504,7 +544,7 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.attn.add_k_proj.lora_A.weight",
                     "diffusion_model.transformer_blocks.{block}.attn.add_k_proj.lora_down.weight",
                     "lora_unet_transformer_blocks_{block}_attn_add_k_proj.lora_down.weight",
-                ],
+                ),
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.attn.add_k_proj.alpha",
                     "transformer.transformer_blocks.{block}.attn.add_k_proj.alpha",
@@ -514,7 +554,7 @@ class Flux2LoRAMapping(LoRAMapping):
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.add_v_proj",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.attn.add_v_proj.lora_B.weight",
                     "transformer_blocks.{block}.attn.add_v_proj.lora_up.weight",
                     "transformer.transformer_blocks.{block}.attn.add_v_proj.lora_B.weight",
@@ -522,8 +562,8 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.attn.add_v_proj.lora_B.weight",
                     "diffusion_model.transformer_blocks.{block}.attn.add_v_proj.lora_up.weight",
                     "lora_unet_transformer_blocks_{block}_attn_add_v_proj.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.attn.add_v_proj.lora_A.weight",
                     "transformer_blocks.{block}.attn.add_v_proj.lora_down.weight",
                     "transformer.transformer_blocks.{block}.attn.add_v_proj.lora_A.weight",
@@ -531,7 +571,7 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.attn.add_v_proj.lora_A.weight",
                     "diffusion_model.transformer_blocks.{block}.attn.add_v_proj.lora_down.weight",
                     "lora_unet_transformer_blocks_{block}_attn_add_v_proj.lora_down.weight",
-                ],
+                ),
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.attn.add_v_proj.alpha",
                     "transformer.transformer_blocks.{block}.attn.add_v_proj.alpha",
@@ -541,7 +581,7 @@ class Flux2LoRAMapping(LoRAMapping):
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.to_add_out",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.attn.to_add_out.lora_B.weight",
                     "transformer_blocks.{block}.attn.to_add_out.lora_up.weight",
                     "transformer.transformer_blocks.{block}.attn.to_add_out.lora_B.weight",
@@ -549,8 +589,8 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.attn.to_add_out.lora_B.weight",
                     "diffusion_model.transformer_blocks.{block}.attn.to_add_out.lora_up.weight",
                     "lora_unet_transformer_blocks_{block}_attn_to_add_out.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.attn.to_add_out.lora_A.weight",
                     "transformer_blocks.{block}.attn.to_add_out.lora_down.weight",
                     "transformer.transformer_blocks.{block}.attn.to_add_out.lora_A.weight",
@@ -558,7 +598,7 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.attn.to_add_out.lora_A.weight",
                     "diffusion_model.transformer_blocks.{block}.attn.to_add_out.lora_down.weight",
                     "lora_unet_transformer_blocks_{block}_attn_to_add_out.lora_down.weight",
-                ],
+                ),
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.attn.to_add_out.alpha",
                     "transformer.transformer_blocks.{block}.attn.to_add_out.alpha",
@@ -568,7 +608,7 @@ class Flux2LoRAMapping(LoRAMapping):
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.ff.linear_in",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.ff.linear_in.lora_B.weight",
                     "transformer_blocks.{block}.ff.linear_in.lora_up.weight",
                     "transformer.transformer_blocks.{block}.ff.linear_in.lora_B.weight",
@@ -576,8 +616,8 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.ff.linear_in.lora_B.weight",
                     "diffusion_model.transformer_blocks.{block}.ff.linear_in.lora_up.weight",
                     "lora_unet_transformer_blocks_{block}_ff_linear_in.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.ff.linear_in.lora_A.weight",
                     "transformer_blocks.{block}.ff.linear_in.lora_down.weight",
                     "transformer.transformer_blocks.{block}.ff.linear_in.lora_A.weight",
@@ -585,7 +625,7 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.ff.linear_in.lora_A.weight",
                     "diffusion_model.transformer_blocks.{block}.ff.linear_in.lora_down.weight",
                     "lora_unet_transformer_blocks_{block}_ff_linear_in.lora_down.weight",
-                ],
+                ),
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.ff.linear_in.alpha",
                     "transformer.transformer_blocks.{block}.ff.linear_in.alpha",
@@ -595,7 +635,7 @@ class Flux2LoRAMapping(LoRAMapping):
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.ff.linear_out",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.ff.linear_out.lora_B.weight",
                     "transformer_blocks.{block}.ff.linear_out.lora_up.weight",
                     "transformer.transformer_blocks.{block}.ff.linear_out.lora_B.weight",
@@ -603,8 +643,8 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.ff.linear_out.lora_B.weight",
                     "diffusion_model.transformer_blocks.{block}.ff.linear_out.lora_up.weight",
                     "lora_unet_transformer_blocks_{block}_ff_linear_out.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.ff.linear_out.lora_A.weight",
                     "transformer_blocks.{block}.ff.linear_out.lora_down.weight",
                     "transformer.transformer_blocks.{block}.ff.linear_out.lora_A.weight",
@@ -612,7 +652,7 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.ff.linear_out.lora_A.weight",
                     "diffusion_model.transformer_blocks.{block}.ff.linear_out.lora_down.weight",
                     "lora_unet_transformer_blocks_{block}_ff_linear_out.lora_down.weight",
-                ],
+                ),
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.ff.linear_out.alpha",
                     "transformer.transformer_blocks.{block}.ff.linear_out.alpha",
@@ -622,7 +662,7 @@ class Flux2LoRAMapping(LoRAMapping):
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.ff_context.linear_in",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.ff_context.linear_in.lora_B.weight",
                     "transformer_blocks.{block}.ff_context.linear_in.lora_up.weight",
                     "transformer.transformer_blocks.{block}.ff_context.linear_in.lora_B.weight",
@@ -630,8 +670,8 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.ff_context.linear_in.lora_B.weight",
                     "diffusion_model.transformer_blocks.{block}.ff_context.linear_in.lora_up.weight",
                     "lora_unet_transformer_blocks_{block}_ff_context_linear_in.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.ff_context.linear_in.lora_A.weight",
                     "transformer_blocks.{block}.ff_context.linear_in.lora_down.weight",
                     "transformer.transformer_blocks.{block}.ff_context.linear_in.lora_A.weight",
@@ -639,7 +679,7 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.ff_context.linear_in.lora_A.weight",
                     "diffusion_model.transformer_blocks.{block}.ff_context.linear_in.lora_down.weight",
                     "lora_unet_transformer_blocks_{block}_ff_context_linear_in.lora_down.weight",
-                ],
+                ),
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.ff_context.linear_in.alpha",
                     "transformer.transformer_blocks.{block}.ff_context.linear_in.alpha",
@@ -649,7 +689,7 @@ class Flux2LoRAMapping(LoRAMapping):
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.ff_context.linear_out",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.ff_context.linear_out.lora_B.weight",
                     "transformer_blocks.{block}.ff_context.linear_out.lora_up.weight",
                     "transformer.transformer_blocks.{block}.ff_context.linear_out.lora_B.weight",
@@ -657,8 +697,8 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.ff_context.linear_out.lora_B.weight",
                     "diffusion_model.transformer_blocks.{block}.ff_context.linear_out.lora_up.weight",
                     "lora_unet_transformer_blocks_{block}_ff_context_linear_out.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "transformer_blocks.{block}.ff_context.linear_out.lora_A.weight",
                     "transformer_blocks.{block}.ff_context.linear_out.lora_down.weight",
                     "transformer.transformer_blocks.{block}.ff_context.linear_out.lora_A.weight",
@@ -666,7 +706,7 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.transformer_blocks.{block}.ff_context.linear_out.lora_A.weight",
                     "diffusion_model.transformer_blocks.{block}.ff_context.linear_out.lora_down.weight",
                     "lora_unet_transformer_blocks_{block}_ff_context_linear_out.lora_down.weight",
-                ],
+                ),
                 possible_alpha_patterns=[
                     "transformer_blocks.{block}.ff_context.linear_out.alpha",
                     "transformer.transformer_blocks.{block}.ff_context.linear_out.alpha",
@@ -681,7 +721,7 @@ class Flux2LoRAMapping(LoRAMapping):
         return [
             LoRATarget(
                 model_path="single_transformer_blocks.{block}.attn.to_qkv_mlp_proj",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "single_transformer_blocks.{block}.attn.to_qkv_mlp_proj.lora_B.weight",
                     "single_transformer_blocks.{block}.attn.to_qkv_mlp_proj.lora_up.weight",
                     "transformer.single_transformer_blocks.{block}.attn.to_qkv_mlp_proj.lora_B.weight",
@@ -689,8 +729,8 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.single_transformer_blocks.{block}.attn.to_qkv_mlp_proj.lora_B.weight",
                     "diffusion_model.single_transformer_blocks.{block}.attn.to_qkv_mlp_proj.lora_up.weight",
                     "lora_unet_single_transformer_blocks_{block}_attn_to_qkv_mlp_proj.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "single_transformer_blocks.{block}.attn.to_qkv_mlp_proj.lora_A.weight",
                     "single_transformer_blocks.{block}.attn.to_qkv_mlp_proj.lora_down.weight",
                     "transformer.single_transformer_blocks.{block}.attn.to_qkv_mlp_proj.lora_A.weight",
@@ -698,7 +738,7 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.single_transformer_blocks.{block}.attn.to_qkv_mlp_proj.lora_A.weight",
                     "diffusion_model.single_transformer_blocks.{block}.attn.to_qkv_mlp_proj.lora_down.weight",
                     "lora_unet_single_transformer_blocks_{block}_attn_to_qkv_mlp_proj.lora_down.weight",
-                ],
+                ),
                 possible_alpha_patterns=[
                     "single_transformer_blocks.{block}.attn.to_qkv_mlp_proj.alpha",
                     "transformer.single_transformer_blocks.{block}.attn.to_qkv_mlp_proj.alpha",
@@ -708,7 +748,7 @@ class Flux2LoRAMapping(LoRAMapping):
             ),
             LoRATarget(
                 model_path="single_transformer_blocks.{block}.attn.to_out",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "single_transformer_blocks.{block}.attn.to_out.lora_B.weight",
                     "single_transformer_blocks.{block}.attn.to_out.lora_up.weight",
                     "transformer.single_transformer_blocks.{block}.attn.to_out.lora_B.weight",
@@ -716,8 +756,8 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.single_transformer_blocks.{block}.attn.to_out.lora_B.weight",
                     "diffusion_model.single_transformer_blocks.{block}.attn.to_out.lora_up.weight",
                     "lora_unet_single_transformer_blocks_{block}_attn_to_out.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_default_weight_patterns(
                     "single_transformer_blocks.{block}.attn.to_out.lora_A.weight",
                     "single_transformer_blocks.{block}.attn.to_out.lora_down.weight",
                     "transformer.single_transformer_blocks.{block}.attn.to_out.lora_A.weight",
@@ -725,7 +765,7 @@ class Flux2LoRAMapping(LoRAMapping):
                     "diffusion_model.single_transformer_blocks.{block}.attn.to_out.lora_A.weight",
                     "diffusion_model.single_transformer_blocks.{block}.attn.to_out.lora_down.weight",
                     "lora_unet_single_transformer_blocks_{block}_attn_to_out.lora_down.weight",
-                ],
+                ),
                 possible_alpha_patterns=[
                     "single_transformer_blocks.{block}.attn.to_out.alpha",
                     "transformer.single_transformer_blocks.{block}.attn.to_out.alpha",
@@ -740,259 +780,259 @@ class Flux2LoRAMapping(LoRAMapping):
         return [
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.to_q",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_img_attn_qkv.lora_up.weight",
                     "diffusion_model.double_blocks.{block}.img_attn.qkv.lora_B.weight",
                     "diffusion_model.double_blocks.{block}.img_attn.qkv.lora_up.weight",
                     "base_model.model.double_blocks.{block}.img_attn.qkv.lora_B.weight",
                     "base_model.model.double_blocks.{block}.img_attn.qkv.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_img_attn_qkv.lora_down.weight",
                     "diffusion_model.double_blocks.{block}.img_attn.qkv.lora_A.weight",
                     "diffusion_model.double_blocks.{block}.img_attn.qkv.lora_down.weight",
                     "base_model.model.double_blocks.{block}.img_attn.qkv.lora_A.weight",
                     "base_model.model.double_blocks.{block}.img_attn.qkv.lora_down.weight",
-                ],
-                possible_alpha_patterns=[
+                ),
+                possible_alpha_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_img_attn_qkv.alpha",
                     "diffusion_model.double_blocks.{block}.img_attn.qkv.alpha",
                     "base_model.model.double_blocks.{block}.img_attn.qkv.alpha",
-                ],
+                ),
                 up_transform=LoraTransforms.split_q_up,
                 down_transform=LoraTransforms.split_q_down,
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.to_k",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_img_attn_qkv.lora_up.weight",
                     "diffusion_model.double_blocks.{block}.img_attn.qkv.lora_B.weight",
                     "diffusion_model.double_blocks.{block}.img_attn.qkv.lora_up.weight",
                     "base_model.model.double_blocks.{block}.img_attn.qkv.lora_B.weight",
                     "base_model.model.double_blocks.{block}.img_attn.qkv.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_img_attn_qkv.lora_down.weight",
                     "diffusion_model.double_blocks.{block}.img_attn.qkv.lora_A.weight",
                     "diffusion_model.double_blocks.{block}.img_attn.qkv.lora_down.weight",
                     "base_model.model.double_blocks.{block}.img_attn.qkv.lora_A.weight",
                     "base_model.model.double_blocks.{block}.img_attn.qkv.lora_down.weight",
-                ],
-                possible_alpha_patterns=[
+                ),
+                possible_alpha_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_img_attn_qkv.alpha",
                     "diffusion_model.double_blocks.{block}.img_attn.qkv.alpha",
                     "base_model.model.double_blocks.{block}.img_attn.qkv.alpha",
-                ],
+                ),
                 up_transform=LoraTransforms.split_k_up,
                 down_transform=LoraTransforms.split_k_down,
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.to_v",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_img_attn_qkv.lora_up.weight",
                     "diffusion_model.double_blocks.{block}.img_attn.qkv.lora_B.weight",
                     "diffusion_model.double_blocks.{block}.img_attn.qkv.lora_up.weight",
                     "base_model.model.double_blocks.{block}.img_attn.qkv.lora_B.weight",
                     "base_model.model.double_blocks.{block}.img_attn.qkv.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_img_attn_qkv.lora_down.weight",
                     "diffusion_model.double_blocks.{block}.img_attn.qkv.lora_A.weight",
                     "diffusion_model.double_blocks.{block}.img_attn.qkv.lora_down.weight",
                     "base_model.model.double_blocks.{block}.img_attn.qkv.lora_A.weight",
                     "base_model.model.double_blocks.{block}.img_attn.qkv.lora_down.weight",
-                ],
-                possible_alpha_patterns=[
+                ),
+                possible_alpha_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_img_attn_qkv.alpha",
                     "diffusion_model.double_blocks.{block}.img_attn.qkv.alpha",
                     "base_model.model.double_blocks.{block}.img_attn.qkv.alpha",
-                ],
+                ),
                 up_transform=LoraTransforms.split_v_up,
                 down_transform=LoraTransforms.split_v_down,
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.to_out",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_img_attn_proj.lora_up.weight",
                     "diffusion_model.double_blocks.{block}.img_attn.proj.lora_B.weight",
                     "diffusion_model.double_blocks.{block}.img_attn.proj.lora_up.weight",
                     "base_model.model.double_blocks.{block}.img_attn.proj.lora_B.weight",
                     "base_model.model.double_blocks.{block}.img_attn.proj.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_img_attn_proj.lora_down.weight",
                     "diffusion_model.double_blocks.{block}.img_attn.proj.lora_A.weight",
                     "diffusion_model.double_blocks.{block}.img_attn.proj.lora_down.weight",
                     "base_model.model.double_blocks.{block}.img_attn.proj.lora_A.weight",
                     "base_model.model.double_blocks.{block}.img_attn.proj.lora_down.weight",
-                ],
-                possible_alpha_patterns=[
+                ),
+                possible_alpha_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_img_attn_proj.alpha",
                     "diffusion_model.double_blocks.{block}.img_attn.proj.alpha",
                     "base_model.model.double_blocks.{block}.img_attn.proj.alpha",
-                ],
+                ),
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.add_q_proj",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_txt_attn_qkv.lora_up.weight",
                     "diffusion_model.double_blocks.{block}.txt_attn.qkv.lora_B.weight",
                     "diffusion_model.double_blocks.{block}.txt_attn.qkv.lora_up.weight",
                     "base_model.model.double_blocks.{block}.txt_attn.qkv.lora_B.weight",
                     "base_model.model.double_blocks.{block}.txt_attn.qkv.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_txt_attn_qkv.lora_down.weight",
                     "diffusion_model.double_blocks.{block}.txt_attn.qkv.lora_A.weight",
                     "diffusion_model.double_blocks.{block}.txt_attn.qkv.lora_down.weight",
                     "base_model.model.double_blocks.{block}.txt_attn.qkv.lora_A.weight",
                     "base_model.model.double_blocks.{block}.txt_attn.qkv.lora_down.weight",
-                ],
-                possible_alpha_patterns=[
+                ),
+                possible_alpha_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_txt_attn_qkv.alpha",
                     "diffusion_model.double_blocks.{block}.txt_attn.qkv.alpha",
                     "base_model.model.double_blocks.{block}.txt_attn.qkv.alpha",
-                ],
+                ),
                 up_transform=LoraTransforms.split_q_up,
                 down_transform=LoraTransforms.split_q_down,
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.add_k_proj",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_txt_attn_qkv.lora_up.weight",
                     "diffusion_model.double_blocks.{block}.txt_attn.qkv.lora_B.weight",
                     "diffusion_model.double_blocks.{block}.txt_attn.qkv.lora_up.weight",
                     "base_model.model.double_blocks.{block}.txt_attn.qkv.lora_B.weight",
                     "base_model.model.double_blocks.{block}.txt_attn.qkv.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_txt_attn_qkv.lora_down.weight",
                     "diffusion_model.double_blocks.{block}.txt_attn.qkv.lora_A.weight",
                     "diffusion_model.double_blocks.{block}.txt_attn.qkv.lora_down.weight",
                     "base_model.model.double_blocks.{block}.txt_attn.qkv.lora_A.weight",
                     "base_model.model.double_blocks.{block}.txt_attn.qkv.lora_down.weight",
-                ],
-                possible_alpha_patterns=[
+                ),
+                possible_alpha_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_txt_attn_qkv.alpha",
                     "diffusion_model.double_blocks.{block}.txt_attn.qkv.alpha",
                     "base_model.model.double_blocks.{block}.txt_attn.qkv.alpha",
-                ],
+                ),
                 up_transform=LoraTransforms.split_k_up,
                 down_transform=LoraTransforms.split_k_down,
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.add_v_proj",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_txt_attn_qkv.lora_up.weight",
                     "diffusion_model.double_blocks.{block}.txt_attn.qkv.lora_B.weight",
                     "diffusion_model.double_blocks.{block}.txt_attn.qkv.lora_up.weight",
                     "base_model.model.double_blocks.{block}.txt_attn.qkv.lora_B.weight",
                     "base_model.model.double_blocks.{block}.txt_attn.qkv.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_txt_attn_qkv.lora_down.weight",
                     "diffusion_model.double_blocks.{block}.txt_attn.qkv.lora_A.weight",
                     "diffusion_model.double_blocks.{block}.txt_attn.qkv.lora_down.weight",
                     "base_model.model.double_blocks.{block}.txt_attn.qkv.lora_A.weight",
                     "base_model.model.double_blocks.{block}.txt_attn.qkv.lora_down.weight",
-                ],
-                possible_alpha_patterns=[
+                ),
+                possible_alpha_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_txt_attn_qkv.alpha",
                     "diffusion_model.double_blocks.{block}.txt_attn.qkv.alpha",
                     "base_model.model.double_blocks.{block}.txt_attn.qkv.alpha",
-                ],
+                ),
                 up_transform=LoraTransforms.split_v_up,
                 down_transform=LoraTransforms.split_v_down,
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.attn.to_add_out",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_txt_attn_proj.lora_up.weight",
                     "diffusion_model.double_blocks.{block}.txt_attn.proj.lora_B.weight",
                     "diffusion_model.double_blocks.{block}.txt_attn.proj.lora_up.weight",
                     "base_model.model.double_blocks.{block}.txt_attn.proj.lora_B.weight",
                     "base_model.model.double_blocks.{block}.txt_attn.proj.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_txt_attn_proj.lora_down.weight",
                     "diffusion_model.double_blocks.{block}.txt_attn.proj.lora_A.weight",
                     "diffusion_model.double_blocks.{block}.txt_attn.proj.lora_down.weight",
                     "base_model.model.double_blocks.{block}.txt_attn.proj.lora_A.weight",
                     "base_model.model.double_blocks.{block}.txt_attn.proj.lora_down.weight",
-                ],
-                possible_alpha_patterns=[
+                ),
+                possible_alpha_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_txt_attn_proj.alpha",
                     "diffusion_model.double_blocks.{block}.txt_attn.proj.alpha",
                     "base_model.model.double_blocks.{block}.txt_attn.proj.alpha",
-                ],
+                ),
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.ff.linear_in",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_img_mlp_0.lora_up.weight",
-                    "diffusion_model.double_blocks.{block}.img_mlp.0.lora_B.weight",
-                    "diffusion_model.double_blocks.{block}.img_mlp.0.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                    "base_model.model.double_blocks.{block}.img_mlp.0.lora_B.weight",
+                    "base_model.model.double_blocks.{block}.img_mlp.0.lora_up.weight",
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_img_mlp_0.lora_down.weight",
-                    "diffusion_model.double_blocks.{block}.img_mlp.0.lora_A.weight",
-                    "diffusion_model.double_blocks.{block}.img_mlp.0.lora_down.weight",
-                ],
-                possible_alpha_patterns=[
+                    "base_model.model.double_blocks.{block}.img_mlp.0.lora_A.weight",
+                    "base_model.model.double_blocks.{block}.img_mlp.0.lora_down.weight",
+                ),
+                possible_alpha_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_img_mlp_0.alpha",
-                    "diffusion_model.double_blocks.{block}.img_mlp.0.alpha",
-                ],
+                    "base_model.model.double_blocks.{block}.img_mlp.0.alpha",
+                ),
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.ff.linear_out",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_img_mlp_2.lora_up.weight",
-                    "diffusion_model.double_blocks.{block}.img_mlp.2.lora_B.weight",
-                    "diffusion_model.double_blocks.{block}.img_mlp.2.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                    "base_model.model.double_blocks.{block}.img_mlp.2.lora_B.weight",
+                    "base_model.model.double_blocks.{block}.img_mlp.2.lora_up.weight",
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_img_mlp_2.lora_down.weight",
-                    "diffusion_model.double_blocks.{block}.img_mlp.2.lora_A.weight",
-                    "diffusion_model.double_blocks.{block}.img_mlp.2.lora_down.weight",
-                ],
-                possible_alpha_patterns=[
+                    "base_model.model.double_blocks.{block}.img_mlp.2.lora_A.weight",
+                    "base_model.model.double_blocks.{block}.img_mlp.2.lora_down.weight",
+                ),
+                possible_alpha_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_img_mlp_2.alpha",
-                    "diffusion_model.double_blocks.{block}.img_mlp.2.alpha",
-                ],
+                    "base_model.model.double_blocks.{block}.img_mlp.2.alpha",
+                ),
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.ff_context.linear_in",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_txt_mlp_0.lora_up.weight",
-                    "diffusion_model.double_blocks.{block}.txt_mlp.0.lora_B.weight",
-                    "diffusion_model.double_blocks.{block}.txt_mlp.0.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                    "base_model.model.double_blocks.{block}.txt_mlp.0.lora_B.weight",
+                    "base_model.model.double_blocks.{block}.txt_mlp.0.lora_up.weight",
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_txt_mlp_0.lora_down.weight",
-                    "diffusion_model.double_blocks.{block}.txt_mlp.0.lora_A.weight",
-                    "diffusion_model.double_blocks.{block}.txt_mlp.0.lora_down.weight",
-                ],
-                possible_alpha_patterns=[
+                    "base_model.model.double_blocks.{block}.txt_mlp.0.lora_A.weight",
+                    "base_model.model.double_blocks.{block}.txt_mlp.0.lora_down.weight",
+                ),
+                possible_alpha_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_txt_mlp_0.alpha",
-                    "diffusion_model.double_blocks.{block}.txt_mlp.0.alpha",
-                ],
+                    "base_model.model.double_blocks.{block}.txt_mlp.0.alpha",
+                ),
             ),
             LoRATarget(
                 model_path="transformer_blocks.{block}.ff_context.linear_out",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_txt_mlp_2.lora_up.weight",
-                    "diffusion_model.double_blocks.{block}.txt_mlp.2.lora_B.weight",
-                    "diffusion_model.double_blocks.{block}.txt_mlp.2.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                    "base_model.model.double_blocks.{block}.txt_mlp.2.lora_B.weight",
+                    "base_model.model.double_blocks.{block}.txt_mlp.2.lora_up.weight",
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_txt_mlp_2.lora_down.weight",
-                    "diffusion_model.double_blocks.{block}.txt_mlp.2.lora_A.weight",
-                    "diffusion_model.double_blocks.{block}.txt_mlp.2.lora_down.weight",
-                ],
-                possible_alpha_patterns=[
+                    "base_model.model.double_blocks.{block}.txt_mlp.2.lora_A.weight",
+                    "base_model.model.double_blocks.{block}.txt_mlp.2.lora_down.weight",
+                ),
+                possible_alpha_patterns=Flux2LoRAMapping._with_diffusion_double_block_patterns(
                     "lora_unet_double_blocks_{block}_txt_mlp_2.alpha",
-                    "diffusion_model.double_blocks.{block}.txt_mlp.2.alpha",
-                ],
+                    "base_model.model.double_blocks.{block}.txt_mlp.2.alpha",
+                ),
             ),
         ]
 
@@ -1002,46 +1042,46 @@ class Flux2LoRAMapping(LoRAMapping):
         return [
             LoRATarget(
                 model_path="single_transformer_blocks.{block}.attn.to_qkv_mlp_proj",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_diffusion_single_block_patterns(
                     "lora_unet_single_blocks_{block}_linear1.lora_up.weight",
                     "diffusion_model.single_blocks.{block}.linear1.lora_B.weight",
                     "diffusion_model.single_blocks.{block}.linear1.lora_up.weight",
                     "base_model.model.single_blocks.{block}.linear1.lora_B.weight",
                     "base_model.model.single_blocks.{block}.linear1.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_diffusion_single_block_patterns(
                     "lora_unet_single_blocks_{block}_linear1.lora_down.weight",
                     "diffusion_model.single_blocks.{block}.linear1.lora_A.weight",
                     "diffusion_model.single_blocks.{block}.linear1.lora_down.weight",
                     "base_model.model.single_blocks.{block}.linear1.lora_A.weight",
                     "base_model.model.single_blocks.{block}.linear1.lora_down.weight",
-                ],
-                possible_alpha_patterns=[
+                ),
+                possible_alpha_patterns=Flux2LoRAMapping._with_diffusion_single_block_patterns(
                     "lora_unet_single_blocks_{block}_linear1.alpha",
                     "diffusion_model.single_blocks.{block}.linear1.alpha",
                     "base_model.model.single_blocks.{block}.linear1.alpha",
-                ],
+                ),
             ),
             LoRATarget(
                 model_path="single_transformer_blocks.{block}.attn.to_out",
-                possible_up_patterns=[
+                possible_up_patterns=Flux2LoRAMapping._with_diffusion_single_block_patterns(
                     "lora_unet_single_blocks_{block}_linear2.lora_up.weight",
                     "diffusion_model.single_blocks.{block}.linear2.lora_B.weight",
                     "diffusion_model.single_blocks.{block}.linear2.lora_up.weight",
                     "base_model.model.single_blocks.{block}.linear2.lora_B.weight",
                     "base_model.model.single_blocks.{block}.linear2.lora_up.weight",
-                ],
-                possible_down_patterns=[
+                ),
+                possible_down_patterns=Flux2LoRAMapping._with_diffusion_single_block_patterns(
                     "lora_unet_single_blocks_{block}_linear2.lora_down.weight",
                     "diffusion_model.single_blocks.{block}.linear2.lora_A.weight",
                     "diffusion_model.single_blocks.{block}.linear2.lora_down.weight",
                     "base_model.model.single_blocks.{block}.linear2.lora_A.weight",
                     "base_model.model.single_blocks.{block}.linear2.lora_down.weight",
-                ],
-                possible_alpha_patterns=[
+                ),
+                possible_alpha_patterns=Flux2LoRAMapping._with_diffusion_single_block_patterns(
                     "lora_unet_single_blocks_{block}_linear2.alpha",
                     "diffusion_model.single_blocks.{block}.linear2.alpha",
                     "base_model.model.single_blocks.{block}.linear2.alpha",
-                ],
+                ),
             ),
         ]
