@@ -16,49 +16,49 @@ FISTBUMP_EDIT_PROMPT = """
       "relationship": "The hand is the primary subject, making contact with the camera.",
       "relative_size": "large within frame",
       "shape_and_color": "Human hand shape, dark brown skin tone.",
-      "texture": "Smooth skin with visible lines and creases.",
-      "appearance_details": "Fingers are curled into a fist, thumb is extended to meet the camera's implied surface.",
+      "texture": "Smooth skin with visible knuckles.",
+      "appearance_details": "Fingers are curled into a fist, thumb is extended.",
       "orientation": "facing forward, fist extended towards the viewer"
     },
     {
-      "description": "A Black man's upper torso and neck, partially visible, wearing a white t-shirt.",
+      "description": "A Black man's torso and lower face, partially visible, wearing a white t-shirt.",
       "location": "center midground",
-      "relationship": "The hand belongs to this person.",
+      "relationship": "The man is the owner of the hand, providing context for the gesture.",
       "relative_size": "medium",
-      "shape_and_color": "Human upper body shape, dark brown skin tone, white shirt.",
-      "texture": "Smooth skin, soft cotton fabric.",
-      "appearance_details": "Only the neck and upper chest are visible above the hand.",
-      "pose": "Upper body is slightly angled, head is not fully visible.",
-      "expression": "Not visible, but implied serious or direct gaze.",
-      "clothing": "A plain white crew-neck t-shirt.",
-      "action": "Making a fistbump.",
+      "shape_and_color": "Human torso and face shape, dark brown skin tone, white shirt.",
+      "texture": "Smooth skin, soft fabric of the t-shirt.",
+      "appearance_details": "He has a short beard and mustache. His expression is serious and direct.",
+      "pose": "Upper body visible, arm extended forward for a fistbump.",
+      "expression": "serious, direct gaze",
+      "clothing": "plain white crew-neck t-shirt",
+      "action": "fistbumping the camera",
       "gender": "male",
-      "skin_tone_and_texture": "Dark brown skin tone, smooth texture.",
-      "orientation": "vertical"
+      "skin_tone_and_texture": "dark brown skin tone, smooth texture",
+      "orientation": "upright, facing forward"
     }
   ],
-  "background_setting": "A softly blurred indoor setting, featuring a light gray wall on the left, a window with bright, diffused light on the right, and a light-colored curtain partially visible on the far right.",
+  "background_setting": "A softly blurred indoor setting, featuring a light gray wall on the left, a window with natural light streaming through on the right, and light-colored curtains partially drawn.",
   "lighting": {
-    "conditions": "bright indoor lighting",
-    "direction": "front-lit with some backlighting from the window",
-    "shadows": "soft, subtle shadows on the hand and arm, indicating diffused light"
+    "conditions": "bright indoor lighting, natural light from a window",
+    "direction": "side-lit from right, with some front fill",
+    "shadows": "soft, subtle shadows on the left side of the hand and arm, indicating light from the right"
   },
   "aesthetics": {
-    "composition": "centered, close-up shot focusing on the hand gesture",
-    "color_scheme": "neutral tones with a pop of white from the shirt and warm skin tones",
+    "composition": "centered, portrait composition with a strong foreground element",
+    "color_scheme": "neutral tones (white, gray, brown) with natural light accents",
     "mood_atmosphere": "direct, engaging, slightly serious",
     "photographic_characteristics": {
-      "depth_of_field": "shallow",
-      "focus": "sharp focus on the hand, with the background softly blurred",
+      "depth_of_field": "shallow, with the hand in sharp focus and the background blurred",
+      "focus": "sharp focus on the hand and the man's face",
       "camera_angle": "eye-level",
-      "lens_focal_length": "standard lens (e.g., 35mm-50mm)"
+      "lens_focal_length": "standard lens (e.g., 35mm-50mm) or portrait lens (e.g., 50mm-85mm)"
     },
     "style_medium": "photograph",
-    "artistic_style": "realistic, naturalistic",
+    "artistic_style": "realistic, naturalistic, direct",
     "preference_score": "very high",
     "aesthetic_score": "very high"
   },
-  "context": "This is a portrait photograph, likely intended for social media, a personal profile, or a casual editorial feature, emphasizing a direct and engaging interaction with the viewer.",
+  "context": "This is a portrait photograph, potentially for a social media profile, a casual editorial piece, or a personal statement.",
   "edit_instruction": "Make the hand fistbump the camera instead of showing a flat palm."
 }
 """
