@@ -7,6 +7,8 @@ from tqdm import tqdm
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.schedulers import SCHEDULER_REGISTRY, try_import_external_scheduler
 from mflux.models.common.schedulers.linear_scheduler import LinearScheduler
+from mflux.utils.dimension_resolver import DimensionResolver
+from mflux.utils.scale_factor import ScaleFactor
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +30,13 @@ class Config:
         controlnet_strength: float | None = None,
         scheduler: str = "linear",
     ):
+        # Resolve any missing dimension dynamically, using the reference image when available.
+        if width is None or height is None:
+            width, height = DimensionResolver.resolve(
+                width=ScaleFactor.parse("1x") if width is None else width,
+                height=ScaleFactor.parse("1x") if height is None else height,
+                reference_image_path=image_path,
+            )
         # Ensure dimensions are multiples of 16
         if width % 16 != 0 or height % 16 != 0:
             logger.warning("Width and height should be multiples of 16. Rounding down.")
