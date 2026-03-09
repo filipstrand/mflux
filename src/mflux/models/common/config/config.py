@@ -30,14 +30,13 @@ class Config:
         controlnet_strength: float | None = None,
         scheduler: str = "linear",
     ):
-        # If neither width and height are provided, set them to 1x scale factor each and call Dimension utils
-        # to compute them properly
-        if width is None and height is None:
-          width, height = DimensionResolver.resolve(
-              width=ScaleFactor.parse("1x"),
-              height=ScaleFactor.parse("1x"),
-              reference_image_path=image_path,
-          )
+        # Resolve any missing dimension dynamically, using the reference image when available.
+        if width is None or height is None:
+            width, height = DimensionResolver.resolve(
+                width=ScaleFactor.parse("1x") if width is None else width,
+                height=ScaleFactor.parse("1x") if height is None else height,
+                reference_image_path=image_path,
+            )
         # Ensure dimensions are multiples of 16
         if width % 16 != 0 or height % 16 != 0:
             logger.warning("Width and height should be multiples of 16. Rounding down.")
