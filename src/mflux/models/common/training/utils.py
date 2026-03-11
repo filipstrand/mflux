@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 from collections.abc import Iterator
 from contextlib import contextmanager
 
@@ -56,12 +58,14 @@ class TrainingUtil:
         default_max_resolution: int | None = None,
         error_template: str | None = None,
     ) -> tuple[int, int]:
-        max_dim = max(width, height)
         effective_max = max_resolution if max_resolution is not None else default_max_resolution
-        if effective_max is not None and max_dim > effective_max:
-            scale = effective_max / max_dim
-            width = int(width * scale)
-            height = int(height * scale)
+        if effective_max is not None:
+            max_area = effective_max * effective_max
+            current_area = width * height
+            if current_area > max_area:
+                scale = math.sqrt(max_area / current_area)
+                width = int(width * scale)
+                height = int(height * scale)
 
         adj_width = 16 * (int(width) // 16)
         adj_height = 16 * (int(height) // 16)
