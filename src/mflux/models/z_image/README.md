@@ -126,5 +126,69 @@ Run training:
 mflux-train --config /path/to/train_z_image.json
 ```
 
+## Image-to-LoRA (i2L)
+
+Image-to-LoRA lets you turn a set of reference images into a style LoRA — no training, no GPU, no config files. Feed it a few photos that share a visual style (illustration, film grain, watercolor, anime, a specific photographer's look…) and it produces a `.safetensors` LoRA you can immediately use for generation. The entire process takes about 2 seconds on an M2 Ultra.
+
+Instead of training a LoRA for hours, i2L encodes the visual identity of your reference images into LoRA weights in a single forward pass. Two vision encoders analyze each image from different angles — [SigLIP2](https://huggingface.co/DiffSynth-Studio/General-Image-Encoders) captures high-level style and aesthetics, [DINOv3](https://huggingface.co/DiffSynth-Studio/General-Image-Encoders) captures structural and semantic features — and an [i2L decoder](https://huggingface.co/DiffSynth-Studio/Z-Image-i2L) converts those combined embeddings directly into LoRA weight matrices.
+
+> [!NOTE]
+> Models are downloaded on first run (~19 GB total for SigLIP2, DINOv3 and the i2L decoder) and cached in `~/.cache/huggingface/hub`.
+
+### Generate a style LoRA
+
+Point `--image-path` at a directory of style reference images (or individual files):
+
+```sh
+mflux-z-image-i2l --image-path ./my_style_images --output style.safetensors
+```
+
+You can mix directories and files:
+
+```sh
+mflux-z-image-i2l --image-path ./photos ./extra/sketch.png
+```
+
+More images produce a richer style representation. Each image contributes rank 4, so 4 images produce a rank-16 LoRA (~76 MB), 7 images produce rank 28 (~133 MB), and so on.
+
+### Use the generated LoRA
+
+```sh
+mflux-generate-z-image-turbo \
+  --prompt "a cat in a garden" \
+  --lora-paths style.safetensors \
+  --lora-scales 1.0 \
+  --steps 9 \
+  --seed 42
+```
+
+Adjust `--lora-scales` to control style intensity (lower = subtler, higher = stronger).
+
+<details>
+<summary>Python API</summary>
+
+```python
+from mflux.models.z_image.model.z_image_i2l.i2l_pipeline import ZImageI2LPipeline
+from PIL import Image
+
+# Create pipeline (downloads models on first run)
+pipeline = ZImageI2LPipeline.from_pretrained()
+
+# Load reference images
+images = [Image.open(f"style_{i}.jpg") for i in range(4)]
+
+# Generate LoRA
+pipeline.generate_lora(images=images, output_path="style.safetensors")
+```
+</details>
+
+> [!TIP]
+> The official DiffSynth-Studio examples recommend Z-Image base (50 steps, cfg_scale=4) for best i2L results. The LoRA also works with Z-Image Turbo, though results may differ.
+
+> [!TIP]
+> LoRA files from the [DiffSynth-Studio HF Space](https://huggingface.co/spaces/DiffSynth-Studio/Z-Image-i2L) are also directly loadable — no renaming needed.
+
+---
+
 *For a Swift MLX implementation of Z-Image, see [zimage.swift](https://github.com/mzbac/zimage.swift) by [@mzbac](https://github.com/mzbac).*
 
