@@ -140,6 +140,7 @@ class TrainingTrainer:
         for batch in batches:
             loss, grads = train_step_function(batch)
             training_state.optimizer.optimizer.update(model=adapter.model(), gradients=grads)
+            mx.eval(adapter.model().parameters(), training_state.optimizer.optimizer.state)
             del loss, grads
 
             if training_state.should_plot_loss(training_spec):
