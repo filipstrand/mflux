@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 import transformers
 from huggingface_hub import snapshot_download
+from huggingface_hub.utils import LocalEntryNotFoundError
 
 from mflux.models.common.tokenizer.tokenizer import (
     BaseTokenizer,
@@ -65,12 +66,21 @@ class TokenizerLoader:
             root_path = expanded
         elif "/" in model_path and model_path.count("/") == 1 and not model_path.startswith(("./", "../")):
             patterns = download_patterns or [f"{hf_subdir}/**"]
-            root_path = Path(
-                snapshot_download(
-                    repo_id=model_path,
-                    allow_patterns=patterns,
+            try:
+                root_path = Path(
+                    snapshot_download(
+                        repo_id=model_path,
+                        allow_patterns=patterns,
+                        local_files_only=True,
+                    )
                 )
-            )
+            except LocalEntryNotFoundError:
+                root_path = Path(
+                    snapshot_download(
+                        repo_id=model_path,
+                        allow_patterns=patterns,
+                    )
+                )
         else:
             raise FileNotFoundError(
                 f"Model not found: '{model_path}'. "
