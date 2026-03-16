@@ -89,11 +89,17 @@ class ZImage(nn.Module):
                 tiling_config=self.tiling_config,
             ),
         )
-        text_encodings, negative_encodings = self._encode_prompts(
-            prompt=prompt,
-            negative_prompt=negative_prompt,
-            guidance=config.guidance,
-        )
+        # Cache text encodings to survive text_encoder deletion by MemorySaver (--low-ram)
+        cache_key = (prompt, negative_prompt, config.guidance)
+        if not hasattr(self, "_text_encoding_cache") or self._text_encoding_cache[0] != cache_key:  # type: ignore[has-type]
+            text_encodings, negative_encodings = self._encode_prompts(
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                guidance=config.guidance,
+            )
+            self._text_encoding_cache = (cache_key, text_encodings, negative_encodings)
+        else:
+            _, text_encodings, negative_encodings = self._text_encoding_cache
 
         # 3. Create callback context and call before_loop
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
