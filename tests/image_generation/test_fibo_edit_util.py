@@ -5,7 +5,7 @@ import pytest
 from PIL import Image
 
 from mflux.models.fibo.variants.edit import util as fibo_edit_util_module
-from mflux.models.fibo.variants.edit.util import FiboEditUtil
+from mflux.models.fibo.variants.edit.util import FIBO_EDIT_RMBG_DEFAULT_JSON_PROMPT, FiboEditUtil
 
 
 def test_ensure_edit_instruction_uses_existing_value():
@@ -53,6 +53,18 @@ def test_get_json_prompt_for_edit_requires_prompt_input():
         FiboEditUtil.get_json_prompt_for_edit(args, quantize=None)
 
 
+def test_get_json_prompt_for_edit_uses_default_when_missing():
+    args = SimpleNamespace(prompt=None, prompt_file=None, image_path="input.png", mask_path=None)
+
+    prompt = FiboEditUtil.get_json_prompt_for_edit(
+        args,
+        quantize=None,
+        default_json_prompt_if_missing=FIBO_EDIT_RMBG_DEFAULT_JSON_PROMPT,
+    )
+
+    assert json.loads(prompt)["edit_instruction"] == json.loads(FIBO_EDIT_RMBG_DEFAULT_JSON_PROMPT)["edit_instruction"]
+
+
 def test_get_json_prompt_for_edit_requires_image_for_natural_language_prompt():
     args = SimpleNamespace(prompt="turn the owl white", prompt_file=None, image_path=None, mask_path=None)
 
@@ -90,3 +102,14 @@ def test_get_json_prompt_for_edit_routes_image_and_mask_to_vlm(monkeypatch, tmp_
     assert captured["use_mask"] is True
     assert captured["seed"] == 42
     assert captured["image"].getpixel((0, 0)) == (128, 128, 128)
+
+
+def test_build_rgba_composite_image_returns_rgba(tmp_path):
+    src = tmp_path / "in.png"
+    Image.new("RGB", (32, 24), (10, 20, 30)).save(src)
+    matte = Image.new("L", (8, 6), 200)
+
+    rgba = FiboEditUtil.build_rgba_composite_image(src, matte)
+
+    assert rgba.mode == "RGBA"
+    assert rgba.size == (32, 24)

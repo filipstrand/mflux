@@ -496,7 +496,40 @@ When doing so, make sure the JSON includes `edit_instruction`.
 </details>
 
 
+### FIBO-Edit-RMBG
+Background removal via `briaai/Fibo-Edit-RMBG` (`--model fibo-edit-rmbg`). **`--output`** is a **transparent PNG** (cutout). You can omit **`--prompt`**—mflux uses a built-in matte instruction. Default **steps / guidance** for this model are **10 / 1.0** if you don’t set them.
+
+![FIBO Edit RMBG Side-by-Side Example](../../assets/fibo_edit_remove_background_example.png)
+*Original source image credit: [Unsplash](https://images.unsplash.com/photo-1587971051803-70bf6d4ae977?q=80&w=2274&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D)*
+
+Smallest useful command (writes **`image.png`** in the current directory):
+
+```sh
+mflux-generate-fibo-edit \
+    --model fibo-edit-rmbg \
+    --image-path tools_input_new_small.png
+```
+
+<details>
+<summary>More detail (full CLI example)</summary>
+
+RGBA cutout, grayscale matte, and a **`.metadata.json`** next to the cutout; explicit steps / guidance / seed.
+
+```sh
+mflux-generate-fibo-edit \
+    --model fibo-edit-rmbg \
+    --image-path tools_input_new_small.png \
+    --output fibo_edit_rmbg_cutout.png \
+    --matte-output fibo_edit_rmbg_matte.png \
+    --metadata \
+    --steps 10 \
+    --guidance 1.0 \
+    --seed 42
+```
+</details>
+
+
 ## Notes
 > [!WARNING]
-> FIBO and FIBO-Edit requires downloading the `briaai/FIBO` or `briaai/FIBO-lite` model weights (~24GB) and the `briaai/FIBO-vlm` vision-language model (~8GB), totaling ~32GB for the full model, or use quantization for smaller sizes.
+> FIBO and FIBO-Edit require downloading the `briaai/FIBO`, `briaai/FIBO-lite`, `briaai/Fibo-Edit`, or `briaai/Fibo-Edit-RMBG` model weights (~24GB each), plus the `briaai/FIBO-vlm` vision-language model (~8GB), totaling ~32GB for a full setup with one FIBO-family model, or use quantization for smaller sizes.
 
