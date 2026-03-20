@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-03-20
+
+### 🎨 New Model Support
+
+- **FIBO Edit**: Add image-editing support for the FIBO model family.
+- **FIBO Edit remove-background workflow**: Support the dedicated remove-background edit path for FIBO.
+
+### ✨ Improvements
+
+- **Training image scaling**: Scale training images by area rather than longest side for more consistent preprocessing.
+- **MLX 0.31.x**: Allow MLX 0.31.x in dependency ranges.
+- **FLUX.2 LoRA mapping**: Expand LoRA key mapping coverage for FLUX.2.
+
+### 🐛 Bug Fixes
+
+- **Training optimizer state**: Evaluate optimizer state after each training step as intended.
+- **Local tokenizer loading**: Fix loading tokenizers from local paths.
+- **Dynamic-resolution image edit**: Restore correct behavior for image edit when using dynamic resolution.
+
+### 👩‍💻 Contributors
+
+- **@filipstrand**
+- **@icelaglace**
+- **@TheOrsa**
+- **@waldheinz**
+
+---
+
 ## [0.16.9] - 2026-03-07
 
 ### ✨ Improvements
