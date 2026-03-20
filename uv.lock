@@ -1057,7 +1057,7 @@ wheels = [
 
 [[package]]
 name = "mflux"
-version = "0.16.9"
+version = "0.17.0"
 source = { editable = "." }
 dependencies = [
     { name = "filelock" },
