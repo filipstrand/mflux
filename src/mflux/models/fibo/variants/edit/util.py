@@ -12,12 +12,26 @@ from mflux.models.fibo_vlm.model.fibo_vlm import FiboVLM
 from mflux.utils.image_util import ImageUtil
 from mflux.utils.prompt_util import PromptUtil
 
+FIBO_EDIT_RMBG_DEFAULT_EDIT_INSTRUCTION = (
+    "Generate a detailed grayscale alpha matte. Map the opaque foreground to white "
+    "and the background to black. Produce soft, anti-aliased grayscale gradients at the "
+    "edges of the subject to represent fine details and transparency."
+)
+FIBO_EDIT_RMBG_DEFAULT_JSON_PROMPT = json.dumps({"edit_instruction": FIBO_EDIT_RMBG_DEFAULT_EDIT_INSTRUCTION})
+
 
 class FiboEditUtil:
     @staticmethod
-    def get_json_prompt_for_edit(args, quantize: int | None) -> str:
+    def get_json_prompt_for_edit(
+        args,
+        quantize: int | None,
+        default_json_prompt_if_missing: str | None = None,
+    ) -> str:
         prompt = PromptUtil.read_prompt(args)
-        if prompt is None:
+        missing = prompt is None or (isinstance(prompt, str) and not prompt.strip())
+        if missing:
+            if default_json_prompt_if_missing is not None:
+                return FiboEditUtil.ensure_edit_instruction(default_json_prompt_if_missing)
             raise ValueError(
                 "FIBO edit requires an edit instruction via --prompt/--prompt-file, or a JSON prompt from metadata."
             )
@@ -120,3 +134,10 @@ class FiboEditUtil:
     def _composite_mask_on_image(mask: Image.Image, image: Image.Image) -> Image.Image:
         gray_img = Image.new("RGB", image.size, (128, 128, 128))
         return Image.composite(gray_img, image.convert("RGB"), mask.convert("L"))
+
+    @staticmethod
+    def build_rgba_composite_image(source_image_path: Path | str, matte_image: Image.Image) -> Image.Image:
+        base = Image.open(source_image_path).convert("RGB").copy()
+        alpha = matte_image.convert("L").resize(base.size, Image.LANCZOS)
+        base.putalpha(alpha)
+        return base

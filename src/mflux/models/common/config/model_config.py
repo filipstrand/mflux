@@ -149,6 +149,11 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
+    def fibo_edit_rmbg() -> "ModelConfig":
+        return AVAILABLE_MODELS["fibo-edit-rmbg"]
+
+    @staticmethod
+    @lru_cache
     def z_image_turbo() -> "ModelConfig":
         return AVAILABLE_MODELS["z-image-turbo"]
 
@@ -479,6 +484,18 @@ AVAILABLE_MODELS = {
         priority=19,
         aliases=["fibo-edit", "fiboedit"],
         model_name="briaai/Fibo-Edit",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,
+        requires_sigma_shift=False,
+    ),
+    "fibo-edit-rmbg": ModelConfig(
+        priority=24,
+        aliases=["fibo-edit-rmbg", "fiboedit-rmbg"],
+        model_name="briaai/Fibo-Edit-RMBG",
         base_model=None,
         controlnet_model=None,
         custom_transformer_model=None,
