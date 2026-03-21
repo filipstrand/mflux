@@ -14,7 +14,7 @@ source-exclude = [
 
 [project]
 name = "mflux"
-version = "0.17.0"
+version = "0.17.1"
 description = "MLX native implementations of state-of-the-art generative image models."
 readme = "README.md"
 keywords = ["flux", "ai", "ml", "transformers", "mlx", "huggingface", "apple-silicon", "diffusers", "qwen", "qwen-image", "seedvr2", "z-image"]
@@ -47,6 +47,7 @@ dependencies = [
     "transformers>=5.0.0,<6.0",
     "twine>=6.1.0,<7.0",
     "urllib3>=2.6.0",
+    "protobuf>=4.25.0,<6.0",
 ]
 classifiers = [
     "Intended Audience :: Developers",
