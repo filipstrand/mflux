@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.1] - 2026-03-22
+
+### 🐛 Bug Fixes
+
+- **Hugging Face tokenizer dependencies**: Declare `protobuf` so minimal installs (including `uv tool install mflux`) include packages Transformers may require when loading tokenizers, fixing failures such as `mflux-generate-fibo` when the tokenizer falls back off the fast path.
+
+### 👩‍💻 Contributors
+
+- **@filipstrand**
+
+---
+
 ## [0.17.0] - 2026-03-20
 
 ### 🎨 New Model Support
