@@ -47,6 +47,7 @@ dependencies = [
     "transformers>=5.0.0,<6.0",
     "twine>=6.1.0,<7.0",
     "urllib3>=2.6.0",
+    "protobuf>=4.25.0,<6.0",
 ]
 classifiers = [
     "Intended Audience :: Developers",
