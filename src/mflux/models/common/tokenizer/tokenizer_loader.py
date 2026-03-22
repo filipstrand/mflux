@@ -99,6 +99,14 @@ class TokenizerLoader:
                     tokenizer_path,
                     tokenizer_class,
                 )
+                primary_has_tokenizer_artifacts = TokenizerLoader._has_tokenizer_artifacts(tokenizer_path)
+                if primary_load_error is not None and primary_has_tokenizer_artifacts:
+                    TokenizerLoader._raise_unloadable_tokenizer_error(
+                        model_path=model_path,
+                        tokenizer_path=tokenizer_path,
+                        is_hf_repo=is_hf_repo,
+                        load_error=primary_load_error,
+                    )
                 if not is_primary_loadable:
                     try:
                         root_path = Path(

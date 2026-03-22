@@ -238,6 +238,37 @@ class TestTokenizerResolution:
         assert isinstance(exc_info.value.__cause__, RuntimeError)
 
     @pytest.mark.fast
+    @patch.object(TokenizerLoader, "_load_raw_tokenizer")
+    @patch("mflux.models.common.tokenizer.tokenizer_loader.snapshot_download")
+    def test_cached_hf_primary_load_error_is_preserved_without_redownload(self, mock_download, mock_load_raw, tmp_path):
+        cached_root = tmp_path / "cached"
+        fresh_root = tmp_path / "fresh"
+        _touch(cached_root / "tokenizer" / "tokenizer.json")
+        _touch(fresh_root / "tokenizer" / "tokenizer.json")
+        mock_download.side_effect = [str(cached_root), str(fresh_root)]
+
+        def _mock_load(*, tokenizer_path, tokenizer_class, chat_template=None):
+            if tokenizer_path == cached_root / "tokenizer":
+                raise RuntimeError("bad cached tokenizer")
+            return object()
+
+        mock_load_raw.side_effect = _mock_load
+
+        with pytest.raises(RuntimeError) as exc_info:
+            TokenizerLoader._resolve_path(
+                model_path="org/model",
+                hf_subdir="tokenizer",
+                fallback_subdirs=None,
+                download_patterns=["tokenizer/**"],
+                tokenizer_class="AutoTokenizer",
+            )
+
+        assert "failed to load them" in str(exc_info.value)
+        assert isinstance(exc_info.value.__cause__, RuntimeError)
+        assert mock_download.call_count == 1
+        assert mock_download.call_args_list[0].kwargs["local_files_only"] is True
+
+    @pytest.mark.fast
     @patch.object(TokenizerLoader, "_is_tokenizer_loadable", return_value=True)
     @patch.object(TokenizerLoader, "_probe_tokenizer_path", return_value=(False, RuntimeError("bad tokenizer")))
     def test_broken_primary_does_not_fall_back(self, mock_probe_path, mock_is_loadable, tmp_path):
