@@ -65,6 +65,7 @@ class TokenizerLoader:
     ) -> Path:
         root_path: Path | None = None
         download_error: Exception | None = None
+        primary_load_error: Exception | None = None
         is_hf_repo = False
         saw_cached_snapshot = False
         expanded = Path(model_path).expanduser()
@@ -94,7 +95,11 @@ class TokenizerLoader:
             else:
                 saw_cached_snapshot = True
                 tokenizer_path = root_path / hf_subdir
-                if not TokenizerLoader._is_tokenizer_loadable(tokenizer_path, tokenizer_class):
+                is_primary_loadable, primary_load_error = TokenizerLoader._probe_tokenizer_path(
+                    tokenizer_path,
+                    tokenizer_class,
+                )
+                if not is_primary_loadable:
                     try:
                         root_path = Path(
                             snapshot_download(
@@ -123,22 +128,24 @@ class TokenizerLoader:
         assert root_path is not None
 
         tokenizer_path = root_path / hf_subdir
-        if TokenizerLoader._is_tokenizer_loadable(tokenizer_path, tokenizer_class):
+        is_primary_loadable, primary_load_error = TokenizerLoader._probe_tokenizer_path(
+            tokenizer_path,
+            tokenizer_class,
+        )
+        if is_primary_loadable:
             return tokenizer_path
-
-        if is_hf_repo and saw_cached_snapshot and download_error is not None:
-            TokenizerLoader._raise_missing_tokenizer_error(
-                model_path=model_path,
-                hf_subdir=hf_subdir,
-                fallback_subdirs=fallback_subdirs,
-                is_hf_repo=is_hf_repo,
-                saw_cached_snapshot=saw_cached_snapshot,
-                download_error=download_error,
-            )
 
         fallback_path = TokenizerLoader._resolve_fallback_path(root_path, fallback_subdirs, tokenizer_class)
         if fallback_path is not None:
             return fallback_path
+
+        if primary_load_error is not None:
+            TokenizerLoader._raise_unloadable_tokenizer_error(
+                model_path=model_path,
+                tokenizer_path=tokenizer_path,
+                is_hf_repo=is_hf_repo,
+                load_error=primary_load_error,
+            )
 
         TokenizerLoader._raise_missing_tokenizer_error(
             model_path=model_path,
@@ -151,8 +158,13 @@ class TokenizerLoader:
 
     @staticmethod
     def _is_tokenizer_loadable(path: Path, tokenizer_class: str) -> bool:
+        is_loadable, _ = TokenizerLoader._probe_tokenizer_path(path, tokenizer_class)
+        return is_loadable
+
+    @staticmethod
+    def _probe_tokenizer_path(path: Path, tokenizer_class: str) -> tuple[bool, Exception | None]:
         if not path.exists():
-            return False
+            return False, None
 
         TokenizerLoader._get_tokenizer_class(tokenizer_class)
 
@@ -161,9 +173,9 @@ class TokenizerLoader:
                 tokenizer_path=path,
                 tokenizer_class=tokenizer_class,
             )
-        except Exception:  # noqa: BLE001
-            return False
-        return True
+        except Exception as exc:  # noqa: BLE001
+            return False, exc
+        return True, None
 
     @staticmethod
     def _resolve_fallback_path(
@@ -223,6 +235,18 @@ class TokenizerLoader:
         if download_error is not None:
             raise FileNotFoundError(message) from download_error
         raise FileNotFoundError(message)
+
+    @staticmethod
+    def _raise_unloadable_tokenizer_error(
+        model_path: str,
+        tokenizer_path: Path,
+        is_hf_repo: bool,
+        load_error: Exception,
+    ) -> None:
+        location_type = "Hugging Face repo" if is_hf_repo else "local model path"
+        raise RuntimeError(
+            f"Found tokenizer files for {location_type} '{model_path}' at '{tokenizer_path}', but failed to load them."
+        ) from load_error
 
     @staticmethod
     def _load_raw_tokenizer(

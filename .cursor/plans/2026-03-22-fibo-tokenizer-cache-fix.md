@@ -15,9 +15,10 @@
 - Update `src/mflux/models/common/tokenizer/tokenizer_loader.py` so `snapshot_download(..., local_files_only=True)` is treated as a candidate snapshot root, not proof that the requested tokenizer is complete.
 - Replace the filename-based tokenizer heuristic with an actual tokenizer loadability probe that uses the configured tokenizer class, so valid layouts such as `tokenizer.model` still resolve correctly.
 - If the primary tokenizer is unusable for an HF repo, fetch the tokenizer files with a normal download and retry the usability check.
-- Preserve fallback behavior only for genuine alternate layouts: if the primary tokenizer is still unusable after retrying, and a fallback tokenizer path looks like a real tokenizer, use the fallback.
-- Do not use fallback subdirs as a rescue path for incomplete HF tokenizer caches.
+- Preserve fallback behavior for genuine alternate layouts even when the cached primary path is unusable and the refresh attempt fails: if a configured fallback tokenizer path is actually loadable, use it.
+- Do not use fallback subdirs as a rescue path for incomplete HF tokenizer caches when those fallback paths are not themselves loadable.
 - Distinguish between "cached snapshot was incomplete" and "initial Hugging Face download failed" so user-facing errors match the actual failure mode.
+- Preserve real primary-tokenizer load failures as load errors instead of rewriting them as "missing tokenizer files".
 - Add regression tests covering the partial-cache case, valid `tokenizer.model` layouts, and fresh-download failures.
 
 ## Resolution Algorithm
@@ -34,14 +35,18 @@ elif model_path is an HF repo:
 
     if primary_path is loadable:
         use primary_path
-    elif refresh failed after an unusable cached snapshot:
-        fail with a clear incomplete-tokenizer cache error
     elif a fallback path is loadable:
         use fallback path
+    elif primary_path exists but fails to load:
+        fail with the real tokenizer load error
+    elif refresh failed after an unusable cached snapshot:
+        fail with a clear incomplete-tokenizer cache error
     else:
         fail with a clear Hugging Face tokenizer resolution error
 elif a fallback path is loadable:
     use fallback path
+elif primary_path exists but fails to load:
+    fail with the real tokenizer load error
 else:
     fail with a clear incomplete-tokenizer cache error
 ```
@@ -53,7 +58,7 @@ else:
 ## Verification
 - Run the new/updated fast regression test.
 - Run lints on touched files and fix any issues introduced by the change.
-- Confirm the new tests cover both the partial-cache retry path and the non-cache Hugging Face download failure path.
+- Confirm the new tests cover the partial-cache retry path, a valid offline fallback layout, and the non-cache Hugging Face download failure path.
 
 ## Research Links
 - Hugging Face `snapshot_download` docs: https://huggingface.co/docs/huggingface_hub/main/en/package_reference/file_download#huggingface_hub.snapshot_download
