@@ -104,6 +104,31 @@ class TestTokenizerResolution:
         assert result == model_root / "text_encoder"
 
     @pytest.mark.fast
+    @patch.object(TokenizerLoader, "_load_raw_tokenizer")
+    def test_existing_primary_dir_without_tokenizer_artifacts_uses_fallback(self, mock_load_raw, tmp_path):
+        model_root = tmp_path / "model"
+        model_root.mkdir()
+        fallback_path = model_root / "tokenizer"
+        _touch(fallback_path / "tokenizer.json")
+
+        def _mock_load(*, tokenizer_path, tokenizer_class, chat_template=None):
+            if tokenizer_path == fallback_path:
+                return object()
+            raise RuntimeError("not a tokenizer layout")
+
+        mock_load_raw.side_effect = _mock_load
+
+        result = TokenizerLoader._resolve_path(
+            model_path=str(model_root),
+            hf_subdir=".",
+            fallback_subdirs=["tokenizer"],
+            download_patterns=None,
+            tokenizer_class="AutoTokenizer",
+        )
+
+        assert result == fallback_path
+
+    @pytest.mark.fast
     @patch.object(TokenizerLoader, "_is_tokenizer_loadable", return_value=False)
     def test_fallback_without_tokenizer_files_raises_clear_error(self, _mock_is_loadable, tmp_path):
         model_root = tmp_path / "model"

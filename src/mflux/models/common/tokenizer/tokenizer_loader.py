@@ -135,7 +135,8 @@ class TokenizerLoader:
         if is_primary_loadable:
             return tokenizer_path
 
-        if primary_load_error is not None:
+        primary_has_tokenizer_artifacts = TokenizerLoader._has_tokenizer_artifacts(tokenizer_path)
+        if primary_load_error is not None and primary_has_tokenizer_artifacts:
             TokenizerLoader._raise_unloadable_tokenizer_error(
                 model_path=model_path,
                 tokenizer_path=tokenizer_path,
@@ -176,6 +177,26 @@ class TokenizerLoader:
         except Exception as exc:  # noqa: BLE001
             return False, exc
         return True, None
+
+    @staticmethod
+    def _has_tokenizer_artifacts(path: Path) -> bool:
+        if not path.exists():
+            return False
+
+        # Broad markers used only to distinguish an alternate layout from a broken tokenizer.
+        tokenizer_artifacts = [
+            "added_tokens.json",
+            "merges.txt",
+            "sentencepiece.bpe.model",
+            "special_tokens_map.json",
+            "spiece.model",
+            "tokenizer.json",
+            "tokenizer.model",
+            "tokenizer_config.json",
+            "vocab.json",
+            "vocab.txt",
+        ]
+        return any((path / filename).exists() for filename in tokenizer_artifacts)
 
     @staticmethod
     def _resolve_fallback_path(
