@@ -135,10 +135,6 @@ class TokenizerLoader:
         if is_primary_loadable:
             return tokenizer_path
 
-        fallback_path = TokenizerLoader._resolve_fallback_path(root_path, fallback_subdirs, tokenizer_class)
-        if fallback_path is not None:
-            return fallback_path
-
         if primary_load_error is not None:
             TokenizerLoader._raise_unloadable_tokenizer_error(
                 model_path=model_path,
@@ -146,6 +142,10 @@ class TokenizerLoader:
                 is_hf_repo=is_hf_repo,
                 load_error=primary_load_error,
             )
+
+        fallback_path = TokenizerLoader._resolve_fallback_path(root_path, fallback_subdirs, tokenizer_class)
+        if fallback_path is not None:
+            return fallback_path
 
         TokenizerLoader._raise_missing_tokenizer_error(
             model_path=model_path,

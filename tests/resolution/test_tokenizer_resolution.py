@@ -211,3 +211,25 @@ class TestTokenizerResolution:
 
         assert "failed to load them" in str(exc_info.value)
         assert isinstance(exc_info.value.__cause__, RuntimeError)
+
+    @pytest.mark.fast
+    @patch.object(TokenizerLoader, "_is_tokenizer_loadable", return_value=True)
+    @patch.object(TokenizerLoader, "_probe_tokenizer_path", return_value=(False, RuntimeError("bad tokenizer")))
+    def test_broken_primary_does_not_fall_back(self, mock_probe_path, mock_is_loadable, tmp_path):
+        model_root = tmp_path / "model"
+        _touch(model_root / "tokenizer" / "tokenizer.json")
+        (model_root / "text_encoder").mkdir(parents=True)
+
+        with pytest.raises(RuntimeError) as exc_info:
+            TokenizerLoader._resolve_path(
+                model_path=str(model_root),
+                hf_subdir="tokenizer",
+                fallback_subdirs=["text_encoder"],
+                download_patterns=None,
+                tokenizer_class="AutoTokenizer",
+            )
+
+        assert "failed to load them" in str(exc_info.value)
+        assert isinstance(exc_info.value.__cause__, RuntimeError)
+        mock_probe_path.assert_called_once_with(model_root / "tokenizer", "AutoTokenizer")
+        mock_is_loadable.assert_not_called()
