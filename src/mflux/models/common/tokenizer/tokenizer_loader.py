@@ -26,6 +26,7 @@ class TokenizerLoader:
             hf_subdir=definition.hf_subdir,
             fallback_subdirs=definition.fallback_subdirs,
             download_patterns=definition.download_patterns,
+            tokenizer_class=definition.tokenizer_class,
         )
 
         raw_tokenizer = TokenizerLoader._load_raw_tokenizer(
@@ -60,10 +61,12 @@ class TokenizerLoader:
         hf_subdir: str,
         fallback_subdirs: list[str] | None,
         download_patterns: list[str] | None,
+        tokenizer_class: str,
     ) -> Path:
         root_path: Path | None = None
         download_error: Exception | None = None
         is_hf_repo = False
+        saw_cached_snapshot = False
         expanded = Path(model_path).expanduser()
         if expanded.exists():
             root_path = expanded
@@ -89,8 +92,9 @@ class TokenizerLoader:
                 except Exception as exc:  # noqa: BLE001
                     download_error = exc
             else:
+                saw_cached_snapshot = True
                 tokenizer_path = root_path / hf_subdir
-                if not TokenizerLoader._has_tokenizer_files(tokenizer_path):
+                if not TokenizerLoader._is_tokenizer_loadable(tokenizer_path, tokenizer_class):
                     try:
                         root_path = Path(
                             snapshot_download(
@@ -113,15 +117,26 @@ class TokenizerLoader:
                 hf_subdir=hf_subdir,
                 fallback_subdirs=fallback_subdirs,
                 is_hf_repo=is_hf_repo,
+                saw_cached_snapshot=saw_cached_snapshot,
                 download_error=download_error,
             )
         assert root_path is not None
 
         tokenizer_path = root_path / hf_subdir
-        if TokenizerLoader._has_tokenizer_files(tokenizer_path):
+        if TokenizerLoader._is_tokenizer_loadable(tokenizer_path, tokenizer_class):
             return tokenizer_path
 
-        fallback_path = TokenizerLoader._resolve_fallback_path(root_path, fallback_subdirs)
+        if is_hf_repo and saw_cached_snapshot and download_error is not None:
+            TokenizerLoader._raise_missing_tokenizer_error(
+                model_path=model_path,
+                hf_subdir=hf_subdir,
+                fallback_subdirs=fallback_subdirs,
+                is_hf_repo=is_hf_repo,
+                saw_cached_snapshot=saw_cached_snapshot,
+                download_error=download_error,
+            )
+
+        fallback_path = TokenizerLoader._resolve_fallback_path(root_path, fallback_subdirs, tokenizer_class)
         if fallback_path is not None:
             return fallback_path
 
@@ -130,27 +145,38 @@ class TokenizerLoader:
             hf_subdir=hf_subdir,
             fallback_subdirs=fallback_subdirs,
             is_hf_repo=is_hf_repo,
+            saw_cached_snapshot=saw_cached_snapshot,
             download_error=download_error,
         )
 
     @staticmethod
-    def _has_tokenizer_files(path: Path) -> bool:
-        tokenizer_file_groups = [
-            ["tokenizer.json"],
-            ["spiece.model"],
-            ["vocab.json", "merges.txt"],
-            ["vocab.txt"],
-        ]
-        return any(all((path / file_name).exists() for file_name in group) for group in tokenizer_file_groups)
+    def _is_tokenizer_loadable(path: Path, tokenizer_class: str) -> bool:
+        if not path.exists():
+            return False
+
+        TokenizerLoader._get_tokenizer_class(tokenizer_class)
+
+        try:
+            TokenizerLoader._load_raw_tokenizer(
+                tokenizer_path=path,
+                tokenizer_class=tokenizer_class,
+            )
+        except Exception:  # noqa: BLE001
+            return False
+        return True
 
     @staticmethod
-    def _resolve_fallback_path(root_path: Path, fallback_subdirs: list[str] | None) -> Path | None:
+    def _resolve_fallback_path(
+        root_path: Path,
+        fallback_subdirs: list[str] | None,
+        tokenizer_class: str,
+    ) -> Path | None:
         if not fallback_subdirs:
             return None
 
         for subdir in fallback_subdirs:
             fallback_path = root_path if subdir == "." else root_path / subdir
-            if TokenizerLoader._has_tokenizer_files(fallback_path):
+            if TokenizerLoader._is_tokenizer_loadable(fallback_path, tokenizer_class):
                 return fallback_path
 
         return None
@@ -161,6 +187,7 @@ class TokenizerLoader:
         hf_subdir: str,
         fallback_subdirs: list[str] | None,
         is_hf_repo: bool,
+        saw_cached_snapshot: bool,
         download_error: Exception | None = None,
     ) -> None:
         primary_location = "repository root" if hf_subdir in ("", ".") else hf_subdir
@@ -172,11 +199,22 @@ class TokenizerLoader:
         checked_summary = ", ".join(checked_locations)
 
         if is_hf_repo:
-            message = (
-                f"Incomplete Hugging Face tokenizer cache for '{model_path}'. "
-                f"No usable tokenizer files were found in {checked_summary}. "
-                f"Re-run with network access or clear/redownload the cache."
-            )
+            if saw_cached_snapshot and download_error is not None:
+                message = (
+                    f"Incomplete Hugging Face tokenizer cache for '{model_path}'. "
+                    f"No usable tokenizer files were found in {checked_summary}. "
+                    f"Re-run with network access or clear/redownload the cache."
+                )
+            elif download_error is not None:
+                message = (
+                    f"Failed to download tokenizer files for Hugging Face repo '{model_path}'. "
+                    f"Checked {checked_summary}."
+                )
+            else:
+                message = (
+                    f"No usable tokenizer files were found for Hugging Face repo '{model_path}'. "
+                    f"Checked {checked_summary}."
+                )
         else:
             message = (
                 f"No usable tokenizer files were found for local model path '{model_path}'. Checked {checked_summary}."
@@ -192,10 +230,7 @@ class TokenizerLoader:
         tokenizer_class: str,
         chat_template: str | None = None,
     ):
-        if hasattr(transformers, tokenizer_class):
-            cls = getattr(transformers, tokenizer_class)
-        else:
-            raise ValueError(f"Unknown tokenizer class: {tokenizer_class}")
+        cls = TokenizerLoader._get_tokenizer_class(tokenizer_class)
 
         # Workaround for Qwen2Tokenizer bug in transformers 5.0.0rc0
         # The tokenizer doesn't properly load vocab/merges from files, need to pass them directly
@@ -212,6 +247,12 @@ class TokenizerLoader:
             tokenizer.chat_template = chat_template
 
         return tokenizer
+
+    @staticmethod
+    def _get_tokenizer_class(tokenizer_class: str):
+        if hasattr(transformers, tokenizer_class):
+            return getattr(transformers, tokenizer_class)
+        raise ValueError(f"Unknown tokenizer class: {tokenizer_class}")
 
     @staticmethod
     def _load_qwen2_tokenizer_workaround(tokenizer_path: Path, cls):

@@ -7,36 +7,40 @@
 - If the cache already contains some matching files under `text_encoder/**` but not `tokenizer/**`, Hugging Face returns the cached snapshot path instead of raising.
 - The current resolver then sees that `tokenizer/` is missing, falls back to `text_encoder/`, and `AutoTokenizer.from_pretrained()` fails with the sentencepiece/tiktoken-style error.
 - So the regression is not "offline loading is wrong"; it is that the resolver currently treats a partial cache as a complete tokenizer cache.
+- The first implementation pass fixed the partial-cache redownload path, but it still used a filename heuristic for "usable tokenizer" and would reject valid layouts such as `tokenizer.model`.
+- That pass also rewrote fresh Hugging Face download failures (for example missing/private repos or first-download network failures) into the same "incomplete cache" error, which is misleading when no local cache existed yet.
 
 ## Planned Changes
 - Keep the local-first behavior from `fd07e82` so fully cached Hugging Face tokenizers still work offline.
 - Update `src/mflux/models/common/tokenizer/tokenizer_loader.py` so `snapshot_download(..., local_files_only=True)` is treated as a candidate snapshot root, not proof that the requested tokenizer is complete.
-- Add a tokenizer usability check for the primary tokenizer path so offline loading succeeds only when the expected tokenizer artifacts are actually present and loadable, not merely when the directory exists.
+- Replace the filename-based tokenizer heuristic with an actual tokenizer loadability probe that uses the configured tokenizer class, so valid layouts such as `tokenizer.model` still resolve correctly.
 - If the primary tokenizer is unusable for an HF repo, fetch the tokenizer files with a normal download and retry the usability check.
 - Preserve fallback behavior only for genuine alternate layouts: if the primary tokenizer is still unusable after retrying, and a fallback tokenizer path looks like a real tokenizer, use the fallback.
 - Do not use fallback subdirs as a rescue path for incomplete HF tokenizer caches.
-- If neither the primary nor fallback path is usable, raise a clear mflux-level error explaining that the local Hugging Face tokenizer cache is incomplete and the user should rerun with network access or clear/redownload the cache.
-- Add a regression test covering the partial-cache case.
+- Distinguish between "cached snapshot was incomplete" and "initial Hugging Face download failed" so user-facing errors match the actual failure mode.
+- Add regression tests covering the partial-cache case, valid `tokenizer.model` layouts, and fresh-download failures.
 
 ## Resolution Algorithm
 ```text
 candidate_root = resolve_hf_or_local_root(...)
 primary_path = candidate_root / hf_subdir
 
-if primary_path is usable:
+if primary_path is loadable:
     use primary_path
 elif model_path is an HF repo:
     fetch tokenizer files with normal download
     candidate_root = refreshed snapshot root
     primary_path = candidate_root / hf_subdir
 
-    if primary_path is usable:
+    if primary_path is loadable:
         use primary_path
-    elif a fallback path is usable:
+    elif refresh failed after an unusable cached snapshot:
+        fail with a clear incomplete-tokenizer cache error
+    elif a fallback path is loadable:
         use fallback path
     else:
-        fail with a clear incomplete-tokenizer cache error
-elif a fallback path is usable:
+        fail with a clear Hugging Face tokenizer resolution error
+elif a fallback path is loadable:
     use fallback path
 else:
     fail with a clear incomplete-tokenizer cache error
@@ -49,6 +53,7 @@ else:
 ## Verification
 - Run the new/updated fast regression test.
 - Run lints on touched files and fix any issues introduced by the change.
+- Confirm the new tests cover both the partial-cache retry path and the non-cache Hugging Face download failure path.
 
 ## Research Links
 - Hugging Face `snapshot_download` docs: https://huggingface.co/docs/huggingface_hub/main/en/package_reference/file_download#huggingface_hub.snapshot_download
