@@ -61,10 +61,14 @@ class TokenizerLoader:
         fallback_subdirs: list[str] | None,
         download_patterns: list[str] | None,
     ) -> Path:
+        root_path: Path | None = None
+        download_error: Exception | None = None
+        is_hf_repo = False
         expanded = Path(model_path).expanduser()
         if expanded.exists():
             root_path = expanded
         elif "/" in model_path and model_path.count("/") == 1 and not model_path.startswith(("./", "../")):
+            is_hf_repo = True
             patterns = download_patterns or [f"{hf_subdir}/**"]
             try:
                 root_path = Path(
@@ -75,12 +79,27 @@ class TokenizerLoader:
                     )
                 )
             except LocalEntryNotFoundError:
-                root_path = Path(
-                    snapshot_download(
-                        repo_id=model_path,
-                        allow_patterns=patterns,
+                try:
+                    root_path = Path(
+                        snapshot_download(
+                            repo_id=model_path,
+                            allow_patterns=patterns,
+                        )
                     )
-                )
+                except Exception as exc:  # noqa: BLE001
+                    download_error = exc
+            else:
+                tokenizer_path = root_path / hf_subdir
+                if not TokenizerLoader._has_tokenizer_files(tokenizer_path):
+                    try:
+                        root_path = Path(
+                            snapshot_download(
+                                repo_id=model_path,
+                                allow_patterns=patterns,
+                            )
+                        )
+                    except Exception as exc:  # noqa: BLE001
+                        download_error = exc
         else:
             raise FileNotFoundError(
                 f"Model not found: '{model_path}'. "
@@ -88,26 +107,84 @@ class TokenizerLoader:
                 f"If HuggingFace repo, use 'org/model' format."
             )
 
+        if root_path is None:
+            TokenizerLoader._raise_missing_tokenizer_error(
+                model_path=model_path,
+                hf_subdir=hf_subdir,
+                fallback_subdirs=fallback_subdirs,
+                is_hf_repo=is_hf_repo,
+                download_error=download_error,
+            )
+        assert root_path is not None
+
         tokenizer_path = root_path / hf_subdir
-        if tokenizer_path.exists():
+        if TokenizerLoader._has_tokenizer_files(tokenizer_path):
             return tokenizer_path
 
-        if fallback_subdirs:
-            for subdir in fallback_subdirs:
-                if subdir == ".":
-                    if TokenizerLoader._has_tokenizer_files(root_path):
-                        return root_path
-                else:
-                    fallback_path = root_path / subdir
-                    if fallback_path.exists():
-                        return fallback_path
+        fallback_path = TokenizerLoader._resolve_fallback_path(root_path, fallback_subdirs)
+        if fallback_path is not None:
+            return fallback_path
 
-        return tokenizer_path
+        TokenizerLoader._raise_missing_tokenizer_error(
+            model_path=model_path,
+            hf_subdir=hf_subdir,
+            fallback_subdirs=fallback_subdirs,
+            is_hf_repo=is_hf_repo,
+            download_error=download_error,
+        )
 
     @staticmethod
     def _has_tokenizer_files(path: Path) -> bool:
-        tokenizer_indicators = ["vocab.json", "tokenizer.json", "tokenizer_config.json"]
-        return any((path / f).exists() for f in tokenizer_indicators)
+        tokenizer_file_groups = [
+            ["tokenizer.json"],
+            ["spiece.model"],
+            ["vocab.json", "merges.txt"],
+            ["vocab.txt"],
+        ]
+        return any(all((path / file_name).exists() for file_name in group) for group in tokenizer_file_groups)
+
+    @staticmethod
+    def _resolve_fallback_path(root_path: Path, fallback_subdirs: list[str] | None) -> Path | None:
+        if not fallback_subdirs:
+            return None
+
+        for subdir in fallback_subdirs:
+            fallback_path = root_path if subdir == "." else root_path / subdir
+            if TokenizerLoader._has_tokenizer_files(fallback_path):
+                return fallback_path
+
+        return None
+
+    @staticmethod
+    def _raise_missing_tokenizer_error(
+        model_path: str,
+        hf_subdir: str,
+        fallback_subdirs: list[str] | None,
+        is_hf_repo: bool,
+        download_error: Exception | None = None,
+    ) -> None:
+        primary_location = "repository root" if hf_subdir in ("", ".") else hf_subdir
+        checked_locations = [repr(primary_location)]
+        if fallback_subdirs:
+            checked_locations.extend(
+                repr("repository root" if subdir in ("", ".") else subdir) for subdir in fallback_subdirs
+            )
+        checked_summary = ", ".join(checked_locations)
+
+        if is_hf_repo:
+            message = (
+                f"Incomplete Hugging Face tokenizer cache for '{model_path}'. "
+                f"No usable tokenizer files were found in {checked_summary}. "
+                f"Re-run with network access or clear/redownload the cache."
+            )
+        else:
+            message = (
+                f"No usable tokenizer files were found for local model path '{model_path}'. Checked {checked_summary}."
+            )
+
+        if download_error is not None:
+            raise FileNotFoundError(message) from download_error
+        raise FileNotFoundError(message)
 
     @staticmethod
     def _load_raw_tokenizer(
