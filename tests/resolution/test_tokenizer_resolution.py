@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from huggingface_hub.utils import LocalEntryNotFoundError
+from transformers import BertTokenizer
 
 from mflux.models.common.tokenizer.tokenizer_loader import TokenizerLoader
 
@@ -12,7 +13,67 @@ def _touch(path: Path) -> None:
     path.touch()
 
 
+def _write_real_tokenizer(path: Path) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+    vocab_file = path / "vocab.txt"
+    vocab_file.write_text("\n".join(["[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]", "hello", "world"]), encoding="utf-8")
+    BertTokenizer(vocab_file=str(vocab_file)).save_pretrained(path)
+
+
 class TestTokenizerResolution:
+    @pytest.mark.fast
+    def test_real_primary_tokenizer_layout_resolves(self, tmp_path):
+        model_root = tmp_path / "model"
+        tokenizer_path = model_root / "tokenizer"
+        _write_real_tokenizer(tokenizer_path)
+
+        result = TokenizerLoader._resolve_path(
+            model_path=str(model_root),
+            hf_subdir="tokenizer",
+            fallback_subdirs=["text_encoder", "."],
+            download_patterns=None,
+            tokenizer_class="AutoTokenizer",
+        )
+
+        assert result == tokenizer_path
+
+    @pytest.mark.fast
+    def test_real_fallback_tokenizer_layout_resolves(self, tmp_path):
+        model_root = tmp_path / "model"
+        fallback_path = model_root / "text_encoder"
+        _write_real_tokenizer(fallback_path)
+
+        result = TokenizerLoader._resolve_path(
+            model_path=str(model_root),
+            hf_subdir="tokenizer",
+            fallback_subdirs=["text_encoder", "."],
+            download_patterns=None,
+            tokenizer_class="AutoTokenizer",
+        )
+
+        assert result == fallback_path
+
+    @pytest.mark.fast
+    @patch("mflux.models.common.tokenizer.tokenizer_loader.snapshot_download")
+    def test_hf_refresh_can_use_real_fallback_tokenizer_layout(self, mock_download, tmp_path):
+        partial_root = tmp_path / "partial"
+        refreshed_root = tmp_path / "refreshed"
+        partial_root.mkdir()
+        _write_real_tokenizer(refreshed_root / "text_encoder")
+        mock_download.side_effect = [str(partial_root), str(refreshed_root)]
+
+        result = TokenizerLoader._resolve_path(
+            model_path="org/model",
+            hf_subdir="tokenizer",
+            fallback_subdirs=["text_encoder", "."],
+            download_patterns=["tokenizer/**", "text_encoder/**"],
+            tokenizer_class="AutoTokenizer",
+        )
+
+        assert result == refreshed_root / "text_encoder"
+        assert mock_download.call_count == 2
+        assert mock_download.call_args_list[0].kwargs["local_files_only"] is True
+
     @pytest.mark.fast
     @patch.object(TokenizerLoader, "_probe_tokenizer_path")
     @patch("mflux.models.common.tokenizer.tokenizer_loader.snapshot_download")
@@ -267,6 +328,19 @@ class TestTokenizerResolution:
         assert isinstance(exc_info.value.__cause__, RuntimeError)
         assert mock_download.call_count == 1
         assert mock_download.call_args_list[0].kwargs["local_files_only"] is True
+
+    @pytest.mark.fast
+    def test_missing_tilde_path_raises_model_not_found(self):
+        with pytest.raises(FileNotFoundError) as exc_info:
+            TokenizerLoader._resolve_path(
+                model_path="~/definitely-not-a-real-tokenizer-path",
+                hf_subdir="tokenizer",
+                fallback_subdirs=None,
+                download_patterns=None,
+                tokenizer_class="AutoTokenizer",
+            )
+
+        assert "Model not found" in str(exc_info.value)
 
     @pytest.mark.fast
     @patch.object(TokenizerLoader, "_is_tokenizer_loadable", return_value=True)

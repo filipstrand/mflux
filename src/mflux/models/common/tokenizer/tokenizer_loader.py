@@ -147,7 +147,7 @@ class TokenizerLoader:
 
     @staticmethod
     def _is_huggingface_repo_id(model_path: str) -> bool:
-        return "/" in model_path and model_path.count("/") == 1 and not model_path.startswith(("./", "../"))
+        return "/" in model_path and model_path.count("/") == 1 and not model_path.startswith(("./", "../", "~/"))
 
     @staticmethod
     def _resolve_hf_root_path(
