@@ -63,66 +63,16 @@ class TokenizerLoader:
         download_patterns: list[str] | None,
         tokenizer_class: str,
     ) -> Path:
-        root_path: Path | None = None
-        download_error: Exception | None = None
-        primary_load_error: Exception | None = None
-        is_hf_repo = False
-        saw_cached_snapshot = False
-        expanded = Path(model_path).expanduser()
-        if expanded.exists():
-            root_path = expanded
-        elif "/" in model_path and model_path.count("/") == 1 and not model_path.startswith(("./", "../")):
-            is_hf_repo = True
-            patterns = download_patterns or [f"{hf_subdir}/**"]
-            try:
-                root_path = Path(
-                    snapshot_download(
-                        repo_id=model_path,
-                        allow_patterns=patterns,
-                        local_files_only=True,
-                    )
-                )
-            except LocalEntryNotFoundError:
-                try:
-                    root_path = Path(
-                        snapshot_download(
-                            repo_id=model_path,
-                            allow_patterns=patterns,
-                        )
-                    )
-                except Exception as exc:  # noqa: BLE001
-                    download_error = exc
-            else:
-                saw_cached_snapshot = True
-                tokenizer_path = root_path / hf_subdir
-                is_primary_loadable, primary_load_error = TokenizerLoader._probe_tokenizer_path(
-                    tokenizer_path,
-                    tokenizer_class,
-                )
-                primary_has_tokenizer_artifacts = TokenizerLoader._has_tokenizer_artifacts(tokenizer_path)
-                if primary_load_error is not None and primary_has_tokenizer_artifacts:
-                    TokenizerLoader._raise_unloadable_tokenizer_error(
-                        model_path=model_path,
-                        tokenizer_path=tokenizer_path,
-                        is_hf_repo=is_hf_repo,
-                        load_error=primary_load_error,
-                    )
-                if not is_primary_loadable:
-                    try:
-                        root_path = Path(
-                            snapshot_download(
-                                repo_id=model_path,
-                                allow_patterns=patterns,
-                            )
-                        )
-                    except Exception as exc:  # noqa: BLE001
-                        download_error = exc
-        else:
-            raise FileNotFoundError(
-                f"Model not found: '{model_path}'. "
-                f"If local path, make sure it exists. "
-                f"If HuggingFace repo, use 'org/model' format."
-            )
+        # Resolution algorithm:
+        # 1. Resolve a local path or an initial Hugging Face snapshot root.
+        # 2. Prefer the primary tokenizer path and preserve real load failures.
+        # 3. If a cached HF snapshot is incomplete, refresh it once over the network.
+        # 4. Only then try fallback layouts, and finally raise a targeted missing-tokenizer error.
+        patterns = download_patterns or [f"{hf_subdir}/**"]
+        root_path, is_hf_repo, saw_cached_snapshot, download_error = TokenizerLoader._resolve_root_path(
+            model_path=model_path,
+            patterns=patterns,
+        )
 
         if root_path is None:
             TokenizerLoader._raise_missing_tokenizer_error(
@@ -135,6 +85,126 @@ class TokenizerLoader:
             )
         assert root_path is not None
 
+        tokenizer_path = TokenizerLoader._resolve_primary_path(
+            root_path=root_path,
+            model_path=model_path,
+            hf_subdir=hf_subdir,
+            tokenizer_class=tokenizer_class,
+            is_hf_repo=is_hf_repo,
+        )
+        if tokenizer_path is not None:
+            return tokenizer_path
+
+        if is_hf_repo and saw_cached_snapshot:
+            refreshed_root_path, download_error = TokenizerLoader._refresh_hf_root_path(
+                model_path=model_path,
+                patterns=patterns,
+            )
+            if refreshed_root_path is not None:
+                root_path = refreshed_root_path
+                tokenizer_path = TokenizerLoader._resolve_primary_path(
+                    root_path=root_path,
+                    model_path=model_path,
+                    hf_subdir=hf_subdir,
+                    tokenizer_class=tokenizer_class,
+                    is_hf_repo=is_hf_repo,
+                )
+                if tokenizer_path is not None:
+                    return tokenizer_path
+
+        fallback_path = TokenizerLoader._resolve_fallback_path(root_path, fallback_subdirs, tokenizer_class)
+        if fallback_path is not None:
+            return fallback_path
+
+        TokenizerLoader._raise_missing_tokenizer_error(
+            model_path=model_path,
+            hf_subdir=hf_subdir,
+            fallback_subdirs=fallback_subdirs,
+            is_hf_repo=is_hf_repo,
+            saw_cached_snapshot=saw_cached_snapshot,
+            download_error=download_error,
+        )
+
+    @staticmethod
+    def _resolve_root_path(
+        model_path: str,
+        patterns: list[str],
+    ) -> tuple[Path | None, bool, bool, Exception | None]:
+        expanded = Path(model_path).expanduser()
+        if expanded.exists():
+            return expanded, False, False, None
+        if TokenizerLoader._is_huggingface_repo_id(model_path):
+            root_path, saw_cached_snapshot, download_error = TokenizerLoader._resolve_hf_root_path(
+                model_path=model_path,
+                patterns=patterns,
+            )
+            return root_path, True, saw_cached_snapshot, download_error
+        raise FileNotFoundError(
+            f"Model not found: '{model_path}'. "
+            f"If local path, make sure it exists. "
+            f"If HuggingFace repo, use 'org/model' format."
+        )
+
+    @staticmethod
+    def _is_huggingface_repo_id(model_path: str) -> bool:
+        return "/" in model_path and model_path.count("/") == 1 and not model_path.startswith(("./", "../"))
+
+    @staticmethod
+    def _resolve_hf_root_path(
+        model_path: str,
+        patterns: list[str],
+    ) -> tuple[Path | None, bool, Exception | None]:
+        try:
+            root_path = Path(
+                snapshot_download(
+                    repo_id=model_path,
+                    allow_patterns=patterns,
+                    local_files_only=True,
+                )
+            )
+        except LocalEntryNotFoundError:
+            root_path, download_error = TokenizerLoader._download_hf_root_path(
+                model_path=model_path,
+                patterns=patterns,
+            )
+            return root_path, False, download_error
+
+        return root_path, True, None
+
+    @staticmethod
+    def _download_hf_root_path(
+        model_path: str,
+        patterns: list[str],
+    ) -> tuple[Path | None, Exception | None]:
+        try:
+            root_path = Path(
+                snapshot_download(
+                    repo_id=model_path,
+                    allow_patterns=patterns,
+                )
+            )
+        except Exception as exc:  # noqa: BLE001
+            return None, exc
+        return root_path, None
+
+    @staticmethod
+    def _refresh_hf_root_path(
+        model_path: str,
+        patterns: list[str],
+    ) -> tuple[Path | None, Exception | None]:
+        return TokenizerLoader._download_hf_root_path(
+            model_path=model_path,
+            patterns=patterns,
+        )
+
+    @staticmethod
+    def _resolve_primary_path(
+        root_path: Path,
+        model_path: str,
+        hf_subdir: str,
+        tokenizer_class: str,
+        is_hf_repo: bool,
+    ) -> Path | None:
         tokenizer_path = root_path / hf_subdir
         is_primary_loadable, primary_load_error = TokenizerLoader._probe_tokenizer_path(
             tokenizer_path,
@@ -151,19 +221,7 @@ class TokenizerLoader:
                 is_hf_repo=is_hf_repo,
                 load_error=primary_load_error,
             )
-
-        fallback_path = TokenizerLoader._resolve_fallback_path(root_path, fallback_subdirs, tokenizer_class)
-        if fallback_path is not None:
-            return fallback_path
-
-        TokenizerLoader._raise_missing_tokenizer_error(
-            model_path=model_path,
-            hf_subdir=hf_subdir,
-            fallback_subdirs=fallback_subdirs,
-            is_hf_repo=is_hf_repo,
-            saw_cached_snapshot=saw_cached_snapshot,
-            download_error=download_error,
-        )
+        return None
 
     @staticmethod
     def _is_tokenizer_loadable(path: Path, tokenizer_class: str) -> bool:
