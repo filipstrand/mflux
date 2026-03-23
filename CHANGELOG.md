@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.2] - 2026-03-23
+
+### 🐛 Bug Fixes
+
+- **Shared tokenizer cache resolution**: Fix Hugging Face tokenizer resolution when a repo is only partially cached locally, preserving offline-first behavior for valid cached layouts while retrying ambiguous cached primaries once before surfacing real load errors.
+
+### 🧰 DX & Maintenance
+
+- **Tokenizer resolution coverage**: Expand shared tokenizer-resolution regression tests to cover root-layout tokenizers, fallback edge cases, and refresh failure handling.
+
+### 👩‍💻 Contributors
+
+- **@filipstrand**
+
+---
+
 ## [0.17.1] - 2026-03-22
 
 ### 🐛 Bug Fixes
