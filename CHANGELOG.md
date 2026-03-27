@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.3] - 2026-03-27
+
+### 🐛 Bug Fixes
+
+- **FLUX.2 edit guidance metadata**: Preserve the requested guidance value for FLUX.2 Klein base image-edit runs so `mflux-info` and saved metadata report the actual guidance used instead of always showing `1.0`.
+
+### 👩‍💻 Contributors
+
+- **@filipstrand**
+
+---
+
 ## [0.17.2] - 2026-03-23
 
 ### 🐛 Bug Fixes
