@@ -94,7 +94,8 @@ image.save("flux2_edit.png")
 > Note: FLUX.2-klein-4B requires downloading the `black-forest-labs/FLUX.2-klein-4B` model weights (~15GB), and FLUX.2-klein-9B requires `black-forest-labs/FLUX.2-klein-9B` model weights (~32GB), or use quantization for smaller sizes.
 
 ## Notes
-- FLUX.2 does not support `--negative-prompt` or CFG-style guidance. Use `--guidance 1.0`.
+- FLUX.2 does not support `--negative-prompt`.
+- Distilled FLUX.2 variants use `--guidance 1.0`. Base variants support guidance values above `1.0`.
 - Supported distilled variants: `flux2-klein-4b` (default) and `flux2-klein-9b`. Distilled models run in fewer steps than base.
 
 ## Training

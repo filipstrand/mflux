@@ -62,7 +62,7 @@ class Flux2KleinEdit(nn.Module):
             num_inference_steps=num_inference_steps,
             height=height,
             width=width,
-            guidance=1.0,
+            guidance=guidance,
             image_path=primary_image_path,
             image_strength=image_strength,
             scheduler=scheduler,
