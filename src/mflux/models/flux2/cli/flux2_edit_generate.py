@@ -72,7 +72,6 @@ def main():
             ImageUtil.save_image(
                 image=image,
                 path=args.output.format(seed=seed),
-                export_json_metadata=args.metadata,
             )
     except (StopImageGenerationException, PromptFileReadError) as exc:
         print(exc)
