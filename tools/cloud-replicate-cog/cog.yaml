@@ -1,0 +1,11 @@
+image: r8.im/anthonywu/mflux-linux-cuda13:test
+build:
+  cog_runtime: true
+  gpu: true
+  system_packages:
+    - "git"
+  python_version: "3.13"
+  python_requirements: requirements.txt
+  run:
+    - curl -o /usr/local/bin/pget -L "https://github.com/replicate/pget/releases/latest/download/pget_$(uname -s)_$(uname -m)" && chmod +x /usr/local/bin/pget
+predict: "generate.py:TextToImage"
