@@ -8,6 +8,7 @@ from tqdm import tqdm
 from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.vae.vae_util import VAEUtil
+from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
 from mflux.models.qwen.model.qwen_text_encoder.qwen_text_encoder import QwenTextEncoder
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer
@@ -15,6 +16,7 @@ from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
 from mflux.models.qwen.qwen_initializer import QwenImageInitializer
 from mflux.models.qwen.variants.edit.qwen_edit_util import QwenEditUtil
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
+from mflux.models.qwen.weights.qwen_weight_definition import QwenWeightDefinition
 from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
@@ -41,6 +43,14 @@ class QwenImageEdit(nn.Module):
             lora_paths=lora_paths,
             lora_scales=lora_scales,
             model_config=model_config,
+        )
+
+    def save_model(self, base_path: str) -> None:
+        ModelSaver.save_model(
+            model=self,
+            bits=self.bits,
+            base_path=base_path,
+            weight_definition=QwenWeightDefinition,
         )
 
     def generate_image(
