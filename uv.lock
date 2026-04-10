@@ -1039,7 +1039,7 @@ wheels = [
 
 [[package]]
 name = "mflux"
-version = "0.17.4"
+version = "0.17.5"
 source = { editable = "." }
 dependencies = [
     { name = "filelock" },
@@ -1095,7 +1095,7 @@ requires-dist = [
     { name = "piexif", specifier = ">=1.1.3,<2.0" },
     { name = "pillow", specifier = ">=12.1.1" },
     { name = "platformdirs", specifier = ">=4.0,<5.0" },
-    { name = "protobuf", specifier = ">=4.25.0,<6.0" },
+    { name = "protobuf", specifier = ">=4.25.0,<8.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.0,<9.0" },
     { name = "pytest-timer", marker = "extra == 'dev'", specifier = ">=1.0,<2.0" },
     { name = "regex", specifier = ">=2024.11.6" },
