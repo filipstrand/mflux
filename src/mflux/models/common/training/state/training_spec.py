@@ -77,6 +77,7 @@ class TrainingLoopSpec:
     timestep_low: int = 0
     timestep_high: int | None = None
     iterator_state_path: str | None = None
+    gradient_accumulation_steps: int = 1
 
 
 @dataclass
@@ -324,7 +325,11 @@ class TrainingSpec:
         if resolved_timestep_high > steps:
             raise ValueError("'timestep_high' must be <= 'steps'")
 
-        training_loop = TrainingLoopSpec(**training_loop_conf)
+        gradient_accumulation_steps = int(training_loop_conf.pop("gradient_accumulation_steps", 1))
+        if gradient_accumulation_steps < 1:
+            raise ValueError("'gradient_accumulation_steps' must be >= 1")
+
+        training_loop = TrainingLoopSpec(**training_loop_conf, gradient_accumulation_steps=gradient_accumulation_steps)
         optimizer = OptimizerSpec(**config["optimizer"])
 
         checkpoint_conf = config["checkpoint"]

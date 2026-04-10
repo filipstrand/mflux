@@ -162,6 +162,7 @@ class Flux1Controlnet(nn.Module):
             controlnet_image_path=controlnet_image_path,
             generation_time=config.time_steps.format_dict["elapsed"],
             init_metadata=init_metadata,
+            model_path=self.model_path,
         )
 
     def save_model(self, base_path: str) -> None:

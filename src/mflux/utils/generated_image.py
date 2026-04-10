@@ -41,6 +41,7 @@ class GeneratedImage:
         concept_heatmap: ConceptHeatmap | None = None,
         negative_prompt: str | None = None,
         init_metadata: dict | None = None,
+        model_path: str | None = None,
     ):
         self.image = image
         self.model_config = model_config
@@ -67,6 +68,7 @@ class GeneratedImage:
         self.concept_heatmap = concept_heatmap
         self.negative_prompt = negative_prompt
         self.init_metadata = init_metadata
+        self.model_path = model_path
 
     def get_right_half(self) -> "GeneratedImage":
         # Calculate the coordinates for the right half
@@ -211,7 +213,7 @@ class GeneratedImage:
         metadata = {
             "mflux_version": VersionUtil.get_mflux_version(),
             "model": self.model_config.model_name,
-            "base_model": str(self.model_config.base_model),
+            "base_model": self.model_path if self.model_path else str(self.model_config.base_model),
             "seed": self.seed,
             "steps": self.steps,
             "guidance": self.guidance if self.model_config.supports_guidance else None,

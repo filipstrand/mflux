@@ -67,12 +67,22 @@ class Flux2Klein(nn.Module):
             image_strength=image_strength,
             scheduler=scheduler,
         )
-        # 1. Encode prompt(s)
-        prompt_embeds, text_ids, negative_prompt_embeds, negative_text_ids = self._encode_prompt_pair(
-            prompt=prompt,
-            negative_prompt=" ",
-            guidance=guidance,
-        )
+        # 1. Encode prompt(s) — cache keyed on (prompt, guidance) so MemorySaver
+        #    can safely delete text_encoder after the first seed without breaking
+        #    subsequent seeds that use the same prompt.
+        cache_key = (prompt, guidance)
+        if not hasattr(self, "_prompt_cache") or self._prompt_cache[0] != cache_key:
+            prompt_embeds, text_ids, negative_prompt_embeds, negative_text_ids = self._encode_prompt_pair(
+                prompt=prompt,
+                negative_prompt=" ",
+                guidance=guidance,
+            )
+            mx.eval(prompt_embeds, text_ids)
+            if negative_prompt_embeds is not None:
+                mx.eval(negative_prompt_embeds, negative_text_ids)
+            self._prompt_cache = (cache_key, prompt_embeds, text_ids, negative_prompt_embeds, negative_text_ids)
+        else:
+            _, prompt_embeds, text_ids, negative_prompt_embeds, negative_text_ids = self._prompt_cache
 
         # 2. Prepare latents (txt2img or img2img)
         latents, latent_ids, latent_height, latent_width = self._prepare_generation_latents(
@@ -128,6 +138,7 @@ class Flux2Klein(nn.Module):
             image_path=config.image_path,
             image_strength=config.image_strength,
             generation_time=config.time_steps.format_dict["elapsed"],
+            model_path=self.model_path,
         )
 
     def _encode_prompt_pair(

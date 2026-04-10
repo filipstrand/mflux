@@ -19,14 +19,15 @@ class SeedVR2Initializer:
     ) -> None:
         path = model_path if model_path else model_config.model_name
         weight_definition = SeedVR2WeightDefinition.resolve(model_config)
-        SeedVR2Initializer._init_config(model, model_config)
+        SeedVR2Initializer._init_config(model, model_config, model_path=model_path)
         weights = SeedVR2Initializer._load_weights(path, weight_definition)
         SeedVR2Initializer._init_models(model, model_config)
         SeedVR2Initializer._apply_weights(model, weights, quantize, weight_definition)
 
     @staticmethod
-    def _init_config(model, model_config: ModelConfig) -> None:
+    def _init_config(model, model_config: ModelConfig, model_path: str | None = None) -> None:
         model.model_config = model_config
+        model.model_path = model_path
         model.callbacks = CallbackRegistry()
         model.tiling_config = TilingConfig()
 

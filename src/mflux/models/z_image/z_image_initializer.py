@@ -23,7 +23,7 @@ class ZImageInitializer:
         lora_scales: list[float] | None = None,
     ) -> None:
         path = model_path if model_path else model_config.model_name
-        ZImageInitializer._init_config(model, model_config)
+        ZImageInitializer._init_config(model, model_config, model_path=model_path)
         weights = ZImageInitializer._load_weights(path)
         ZImageInitializer._init_tokenizers(model, path)
         ZImageInitializer._init_models(model)
@@ -31,8 +31,9 @@ class ZImageInitializer:
         ZImageInitializer._apply_lora(model, lora_paths, lora_scales)
 
     @staticmethod
-    def _init_config(model, model_config: ModelConfig) -> None:
+    def _init_config(model, model_config: ModelConfig, model_path: str | None = None) -> None:
         model.model_config = model_config
+        model.model_path = model_path
         model.callbacks = CallbackRegistry()
         model.tiling_config = None
 

@@ -33,7 +33,7 @@ class FluxInitializer:
         custom_transformer=None,
     ) -> None:
         path = model_path if model_path else model_config.model_name
-        FluxInitializer._init_config(model, model_config)
+        FluxInitializer._init_config(model, model_config, model_path=model_path)
         weights = FluxInitializer._load_weights(path)
         FluxInitializer._init_tokenizers(model, path, model_config)
         FluxInitializer._init_models(model, model_config, weights, custom_transformer)
@@ -141,7 +141,7 @@ class FluxInitializer:
         from mflux.models.flux.variants.concept_attention.transformer_concept import TransformerConcept
 
         path = model_path if model_path else model_config.model_name
-        FluxInitializer._init_config(model, model_config)
+        FluxInitializer._init_config(model, model_config, model_path=model_path)
         weights = FluxInitializer._load_weights(path)
         FluxInitializer._init_tokenizers(model, path, model_config)
         custom_transformer = TransformerConcept(
@@ -154,9 +154,10 @@ class FluxInitializer:
         FluxInitializer._apply_lora(model, lora_paths, lora_scales)
 
     @staticmethod
-    def _init_config(model, model_config: ModelConfig) -> None:
+    def _init_config(model, model_config: ModelConfig, model_path: str | None = None) -> None:
         model.prompt_cache = {}
         model.model_config = model_config
+        model.model_path = model_path
         model.callbacks = CallbackRegistry()
         model.tiling_config = None
 

@@ -141,6 +141,7 @@ class FIBOEdit(nn.Module):
             masked_image_path=mask_path,
             generation_time=config.time_steps.format_dict["elapsed"],
             negative_prompt=negative_prompt,
+            model_path=self.model_path,
         )
 
     @staticmethod

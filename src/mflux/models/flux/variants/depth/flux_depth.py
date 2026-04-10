@@ -150,4 +150,5 @@ class Flux1Depth(nn.Module):
             image_path=config.image_path,
             depth_image_path=config.depth_image_path,
             generation_time=config.time_steps.format_dict["elapsed"],
+            model_path=self.model_path,
         )

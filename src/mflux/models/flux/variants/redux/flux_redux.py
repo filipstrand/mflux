@@ -146,6 +146,7 @@ class Flux1Redux(nn.Module):
             redux_image_strengths=config.redux_image_strengths,
             image_strength=config.image_strength,
             generation_time=config.time_steps.format_dict["elapsed"],
+            model_path=self.model_path,
         )
 
     @staticmethod

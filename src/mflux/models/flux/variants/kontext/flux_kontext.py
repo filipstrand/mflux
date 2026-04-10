@@ -149,4 +149,5 @@ class Flux1Kontext(nn.Module):
             lora_scales=self.lora_scales,
             image_path=config.image_path,
             generation_time=config.time_steps.format_dict["elapsed"],
+            model_path=self.model_path,
         )

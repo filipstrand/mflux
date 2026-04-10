@@ -151,6 +151,7 @@ class QwenImage(nn.Module):
             image_strength=config.image_strength,
             generation_time=config.time_steps.format_dict["elapsed"],
             negative_prompt=negative_prompt,
+            model_path=self.model_path,
         )
 
     def save_model(self, base_path: str) -> None:

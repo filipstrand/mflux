@@ -89,13 +89,28 @@ class ZImage(nn.Module):
                 tiling_config=self.tiling_config,
             ),
         )
-        text_encodings, negative_encodings = self._encode_prompts(
-            prompt=prompt,
-            negative_prompt=negative_prompt,
-            guidance=config.guidance,
-        )
+
+        # 2. Encode prompts — cache keyed on (prompt, negative_prompt, guidance) so
+        #    MemorySaver can safely delete text_encoder after the first seed without
+        #    breaking subsequent seeds that use the same prompt.
+        cache_key = (prompt, negative_prompt, config.guidance)
+        if not hasattr(self, "_text_encoding_cache") or self._text_encoding_cache[0] != cache_key:
+            text_encodings, negative_encodings = self._encode_prompts(
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                guidance=config.guidance,
+            )
+            mx.eval(text_encodings)
+            if negative_encodings is not None:
+                mx.eval(negative_encodings)
+            self._text_encoding_cache = (cache_key, text_encodings, negative_encodings)
+        else:
+            _, text_encodings, negative_encodings = self._text_encoding_cache
 
         # 3. Create callback context and call before_loop
+        #    Evaluate latents before before_loop so MemorySaver's mx.clear_cache()
+        #    doesn't invalidate lazy array IDs that mx.compile relies on (M2 Ultra).
+        mx.eval(latents)
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
         predict = self._predict(self.transformer)
@@ -146,6 +161,7 @@ class ZImage(nn.Module):
             image_strength=config.image_strength,
             generation_time=config.time_steps.format_dict["elapsed"],
             negative_prompt=negative_prompt,
+            model_path=self.model_path,
         )
 
     def _encode_prompts(
@@ -184,6 +200,15 @@ class ZImage(nn.Module):
 
     @staticmethod
     def _predict(transformer: ZImageTransformer):
+        # Cache the compiled function on the transformer instance so it is created
+        # only once. Re-creating mx.compile(predict) on every generate_image call
+        # causes "unordered_map::at: key not found" on M2 Max/Ultra when
+        # MemorySaver calls mx.clear_cache() between seeds, because the new
+        # compiled function still holds references to the previous graph's tensor IDs.
+        cached = getattr(transformer, "_compiled_predict", None)
+        if cached is not None:
+            return cached
+
         def predict(
             latents: mx.array,
             timestep: mx.array,
@@ -208,6 +233,6 @@ class ZImage(nn.Module):
             )
             return noise + guidance * (noise - negative_noise)
 
-        if AppleSiliconUtil.is_m1_or_m2():
-            return predict
-        return mx.compile(predict)
+        fn = mx.compile(predict) if AppleSiliconUtil.should_use_compile() else predict
+        transformer._compiled_predict = fn
+        return fn

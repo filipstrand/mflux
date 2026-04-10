@@ -190,4 +190,5 @@ class Flux1ConceptFromImage(nn.Module):
             image_strength=config.image_strength,
             generation_time=config.time_steps.format_dict["elapsed"],
             concept_heatmap=concept_heatmap,
+            model_path=self.model_path,
         )

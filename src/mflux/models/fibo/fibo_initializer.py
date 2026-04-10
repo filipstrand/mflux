@@ -21,15 +21,16 @@ class FIBOInitializer:
         lora_scales: list[float] | None = None,
     ) -> None:
         path = model_path if model_path else model_config.model_name
-        FIBOInitializer._init_config(model, model_config)
+        FIBOInitializer._init_config(model, model_config, model_path=model_path)
         weights = FIBOInitializer._load_weights(path)
         FIBOInitializer._init_tokenizers(model, path)
         FIBOInitializer._init_models(model)
         FIBOInitializer._apply_weights(model, weights, quantize)
 
     @staticmethod
-    def _init_config(model, model_config: ModelConfig) -> None:
+    def _init_config(model, model_config: ModelConfig, model_path: str | None = None) -> None:
         model.model_config = model_config
+        model.model_path = model_path
         model.callbacks = CallbackRegistry()
         model.tiling_config = None
 

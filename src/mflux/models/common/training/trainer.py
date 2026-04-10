@@ -7,7 +7,7 @@ from pathlib import Path
 
 import mlx.core as mx
 from mlx import nn
-from mlx.utils import tree_unflatten
+from mlx.utils import tree_map, tree_unflatten
 from PIL import Image as PILImage
 from tqdm import tqdm
 
@@ -131,6 +131,15 @@ class TrainingTrainer:
             del validation_loss
             training_state.save(adapter, training_spec)
 
+        grad_acc_steps = training_spec.training_loop.gradient_accumulation_steps
+        accum_grads = None
+        micro_step = 0
+        # Accumulate training loss so we can plot it for free (no separate
+        # validation forward pass needed — the loss is already computed
+        # together with the gradients and was previously discarded).
+        train_loss_accum = 0.0
+        loss_accum_count = 0
+
         batches = tqdm(
             training_state.iterator,
             total=training_state.iterator.total_number_of_steps(),
@@ -139,16 +148,43 @@ class TrainingTrainer:
 
         for batch in batches:
             loss, grads = train_step_function(batch)
-            training_state.optimizer.optimizer.update(model=adapter.model(), gradients=grads)
-            mx.eval(adapter.model().parameters(), training_state.optimizer.optimizer.state)
-            del loss, grads
+            # Evaluate loss and grads immediately so the backward pass runs
+            # and all intermediate activation tensors are freed before we
+            # accumulate. Without this, mx.eval(accum_grads) at step 2+ must
+            # hold both the previous accumulated grads AND the new backprop
+            # activations in memory simultaneously, causing swap at 768px.
+            mx.eval(loss, grads)
+            train_loss_accum += float(loss)
+            loss_accum_count += 1
+            del loss
+            accum_grads = grads if accum_grads is None else tree_map(mx.add, accum_grads, grads)
+            del grads
+            mx.eval(accum_grads)
+            micro_step += 1
+
+            if micro_step == grad_acc_steps:
+                if grad_acc_steps > 1:
+                    accum_grads = tree_map(lambda g: g / grad_acc_steps, accum_grads)
+                training_state.optimizer.optimizer.update(model=adapter.model(), gradients=accum_grads)
+                # Only eval the trainable LoRA params and optimizer state —
+                # evaluating all model params (including frozen base weights)
+                # is unnecessary and adds memory pressure every step.
+                mx.eval(TrainingTrainer._get_trainable_params(adapter), training_state.optimizer.optimizer.state)
+                del accum_grads
+                accum_grads = None
+                micro_step = 0
+                # Free optimizer/gradient memory immediately after the update so
+                # that monitoring (image generation, save) runs with a clean slate.
+                if training_spec.low_ram:
+                    gc.collect()
+                    mx.clear_cache()
 
             if training_state.should_plot_loss(training_spec):
-                validation_batch = training_state.iterator.get_validation_batch()
-                validation_loss = TrainingTrainer.compute_loss(adapter, training_spec, base_config, validation_batch)
-                training_state.statistics.append_values(step=training_state.iterator.num_iterations, loss=float(validation_loss))  # fmt: off
+                avg_loss = train_loss_accum / loss_accum_count if loss_accum_count > 0 else 0.0
+                training_state.statistics.append_values(step=training_state.iterator.num_iterations, loss=avg_loss)  # fmt: off
                 Plotter.update_loss_plot(training_spec=training_spec, training_state=training_state)
-                del validation_loss
+                train_loss_accum = 0.0
+                loss_accum_count = 0
 
             if training_state.should_generate_image(training_spec):
                 TrainingTrainer._generate_previews_with_optimizer_offload(adapter, training_spec, training_state)
@@ -160,6 +196,24 @@ class TrainingTrainer:
                 mx.clear_cache()
 
         training_state.save(adapter, training_spec)
+
+    @staticmethod
+    def _get_trainable_params(adapter: TrainingAdapter) -> list:
+        """Return only the trainable LoRA parameter arrays (lora_A, lora_B).
+
+        Used to scope mx.eval after optimizer updates — evaluating the full
+        model (including frozen base weights) is wasteful and adds pressure.
+        """
+        params = []
+        for _, child in adapter.transformer().named_modules():
+            if isinstance(child, LoRALinear):
+                if getattr(child, "_mflux_lora_role", None) == "train":
+                    params.extend([child.lora_A, child.lora_B])
+            elif isinstance(child, FusedLoRALinear):
+                for lora in child.loras:
+                    if getattr(lora, "_mflux_lora_role", None) == "train":
+                        params.extend([lora.lora_A, lora.lora_B])
+        return params
 
     @staticmethod
     def _unfreeze_lora_layers(module: nn.Module) -> None:

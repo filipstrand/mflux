@@ -27,7 +27,7 @@ class QwenImageInitializer:
         lora_scales: list[float] | None = None,
     ) -> None:
         path = model_path if model_path else model_config.model_name
-        QwenImageInitializer._init_config(model, model_config)
+        QwenImageInitializer._init_config(model, model_config, model_path=model_path)
         weights = QwenImageInitializer._load_weights(path)
         QwenImageInitializer._init_tokenizers(model, path)
         QwenImageInitializer._init_models(model)
@@ -45,7 +45,7 @@ class QwenImageInitializer:
     ) -> None:
         # Use model_path if provided, otherwise fall back to model_config.model_name
         path = model_path if model_path else model_config.model_name
-        QwenImageInitializer._init_config(model, model_config)
+        QwenImageInitializer._init_config(model, model_config, model_path=model_path)
         weights = QwenImageInitializer._load_weights(path)
         QwenImageInitializer._init_tokenizers(model, path)
         QwenImageInitializer._init_edit_models(model)
@@ -63,9 +63,10 @@ class QwenImageInitializer:
         model.qwen_vl_encoder = QwenVisionLanguageEncoder(encoder=model.text_encoder.encoder)
 
     @staticmethod
-    def _init_config(model, model_config: ModelConfig) -> None:
+    def _init_config(model, model_config: ModelConfig, model_path: str | None = None) -> None:
         model.prompt_cache = {}
         model.model_config = model_config
+        model.model_path = model_path
         model.callbacks = CallbackRegistry()
         model.tiling_config = None
 

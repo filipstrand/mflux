@@ -55,6 +55,7 @@ class ImageUtil:
         concept_heatmap: ConceptHeatmap | None = None,
         negative_prompt: str | None = None,
         init_metadata: dict | None = None,
+        model_path: str | None = None,
     ) -> GeneratedImage:
         normalized = ImageUtil._denormalize(decoded_latents)
         normalized_numpy = ImageUtil._to_numpy(normalized)
@@ -85,6 +86,7 @@ class ImageUtil:
             concept_heatmap=concept_heatmap,
             negative_prompt=negative_prompt,
             init_metadata=init_metadata,
+            model_path=model_path,
         )
 
     @staticmethod

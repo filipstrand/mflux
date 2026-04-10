@@ -111,4 +111,5 @@ class SeedVR2(nn.Module):
             decoded_latents=decoded,
             generation_time=config.time_steps.format_dict["elapsed"],
             init_metadata=init_metadata,
+            model_path=self.model_path,
         )

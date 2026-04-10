@@ -23,7 +23,7 @@ class Flux2Initializer:
         lora_scales: list[float] | None = None,
     ) -> None:
         path = model_path if model_path else model_config.model_name
-        Flux2Initializer._init_config(model, model_config)
+        Flux2Initializer._init_config(model, model_config, model_path=model_path)
         weights = Flux2Initializer._load_weights(path)
         Flux2Initializer._init_tokenizers(model, path)
         Flux2Initializer._init_models(model)
@@ -31,9 +31,10 @@ class Flux2Initializer:
         Flux2Initializer._apply_lora(model, lora_paths, lora_scales)
 
     @staticmethod
-    def _init_config(model, model_config: ModelConfig) -> None:
+    def _init_config(model, model_config: ModelConfig, model_path: str | None = None) -> None:
         model.prompt_cache = {}
         model.model_config = model_config
+        model.model_path = model_path
         model.callbacks = CallbackRegistry()
         model.tiling_config = None
 

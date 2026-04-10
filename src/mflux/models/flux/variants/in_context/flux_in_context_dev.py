@@ -150,6 +150,7 @@ class Flux1InContextDev(nn.Module):
             image_path=config.image_path,
             image_strength=config.image_strength,
             generation_time=config.time_steps.format_dict["elapsed"],
+            model_path=self.model_path,
         )
 
     @staticmethod

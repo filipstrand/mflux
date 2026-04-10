@@ -155,4 +155,5 @@ class Flux1InContextFill(nn.Module):
             image_strength=config.image_strength,
             masked_image_path=config.masked_image_path,
             generation_time=config.time_steps.format_dict["elapsed"],
+            model_path=self.model_path,
         )
