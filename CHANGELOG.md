@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.5] - 2026-04-10
+
+### 🐛 Bug Fixes
+
+- **Qwen Image Edit `mflux-save`**: Route Qwen edit model names to `QwenImageEdit` and save through the same path as inference so VisionTransformer (`encoder.visual`) weights are written. Saving with `QwenImage` previously omitted those weights and led to random vision encoders after reload.
+- **Battery saver callback**: Harden Apple Silicon battery detection when `system_profiler` is missing and resolve the helper script via absolute paths.
+
+### 📝 Documentation
+
+- **Related projects**: Clarify that MindCraft Studio is a macOS app built on mflux.
+
+### 🧰 DX & Maintenance
+
+- **Dependencies**: Relax the `protobuf` upper bound to allow current 7.x releases while keeping a safe ceiling below 8.0.
+
+### 👩‍💻 Contributors
+
+- **@anthonywu**
+- **@f-gibellini**
+- **@JiwaniZakir**
+
+---
+
 ## [0.17.4] - 2026-03-28
 
 ### 🐛 Bug Fixes
