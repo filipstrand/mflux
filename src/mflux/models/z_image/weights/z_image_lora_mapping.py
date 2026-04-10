@@ -8,7 +8,22 @@ class ZImageLoRAMapping(LoRAMapping):
         for layer_type in ["layers", "noise_refiner", "context_refiner"]:
             targets.extend(ZImageLoRAMapping._get_layer_targets(layer_type))
         targets.extend(ZImageLoRAMapping._get_global_targets())
+        # Add .default. variants for DiffSynth-Studio / i2L compatibility
+        for target in targets:
+            target.possible_up_patterns = ZImageLoRAMapping._add_default_variants(target.possible_up_patterns)
+            target.possible_down_patterns = ZImageLoRAMapping._add_default_variants(target.possible_down_patterns)
         return targets
+
+    @staticmethod
+    def _add_default_variants(patterns: list[str]) -> list[str]:
+        """Add .default. variants for patterns with .lora_A. or .lora_B."""
+        extra = []
+        for p in patterns:
+            if ".lora_A." in p:
+                extra.append(p.replace(".lora_A.", ".lora_A.default."))
+            elif ".lora_B." in p:
+                extra.append(p.replace(".lora_B.", ".lora_B.default."))
+        return patterns + extra
 
     @staticmethod
     def _get_global_targets() -> list[LoRATarget]:
