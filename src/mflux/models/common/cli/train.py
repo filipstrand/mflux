@@ -32,6 +32,7 @@ def main():
         TrainingRunner.train(
             config_path=str(config_path) if config_path is not None else None,
             resume_path=str(resume_path) if resume_path is not None else None,
+            low_ram=args.low_ram if args.low_ram else None,
         )
     except StopTrainingException as stop_exc:
         print(stop_exc)

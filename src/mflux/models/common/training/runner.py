@@ -52,8 +52,12 @@ class TrainingRunner:
         )
 
     @staticmethod
-    def train(*, config_path: str | None, resume_path: str | None) -> tuple[TrainingAdapter, TrainingSpec]:
+    def train(*, config_path: str | None, resume_path: str | None, low_ram: bool | None = None) -> tuple[TrainingAdapter, TrainingSpec]:
         training_spec = TrainingSpec.resolve(config_path=config_path, resume_path=resume_path)
+
+        # CLI --low-ram flag overrides the config file value when explicitly set
+        if low_ram is True:
+            training_spec.low_ram = True
 
         # Set global seed for MLX randomness
         mx_random.seed(training_spec.seed)
