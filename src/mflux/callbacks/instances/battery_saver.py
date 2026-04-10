@@ -63,14 +63,21 @@ class BatterySaver(BeforeLoopCallback):
         if cls._machine_model is None:
             try:
                 result = subprocess.run(
-                    ["system_profiler", "-json", "SPHardwareDataType"],
+                    ["/usr/sbin/system_profiler", "-json", "SPHardwareDataType"],
                     capture_output=True,
                     text=True,
                     check=True,
                 )
                 data = json.loads(result.stdout)
                 cls._machine_model = data["SPHardwareDataType"][0]["machine_model"]
-            except (subprocess.CalledProcessError, json.JSONDecodeError, IndexError, KeyError) as e:
+            except (
+                subprocess.CalledProcessError,
+                json.JSONDecodeError,
+                FileNotFoundError,
+                IndexError,
+                KeyError,
+                OSError,
+            ) as e:
                 logger.warning(f"Cannot determine machine model via 'system_profiler -json SPHardwareDataType': {e}")
                 cls._machine_model = "Unknown"
         return cls._machine_model
