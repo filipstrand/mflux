@@ -5,7 +5,6 @@ from mflux.models.flux2.latent_creator.flux2_latent_creator import Flux2LatentCr
 from mflux.models.flux2.variants import Flux2Klein
 from mflux.utils.dimension_resolver import DimensionResolver
 from mflux.utils.exceptions import PromptFileReadError, StopImageGenerationException
-from mflux.utils.image_util import ImageUtil
 from mflux.utils.prompt_util import PromptUtil
 
 
@@ -24,7 +23,10 @@ def main():
         parser.error("--negative-prompt is not supported for FLUX.2. Focus on describing what you want.")
 
     model_name = args.model or "flux2-klein-4b"
-    model_config = ModelConfig.from_name(model_name=model_name)
+    model_config = ModelConfig.from_name(
+        model_name=model_name,
+        base_model=getattr(args, "base_model", None),
+    )
 
     if args.guidance is None:
         args.guidance = 1.0
@@ -65,11 +67,7 @@ def main():
                 image_strength=args.image_strength,
                 scheduler="flow_match_euler_discrete",
             )
-            ImageUtil.save_image(
-                image=image,
-                path=args.output.format(seed=seed),
-                export_json_metadata=args.metadata,
-            )
+            image.save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)
     except (StopImageGenerationException, PromptFileReadError) as exc:
         print(exc)
     finally:

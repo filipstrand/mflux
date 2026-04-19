@@ -9,6 +9,7 @@ from PIL import Image as PILImage
 
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.training.adapters.base import TrainingAdapter
+from mflux.models.common.vae.tiling_config import TilingConfig
 from mflux.models.common.training.dataset.batch import DataItem
 from mflux.models.common.training.dataset.data_cache import TrainingDataCache
 from mflux.models.common.training.dataset.dataset import Dataset
@@ -83,6 +84,12 @@ class TrainingRunner:
                                            model_path=training_spec.model_path)
         else:
             raise ValueError("Flux1 training is no longer supported.")
+
+        # Enable VAE tiling when low_ram is active, matching inference --low-ram behaviour.
+        if training_spec.low_ram:
+            model = adapter.model()
+            if hasattr(model, "tiling_config"):
+                model.tiling_config = TilingConfig()
 
         # For Z-Image-Turbo we always apply the assistant training adapter (automatic, no config needed).
         if is_zimage_turbo:

@@ -300,6 +300,8 @@ class TrainingTrainer:
 
             gc.collect()
             mx.clear_cache()
+            if training_spec.low_ram:
+                mx.set_cache_limit(1 * 1000**3)
             try:
                 TrainingTrainer._generate_previews(adapter, training_spec, training_state)
             finally:
@@ -307,3 +309,5 @@ class TrainingTrainer:
                 optimizer.optimizer.state = restored_state
                 gc.collect()
                 mx.clear_cache()
+                if training_spec.low_ram:
+                    mx.set_cache_limit(2**40)

@@ -64,5 +64,6 @@ class Flux2TrainingAdapter(Flux2BaseTrainingAdapter):
                 width=width,
                 guidance=self._guidance,
             )
-        self._flux2.prompt_cache = {}
+        if hasattr(self._flux2, "_prompt_cache"):
+            del self._flux2._prompt_cache
         return image.image

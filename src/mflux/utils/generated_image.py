@@ -268,4 +268,4 @@ class GeneratedImage:
                 if old_val := old_exif.get(field):
                     metadata[f"original_{field}"] = old_val
 
-        return metadata
+        return {k: v for k, v in metadata.items() if v is not None}

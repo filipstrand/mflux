@@ -11,6 +11,12 @@ class LoRATarget:
     possible_up_patterns: List[str]
     possible_down_patterns: List[str]
     possible_alpha_patterns: List[str] = field(default_factory=list)
+    possible_lokr_w1_patterns: List[str] = field(default_factory=list)
+    possible_lokr_w2_patterns: List[str] = field(default_factory=list)
+    possible_lokr_w1_a_patterns: List[str] = field(default_factory=list)
+    possible_lokr_w1_b_patterns: List[str] = field(default_factory=list)
+    possible_lokr_w2_a_patterns: List[str] = field(default_factory=list)
+    possible_lokr_w2_b_patterns: List[str] = field(default_factory=list)
     up_transform: Callable[[mx.array], mx.array] | None = None
     down_transform: Callable[[mx.array], mx.array] | None = None
 

@@ -355,7 +355,11 @@ class CommandLineParser(argparse.ArgumentParser):
 
         if self.supports_image_generation and getattr(namespace, "steps", None) is None:
             model_name = getattr(namespace, "model", None)
-            namespace.steps = ui_defaults.MODEL_INFERENCE_STEPS.get(model_name, 25)
+            # When using a local path, fall back to base_model for step lookup
+            lookup_name = model_name
+            if model_name and model_name not in ui_defaults.MODEL_INFERENCE_STEPS:
+                lookup_name = getattr(namespace, "base_model", None) or model_name
+            namespace.steps = ui_defaults.MODEL_INFERENCE_STEPS.get(lookup_name, 25)
 
         # In-context edit specific validations
         if getattr(self, 'supports_in_context_edit', False):
