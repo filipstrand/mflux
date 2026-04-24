@@ -15,7 +15,6 @@ def main():
     parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=False)
     parser.add_image_to_image_arguments(required=False)
     parser.add_output_arguments()
-    # Set model alias so the parser can resolve the correct default step count (8)
     parser.set_defaults(model="ernie-image-turbo")
     args = parser.parse_args()
 
