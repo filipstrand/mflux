@@ -28,6 +28,7 @@ MODEL_CHOICES = [
     "flux2-klein-9b",
     "flux2-klein-base-4b",
     "flux2-klein-base-9b",
+    "ernie-image-turbo",
 ]
 MODEL_INFERENCE_STEPS = {
     "dev": 25,
@@ -42,6 +43,7 @@ MODEL_INFERENCE_STEPS = {
     "fibo-edit-rmbg": 10,
     "z-image": 50,
     "z-image-turbo": 9,
+    "ernie-image-turbo": 8,
     "flux2-klein-4b": 4,
     "flux2-klein-9b": 4,
     "flux2-klein-base-4b": 50,
