@@ -1,5 +1,6 @@
 from mflux.cli.parser.parsers import CommandLineParser
 from mflux.models.common.config import ModelConfig
+from mflux.models.ernie_image.variants.ernie_image import ErnieImage
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
 from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.models.flux2.variants.txt2img.flux2_klein import Flux2Klein
@@ -17,7 +18,9 @@ def main():
 
     # 1. Determine model class based on model name
     model_name_lower = args.model.lower()
-    if "qwen" in model_name_lower and "edit" in model_name_lower:
+    if "ernie" in model_name_lower:
+        model_class = ErnieImage
+    elif "qwen" in model_name_lower and "edit" in model_name_lower:
         model_class = QwenImageEdit
     elif "qwen" in model_name_lower:
         model_class = QwenImage
