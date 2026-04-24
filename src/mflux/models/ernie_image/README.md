@@ -84,3 +84,135 @@ image.save("ernie_base.png")
 
 > [!WARNING]
 > ERNIE-Image weights are large (~22 GB unquantized). Use `-q 8` (~12 GB) or `-q 4` (~6.4 GB) for reduced memory usage.
+
+## LoRA
+
+Pre-trained LoRA files (`.safetensors`) can be applied at inference time with `--lora-paths` and `--lora-scales`. Both the `diffusion_model.layers.N.*` format (Lucie / ai-toolkit style) and the `lora_unet_layers_N_*` format (kohya / ComfyUI style) are supported.
+
+```sh
+mflux-generate-ernie-image-turbo \
+  --prompt "..." \
+  --lora-paths /path/to/lora.safetensors \
+  --lora-scales 1.0 \
+  --steps 8 -q 8
+```
+
+## Training
+
+ERNIE-Image and ERNIE-Image-Turbo support LoRA fine-tuning via `mflux-train`.
+
+### Dataset layout
+
+```
+dataset/
+├── 01.jpg         # training image
+├── 01.txt         # caption for 01.jpg  (or use "prompt" inline in the JSON)
+├── 02.jpg
+├── 02.txt
+└── ...
+```
+
+### Quick start (Turbo)
+
+```sh
+mflux-train --config train_ernie_image_turbo.json
+```
+
+See the example config at
+`src/mflux/models/common/training/_example/train_ernie_image_turbo.json`.
+
+<details>
+<summary>Full JSON reference</summary>
+
+```json
+{
+  "model": "ernie-image-turbo",
+  "data": "/path/to/your/dataset",
+  "seed": 42,
+  "steps": 8,
+  "guidance": 1.0,
+  "quantize": 8,
+  "low_ram": false,
+  "max_resolution": 1024,
+  "training_loop": {
+    "num_epochs": 200,
+    "batch_size": 1,
+    "gradient_accumulation_steps": 4,
+    "timestep_low": 1,
+    "timestep_high": 8
+  },
+  "optimizer": {
+    "name": "AdamW",
+    "learning_rate": 1e-4
+  },
+  "checkpoint": {
+    "output_path": "train_ernie_turbo",
+    "save_frequency": 50
+  },
+  "monitoring": {
+    "preview_width": 640,
+    "preview_height": 368,
+    "plot_frequency": 20,
+    "generate_image_frequency": 50,
+    "preview_prompts": [
+      "a photo of sks person smiling, natural light, photorealistic"
+    ]
+  },
+  "lora_layers": {
+    "targets": [
+      { "module_path": "layers.{block}.self_attention.to_q",     "blocks": { "start": 0, "end": 35 }, "rank": 16 },
+      { "module_path": "layers.{block}.self_attention.to_k",     "blocks": { "start": 0, "end": 35 }, "rank": 16 },
+      { "module_path": "layers.{block}.self_attention.to_v",     "blocks": { "start": 0, "end": 35 }, "rank": 16 },
+      { "module_path": "layers.{block}.self_attention.to_out.0", "blocks": { "start": 0, "end": 35 }, "rank": 16 },
+      { "module_path": "layers.{block}.mlp.gate_proj",           "blocks": { "start": 0, "end": 35 }, "rank": 16 },
+      { "module_path": "layers.{block}.mlp.up_proj",             "blocks": { "start": 0, "end": 35 }, "rank": 16 },
+      { "module_path": "layers.{block}.mlp.linear_fc2",          "blocks": { "start": 0, "end": 35 }, "rank": 16 }
+    ]
+  }
+}
+```
+</details>
+
+### Training with base ERNIE-Image
+
+Use `"model": "ernie-image"` with more steps and guidance:
+
+```json
+{
+  "model": "ernie-image",
+  "steps": 50,
+  "guidance": 4.0,
+  "training_loop": {
+    "num_epochs": 200,
+    "batch_size": 1,
+    "timestep_low": 5,
+    "timestep_high": 45
+  }
+}
+```
+
+### Dry-run validation
+
+```sh
+mflux-train --config train_ernie_image_turbo.json --dry-run
+```
+
+### Saving the model
+
+```sh
+mflux-save --model ernie-image-turbo --quantize 8 --path /path/to/save
+```
+
+### LoRA target modules
+
+| Module path | Description |
+|---|---|
+| `layers.{block}.self_attention.to_q` | Query projection |
+| `layers.{block}.self_attention.to_k` | Key projection |
+| `layers.{block}.self_attention.to_v` | Value projection |
+| `layers.{block}.self_attention.to_out.0` | Output projection |
+| `layers.{block}.mlp.gate_proj` | FFN gate |
+| `layers.{block}.mlp.up_proj` | FFN up |
+| `layers.{block}.mlp.linear_fc2` | FFN down |
+
+Blocks run from `0` to `35` (36 total). A lighter config targeting only attention (`to_q/k/v/out`) on all 36 layers is a good starting point; add MLP layers if the concept requires broader stylistic changes.
