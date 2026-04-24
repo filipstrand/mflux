@@ -86,7 +86,7 @@ class ErnieTransformer(nn.Module):
     def __call__(
         self,
         hidden_states: mx.array,  # [B, in_channels, H', W'] channel-first latents
-        timestep: mx.array,        # [B] sigma values in [0, 1]
+        timestep: mx.array,        # [B] timestep values in [0, 1000] (sigma * 1000)
         text_bth: mx.array,        # [B, T, text_in_dim] padded text embeddings
         text_lens: mx.array,       # [B] actual text lengths
     ) -> mx.array:
