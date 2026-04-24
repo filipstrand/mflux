@@ -5,116 +5,156 @@ class ErnieLoRAMapping(LoRAMapping):
     @staticmethod
     def get_mapping() -> list[LoRATarget]:
         return [
-            # self_attention.to_q
+            # ── Global (non per-layer) targets ────────────────────────────────
+            LoRATarget(
+                model_path="adaln_modulation",
+                possible_up_patterns=[
+                    "lora_unet_adaLN_modulation_1.lora_up.weight",
+                ],
+                possible_down_patterns=[
+                    "lora_unet_adaLN_modulation_1.lora_down.weight",
+                ],
+                possible_alpha_patterns=[
+                    "lora_unet_adaLN_modulation_1.alpha",
+                ],
+            ),
+            LoRATarget(
+                model_path="final_norm.linear",
+                possible_up_patterns=[
+                    "lora_unet_final_norm_linear.lora_up.weight",
+                ],
+                possible_down_patterns=[
+                    "lora_unet_final_norm_linear.lora_down.weight",
+                ],
+                possible_alpha_patterns=[
+                    "lora_unet_final_norm_linear.alpha",
+                ],
+            ),
+            # ── Per-layer targets ─────────────────────────────────────────────
             LoRATarget(
                 model_path="layers.{block}.self_attention.to_q",
                 possible_up_patterns=[
                     "diffusion_model.layers.{block}.self_attention.to_q.lora_B.weight",
                     "layers.{block}.self_attention.to_q.lora_B.weight",
+                    "lora_unet_layers_{block}_self_attention_to_q.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     "diffusion_model.layers.{block}.self_attention.to_q.lora_A.weight",
                     "layers.{block}.self_attention.to_q.lora_A.weight",
+                    "lora_unet_layers_{block}_self_attention_to_q.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     "diffusion_model.layers.{block}.self_attention.to_q.alpha",
                     "layers.{block}.self_attention.to_q.alpha",
+                    "lora_unet_layers_{block}_self_attention_to_q.alpha",
                 ],
             ),
-            # self_attention.to_k
             LoRATarget(
                 model_path="layers.{block}.self_attention.to_k",
                 possible_up_patterns=[
                     "diffusion_model.layers.{block}.self_attention.to_k.lora_B.weight",
                     "layers.{block}.self_attention.to_k.lora_B.weight",
+                    "lora_unet_layers_{block}_self_attention_to_k.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     "diffusion_model.layers.{block}.self_attention.to_k.lora_A.weight",
                     "layers.{block}.self_attention.to_k.lora_A.weight",
+                    "lora_unet_layers_{block}_self_attention_to_k.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     "diffusion_model.layers.{block}.self_attention.to_k.alpha",
                     "layers.{block}.self_attention.to_k.alpha",
+                    "lora_unet_layers_{block}_self_attention_to_k.alpha",
                 ],
             ),
-            # self_attention.to_v
             LoRATarget(
                 model_path="layers.{block}.self_attention.to_v",
                 possible_up_patterns=[
                     "diffusion_model.layers.{block}.self_attention.to_v.lora_B.weight",
                     "layers.{block}.self_attention.to_v.lora_B.weight",
+                    "lora_unet_layers_{block}_self_attention_to_v.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     "diffusion_model.layers.{block}.self_attention.to_v.lora_A.weight",
                     "layers.{block}.self_attention.to_v.lora_A.weight",
+                    "lora_unet_layers_{block}_self_attention_to_v.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     "diffusion_model.layers.{block}.self_attention.to_v.alpha",
                     "layers.{block}.self_attention.to_v.alpha",
+                    "lora_unet_layers_{block}_self_attention_to_v.alpha",
                 ],
             ),
-            # self_attention.to_out.0
             LoRATarget(
                 model_path="layers.{block}.self_attention.to_out.0",
                 possible_up_patterns=[
                     "diffusion_model.layers.{block}.self_attention.to_out.0.lora_B.weight",
                     "layers.{block}.self_attention.to_out.0.lora_B.weight",
+                    "lora_unet_layers_{block}_self_attention_to_out_0.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     "diffusion_model.layers.{block}.self_attention.to_out.0.lora_A.weight",
                     "layers.{block}.self_attention.to_out.0.lora_A.weight",
+                    "lora_unet_layers_{block}_self_attention_to_out_0.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     "diffusion_model.layers.{block}.self_attention.to_out.0.alpha",
                     "layers.{block}.self_attention.to_out.0.alpha",
+                    "lora_unet_layers_{block}_self_attention_to_out_0.alpha",
                 ],
             ),
-            # mlp.gate_proj
             LoRATarget(
                 model_path="layers.{block}.mlp.gate_proj",
                 possible_up_patterns=[
                     "diffusion_model.layers.{block}.mlp.gate_proj.lora_B.weight",
                     "layers.{block}.mlp.gate_proj.lora_B.weight",
+                    "lora_unet_layers_{block}_mlp_gate_proj.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     "diffusion_model.layers.{block}.mlp.gate_proj.lora_A.weight",
                     "layers.{block}.mlp.gate_proj.lora_A.weight",
+                    "lora_unet_layers_{block}_mlp_gate_proj.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     "diffusion_model.layers.{block}.mlp.gate_proj.alpha",
                     "layers.{block}.mlp.gate_proj.alpha",
+                    "lora_unet_layers_{block}_mlp_gate_proj.alpha",
                 ],
             ),
-            # mlp.up_proj
             LoRATarget(
                 model_path="layers.{block}.mlp.up_proj",
                 possible_up_patterns=[
                     "diffusion_model.layers.{block}.mlp.up_proj.lora_B.weight",
                     "layers.{block}.mlp.up_proj.lora_B.weight",
+                    "lora_unet_layers_{block}_mlp_up_proj.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     "diffusion_model.layers.{block}.mlp.up_proj.lora_A.weight",
                     "layers.{block}.mlp.up_proj.lora_A.weight",
+                    "lora_unet_layers_{block}_mlp_up_proj.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     "diffusion_model.layers.{block}.mlp.up_proj.alpha",
                     "layers.{block}.mlp.up_proj.alpha",
+                    "lora_unet_layers_{block}_mlp_up_proj.alpha",
                 ],
             ),
-            # mlp.linear_fc2
             LoRATarget(
                 model_path="layers.{block}.mlp.linear_fc2",
                 possible_up_patterns=[
                     "diffusion_model.layers.{block}.mlp.linear_fc2.lora_B.weight",
                     "layers.{block}.mlp.linear_fc2.lora_B.weight",
+                    "lora_unet_layers_{block}_mlp_linear_fc2.lora_up.weight",
                 ],
                 possible_down_patterns=[
                     "diffusion_model.layers.{block}.mlp.linear_fc2.lora_A.weight",
                     "layers.{block}.mlp.linear_fc2.lora_A.weight",
+                    "lora_unet_layers_{block}_mlp_linear_fc2.lora_down.weight",
                 ],
                 possible_alpha_patterns=[
                     "diffusion_model.layers.{block}.mlp.linear_fc2.alpha",
                     "layers.{block}.mlp.linear_fc2.alpha",
+                    "lora_unet_layers_{block}_mlp_linear_fc2.alpha",
                 ],
             ),
         ]
