@@ -121,9 +121,6 @@ mflux-train --config train_ernie_image_turbo.json
 See the example config at
 `src/mflux/models/common/training/_example/train_ernie_image_turbo.json`.
 
-<details>
-<summary>Full JSON reference</summary>
-
 ```json
 {
   "model": "ernie-image-turbo",
@@ -171,7 +168,6 @@ See the example config at
   }
 }
 ```
-</details>
 
 ### Training with base ERNIE-Image
 
