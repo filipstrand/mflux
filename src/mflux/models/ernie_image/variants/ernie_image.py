@@ -33,6 +33,7 @@ class ErnieImage(nn.Module):
         model_config: ModelConfig = ModelConfig.ernie_image_turbo(),
     ):
         super().__init__()
+        self._text_cache = None
         ErnieImageInitializer.init(
             model=self,
             model_config=model_config,
@@ -85,7 +86,7 @@ class ErnieImage(nn.Module):
 
         # Encode text — cache on (prompt, negative_prompt, guidance)
         cache_key = (prompt, negative_prompt, config.guidance)
-        if not hasattr(self, "_text_cache") or self._text_cache[0] != cache_key:
+        if self._text_cache is None or self._text_cache[0] != cache_key:
             text_bth, text_lens = self._encode_prompts(
                 prompt=prompt,
                 negative_prompt=negative_prompt,

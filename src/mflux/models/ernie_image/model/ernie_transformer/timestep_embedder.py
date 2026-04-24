@@ -5,10 +5,10 @@ from mlx import nn
 
 
 def get_timestep_embedding(timesteps: mx.array, dim: int) -> mx.array:
-    # timesteps: [B] float – raw sigma values in [0, 1]
-    # Returns sinusoidal embedding [B, dim] matching diffusers Timesteps(flip_sin_to_cos=False)
+    # Matches diffusers Timesteps(flip_sin_to_cos=False, downscale_freq_shift=0):
+    # exponent = -log(10000) * arange(half_dim) / half_dim  →  [sin, cos]
     half_dim = dim // 2
-    freq = math.log(10000) / (half_dim - 1)
+    freq = math.log(10000) / half_dim
     freqs = mx.exp(-freq * mx.arange(half_dim, dtype=mx.float32))  # [half_dim]
     args = timesteps[:, None].astype(mx.float32) * freqs[None, :]  # [B, half_dim]
     return mx.concatenate([mx.sin(args), mx.cos(args)], axis=-1)  # [B, dim]
