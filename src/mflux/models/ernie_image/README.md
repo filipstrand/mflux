@@ -175,18 +175,50 @@ See the example config at
 
 ### Training with base ERNIE-Image
 
-Use `"model": "ernie-image"` with more steps and guidance:
+Use `"model": "ernie-image"` with more steps and guidance. See the example config at
+`src/mflux/models/common/training/_example/train_ernie_image.json`.
 
 ```json
 {
   "model": "ernie-image",
+  "data": "/path/to/your/dataset",
+  "seed": 42,
   "steps": 50,
   "guidance": 4.0,
+  "quantize": 8,
+  "low_ram": false,
+  "max_resolution": 1024,
   "training_loop": {
     "num_epochs": 200,
     "batch_size": 1,
+    "gradient_accumulation_steps": 4,
     "timestep_low": 5,
     "timestep_high": 45
+  },
+  "optimizer": {
+    "name": "AdamW",
+    "learning_rate": 1e-4
+  },
+  "checkpoint": {
+    "output_path": "train_ernie_base",
+    "save_frequency": 50
+  },
+  "monitoring": {
+    "preview_width": 640,
+    "preview_height": 368,
+    "plot_frequency": 20,
+    "generate_image_frequency": 50,
+    "preview_prompts": [
+      "a photo of sks person smiling, natural light, photorealistic"
+    ]
+  },
+  "lora_layers": {
+    "targets": [
+      { "module_path": "layers.{block}.self_attention.to_q",     "blocks": { "start": 0, "end": 35 }, "rank": 16 },
+      { "module_path": "layers.{block}.self_attention.to_k",     "blocks": { "start": 0, "end": 35 }, "rank": 16 },
+      { "module_path": "layers.{block}.self_attention.to_v",     "blocks": { "start": 0, "end": 35 }, "rank": 16 },
+      { "module_path": "layers.{block}.self_attention.to_out.0", "blocks": { "start": 0, "end": 35 }, "rank": 16 }
+    ]
   }
 }
 ```
