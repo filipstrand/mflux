@@ -29,6 +29,7 @@ MODEL_CHOICES = [
     "flux2-klein-base-4b",
     "flux2-klein-base-9b",
     "ernie-image-turbo",
+    "ernie-image",
 ]
 MODEL_INFERENCE_STEPS = {
     "dev": 25,
@@ -44,6 +45,7 @@ MODEL_INFERENCE_STEPS = {
     "z-image": 50,
     "z-image-turbo": 9,
     "ernie-image-turbo": 8,
+    "ernie-image": 50,
     "flux2-klein-4b": 4,
     "flux2-klein-9b": 4,
     "flux2-klein-base-4b": 50,

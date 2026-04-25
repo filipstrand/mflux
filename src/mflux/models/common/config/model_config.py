@@ -159,6 +159,11 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
+    def ernie_image() -> "ModelConfig":
+        return AVAILABLE_MODELS["ernie-image"]
+
+    @staticmethod
+    @lru_cache
     def z_image_turbo() -> "ModelConfig":
         return AVAILABLE_MODELS["z-image-turbo"]
 
@@ -545,9 +550,21 @@ AVAILABLE_MODELS = {
         supports_guidance=True,
         requires_sigma_shift=None,
     ),
+    "ernie-image": ModelConfig(
+        priority=27,
+        aliases=["ernie-image"],
+        model_name="baidu/ERNIE-Image",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=256,
+        supports_guidance=True,
+        requires_sigma_shift=False,
+    ),
     "ernie-image-turbo": ModelConfig(
         priority=26,
-        aliases=["ernie-image-turbo", "ernie-image"],
+        aliases=["ernie-image-turbo"],
         model_name="baidu/ERNIE-Image-Turbo",
         base_model=None,
         controlnet_model=None,
