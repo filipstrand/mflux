@@ -129,7 +129,7 @@ class ErnieImage(nn.Module):
 
         ctx.after_loop(latents)
 
-        decoded = self.vae.decode_packed_latents(latents)
+        decoded = self.vae.decode_packed_latents(latents, tiling_config=self.tiling_config)
         return ImageUtil.to_image(
             decoded_latents=decoded,
             config=config,
