@@ -70,8 +70,12 @@ class ErnieTrainingAdapter(TrainingAdapter):
                       cond: Any, config: Config) -> mx.array:
         text_bth, text_lens = cond["text_bth"], cond["text_lens"]
         timestep = sigmas[t].reshape((1,)) * 1000
-        predict = ErnieImage._predict(self._ernie.transformer)
-        return predict(latents_t, mx.broadcast_to(timestep, (1,)), text_bth, text_lens)
+        return self._ernie.transformer(
+            hidden_states=latents_t,
+            timestep=mx.broadcast_to(timestep, (1,)),
+            text_bth=text_bth,
+            text_lens=text_lens,
+        )
 
     def generate_preview_image(self, *, seed: int, prompt: str, width: int,
                                 height: int, steps: int,
