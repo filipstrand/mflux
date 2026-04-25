@@ -159,7 +159,8 @@ See the example config at
       { "module_path": "layers.{block}.self_attention.to_out.0", "blocks": { "start": 0, "end": 36 }, "rank": 16 },
       { "module_path": "layers.{block}.mlp.gate_proj",           "blocks": { "start": 0, "end": 36 }, "rank": 16 },
       { "module_path": "layers.{block}.mlp.up_proj",             "blocks": { "start": 0, "end": 36 }, "rank": 16 },
-      { "module_path": "layers.{block}.mlp.linear_fc2",          "blocks": { "start": 0, "end": 36 }, "rank": 16 }
+      { "module_path": "layers.{block}.mlp.linear_fc2",          "blocks": { "start": 0, "end": 36 }, "rank": 16 },
+      { "module_path": "text_proj",                                                                     "rank": 16 }
     ]
   }
 }
@@ -208,7 +209,8 @@ Use `"model": "ernie-image"` with more steps and guidance. See the example confi
       { "module_path": "layers.{block}.self_attention.to_out.0", "blocks": { "start": 0, "end": 36 }, "rank": 16 },
       { "module_path": "layers.{block}.mlp.gate_proj",           "blocks": { "start": 0, "end": 36 }, "rank": 16 },
       { "module_path": "layers.{block}.mlp.up_proj",             "blocks": { "start": 0, "end": 36 }, "rank": 16 },
-      { "module_path": "layers.{block}.mlp.linear_fc2",          "blocks": { "start": 0, "end": 36 }, "rank": 16 }
+      { "module_path": "layers.{block}.mlp.linear_fc2",          "blocks": { "start": 0, "end": 36 }, "rank": 16 },
+      { "module_path": "text_proj",                                                                     "rank": 16 }
     ]
   }
 }
@@ -237,5 +239,6 @@ mflux-save --model ernie-image-turbo --quantize 8 --path /path/to/save
 | `layers.{block}.mlp.gate_proj` | FFN gate |
 | `layers.{block}.mlp.up_proj` | FFN up |
 | `layers.{block}.mlp.linear_fc2` | FFN down |
+| `text_proj` | Text→image projection (global, no `blocks`) |
 
-Blocks run from `0` to `35` (36 total). A lighter config targeting only attention (`to_q/k/v/out`) on all 36 layers is a good starting point; add MLP layers if the concept requires broader stylistic changes.
+Blocks run from `0` to `35` (36 total). A lighter config targeting only attention (`to_q/k/v/out`) on all 36 layers is a good starting point; add MLP layers if the concept requires broader stylistic changes. `text_proj` helps anchor the trigger word.

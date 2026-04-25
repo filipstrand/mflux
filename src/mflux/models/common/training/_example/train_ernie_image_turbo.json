@@ -35,7 +35,8 @@
       { "module_path": "layers.{block}.self_attention.to_out.0", "blocks": { "start": 0, "end": 36 }, "rank": 16 },
       { "module_path": "layers.{block}.mlp.gate_proj",           "blocks": { "start": 0, "end": 36 }, "rank": 16 },
       { "module_path": "layers.{block}.mlp.up_proj",             "blocks": { "start": 0, "end": 36 }, "rank": 16 },
-      { "module_path": "layers.{block}.mlp.linear_fc2",          "blocks": { "start": 0, "end": 36 }, "rank": 16 }
+      { "module_path": "layers.{block}.mlp.linear_fc2",          "blocks": { "start": 0, "end": 36 }, "rank": 16 },
+      { "module_path": "text_proj",                                                                     "rank": 16 }
     ]
   }
 }
