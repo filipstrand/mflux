@@ -91,9 +91,11 @@ class TrainingRunner:
             raise ValueError("Flux1 training is no longer supported.")
 
         # Enable VAE tiling when low_ram is active, matching inference --low-ram behaviour.
+        # Only set tiling if the model hasn't already configured it (e.g. ERNIE disables tiling
+        # by setting vae_decode_tiles_per_dim=None; overwriting would cause red-channel banding).
         if training_spec.low_ram:
             model = adapter.model()
-            if hasattr(model, "tiling_config"):
+            if hasattr(model, "tiling_config") and model.tiling_config is None:
                 model.tiling_config = TilingConfig()
 
         # For Z-Image-Turbo we always apply the assistant training adapter (automatic, no config needed).
