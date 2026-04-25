@@ -84,7 +84,6 @@ class TrainingLoopSpec:
 class OptimizerSpec:
     name: str
     learning_rate: float
-    weight_decay: float = 0.01
     state_path: str | None = None
 
 

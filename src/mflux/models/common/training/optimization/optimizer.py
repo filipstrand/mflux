@@ -40,7 +40,7 @@ class Optimizer:
     def from_spec(training_spec: TrainingSpec) -> "Optimizer":
         opt_cls = Optimizers.from_alias(training_spec.optimizer.name)
         # noinspection PyCallingNonCallable
-        opt = opt_cls(learning_rate=training_spec.optimizer.learning_rate, weight_decay=training_spec.optimizer.weight_decay)
+        opt = opt_cls(learning_rate=training_spec.optimizer.learning_rate)
 
         if training_spec.optimizer.state_path is not None:
             state = ZipUtil.unzip(
