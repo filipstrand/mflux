@@ -134,7 +134,6 @@ See the example config at
   "training_loop": {
     "num_epochs": 200,
     "batch_size": 1,
-    "gradient_accumulation_steps": 4,
     "timestep_low": 1,
     "timestep_high": 8
   },
@@ -150,10 +149,7 @@ See the example config at
     "preview_width": 640,
     "preview_height": 368,
     "plot_frequency": 20,
-    "generate_image_frequency": 50,
-    "preview_prompts": [
-      "a photo of sks person smiling, natural light, photorealistic"
-    ]
+    "generate_image_frequency": 50
   },
   "lora_layers": {
     "targets": [
@@ -187,7 +183,6 @@ Use `"model": "ernie-image"` with more steps and guidance. See the example confi
   "training_loop": {
     "num_epochs": 200,
     "batch_size": 1,
-    "gradient_accumulation_steps": 4,
     "timestep_low": 5,
     "timestep_high": 45
   },
@@ -203,10 +198,7 @@ Use `"model": "ernie-image"` with more steps and guidance. See the example confi
     "preview_width": 640,
     "preview_height": 368,
     "plot_frequency": 20,
-    "generate_image_frequency": 50,
-    "preview_prompts": [
-      "a photo of sks person smiling, natural light, photorealistic"
-    ]
+    "generate_image_frequency": 50
   },
   "lora_layers": {
     "targets": [
