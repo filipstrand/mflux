@@ -156,7 +156,10 @@ See the example config at
       { "module_path": "layers.{block}.self_attention.to_q",     "blocks": { "start": 0, "end": 35 }, "rank": 16 },
       { "module_path": "layers.{block}.self_attention.to_k",     "blocks": { "start": 0, "end": 35 }, "rank": 16 },
       { "module_path": "layers.{block}.self_attention.to_v",     "blocks": { "start": 0, "end": 35 }, "rank": 16 },
-      { "module_path": "layers.{block}.self_attention.to_out.0", "blocks": { "start": 0, "end": 35 }, "rank": 16 }
+      { "module_path": "layers.{block}.self_attention.to_out.0", "blocks": { "start": 0, "end": 35 }, "rank": 16 },
+      { "module_path": "layers.{block}.mlp.gate_proj",           "blocks": { "start": 0, "end": 35 }, "rank": 16 },
+      { "module_path": "layers.{block}.mlp.up_proj",             "blocks": { "start": 0, "end": 35 }, "rank": 16 },
+      { "module_path": "layers.{block}.mlp.linear_fc2",          "blocks": { "start": 0, "end": 35 }, "rank": 16 }
     ]
   }
 }
@@ -202,7 +205,10 @@ Use `"model": "ernie-image"` with more steps and guidance. See the example confi
       { "module_path": "layers.{block}.self_attention.to_q",     "blocks": { "start": 0, "end": 35 }, "rank": 16 },
       { "module_path": "layers.{block}.self_attention.to_k",     "blocks": { "start": 0, "end": 35 }, "rank": 16 },
       { "module_path": "layers.{block}.self_attention.to_v",     "blocks": { "start": 0, "end": 35 }, "rank": 16 },
-      { "module_path": "layers.{block}.self_attention.to_out.0", "blocks": { "start": 0, "end": 35 }, "rank": 16 }
+      { "module_path": "layers.{block}.self_attention.to_out.0", "blocks": { "start": 0, "end": 35 }, "rank": 16 },
+      { "module_path": "layers.{block}.mlp.gate_proj",           "blocks": { "start": 0, "end": 35 }, "rank": 16 },
+      { "module_path": "layers.{block}.mlp.up_proj",             "blocks": { "start": 0, "end": 35 }, "rank": 16 },
+      { "module_path": "layers.{block}.mlp.linear_fc2",          "blocks": { "start": 0, "end": 35 }, "rank": 16 }
     ]
   }
 }
