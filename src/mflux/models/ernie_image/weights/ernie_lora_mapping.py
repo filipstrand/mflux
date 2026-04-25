@@ -30,6 +30,21 @@ class ErnieLoRAMapping(LoRAMapping):
                     "lora_unet_final_norm_linear.alpha",
                 ],
             ),
+            LoRATarget(
+                model_path="text_proj",
+                possible_up_patterns=[
+                    "diffusion_model.text_proj.lora_B.weight",
+                    "lora_unet_text_proj.lora_up.weight",
+                ],
+                possible_down_patterns=[
+                    "diffusion_model.text_proj.lora_A.weight",
+                    "lora_unet_text_proj.lora_down.weight",
+                ],
+                possible_alpha_patterns=[
+                    "diffusion_model.text_proj.alpha",
+                    "lora_unet_text_proj.alpha",
+                ],
+            ),
             # ── Per-layer targets ─────────────────────────────────────────────
             LoRATarget(
                 model_path="layers.{block}.self_attention.to_q",
