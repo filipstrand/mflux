@@ -9,6 +9,7 @@ from mflux.models.ernie_image.model.ernie_text_encoder.text_encoder import Ernie
 from mflux.models.ernie_image.model.ernie_transformer.transformer import ErnieTransformer
 from mflux.models.ernie_image.weights.ernie_lora_mapping import ErnieLoRAMapping
 from mflux.models.ernie_image.weights.ernie_weight_definition import ErnieWeightDefinition
+from mflux.models.common.vae.tiling_config import TilingConfig
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 
 
@@ -35,7 +36,7 @@ class ErnieImageInitializer:
         model.model_config = model_config
         model.model_path = model_path
         model.callbacks = CallbackRegistry()
-        model.tiling_config = None
+        model.tiling_config = TilingConfig(vae_decode_tiles_per_dim=None)
 
     @staticmethod
     def _load_weights(model_path: str) -> LoadedWeights:

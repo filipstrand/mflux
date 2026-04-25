@@ -14,7 +14,8 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
         self.model = model
         self.keep_transformer = keep_transformer
         self.peak_memory: int = 0
-        self.model.tiling_config = TilingConfig()
+        if model.tiling_config is None:
+            self.model.tiling_config = TilingConfig()
         mx.set_cache_limit(cache_limit_bytes)
         mx.clear_cache()
         mx.reset_peak_memory()
