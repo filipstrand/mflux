@@ -15,6 +15,7 @@ from mflux.models.ernie_image.model.ernie_text_encoder.text_encoder import Ernie
 from mflux.models.ernie_image.model.ernie_transformer.transformer import ErnieTransformer
 from mflux.models.ernie_image.weights.ernie_weight_definition import ErnieWeightDefinition
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
+from mflux.utils.apple_silicon import AppleSiliconUtil
 from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.image_util import ImageUtil
 
@@ -100,6 +101,7 @@ class ErnieImage(nn.Module):
         mx.eval(latents)
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
+        predict = self._predict(self.transformer)
 
         for t in config.time_steps:
             try:
@@ -107,6 +109,7 @@ class ErnieImage(nn.Module):
 
                 # Predict velocity (with CFG if guidance > 1)
                 noise = self._predict_noise(
+                    predict=predict,
                     latents=latents,
                     sigma=sigma_t,
                     text_bth=text_bth,
@@ -163,34 +166,40 @@ class ErnieImage(nn.Module):
             text_encoder=self.text_encoder,
         )
 
+    @staticmethod
+    def _predict(transformer: ErnieTransformer):
+        cached = getattr(transformer, "_compiled_predict", None)
+        if cached is not None:
+            return cached
+
+        def predict(latents: mx.array, timestep: mx.array, text_bth: mx.array, text_lens: mx.array) -> mx.array:
+            return transformer(
+                hidden_states=latents,
+                timestep=timestep,
+                text_bth=text_bth,
+                text_lens=text_lens,
+            )
+
+        fn = mx.compile(predict) if AppleSiliconUtil.should_use_compile() else predict
+        transformer._compiled_predict = fn
+        return fn
+
+    @staticmethod
     def _predict_noise(
-        self,
+        predict,
         latents: mx.array,
         sigma: mx.array,
         text_bth: mx.array,
         text_lens: mx.array,
         guidance: float,
     ) -> mx.array:
-        # Transformer expects timestep in [0, 1000], not sigma in [0, 1]
         timestep = sigma * 1000
         B = text_bth.shape[0]
         if B == 1:
-            # No CFG
-            return self.transformer(
-                hidden_states=latents,
-                timestep=mx.broadcast_to(timestep, (1,)),
-                text_bth=text_bth,
-                text_lens=text_lens,
-            )
+            return predict(latents, mx.broadcast_to(timestep, (1,)), text_bth, text_lens)
         # CFG: text_bth is [2, T, H] with uncond first, cond second
-        latent_input = mx.concatenate([latents, latents], axis=0)  # [2, C, H, W]
-        t_batch = mx.broadcast_to(timestep, (2,))
-        pred = self.transformer(
-            hidden_states=latent_input,
-            timestep=t_batch,
-            text_bth=text_bth,
-            text_lens=text_lens,
-        )
+        latent_input = mx.concatenate([latents, latents], axis=0)
+        pred = predict(latent_input, mx.broadcast_to(timestep, (2,)), text_bth, text_lens)
         pred_uncond, pred_cond = pred[:1], pred[1:]
         return pred_uncond + guidance * (pred_cond - pred_uncond)
 
