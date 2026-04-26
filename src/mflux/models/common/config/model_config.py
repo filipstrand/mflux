@@ -28,6 +28,7 @@ class ModelConfig:
         sigma_base_seq_len: int = 256,
         sigma_max_seq_len: int = 4096,
         sigma_shift_terminal: float | None = None,
+        sigma_fixed_shift: float | None = None,
     ):
         self.aliases = aliases
         self.model_name = model_name
@@ -46,6 +47,7 @@ class ModelConfig:
         self.sigma_base_seq_len = sigma_base_seq_len
         self.sigma_max_seq_len = sigma_max_seq_len
         self.sigma_shift_terminal = sigma_shift_terminal
+        self.sigma_fixed_shift = sigma_fixed_shift
 
     @staticmethod
     @lru_cache
@@ -561,6 +563,7 @@ AVAILABLE_MODELS = {
         max_sequence_length=256,
         supports_guidance=True,
         requires_sigma_shift=False,
+        sigma_fixed_shift=4.0,
     ),
     "ernie-image-turbo": ModelConfig(
         priority=26,
@@ -573,6 +576,7 @@ AVAILABLE_MODELS = {
         max_sequence_length=256,
         supports_guidance=True,
         requires_sigma_shift=False,
+        sigma_fixed_shift=4.0,
     ),
     "seedvr2-7b": ModelConfig(
         priority=23,
