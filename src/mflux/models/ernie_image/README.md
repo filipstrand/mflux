@@ -6,6 +6,9 @@ MFLUX supports [ERNIE-Image](https://huggingface.co/baidu/ERNIE-Image) and [ERNI
 > [!NOTE]
 > ERNIE-Image tends toward vivid, high-contrast output — a characteristic of Baidu's training data, not a bug in the port. Prompts like "35mm film grain", "analog", or "soft lighting" can soften the look.
 
+> [!NOTE]
+> The official ERNIE-Image pipeline includes a **Prompt Enhancer (PE)** — a separate LLM that rewrites short prompts into longer, detailed descriptions before encoding. The model was trained predominantly on PE-expanded prompts, so very short prompts (e.g. "a cat") tend to produce incoherent results. This port does not include the PE. **Use detailed, descriptive prompts for best results.**
+
 ## ERNIE-Image-Turbo Example
 ERNIE-Image-Turbo is the recommended starting point. It runs in 8 steps with no classifier-free guidance:
 
