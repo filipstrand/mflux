@@ -40,7 +40,7 @@ class ErnieWeightDefinition:
                 hf_subdir="tokenizer",
                 tokenizer_class="AutoTokenizer",
                 encoder_class=LanguageTokenizer,
-                max_length=256,
+                max_length=2048,
                 padding="longest",
                 add_special_tokens=True,
             ),
