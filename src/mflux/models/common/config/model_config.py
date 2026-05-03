@@ -29,6 +29,8 @@ class ModelConfig:
         sigma_max_seq_len: int = 4096,
         sigma_shift_terminal: float | None = None,
         sigma_fixed_shift: float | None = None,
+        lora_training_steps: int | None = None,
+        lora_training_guidance: float | None = None,
     ):
         self.aliases = aliases
         self.model_name = model_name
@@ -48,6 +50,8 @@ class ModelConfig:
         self.sigma_max_seq_len = sigma_max_seq_len
         self.sigma_shift_terminal = sigma_shift_terminal
         self.sigma_fixed_shift = sigma_fixed_shift
+        self.lora_training_steps = lora_training_steps
+        self.lora_training_guidance = lora_training_guidance
 
     @staticmethod
     @lru_cache
@@ -560,10 +564,11 @@ AVAILABLE_MODELS = {
         controlnet_model=None,
         custom_transformer_model=None,
         num_train_steps=1000,
-        max_sequence_length=256,
+        max_sequence_length=2048,
         supports_guidance=True,
-        requires_sigma_shift=False,
-        sigma_fixed_shift=4.0,
+        requires_sigma_shift=True,
+        lora_training_steps=50,
+        lora_training_guidance=4.0,
     ),
     "ernie-image-turbo": ModelConfig(
         priority=26,
@@ -573,10 +578,11 @@ AVAILABLE_MODELS = {
         controlnet_model=None,
         custom_transformer_model=None,
         num_train_steps=1000,
-        max_sequence_length=256,
+        max_sequence_length=2048,
         supports_guidance=True,
-        requires_sigma_shift=False,
-        sigma_fixed_shift=4.0,
+        requires_sigma_shift=True,
+        lora_training_steps=8,
+        lora_training_guidance=1.0,
     ),
     "seedvr2-7b": ModelConfig(
         priority=23,

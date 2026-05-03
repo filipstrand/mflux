@@ -1,3 +1,5 @@
+import mlx.core as mx
+
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.models.common.config import ModelConfig
 from mflux.models.common.lora.mapping.lora_loader import LoRALoader
@@ -29,6 +31,9 @@ class ErnieImageInitializer:
         ErnieImageInitializer._init_tokenizers(model, path)
         ErnieImageInitializer._init_models(model)
         ErnieImageInitializer._apply_weights(model, weights, quantize)
+        del weights
+        mx.eval(model)
+        mx.clear_cache()
         ErnieImageInitializer._apply_lora(model, lora_paths, lora_scales)
 
     @staticmethod

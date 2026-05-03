@@ -79,6 +79,10 @@ class ErnieTransformer(nn.Module):
             for _ in range(num_layers)
         ]
 
+        self._gradient_checkpointing = False
+        self._gradient_checkpointing_every_n = 1
+        self._pos_cache: dict = {}  # (H, W, T, text_lens_tuple) -> (freqs_cis, attn_mask)
+
         # Final AdaLN norm + linear projection
         self.final_norm = ErnieAdaLNContinuous(hidden_size, eps)
         self.final_linear = nn.Linear(hidden_size, patch_size * patch_size * out_channels)
@@ -104,34 +108,47 @@ class ErnieTransformer(nn.Module):
         x = mx.concatenate([img_emb, text_emb], axis=1)  # [B, N_img+T, hidden_size]
         S = N_img + T
 
-        # 4. Compute 3D RoPE positions
-        # Image positions: [t_offset=text_lens, y, x] per sample
-        # text_lens may vary per sample; broadcast-safe via meshgrid per-sample
-        grid_y, grid_x = mx.meshgrid(
-            mx.arange(H, dtype=mx.float32),
-            mx.arange(W, dtype=mx.float32),
-            indexing="ij",
-        )
-        grid_yx = mx.stack([grid_y.reshape(-1), grid_x.reshape(-1)], axis=-1)  # [N_img, 2]
+        # 4. Compute 3D RoPE positions (cached by (H,W,T,text_lens): pure function of
+        #    geometry and prompt lengths, constant across denoising steps at fixed resolution.
+        #    Cache is Python-level only — no mx.eval, so tensors stay in the lazy graph
+        #    and fuse correctly with the downstream attention ops under mx.compile.)
+        cache_key = (H, W, T, tuple(text_lens.tolist()))
+        if cache_key not in self._pos_cache:
+            grid_y, grid_x = mx.meshgrid(
+                mx.arange(H, dtype=mx.float32),
+                mx.arange(W, dtype=mx.float32),
+                indexing="ij",
+            )
+            grid_yx = mx.stack([grid_y.reshape(-1), grid_x.reshape(-1)], axis=-1)  # [N_img, 2]
 
-        # image_ids: [B, N_img, 3] – t-coord = text_lens per sample
-        t_coord = text_lens.astype(mx.float32)[:, None, None]  # [B, 1, 1]
-        image_ids = mx.concatenate(
-            [mx.broadcast_to(t_coord, (B, N_img, 1)),
-             mx.broadcast_to(grid_yx[None, :, :], (B, N_img, 2))],
-            axis=-1,
-        )  # [B, N_img, 3]
+            t_coord = text_lens.astype(mx.float32)[:, None, None]  # [B, 1, 1]
+            image_ids = mx.concatenate(
+                [mx.broadcast_to(t_coord, (B, N_img, 1)),
+                 mx.broadcast_to(grid_yx[None, :, :], (B, N_img, 2))],
+                axis=-1,
+            )  # [B, N_img, 3]
 
-        # text_ids: [B, T, 3] – positions 0..T-1 on t-axis, y=z=0
-        text_pos = mx.arange(T, dtype=mx.float32)[None, :, None]  # [1, T, 1]
-        text_ids = mx.concatenate(
-            [mx.broadcast_to(text_pos, (B, T, 1)),
-             mx.zeros((B, T, 2), dtype=mx.float32)],
-            axis=-1,
-        )  # [B, T, 3]
+            text_pos = mx.arange(T, dtype=mx.float32)[None, :, None]  # [1, T, 1]
+            text_ids = mx.concatenate(
+                [mx.broadcast_to(text_pos, (B, T, 1)),
+                 mx.zeros((B, T, 2), dtype=mx.float32)],
+                axis=-1,
+            )  # [B, T, 3]
 
-        all_ids = mx.concatenate([image_ids, text_ids], axis=1)  # [B, S, 3]
-        freqs_cis = self.pos_embed(all_ids)  # [B, S, 1, head_dim]
+            all_ids = mx.concatenate([image_ids, text_ids], axis=1)  # [B, S, 3]
+            freqs_cis = self.pos_embed(all_ids)  # [B, S, 1, head_dim]
+
+            valid_text = mx.arange(T)[None, :] < text_lens[:, None]  # [B, T]
+            img_mask = mx.ones((B, N_img), dtype=mx.bool_)
+            bool_mask = mx.concatenate([img_mask, valid_text], axis=1)  # [B, S]
+            float_mask = mx.where(bool_mask, 0.0, -float("inf")).astype(mx.bfloat16)
+            attn_mask = float_mask[:, None, None, :]  # [B, 1, 1, S]
+
+            if len(self._pos_cache) >= 64:
+                self._pos_cache.pop(next(iter(self._pos_cache)))
+            self._pos_cache[cache_key] = (freqs_cis, attn_mask)
+
+        freqs_cis, attn_mask = self._pos_cache[cache_key]
 
         # 5. Compute timestep conditioning
         t_emb = get_timestep_embedding(timestep.astype(mx.float32), self.hidden_size)  # [B, hidden_size]
@@ -143,17 +160,12 @@ class ErnieTransformer(nn.Module):
         ]
         temb = (shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp)
 
-        # 6. Build attention mask: True=attend (image tokens always valid, text only valid positions)
-        valid_text = mx.arange(T)[None, :] < text_lens[:, None]  # [B, T]
-        img_mask = mx.ones((B, N_img), dtype=mx.bool_)
-        bool_mask = mx.concatenate([img_mask, valid_text], axis=1)  # [B, S]
-        # Convert to additive float mask [B, 1, 1, S] for sdpa
-        float_mask = mx.where(bool_mask, 0.0, -float("inf")).astype(mx.bfloat16)
-        attn_mask = float_mask[:, None, None, :]  # [B, 1, 1, S]
-
         # 7. Transformer blocks
-        for layer in self.layers:
-            x = layer(x, freqs_cis, temb, attn_mask)
+        for i, layer in enumerate(self.layers):
+            if self._gradient_checkpointing and i % self._gradient_checkpointing_every_n == 0:
+                x = mx.checkpoint(layer)(x, freqs_cis, temb, attn_mask)
+            else:
+                x = layer(x, freqs_cis, temb, attn_mask)
 
         # 8. Final norm on image tokens only, then project
         img_tokens = x[:, :N_img, :]  # [B, N_img, hidden_size]

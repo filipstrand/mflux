@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gc
+import logging
 from pathlib import Path
 
 import mlx.core as mx
@@ -74,6 +75,20 @@ class TrainingRunner:
         if is_ernie:
             adapter = ErnieTrainingAdapter(model_config=model_config, quantize=training_spec.quantize,
                                            model_path=training_spec.model_path)
+            canonical_steps = model_config.lora_training_steps
+            canonical_guidance = model_config.lora_training_guidance
+            if canonical_steps is not None and training_spec.steps != canonical_steps:
+                logging.warning(
+                    f"[ERNIE training] config 'steps={training_spec.steps}' ignored — "
+                    f"{model_config.model_name} requires steps={canonical_steps}. "
+                    f"Using {canonical_steps}."
+                )
+            if canonical_guidance is not None and training_spec.guidance != canonical_guidance:
+                logging.warning(
+                    f"[ERNIE training] config 'guidance={training_spec.guidance}' ignored — "
+                    f"{model_config.model_name} requires guidance={canonical_guidance}. "
+                    f"Using {canonical_guidance}."
+                )
         elif is_zimage:
             adapter = ZImageTrainingAdapter(model_config=model_config, quantize=training_spec.quantize,
                                             model_path=training_spec.model_path)
@@ -94,6 +109,15 @@ class TrainingRunner:
             if hasattr(model, "tiling_config") and model.tiling_config is None:
                 model.tiling_config = TilingConfig()
 
+        # Cap the MLX free-buffer pool before training starts.
+        # Without a limit the pool grows unboundedly; on large no-quantize models
+        # (~28-30GB) macOS starts compressing inactive pool pages around step 6,
+        # causing a one-time 20-30GB swap spike that drags it/s for the rest of training.
+        # Setting a limit keeps the pool bounded so freed buffers are returned to the OS
+        # rather than held, preventing the compression event entirely.
+        if training_spec.cache_limit_gb is not None:
+            mx.set_cache_limit(int(training_spec.cache_limit_gb * 1000**3))
+            mx.clear_cache()
 
         # For Z-Image-Turbo we always apply the assistant training adapter (automatic, no config needed).
         if is_zimage_turbo:

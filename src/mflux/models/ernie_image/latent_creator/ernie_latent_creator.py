@@ -19,7 +19,7 @@ class ErnieLatentCreator:
         ).astype(ModelConfig.precision)
 
     @staticmethod
-    def pack_latents(latents: mx.array, vae, height: int, width: int) -> mx.array:  # noqa: ARG004
+    def pack_latents(latents: mx.array, height: int, width: int) -> mx.array:  # noqa: ARG004
         # Input: [B, 32, H//8, W//8] from VAE encode
         B, C, H, W = latents.shape
         h, w = H // 2, W // 2  # → H//16, W//16
@@ -27,9 +27,10 @@ class ErnieLatentCreator:
         # 2×2 spatial patchification (inverse of Flux2VAE._unpatchify_latents)
         latents = latents.reshape(B, C, h, 2, w, 2)   # [B, 32, h, 2, w, 2]
         latents = latents.transpose(0, 1, 3, 5, 2, 4)  # [B, 32, 2, 2, h, w]
-        latents = latents.reshape(B, C * 4, h, w)       # [B, 128, H//16, W//16]
+        return latents.reshape(B, C * 4, h, w)          # [B, 128, H//16, W//16]
 
-        # BN normalize (inverse of decode_packed_latents: x*bn_std+bn_mean)
+    @staticmethod
+    def bn_normalize_latents(latents: mx.array, vae) -> mx.array:
         bn_mean = vae.bn.running_mean.reshape(1, -1, 1, 1)
         bn_std = mx.sqrt(vae.bn.running_var.reshape(1, -1, 1, 1) + vae.bn.eps)
         return (latents - bn_mean) / bn_std

@@ -101,6 +101,7 @@ class ErnieImage(nn.Module):
         mx.eval(latents)
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
+
         predict = self._predict(self.transformer)
 
         for t in config.time_steps:
@@ -172,7 +173,12 @@ class ErnieImage(nn.Module):
         if cached is not None:
             return cached
 
-        def predict(latents: mx.array, timestep: mx.array, text_bth: mx.array, text_lens: mx.array) -> mx.array:
+        def predict(
+            latents: mx.array,
+            timestep: mx.array,
+            text_bth: mx.array,
+            text_lens: mx.array,
+        ) -> mx.array:
             return transformer(
                 hidden_states=latents,
                 timestep=timestep,
