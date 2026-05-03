@@ -10,7 +10,7 @@ class ErniePromptEncoder:
         prompt: str,
         tokenizer: Tokenizer,
         text_encoder: ErnieMistralTextEncoder,
-        max_length: int = 256,
+        max_length: int | None = None,
     ) -> tuple[mx.array, int]:
         """Encode a single prompt. Returns (embeddings [T, 3072], token_count)."""
         output = tokenizer.tokenize(prompt, max_length=max_length)
@@ -23,13 +23,19 @@ class ErniePromptEncoder:
         prompts: list[str],
         tokenizer: Tokenizer,
         text_encoder: ErnieMistralTextEncoder,
-        max_length: int = 256,
+        max_length: int | None = None,
+        pad_to: int | None = None,
         hidden_size: int = 3072,
     ) -> tuple[mx.array, mx.array]:
         """Encode a list of prompts, pad to the same length.
 
+        Args:
+            pad_to: if set, always pad to this fixed length regardless of actual
+                    prompt lengths. Use during training to keep T constant across
+                    steps so MLX can reuse buffer allocations.
+
         Returns:
-            text_bth: [B, Tmax, hidden_size]
+            text_bth: [B, T, hidden_size]  where T = pad_to or max actual length
             text_lens: [B] int32
         """
         embeddings = []
@@ -39,7 +45,7 @@ class ErniePromptEncoder:
             embeddings.append(emb)
             lengths.append(length)
 
-        t_max = max(lengths)
+        t_max = pad_to if pad_to is not None else max(lengths)
         batch = []
         for emb in embeddings:
             pad_len = t_max - emb.shape[0]
@@ -48,6 +54,6 @@ class ErniePromptEncoder:
                 emb = mx.concatenate([emb, pad], axis=0)
             batch.append(emb)
 
-        text_bth = mx.stack(batch, axis=0)  # [B, Tmax, hidden_size]
+        text_bth = mx.stack(batch, axis=0)  # [B, T, hidden_size]
         text_lens = mx.array(lengths, dtype=mx.int32)
         return text_bth, text_lens

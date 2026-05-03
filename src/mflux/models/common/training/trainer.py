@@ -117,12 +117,20 @@ class TrainingTrainer:
         adapter.freeze_base()
         TrainingTrainer._unfreeze_lora_layers(adapter.transformer())
 
+        if training_spec.training_loop.gradient_checkpointing:
+            transformer = adapter.transformer()
+            if hasattr(transformer, "_gradient_checkpointing"):
+                transformer._gradient_checkpointing = True
+                transformer._gradient_checkpointing_every_n = training_spec.training_loop.gradient_checkpointing_every_n
+
         train_step_function = nn.value_and_grad(
             model=adapter.model(),
             fn=lambda b: TrainingTrainer.compute_loss(adapter, training_spec, base_config, b),
         )
 
-        if training_spec.monitoring is not None and training_state.iterator.num_iterations == 0:
+        trainable_params = TrainingTrainer._get_trainable_params(adapter)
+
+        if training_spec.monitoring is not None and training_state.iterator.num_iterations == 0 and not training_spec.monitoring.skip_initial_preview:
             TrainingTrainer._generate_previews_with_optimizer_offload(adapter, training_spec, training_state)
             validation_batch = training_state.iterator.get_validation_batch()
             validation_loss = TrainingTrainer.compute_loss(adapter, training_spec, base_config, validation_batch)
@@ -159,17 +167,14 @@ class TrainingTrainer:
             del loss
             accum_grads = grads if accum_grads is None else tree_map(mx.add, accum_grads, grads)
             del grads
-            mx.eval(accum_grads)
             micro_step += 1
 
             if micro_step == grad_acc_steps:
                 if grad_acc_steps > 1:
                     accum_grads = tree_map(lambda g: g / grad_acc_steps, accum_grads)
+                    mx.eval(accum_grads)
                 training_state.optimizer.optimizer.update(model=adapter.model(), gradients=accum_grads)
-                # Only eval the trainable LoRA params and optimizer state —
-                # evaluating all model params (including frozen base weights)
-                # is unnecessary and adds memory pressure every step.
-                mx.eval(TrainingTrainer._get_trainable_params(adapter), training_state.optimizer.optimizer.state)
+                mx.eval(trainable_params, training_state.optimizer.optimizer.state)
                 del accum_grads
                 accum_grads = None
                 micro_step = 0
@@ -192,7 +197,7 @@ class TrainingTrainer:
             if training_state.should_save(training_spec):
                 training_state.save(adapter, training_spec)
 
-            if training_spec.low_ram:
+            if training_spec.low_ram and micro_step != 0:
                 mx.clear_cache()
 
         training_state.save(adapter, training_spec)
@@ -274,6 +279,7 @@ class TrainingTrainer:
                 width=preview_width,
                 height=preview_height,
                 steps=training_spec.steps,
+                guidance=training_spec.guidance,
                 image_paths=image_paths,
             )
             preview_name = preview_names[idx] if idx < len(preview_names) else None

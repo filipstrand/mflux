@@ -1,5 +1,5 @@
-import mlx.core as mx
 from mlx import nn
+import mlx.core as mx
 
 from mflux.models.ernie_image.model.ernie_transformer.attention import ErnieAttention
 from mflux.models.ernie_image.model.ernie_transformer.feed_forward import ErnieFeedForward
@@ -25,13 +25,13 @@ class ErnieTransformerBlock(nn.Module):
         # Self-attention with AdaLN pre-norm
         residual = x
         x = self.adaLN_sa_ln(x)
-        x = (x.astype(mx.float32) * (1 + scale_msa.astype(mx.float32)) + shift_msa.astype(mx.float32)).astype(residual.dtype)
-        x = residual + (gate_msa.astype(mx.float32) * self.self_attention(x, freqs_cis, mask).astype(mx.float32)).astype(residual.dtype)
+        x = x * (1 + scale_msa) + shift_msa
+        x = residual + gate_msa * self.self_attention(x, freqs_cis, mask)
 
         # FFN with AdaLN pre-norm
         residual = x
         x = self.adaLN_mlp_ln(x)
-        x = (x.astype(mx.float32) * (1 + scale_mlp.astype(mx.float32)) + shift_mlp.astype(mx.float32)).astype(residual.dtype)
-        x = residual + (gate_mlp.astype(mx.float32) * self.mlp(x).astype(mx.float32)).astype(residual.dtype)
+        x = x * (1 + scale_mlp) + shift_mlp
+        x = residual + gate_mlp * self.mlp(x)
 
         return x

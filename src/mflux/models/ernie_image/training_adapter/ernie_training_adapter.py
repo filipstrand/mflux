@@ -34,13 +34,17 @@ class ErnieTrainingAdapter(TrainingAdapter):
         return self._ernie.transformer
 
     def create_config(self, training_spec: TrainingSpec, *, width: int, height: int) -> Config:
-        self._guidance = training_spec.guidance
+        steps = self._model_config.lora_training_steps or training_spec.steps
+        guidance = self._model_config.lora_training_guidance
+        if guidance is None:
+            guidance = training_spec.guidance
+        self._guidance = guidance
         return Config(
             model_config=self._model_config,
-            num_inference_steps=training_spec.steps,
+            num_inference_steps=steps,
             width=width,
             height=height,
-            guidance=training_spec.guidance,
+            guidance=guidance,
             scheduler="linear",
         )
 
@@ -55,9 +59,8 @@ class ErnieTrainingAdapter(TrainingAdapter):
         encoded = LatentCreator.encode_image(
             vae=self._ernie.vae, image_path=image_path, height=height, width=width
         )
-        clean_latents = ErnieLatentCreator.pack_latents(
-            encoded, vae=self._ernie.vae, height=height, width=width
-        )
+        clean_latents = ErnieLatentCreator.pack_latents(encoded, height=height, width=width)
+        clean_latents = ErnieLatentCreator.bn_normalize_latents(clean_latents, vae=self._ernie.vae)
         text_bth, text_lens = ErniePromptEncoder.build_text_batch(
             prompts=[prompt],
             tokenizer=self._ernie.tokenizers["ernie"],
@@ -79,13 +82,26 @@ class ErnieTrainingAdapter(TrainingAdapter):
 
     def generate_preview_image(self, *, seed: int, prompt: str, width: int,
                                 height: int, steps: int,
+                                guidance: float = 1.0,
                                 image_paths: list[Path | str] | None = None):
-        return self._ernie.generate_image(
-            seed=seed, prompt=prompt,
-            num_inference_steps=steps,
-            height=height, width=width,
-            guidance=self._guidance,
-        )
+        canonical_steps = self._model_config.lora_training_steps or steps
+        canonical_guidance = self._model_config.lora_training_guidance
+        if canonical_guidance is None:
+            canonical_guidance = guidance
+        transformer = self._ernie.transformer
+        compiled = getattr(transformer, "_compiled_predict", None)
+        if compiled is not None:
+            del transformer._compiled_predict
+        try:
+            return self._ernie.generate_image(
+                seed=seed, prompt=prompt,
+                num_inference_steps=canonical_steps,
+                height=height, width=width,
+                guidance=canonical_guidance,
+            )
+        finally:
+            if hasattr(transformer, "_compiled_predict"):
+                del transformer._compiled_predict
 
     def save_lora_adapter(self, *, path: Path, training_spec: TrainingSpec) -> None:
         weights: dict[str, mx.array] = {}
@@ -128,5 +144,5 @@ class ErnieTrainingAdapter(TrainingAdapter):
     @staticmethod
     def _append_lora_weights(weights: dict, transformer, module_path: str) -> None:
         lora = TrainingUtil.get_train_lora(transformer, module_path)
-        weights[f"diffusion_model.{module_path}.lora_A.weight"] = mx.transpose(lora.lora_A)
-        weights[f"diffusion_model.{module_path}.lora_B.weight"] = mx.transpose(lora.lora_B)
+        weights[f"transformer.{module_path}.lora_A.weight"] = mx.transpose(lora.lora_A)
+        weights[f"transformer.{module_path}.lora_B.weight"] = mx.transpose(lora.lora_B)
