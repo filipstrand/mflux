@@ -28,7 +28,8 @@ class ErnieAttention(nn.Module):
     def __call__(
         self,
         x: mx.array,
-        freqs_cis: mx.array,
+        cos: mx.array,
+        sin: mx.array,
         mask: mx.array | None,
     ) -> mx.array:
         B, S, _ = x.shape
@@ -41,7 +42,7 @@ class ErnieAttention(nn.Module):
             q = self.norm_q(q)
             k = self.norm_k(k)
 
-        q, k = apply_rotary_emb(q, k, freqs_cis)
+        q, k = apply_rotary_emb(q, k, cos, sin)
 
         # [B, heads, S, head_dim] for sdpa
         q = q.transpose(0, 2, 1, 3)

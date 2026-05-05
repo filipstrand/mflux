@@ -29,23 +29,13 @@ class ErnieRopeEmbedder(nn.Module):
         return emb.reshape(*emb.shape[:-2], -1)  # [B, S, 1, 128]
 
 
-def apply_rotary_emb(q: mx.array, k: mx.array, freqs_cis: mx.array) -> tuple[mx.array, mx.array]:
+def apply_rotary_emb(q: mx.array, k: mx.array, cos: mx.array, sin: mx.array) -> tuple[mx.array, mx.array]:
     # q, k: [B, S, heads, head_dim]
-    # freqs_cis: [B, S, 1, head_dim] – raw angles
-    cos = mx.cos(freqs_cis).astype(q.dtype)  # [B, S, 1, head_dim]
-    sin = mx.sin(freqs_cis).astype(q.dtype)
-
-    rot_dim = freqs_cis.shape[-1]
-    q_rot, q_pass = q[..., :rot_dim], q[..., rot_dim:]
-    k_rot, k_pass = k[..., :rot_dim], k[..., rot_dim:]
-
-    half = rot_dim // 2
-    q1, q2 = q_rot[..., :half], q_rot[..., half:]
-    k1, k2 = k_rot[..., :half], k_rot[..., half:]
-
+    # cos, sin: [B, S, 1, head_dim] — pre-computed once per resolution+prompt
+    # rot_dim == head_dim for ERNIE, so q_pass / k_pass are always empty — skip the split.
+    half = q.shape[-1] // 2
+    q1, q2 = q[..., :half], q[..., half:]
+    k1, k2 = k[..., :half], k[..., half:]
     q_rotated = mx.concatenate([-q2, q1], axis=-1)
     k_rotated = mx.concatenate([-k2, k1], axis=-1)
-
-    q_out = mx.concatenate([q_rot * cos + q_rotated * sin, q_pass], axis=-1)
-    k_out = mx.concatenate([k_rot * cos + k_rotated * sin, k_pass], axis=-1)
-    return q_out, k_out
+    return q * cos + q_rotated * sin, k * cos + k_rotated * sin

@@ -16,7 +16,8 @@ class ErnieTransformerBlock(nn.Module):
     def __call__(
         self,
         x: mx.array,
-        freqs_cis: mx.array,
+        cos: mx.array,
+        sin: mx.array,
         temb: tuple,
         mask: mx.array | None,
     ) -> mx.array:
@@ -26,7 +27,7 @@ class ErnieTransformerBlock(nn.Module):
         residual = x
         x = self.adaLN_sa_ln(x)
         x = x * (1 + scale_msa) + shift_msa
-        x = residual + gate_msa * self.self_attention(x, freqs_cis, mask)
+        x = residual + gate_msa * self.self_attention(x, cos, sin, mask)
 
         # FFN with AdaLN pre-norm
         residual = x
