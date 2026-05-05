@@ -89,9 +89,9 @@ class ErnieTrainingAdapter(TrainingAdapter):
         if canonical_guidance is None:
             canonical_guidance = guidance
         transformer = self._ernie.transformer
-        compiled = getattr(transformer, "_compiled_predict", None)
-        if compiled is not None:
-            del transformer._compiled_predict
+        for attr in ("_compiled_predict", "_compiled_cos"):
+            if hasattr(transformer, attr):
+                delattr(transformer, attr)
         try:
             return self._ernie.generate_image(
                 seed=seed, prompt=prompt,
@@ -100,8 +100,9 @@ class ErnieTrainingAdapter(TrainingAdapter):
                 guidance=canonical_guidance,
             )
         finally:
-            if hasattr(transformer, "_compiled_predict"):
-                del transformer._compiled_predict
+            for attr in ("_compiled_predict", "_compiled_cos"):
+                if hasattr(transformer, attr):
+                    delattr(transformer, attr)
 
     def save_lora_adapter(self, *, path: Path, training_spec: TrainingSpec) -> None:
         weights: dict[str, mx.array] = {}

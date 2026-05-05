@@ -98,11 +98,24 @@ class ErnieImage(nn.Module):
         else:
             _, text_bth, text_lens = self._text_cache
 
+        # Pre-compute positional encoding once — constant for this resolution + prompt length.
+        # mx.eval materialises the tensors so mx.compile captures them as fixed buffers,
+        # avoiding re-computation of cos/sin inside the compiled Metal graph every step.
+        _, _, H_lat, W_lat = latents.shape
+        cos, sin, pos_attn_mask = self.transformer.get_pos_encoding(
+            B=text_bth.shape[0],
+            H=H_lat,
+            W=W_lat,
+            T=text_bth.shape[1],
+            text_lens=text_lens,
+        )
+        mx.eval(cos, sin, pos_attn_mask)
+
         mx.eval(latents)
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
 
-        predict = self._predict(self.transformer)
+        predict = self._predict(self.transformer, cos, sin, pos_attn_mask)
 
         for t in config.time_steps:
             try:
@@ -168,9 +181,11 @@ class ErnieImage(nn.Module):
         )
 
     @staticmethod
-    def _predict(transformer: ErnieTransformer):
+    def _predict(transformer: ErnieTransformer, cos: mx.array, sin: mx.array, attn_mask: mx.array):
+        # Cache key: same cos object → same resolution + text_lens → reuse compiled graph.
+        # Different prompt length or resolution → new cos from get_pos_encoding → recompile.
         cached = getattr(transformer, "_compiled_predict", None)
-        if cached is not None:
+        if cached is not None and getattr(transformer, "_compiled_cos", None) is cos:
             return cached
 
         def predict(
@@ -179,15 +194,21 @@ class ErnieImage(nn.Module):
             text_bth: mx.array,
             text_lens: mx.array,
         ) -> mx.array:
+            # cos, sin, attn_mask are closure captures — already-evaluated Metal buffers.
+            # mx.compile sees them as constant inputs: no re-computation inside the Metal graph.
             return transformer(
                 hidden_states=latents,
                 timestep=timestep,
                 text_bth=text_bth,
                 text_lens=text_lens,
+                cos=cos,
+                sin=sin,
+                attn_mask=attn_mask,
             )
 
         fn = mx.compile(predict) if AppleSiliconUtil.should_use_compile() else predict
         transformer._compiled_predict = fn
+        transformer._compiled_cos = cos
         return fn
 
     @staticmethod
