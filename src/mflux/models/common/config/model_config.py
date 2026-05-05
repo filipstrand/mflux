@@ -569,6 +569,7 @@ AVAILABLE_MODELS = {
         requires_sigma_shift=True,
         lora_training_steps=50,
         lora_training_guidance=4.0,
+        transformer_overrides={"rope_axes_dim": [32, 48, 48]},
     ),
     "ernie-image-turbo": ModelConfig(
         priority=26,
@@ -583,6 +584,7 @@ AVAILABLE_MODELS = {
         requires_sigma_shift=True,
         lora_training_steps=8,
         lora_training_guidance=1.0,
+        transformer_overrides={"rope_axes_dim": [32, 48, 48]},
     ),
     "seedvr2-7b": ModelConfig(
         priority=23,

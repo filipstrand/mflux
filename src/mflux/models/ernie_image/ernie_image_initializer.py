@@ -29,7 +29,7 @@ class ErnieImageInitializer:
         ErnieImageInitializer._init_config(model, model_config, model_path=model_path)
         weights = ErnieImageInitializer._load_weights(path)
         ErnieImageInitializer._init_tokenizers(model, path)
-        ErnieImageInitializer._init_models(model)
+        ErnieImageInitializer._init_models(model, model_config)
         ErnieImageInitializer._apply_weights(model, weights, quantize)
         del weights
         mx.eval(model)
@@ -58,9 +58,9 @@ class ErnieImageInitializer:
         )
 
     @staticmethod
-    def _init_models(model) -> None:
+    def _init_models(model, model_config: ModelConfig) -> None:
         model.vae = Flux2VAE()
-        model.transformer = ErnieTransformer()
+        model.transformer = ErnieTransformer(**(model_config.transformer_overrides or {}))
         model.text_encoder = ErnieMistralTextEncoder()
 
     @staticmethod
