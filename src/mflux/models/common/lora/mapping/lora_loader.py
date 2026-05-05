@@ -8,7 +8,6 @@ import mlx.nn as nn
 
 from mflux.models.common.lora.layer.fused_linear_lora_layer import FusedLoRALinear
 from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
-from mflux.models.common.lora.mapping.lokr_loader import LoKRLoader
 from mflux.models.common.lora.mapping.lora_mapping import LoRATarget
 from mflux.models.common.resolution.lora_resolution import LoraResolution
 
@@ -70,20 +69,6 @@ class LoRALoader:
             weights = dict(mx.load(lora_file, return_metadata=True)[0].items())
         except (FileNotFoundError, ValueError, RuntimeError) as e:
             print(f"❌ Failed to load LoRA file: {e}")
-            return
-
-        # Auto-detect LoKR files and route to the dedicated loader
-        if LoKRLoader.is_lokr_file(weights):
-            print(f"🔧 Detected LoKR format: {Path(lora_file).name} (scale={scale})")
-            count, matched = LoKRLoader._apply(transformer, weights, scale, lora_mapping)
-            print(f"   ✅ Applied to {count} layers ({len(matched)}/{len(weights)} keys matched)")
-            unmatched = {k for k in set(weights.keys()) - matched if not k.endswith(".alpha")}
-            if unmatched:
-                print(f"   ⚠️  {len(unmatched)} unmatched keys:")
-                for key in sorted(unmatched)[:5]:
-                    print(f"      - {key}")
-                if len(unmatched) > 5:
-                    print(f"      ... and {len(unmatched) - 5} more")
             return
 
         # Build pattern mappings from LoRATargets
