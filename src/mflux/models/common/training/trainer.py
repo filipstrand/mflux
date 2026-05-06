@@ -122,8 +122,6 @@ class TrainingTrainer:
             fn=lambda b: TrainingTrainer.compute_loss(adapter, training_spec, base_config, b),
         )
 
-        trainable_params = TrainingTrainer._get_trainable_params(adapter)
-
         if training_spec.monitoring is not None and training_state.iterator.num_iterations == 0:
             TrainingTrainer._generate_previews_with_optimizer_offload(adapter, training_spec, training_state)
             validation_batch = training_state.iterator.get_validation_batch()
