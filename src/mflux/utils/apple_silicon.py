@@ -6,10 +6,6 @@ class AppleSiliconUtil:
     _chip_name: str | None = None
 
     @classmethod
-    def should_use_compile(cls) -> bool:
-        return not cls.is_m1_or_m2()
-
-    @classmethod
     def is_m1_or_m2(cls) -> bool:
         if platform.system() != "Darwin":
             return False

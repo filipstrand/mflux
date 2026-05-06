@@ -205,7 +205,7 @@ class ErnieImage(nn.Module):
                 attn_mask=attn_mask,
             )
 
-        fn = mx.compile(predict) if AppleSiliconUtil.should_use_compile() else predict
+        fn = predict if AppleSiliconUtil.is_m1_or_m2() else mx.compile(predict)
         transformer._compiled_predict = fn
         transformer._compiled_cos = cos
         return fn
