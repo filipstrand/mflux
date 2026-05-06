@@ -43,7 +43,6 @@ class TrainingAdapter(Protocol):
         width: int,
         height: int,
         steps: int,
-        guidance: float = 1.0,
         image_paths: list[Path | str] | None = None,
     ) -> Image.Image: ...
 

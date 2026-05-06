@@ -14,6 +14,10 @@ class MemorySaver(BeforeLoopCallback, InLoopCallback, AfterLoopCallback):
         self.model = model
         self.keep_transformer = keep_transformer
         self.peak_memory: int = 0
+        # Only set tiling if the model has not already configured it.
+        # Some models (e.g. ERNIE-Image) explicitly disable tiling by setting
+        # tiling_config to a non-None sentinel; overwriting it here would cause
+        # VAE decode artifacts such as red-channel banding.
         if model.tiling_config is None:
             self.model.tiling_config = TilingConfig()
         mx.set_cache_limit(cache_limit_bytes)

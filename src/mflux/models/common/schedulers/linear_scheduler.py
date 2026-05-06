@@ -28,12 +28,7 @@ class LinearScheduler(BaseScheduler):
         sigmas = mx.linspace(1.0, 1.0 / num_steps, num_steps)
         sigmas = mx.array(sigmas).astype(mx.float32)
         sigmas = mx.concatenate([sigmas, mx.zeros(1)])
-        if model_config.sigma_fixed_shift is not None:
-            shift = model_config.sigma_fixed_shift
-            s = sigmas[:-1]
-            s = shift * s / (1 + (shift - 1) * s)
-            return mx.concatenate([s, mx.zeros(1)])
-        elif model_config.requires_sigma_shift:
+        if model_config.requires_sigma_shift:
             m = (model_config.sigma_max_shift - model_config.sigma_base_shift) / (
                 model_config.sigma_max_seq_len - model_config.sigma_base_seq_len
             )

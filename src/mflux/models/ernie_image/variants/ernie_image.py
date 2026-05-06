@@ -156,7 +156,6 @@ class ErnieImage(nn.Module):
             image_strength=config.image_strength,
             generation_time=config.time_steps.format_dict["elapsed"],
             negative_prompt=negative_prompt,
-            model_path=self.model_path,
         )
 
     def _encode_prompts(

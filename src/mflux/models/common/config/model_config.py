@@ -28,7 +28,6 @@ class ModelConfig:
         sigma_base_seq_len: int = 256,
         sigma_max_seq_len: int = 4096,
         sigma_shift_terminal: float | None = None,
-        sigma_fixed_shift: float | None = None,
         lora_training_steps: int | None = None,
         lora_training_guidance: float | None = None,
     ):
@@ -49,7 +48,6 @@ class ModelConfig:
         self.sigma_base_seq_len = sigma_base_seq_len
         self.sigma_max_seq_len = sigma_max_seq_len
         self.sigma_shift_terminal = sigma_shift_terminal
-        self.sigma_fixed_shift = sigma_fixed_shift
         self.lora_training_steps = lora_training_steps
         self.lora_training_guidance = lora_training_guidance
 

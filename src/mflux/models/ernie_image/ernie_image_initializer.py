@@ -26,7 +26,7 @@ class ErnieImageInitializer:
         lora_scales: list[float] | None = None,
     ) -> None:
         path = model_path if model_path else model_config.model_name
-        ErnieImageInitializer._init_config(model, model_config, model_path=model_path)
+        ErnieImageInitializer._init_config(model, model_config)
         weights = ErnieImageInitializer._load_weights(path)
         ErnieImageInitializer._init_tokenizers(model, path)
         ErnieImageInitializer._init_models(model, model_config)
@@ -37,9 +37,8 @@ class ErnieImageInitializer:
         ErnieImageInitializer._apply_lora(model, lora_paths, lora_scales)
 
     @staticmethod
-    def _init_config(model, model_config: ModelConfig, model_path: str | None = None) -> None:
+    def _init_config(model, model_config: ModelConfig) -> None:
         model.model_config = model_config
-        model.model_path = model_path
         model.callbacks = CallbackRegistry()
         model.tiling_config = TilingConfig(vae_decode_tiles_per_dim=None)
 

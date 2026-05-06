@@ -84,7 +84,6 @@ class Flux2EditTrainingAdapter(Flux2BaseTrainingAdapter):
         width: int,
         height: int,
         steps: int,
-        guidance: float = 1.0,
         image_paths: list[Path | str] | None = None,
     ):
         if not image_paths:
@@ -96,7 +95,7 @@ class Flux2EditTrainingAdapter(Flux2BaseTrainingAdapter):
                 num_inference_steps=steps,
                 height=height,
                 width=width,
-                guidance=guidance,
+                guidance=self._guidance,
                 image_paths=image_paths,
             )
         return image.image

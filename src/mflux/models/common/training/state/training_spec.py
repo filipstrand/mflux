@@ -77,9 +77,6 @@ class TrainingLoopSpec:
     timestep_low: int = 0
     timestep_high: int | None = None
     iterator_state_path: str | None = None
-    gradient_accumulation_steps: int = 1
-    gradient_checkpointing: bool = False
-    gradient_checkpointing_every_n: int = 1
 
 
 @dataclass
@@ -138,7 +135,6 @@ class MonitoringSpec:
     preview_images: list[Path] | None = None
     smooth_loss: bool = False
     smooth_loss_window: int = 5
-    skip_initial_preview: bool = False
 
     @staticmethod
     def create(
@@ -196,8 +192,6 @@ class MonitoringSpec:
         if smooth_loss and smooth_loss_window < 2:
             raise ValueError("Monitoring smooth_loss_window must be >= 2 when smooth_loss is enabled.")
 
-        skip_initial_preview = bool(param.get("skip_initial_preview", False))
-
         return MonitoringSpec(
             plot_frequency=plot_frequency,
             generate_image_frequency=generate_image_frequency,
@@ -208,7 +202,6 @@ class MonitoringSpec:
             preview_images=None,
             smooth_loss=smooth_loss,
             smooth_loss_window=smooth_loss_window,
-            skip_initial_preview=skip_initial_preview,
         )
 
 
@@ -236,9 +229,6 @@ class TrainingSpec:
     checkpoint_path: str | None = None
     # If true, training will use a disk-backed cache for encoded data to reduce RAM usage.
     low_ram: bool = False
-    # Optional cap on the MLX free-buffer pool in GB (e.g. 20.0). Prevents the pool from
-    # growing unboundedly and causing macOS memory compression spikes on large models.
-    cache_limit_gb: float | None = None
 
     @staticmethod
     def resolve(
@@ -297,11 +287,6 @@ class TrainingSpec:
         if low_ram and data_root_dir is None:
             raise ValueError("'low_ram' requires a valid data path.")
 
-        cache_limit_gb_raw = config.get("cache_limit_gb", None)
-        cache_limit_gb = None if cache_limit_gb_raw is None else float(cache_limit_gb_raw)
-        if cache_limit_gb is not None and cache_limit_gb <= 0:
-            raise ValueError("'cache_limit_gb' must be > 0")
-
         monitoring_conf = config.get("monitoring", None)
         preview_prompt_paths: list[Path] = []
         preview_prompts: list[str] = []
@@ -339,19 +324,7 @@ class TrainingSpec:
         if resolved_timestep_high > steps:
             raise ValueError("'timestep_high' must be <= 'steps'")
 
-        gradient_accumulation_steps = int(training_loop_conf.pop("gradient_accumulation_steps", 1))
-        if gradient_accumulation_steps < 1:
-            raise ValueError("'gradient_accumulation_steps' must be >= 1")
-
-        gradient_checkpointing_every_n = int(training_loop_conf.pop("gradient_checkpointing_every_n", 1))
-        if gradient_checkpointing_every_n < 1:
-            raise ValueError("'gradient_checkpointing_every_n' must be >= 1")
-
-        training_loop = TrainingLoopSpec(
-            **training_loop_conf,
-            gradient_accumulation_steps=gradient_accumulation_steps,
-            gradient_checkpointing_every_n=gradient_checkpointing_every_n,
-        )
+        training_loop = TrainingLoopSpec(**training_loop_conf)
         optimizer = OptimizerSpec(**config["optimizer"])
 
         checkpoint_conf = config["checkpoint"]
@@ -451,7 +424,6 @@ class TrainingSpec:
             data_root=str(data_root_dir.resolve()),
             config_path=None if absolute_config_path is None else str(absolute_config_path),
             low_ram=low_ram,
-            cache_limit_gb=cache_limit_gb,
         )
 
     @staticmethod

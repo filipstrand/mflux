@@ -80,7 +80,6 @@ class ZImageTrainingAdapter(TrainingAdapter):
         width: int,
         height: int,
         steps: int,
-        guidance: float = 1.0,
         image_paths: list[Path | str] | None = None,
     ):
         # Show samples without the training adapter, matching inference behavior.
@@ -91,7 +90,7 @@ class ZImageTrainingAdapter(TrainingAdapter):
                 num_inference_steps=steps,
                 height=height,
                 width=width,
-                guidance=guidance,
+                guidance=self._guidance,
             )
 
     def save_lora_adapter(self, *, path: Path, training_spec: TrainingSpec) -> None:  # noqa: ARG002

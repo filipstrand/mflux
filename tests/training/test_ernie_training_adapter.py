@@ -25,7 +25,7 @@ def test_ernie_turbo_preview_uses_canonical_guidance_and_steps(monkeypatch):
     )
     training_spec = SimpleNamespace(steps=4, guidance=9.0)
     adapter.create_config(training_spec=training_spec, width=512, height=512)
-    adapter.generate_preview_image(seed=0, prompt="test", width=512, height=512, steps=4, guidance=9.0)
+    adapter.generate_preview_image(seed=0, prompt="test", width=512, height=512, steps=4)
 
     assert adapter._ernie.last_generate_kwargs["guidance"] == 1.0
     assert adapter._ernie.last_generate_kwargs["num_inference_steps"] == 8
@@ -40,7 +40,7 @@ def test_ernie_base_preview_uses_canonical_guidance_and_steps(monkeypatch):
     )
     training_spec = SimpleNamespace(steps=10, guidance=9.0)
     adapter.create_config(training_spec=training_spec, width=512, height=512)
-    adapter.generate_preview_image(seed=0, prompt="test", width=512, height=512, steps=10, guidance=9.0)
+    adapter.generate_preview_image(seed=0, prompt="test", width=512, height=512, steps=10)
 
     assert adapter._ernie.last_generate_kwargs["guidance"] == 4.0
     assert adapter._ernie.last_generate_kwargs["num_inference_steps"] == 50

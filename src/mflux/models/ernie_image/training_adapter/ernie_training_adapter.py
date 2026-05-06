@@ -82,12 +82,8 @@ class ErnieTrainingAdapter(TrainingAdapter):
 
     def generate_preview_image(self, *, seed: int, prompt: str, width: int,
                                 height: int, steps: int,
-                                guidance: float = 1.0,
                                 image_paths: list[Path | str] | None = None):
         canonical_steps = self._model_config.lora_training_steps or steps
-        canonical_guidance = self._model_config.lora_training_guidance
-        if canonical_guidance is None:
-            canonical_guidance = guidance
         transformer = self._ernie.transformer
         for attr in ("_compiled_predict", "_compiled_cos"):
             if hasattr(transformer, attr):
@@ -97,7 +93,7 @@ class ErnieTrainingAdapter(TrainingAdapter):
                 seed=seed, prompt=prompt,
                 num_inference_steps=canonical_steps,
                 height=height, width=width,
-                guidance=canonical_guidance,
+                guidance=self._guidance,
             )
         finally:
             for attr in ("_compiled_predict", "_compiled_cos"):

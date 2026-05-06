@@ -53,7 +53,6 @@ class Flux2TrainingAdapter(Flux2BaseTrainingAdapter):
         width: int,
         height: int,
         steps: int,
-        guidance: float = 1.0,
         image_paths: list[Path | str] | None = None,
     ):
         with self._assistant_disabled():
@@ -63,7 +62,7 @@ class Flux2TrainingAdapter(Flux2BaseTrainingAdapter):
                 num_inference_steps=steps,
                 height=height,
                 width=width,
-                guidance=guidance,
+                guidance=self._guidance,
             )
         self._flux2.prompt_cache = {}
         return image.image
