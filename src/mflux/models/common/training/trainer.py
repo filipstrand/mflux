@@ -117,6 +117,10 @@ class TrainingTrainer:
         adapter.freeze_base()
         TrainingTrainer._unfreeze_lora_layers(adapter.transformer())
 
+        # Enable gradient checkpointing to reduce memory usage
+        if hasattr(adapter.transformer(), '_gradient_checkpointing'):
+            adapter.transformer()._gradient_checkpointing = True
+
         train_step_function = nn.value_and_grad(
             model=adapter.model(),
             fn=lambda b: TrainingTrainer.compute_loss(adapter, training_spec, base_config, b),
@@ -249,6 +253,8 @@ class TrainingTrainer:
             try:
                 TrainingTrainer._generate_previews(adapter, training_spec, training_state)
             finally:
+                gc.collect()
+                mx.clear_cache()
                 restored_state = tree_unflatten(list(mx.load(str(offload_path)).items()))
                 optimizer.optimizer.state = restored_state
                 gc.collect()

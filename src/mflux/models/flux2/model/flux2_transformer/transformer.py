@@ -1,5 +1,6 @@
 import mlx.core as mx
 from mlx import nn
+from mlx.nn.utils import checkpoint
 
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.flux.model.flux_transformer.ada_layer_norm_continuous import AdaLayerNormContinuous
@@ -63,6 +64,7 @@ class Flux2Transformer(nn.Module):
         ]
         self.norm_out = AdaLayerNormContinuous(self.inner_dim, self.inner_dim)
         self.proj_out = nn.Linear(self.inner_dim, patch_size * patch_size * self.out_channels, bias=False)
+        self._gradient_checkpointing = False
 
     def __call__(
         self,
@@ -109,7 +111,8 @@ class Flux2Transformer(nn.Module):
         temb_mod_params_txt = self.double_stream_modulation_txt(temb)
 
         for block in self.transformer_blocks:
-            encoder_hidden_states, hidden_states = block(
+            block_fn = checkpoint(block) if self._gradient_checkpointing else block
+            encoder_hidden_states, hidden_states = block_fn(
                 hidden_states=hidden_states,
                 encoder_hidden_states=encoder_hidden_states,
                 temb_mod_params_img=temb_mod_params_img,
@@ -121,7 +124,8 @@ class Flux2Transformer(nn.Module):
 
         temb_mod_params_single = self.single_stream_modulation(temb)[0]
         for block in self.single_transformer_blocks:
-            hidden_states = block(
+            block_fn = checkpoint(block) if self._gradient_checkpointing else block
+            hidden_states = block_fn(
                 hidden_states=hidden_states,
                 temb_mod_params=temb_mod_params_single,
                 image_rotary_emb=concat_rotary_emb,
