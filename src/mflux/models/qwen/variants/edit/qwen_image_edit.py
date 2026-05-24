@@ -230,18 +230,11 @@ class QwenImageEdit(nn.Module):
         image_path: Path | str | None,
         scheduler: str,
     ) -> tuple[Config, int, int, int, int]:
-        last_image = ImageUtil.load_image(image_paths[-1]).convert("RGB")
-        image_size = last_image.size
+        reference_image = ImageUtil.load_image(image_paths[0]).convert("RGB")
+        image_size = reference_image.size
 
-        target_area = 1024 * 1024
-        ratio = image_size[0] / image_size[1]
-        calculated_width = math.sqrt(target_area * ratio)
-        calculated_height = calculated_width / ratio
-        calculated_width = round(calculated_width / 32) * 32
-        calculated_height = round(calculated_height / 32) * 32
-
-        use_height = height or int(calculated_height)
-        use_width = width or int(calculated_width)
+        use_width = width or image_size[0]
+        use_height = height or image_size[1]
 
         vae_scale_factor = 8
         multiple_of = vae_scale_factor * 2
@@ -265,11 +258,4 @@ class QwenImageEdit(nn.Module):
         vl_width = round(vl_width / 32) * 32
         vl_height = round(vl_height / 32) * 32
 
-        VAE_IMAGE_SIZE = 1024 * 1024
-        vae_ratio = image_size[0] / image_size[1]
-        vae_width = math.sqrt(VAE_IMAGE_SIZE * vae_ratio)
-        vae_height = vae_width / vae_ratio
-        vae_width = round(vae_width / 32) * 32
-        vae_height = round(vae_height / 32) * 32
-
-        return config, int(vl_width), int(vl_height), int(vae_width), int(vae_height)
+        return config, int(vl_width), int(vl_height), use_width, use_height

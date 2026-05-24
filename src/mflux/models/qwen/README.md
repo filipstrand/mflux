@@ -250,7 +250,7 @@ image.save("qwen_edit_monkey.png")
 5. **Quantization**: 6-bit or below can degrade the image a lot more compared to Flux, use with caution
 6. **Seed Variation**: Qwen models typically do not vary much with seed changes. If you want more variation, vary the prompt instead
 7. **Image Quality**: Qwen images come out quite soft compared to Flux models
+8. **Output Size**: By default, edits keep the first input image size. Use `--width`/`--height` or scale factors like `2x` when you want resizing.
 
 > [!WARNING]
 > Note: The Qwen Image Edit model requires downloading the `Qwen/Qwen-Image-Edit-2509` model weights (~58GB for the full model, or use quantization for smaller sizes).
-

@@ -18,8 +18,7 @@ class QwenEditUtil:
             image_paths = [str(image_paths)]
 
         # The vision-language encoder uses a smaller conditioning image resolution (~384px by area),
-        # but the edit transformer conditions on *VAE latents* that should be encoded at the VAE target
-        # resolution (~1024px by area). Conflating those produces patchy / tiled-looking outputs.
+        # but the edit transformer conditions on VAE latents encoded at the edit target dimensions.
         calc_w, calc_h = width, height
 
         all_image_latents = []
