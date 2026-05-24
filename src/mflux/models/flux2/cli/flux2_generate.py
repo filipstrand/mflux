@@ -1,6 +1,7 @@
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.parser.parsers import CommandLineParser
 from mflux.models.common.config import ModelConfig
+from mflux.models.flux2.cli.flux2_model_validation import ensure_flux2_model, is_flux2_base_model
 from mflux.models.flux2.latent_creator.flux2_latent_creator import Flux2LatentCreator
 from mflux.models.flux2.variants import Flux2Klein
 from mflux.utils.dimension_resolver import DimensionResolver
@@ -25,12 +26,12 @@ def main():
 
     model_name = args.model or "flux2-klein-4b"
     model_config = ModelConfig.from_name(model_name=model_name)
+    ensure_flux2_model(parser, model_config)
 
     if args.guidance is None:
         args.guidance = 1.0
-    is_distilled = "base" not in model_config.model_name.lower()
-    if args.guidance != 1.0 and is_distilled:
-        parser.error("--guidance is only supported for FLUX.2 base models. Use --guidance 1.0.")
+    if args.guidance != 1.0 and not is_flux2_base_model(model_config):
+        parser.error("--guidance > 1.0 requires a FLUX.2 Klein base model. Use --guidance 1.0.")
 
     model = Flux2Klein(
         model_config=model_config,
