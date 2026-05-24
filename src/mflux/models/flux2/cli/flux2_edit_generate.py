@@ -32,7 +32,9 @@ def main():
         args.guidance = 1.0
     is_distilled = "base" not in model_config.model_name.lower()
     if args.guidance != 1.0 and is_distilled:
-        parser.error("--guidance is only supported for FLUX.2 base models. Use --guidance 1.0.")
+        print(
+            "⚠️  Using --guidance > 1.0 with distilled FLUX.2 Klein enables extra CFG compute and may change behavior."
+        )
 
     model = Flux2KleinEdit(
         model_config=model_config,

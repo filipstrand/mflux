@@ -28,6 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### 🐛 Bug Fixes
+
+- **FLUX.2 Klein Edit guidance**: Allow `--guidance > 1.0` for distilled Klein edits (CFG) to improve prompt adherence without forcing any resizing; defaults remain unchanged.
+
+---
+
 ## [0.17.4] - 2026-03-28
 
 ### 🐛 Bug Fixes
