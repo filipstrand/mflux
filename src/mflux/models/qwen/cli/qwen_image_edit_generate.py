@@ -3,9 +3,10 @@ from pathlib import Path
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.defaults import defaults as ui_defaults
 from mflux.cli.parser.parsers import CommandLineParser
+from mflux.models.common.config import ModelConfig
 from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
 from mflux.models.qwen.variants.edit.qwen_image_edit import QwenImageEdit
-from mflux.utils.exceptions import PromptFileReadError, StopImageGenerationException
+from mflux.utils.exceptions import ModelConfigError, PromptFileReadError, StopImageGenerationException
 from mflux.utils.prompt_util import PromptUtil
 
 
@@ -25,8 +26,17 @@ def main():
         args.guidance = ui_defaults.GUIDANCE_SCALE_KONTEXT
 
     # 1. Load the model
+    model_config = ModelConfig.qwen_image_edit()
+    if args.model is not None:
+        try:
+            model_config = ModelConfig.from_name(args.model)
+        except ModelConfigError:
+            if args.model_path is None:
+                raise
+
     qwen = QwenImageEdit(
         quantize=args.quantize,
+        model_config=model_config,
         model_path=args.model_path,
         lora_paths=args.lora_paths,
         lora_scales=args.lora_scales,
@@ -55,6 +65,7 @@ def main():
                 image_path=image_paths[0],  # Use first image for metadata
                 image_paths=image_paths,
                 num_inference_steps=args.steps,
+                scheduler=args.scheduler,
             )
 
             # 5. Save the image

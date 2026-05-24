@@ -101,8 +101,6 @@ class QwenImageEdit(nn.Module):
                 vae=self.vae,
                 width=vae_width,
                 height=vae_height,
-                vl_width=vl_width,
-                vl_height=vl_height,
                 image_paths=image_paths,
                 tiling_config=self.tiling_config,
             )

@@ -28,6 +28,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### 🐛 Bug Fixes
+
+- **Qwen Image Edit conditioning resolution**: Encode the transformer’s image-conditioning latents at the VAE target resolution (≈1024px by area), not the vision-language conditioning resolution (≈384px by area), preventing patchy/tiled artifacts in edit outputs.
+- **Qwen Image Edit CLI scheduler**: Forward `--scheduler` to the Qwen edit pipeline (previously ignored).
+- **Qwen Image Edit q4 saving**: Use mixed q4 quantization for Qwen transformers by keeping conditioning, modulation, and output projections at higher precision while quantizing the bulk attention and feed-forward layers.
+
+---
+
 ## [0.17.4] - 2026-03-28
 
 ### 🐛 Bug Fixes

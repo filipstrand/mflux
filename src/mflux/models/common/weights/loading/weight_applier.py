@@ -1,3 +1,4 @@
+import inspect
 from typing import TYPE_CHECKING
 
 import mlx.nn as nn
@@ -11,6 +12,35 @@ if TYPE_CHECKING:
 
 
 class WeightApplier:
+    @staticmethod
+    def quantization_predicate_for_bits(quantization_predicate, bits: int | None):
+        if quantization_predicate is None:
+            return None
+
+        try:
+            parameters = inspect.signature(quantization_predicate).parameters
+        except (TypeError, ValueError):
+            return quantization_predicate
+
+        if len(parameters) < 3:
+            return quantization_predicate
+
+        return lambda path, module: quantization_predicate(path, module, bits)
+
+    @staticmethod
+    def quantization_predicate_for_weights(
+        weight_definition: "WeightDefinitionType",
+        bits: int,
+        weights: LoadedWeights | None = None,
+    ):
+        predicate_getter = getattr(weight_definition, "quantization_predicate_for_loaded_weights", None)
+        if predicate_getter is not None:
+            quantization_predicate = predicate_getter(weights=weights, bits=bits)
+        else:
+            quantization_predicate = weight_definition.quantization_predicate
+
+        return WeightApplier.quantization_predicate_for_bits(quantization_predicate, bits)
+
     @staticmethod
     def apply_and_quantize_single(
         weights: LoadedWeights,
@@ -34,6 +64,8 @@ class WeightApplier:
 
         if warning:
             print(f"⚠️  {warning}")
+
+        quantization_predicate = WeightApplier.quantization_predicate_for_bits(quantization_predicate, bits)
 
         if bits is None:
             model.update(component_weights, strict=False)
@@ -69,7 +101,7 @@ class WeightApplier:
             WeightApplier._set_weights(weights, models, components)
             WeightApplier._quantize(models, bits, components, weight_definition)
         else:
-            WeightApplier._quantize(models, bits, components, weight_definition)
+            WeightApplier._quantize(models, bits, components, weight_definition, weights=weights)
             WeightApplier._set_weights(weights, models, components)
 
         return bits
@@ -95,9 +127,15 @@ class WeightApplier:
         bits: int,
         components: dict,
         weight_definition: "WeightDefinitionType",
+        weights: LoadedWeights | None = None,
     ) -> None:
+        quantization_predicate = WeightApplier.quantization_predicate_for_weights(
+            weight_definition=weight_definition,
+            bits=bits,
+            weights=weights,
+        )
         for name, model in models.items():
             component = components.get(name)
             if component and component.skip_quantization:
                 continue
-            nn.quantize(model, class_predicate=weight_definition.quantization_predicate, bits=bits)
+            nn.quantize(model, class_predicate=quantization_predicate, bits=bits)
