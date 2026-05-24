@@ -1,5 +1,4 @@
 from functools import lru_cache
-from typing import Literal
 
 import mlx.core as mx
 
@@ -186,7 +185,7 @@ class ModelConfig:
     @staticmethod
     def from_name(
         model_name: str,
-        base_model: Literal["dev", "schnell", "krea-dev"] | None = None,
+        base_model: str | None = None,
     ) -> "ModelConfig":
         return ConfigResolution.resolve(model_name=model_name, base_model=base_model)
 

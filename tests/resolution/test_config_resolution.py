@@ -82,6 +82,23 @@ class TestConfigResolutionInferSubstring:
 
         assert config.base_model == "black-forest-labs/FLUX.1-Kontext-dev"
 
+    @pytest.mark.fast
+    def test_inferred_config_preserves_text_encoder_overrides(self):
+        config = ConfigResolution.resolve(model_name="/models/local-flux2-klein-9b-q4")
+
+        assert config.base_model == "black-forest-labs/FLUX.2-klein-9B"
+        assert config.transformer_overrides["num_attention_heads"] == 32
+        assert config.text_encoder_overrides["hidden_size"] == 4096
+
+    @pytest.mark.fast
+    def test_inferred_config_preserves_scheduler_shift_settings(self):
+        config = ConfigResolution.resolve(model_name="Qwen/Qwen-Image-Edit-2511")
+
+        assert config.base_model == "Qwen/Qwen-Image-Edit-2509"
+        assert config.sigma_max_shift == 0.9
+        assert config.sigma_max_seq_len == 8192
+        assert config.sigma_shift_terminal == 0.02
+
 
 class TestConfigResolutionError:
     @pytest.mark.fast
