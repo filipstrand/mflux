@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Qwen Image Edit conditioning resolution**: Encode the transformer’s image-conditioning latents at the edit target resolution, not the vision-language conditioning resolution (≈384px by area), preventing patchy/tiled artifacts in edit outputs.
 - **Qwen Image Edit default dimensions**: Preserve the first input image dimensions by default; explicit `--width`/`--height` values or scale factors still opt into resizing.
 - **Qwen Image Edit CLI scheduler**: Forward `--scheduler` to the Qwen edit pipeline (previously ignored).
-- **Qwen Image Edit q4 saving**: Use mixed q4 quantization for Qwen transformers by keeping conditioning, modulation, and output projections at higher precision while quantizing the bulk attention and feed-forward layers.
+- **Qwen Image Edit q4 saving**: Use mixed q4/q8 quantization for Qwen transformers by saving image-stream modulation (`*.img_mod_linear`) at q8 and the rest of the quantizable transformer linears at q4. Existing all-q4 and BF16 mixed-q4 Qwen checkpoint layouts continue to load.
 
 ---
 
