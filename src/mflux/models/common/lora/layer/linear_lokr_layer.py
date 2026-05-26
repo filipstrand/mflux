@@ -62,6 +62,14 @@ class LoKrLinear(nn.Module):
                 f"target_output={self.output_dims}, dora_scale={self.dora_scale.shape}"
             )
 
+    def can_use_factorized_matmul(self) -> bool:
+        return self.lokr_w1.ndim == 2 and self.lokr_w2.ndim == 2
+
+    def delta_matmul(self, x: mx.array) -> mx.array:
+        if self.dora_scale is None and self.can_use_factorized_matmul():
+            return self.lokr_matmul(x)
+        return mx.matmul(x, self.delta_weight().T)
+
     def lokr_matmul(self, x: mx.array) -> mx.array:
         w1 = self.lokr_w1
         w2 = self.lokr_w2
@@ -102,8 +110,4 @@ class LoKrLinear(nn.Module):
 
     def __call__(self, x):
         base_out = self.linear(x)
-        if self.dora_scale is None:
-            lokr_out = self.lokr_matmul(x)
-        else:
-            lokr_out = mx.matmul(x, self.delta_weight().T)
-        return base_out + self.scale * lokr_out
+        return base_out + self.scale * self.delta_matmul(x)

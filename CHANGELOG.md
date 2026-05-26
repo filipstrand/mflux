@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Features
 
-- **LyCORIS LoKr adapters (FLUX.1 and FLUX.2)**: Load community LyCORIS LoKr safetensors through the existing `--lora-paths` / `lora_paths` API. Supports direct and factorized (`lokr_w1_a`/`lokr_w1_b`, `lokr_w2_a`/`lokr_w2_b`, optional `lokr_t2`) tensors, observed LyCORIS key layouts, alpha scaling for decomposed factors, optional `dora_scale`, multi-adapter fusion with classic LoRA, and baking into non-quantized base weights. Inference applies the Kronecker product without materializing full dense deltas for standard (non-DoRA) LoKr layers.
+- **LyCORIS LoKr adapters (FLUX.1 and FLUX.2)**: Load community LyCORIS LoKr safetensors through the existing `--lora-paths` / `lora_paths` API. Supports direct and factorized (`lokr_w1_a`/`lokr_w1_b`, `lokr_w2_a`/`lokr_w2_b`, optional `lokr_t2`) tensors, observed LyCORIS key layouts, alpha scaling for decomposed factors, optional `dora_scale`, multi-adapter fusion with classic LoRA, and baking into non-quantized base weights as well as quantized layers (via dequantization and re-quantization). Inference applies the Kronecker product without materializing full dense deltas for standard (non-DoRA) LoKr layers.
 
 ## [0.17.5] - 2026-04-10
 

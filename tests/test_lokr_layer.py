@@ -201,6 +201,38 @@ def test_loader_applies_fully_factorized_lokr():
     assert mx.allclose(transformer.proj(mx.ones((1, 4))), mx.array([[4.0, 4.0]]))
 
 
+def test_loader_applies_lokr_with_t2_dense_fallback():
+    class Transformer(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.proj = nn.Linear(4, 4, bias=False)
+            self.proj.weight = mx.zeros((4, 4))
+
+    transformer = Transformer()
+    t2 = mx.arange(16, dtype=mx.float32).reshape((2, 2, 2, 2)) + 1
+    applied = LoRALoader._apply_adapter_to_target(
+        transformer,
+        "proj",
+        {
+            "lokr_w1": mx.array([[1.0]]),
+            "lokr_w2_a": mx.eye(2),
+            "lokr_w2_b": mx.eye(2),
+            "lokr_t2": t2,
+        },
+        scale=1.0,
+        role=None,
+    )
+
+    x = mx.array([[1.0, 2.0, 3.0, 4.0]])
+    expected = mx.matmul(x, transformer.proj.delta_weight().T)
+
+    assert applied is True
+    assert isinstance(transformer.proj, LoKrLinear)
+    assert transformer.proj.lokr_w2.ndim == 4
+    assert transformer.proj.can_use_factorized_matmul() is False
+    assert mx.allclose(transformer.proj(x), expected)
+
+
 def test_loader_rejects_malformed_lokr_shapes():
     class Transformer(nn.Module):
         def __init__(self):
@@ -317,6 +349,50 @@ def test_loader_fuses_lora_then_lokr_layer():
 
     assert isinstance(transformer.proj, FusedLoRALinear)
     assert mx.allclose(transformer.proj(mx.ones((1, 2))), mx.array([[3.0, 3.0]]))
+
+
+def test_loader_fuses_lora_then_lokr_t2_layer():
+    class Transformer(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.proj = nn.Linear(4, 4, bias=False)
+            self.proj.weight = mx.zeros((4, 4))
+
+    transformer = Transformer()
+    assert LoRALoader._apply_adapter_to_target(
+        transformer,
+        "proj",
+        {
+            "lora_A": mx.ones((4, 1)),
+            "lora_B": mx.ones((1, 4)),
+        },
+        scale=1.0,
+        role=None,
+    )
+
+    t2 = mx.arange(16, dtype=mx.float32).reshape((2, 2, 2, 2)) + 1
+    assert LoRALoader._apply_adapter_to_target(
+        transformer,
+        "proj",
+        {
+            "lokr_w1": mx.array([[1.0]]),
+            "lokr_w2_a": mx.eye(2),
+            "lokr_w2_b": mx.eye(2),
+            "lokr_t2": t2,
+        },
+        scale=1.0,
+        role=None,
+    )
+
+    x = mx.array([[1.0, 2.0, 3.0, 4.0]])
+    lokr = transformer.proj.loras[-1]
+    expected_lora = mx.matmul(mx.matmul(x, mx.ones((4, 1))), mx.ones((1, 4)))
+    expected_lokr = mx.matmul(x, lokr.delta_weight().T)
+
+    assert isinstance(transformer.proj, FusedLoRALinear)
+    assert isinstance(lokr, LoKrLinear)
+    assert lokr.can_use_factorized_matmul() is False
+    assert mx.allclose(transformer.proj(x), expected_lora + expected_lokr)
 
 
 def test_loader_fuses_lora_then_dora_lokr_at_weight_level():
