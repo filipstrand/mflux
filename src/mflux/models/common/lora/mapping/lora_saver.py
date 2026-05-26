@@ -116,9 +116,10 @@ class LoRASaver:
 
         try:
             if isinstance(base_linear, nn.QuantizedLinear):
-                dense_linear = nn.Linear(merged.shape[1], merged.shape[0], bias="bias" in base_linear)
+                has_bias = hasattr(base_linear, "bias") and getattr(base_linear, "bias", None) is not None
+                dense_linear = nn.Linear(merged.shape[1], merged.shape[0], bias=has_bias)
                 dense_linear.weight = merged
-                if "bias" in base_linear:
+                if has_bias:
                     dense_linear.bias = base_linear.bias
                 return nn.QuantizedLinear.from_linear(
                     dense_linear,
