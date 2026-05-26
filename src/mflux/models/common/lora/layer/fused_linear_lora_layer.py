@@ -32,10 +32,7 @@ class FusedLoRALinear(nn.Module):
             if isinstance(lora, LoRALinear):
                 lora_out += lora.scale * mx.matmul(mx.matmul(x, lora.lora_A), lora.lora_B)
             elif isinstance(lora, LoKrLinear):
-                if lora.dora_scale is None:
-                    lora_out += lora.scale * lora.lokr_matmul(x)
-                else:
-                    lora_out += lora.scale * mx.matmul(x, lora.delta_weight().T)
+                lora_out += lora.scale * lora.delta_matmul(x)
 
         return base_out + lora_out
 
