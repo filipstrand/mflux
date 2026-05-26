@@ -135,7 +135,7 @@ MFLUX supports the following model families. They have different strengths and w
 
 **General**
 - Quantization and local model loading
-- LoRA support (multi-LoRA, scales, library lookup)
+- LoRA support (multi-LoRA, scales, library lookup), including LyCORIS LoKr on FLUX.1 and FLUX.2
 - Metadata export + reuse, plus prompt file support
 
 **Model-specific highlights**

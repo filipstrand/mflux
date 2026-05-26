@@ -1,4 +1,4 @@
-from mflux.cli.parser.parsers import CommandLineParser
+from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_args
 from mflux.models.common.config import ModelConfig
 from mflux.models.ernie_image.variants.txt2img.ernie_image import ErnieImage
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
@@ -54,8 +54,7 @@ def main():
     # 2. Load, quantize and save the model
     model = model_class(
         quantize=args.quantize,
-        lora_paths=args.lora_paths,
-        lora_scales=args.lora_scales,
+        **lora_init_kwargs_from_args(args),
         model_path=model_path,
         model_config=model_config,
     )
