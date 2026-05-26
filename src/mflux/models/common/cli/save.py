@@ -1,4 +1,4 @@
-from mflux.cli.parser.parsers import CommandLineParser
+from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_args
 from mflux.models.common.config import ModelConfig
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
 from mflux.models.flux.variants.txt2img.flux import Flux1
@@ -35,8 +35,7 @@ def main():
     # 2. Load, quantize and save the model
     model = model_class(
         quantize=args.quantize,
-        lora_paths=args.lora_paths,
-        lora_scales=args.lora_scales,
+        **lora_init_kwargs_from_args(args),
         model_config=ModelConfig.from_name(args.model, base_model=args.base_model),
     )
     model.save_model(args.path)
