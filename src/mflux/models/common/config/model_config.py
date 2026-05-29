@@ -202,6 +202,10 @@ class ModelConfig:
     def is_canny(self) -> bool:
         return self.controlnet_model is not None and "Canny" in self.controlnet_model
 
+    def is_klein(self) -> bool:
+        _KLEIN_ALIASES = {"flux2-klein-4b", "flux2-klein-9b", "flux2-klein-base-4b", "flux2-klein-base-9b"}
+        return bool(set(self.aliases) & _KLEIN_ALIASES)
+
     @staticmethod
     def from_name(
         model_name: str,
