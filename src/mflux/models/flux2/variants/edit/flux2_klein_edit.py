@@ -7,6 +7,7 @@ from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.flux2.flux2_initializer import Flux2Initializer
 from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3TextEncoder
+from mflux.models.flux2.model.flux2_transformer.flux2_kv_cache import Flux2KVCache
 from mflux.models.flux2.model.flux2_transformer.transformer import Flux2Transformer
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 from mflux.models.flux2.variants.edit.flux2_klein_edit_helpers import _Flux2KleinEditHelpers
@@ -50,6 +51,7 @@ class Flux2KleinEdit(nn.Module):
         image_paths: list[Path | str] | None = None,
         image_strength: float | None = None,
         scheduler: str = "flow_match_euler_discrete",
+        use_kv_cache: bool | None = None,
     ) -> GeneratedImage:
         # For metadata + dimension inference purposes, pick a primary reference image (if any).
         primary_image_path = None
@@ -91,25 +93,79 @@ class Flux2KleinEdit(nn.Module):
             batch_size=latents.shape[0],
         )
 
+        # KV-cache opt-in. Defaults to ON when the model declares support
+        # (FLUX.2-klein-9b-kv) AND a reference image is present, since the
+        # cache is meaningless without static reference tokens to skip.
+        cache_enabled = (
+            (use_kv_cache if use_kv_cache is not None else self.model_config.supports_kv_cache)
+            and image_latents is not None
+            and image_latents.shape[1] > 0
+        )
+        kv_cache: Flux2KVCache | None = None
+        if cache_enabled:
+            kv_cache = Flux2KVCache(
+                num_double_layers=len(self.transformer.transformer_blocks),
+                num_single_layers=len(self.transformer.single_transformer_blocks),
+            )
+
         # 4. Denoising loop
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
         predict = self._predict(self.transformer)
-        for t in config.time_steps:
+        cached_predict = self._cached_predict(self.transformer) if cache_enabled else None
+        for step_idx, t in enumerate(config.time_steps):
             try:
-                # 4.t Predict the noise
-                noise = predict(
-                    latents=latents,
-                    image_latents=image_latents,
-                    latent_ids=latent_ids,
-                    image_latent_ids=image_latent_ids,
-                    prompt_embeds=prompt_embeds,
-                    text_ids=text_ids,
-                    negative_prompt_embeds=negative_prompt_embeds,
-                    negative_text_ids=negative_text_ids,
-                    guidance=guidance,
-                    timestep=config.scheduler.timesteps[t],
-                )
+                if cache_enabled and step_idx == 0:
+                    # Step 0: extract cache from the full [txt, target, ref] forward.
+                    kv_cache.configure(
+                        mode="extract",
+                        num_ref_tokens=image_latents.shape[1],
+                        num_txt_tokens=prompt_embeds.shape[1],
+                    )
+                    noise = predict(
+                        latents=latents,
+                        image_latents=image_latents,
+                        latent_ids=latent_ids,
+                        image_latent_ids=image_latent_ids,
+                        prompt_embeds=prompt_embeds,
+                        text_ids=text_ids,
+                        negative_prompt_embeds=negative_prompt_embeds,
+                        negative_text_ids=negative_text_ids,
+                        guidance=guidance,
+                        timestep=config.scheduler.timesteps[t],
+                        kv_cache=kv_cache,
+                    )
+                elif cache_enabled:
+                    # Steps 1+: target-only input, splice cached ref K/V inside attention.
+                    kv_cache.configure(
+                        mode="cached",
+                        num_ref_tokens=image_latents.shape[1],
+                        num_txt_tokens=prompt_embeds.shape[1],
+                    )
+                    noise = cached_predict(
+                        latents=latents,
+                        latent_ids=latent_ids,
+                        prompt_embeds=prompt_embeds,
+                        text_ids=text_ids,
+                        negative_prompt_embeds=negative_prompt_embeds,
+                        negative_text_ids=negative_text_ids,
+                        guidance=guidance,
+                        timestep=config.scheduler.timesteps[t],
+                        kv_cache=kv_cache,
+                    )
+                else:
+                    noise = predict(
+                        latents=latents,
+                        image_latents=image_latents,
+                        latent_ids=latent_ids,
+                        image_latent_ids=image_latent_ids,
+                        prompt_embeds=prompt_embeds,
+                        text_ids=text_ids,
+                        negative_prompt_embeds=negative_prompt_embeds,
+                        negative_text_ids=negative_text_ids,
+                        guidance=guidance,
+                        timestep=config.scheduler.timesteps[t],
+                    )
 
                 # 5.t Take one denoise step
                 latents = config.scheduler.step(
@@ -163,8 +219,12 @@ class Flux2KleinEdit(nn.Module):
             )
         return prompt_embeds, text_ids, negative_prompt_embeds, negative_text_ids
 
-    @staticmethod
-    def _predict(transformer):
+    def _predict(self, transformer):
+        # Full-input predict closure for the non-cache path (and for the
+        # step-0 extract pass when KV-cache is enabled). When the model is
+        # KV-cache aware we cannot compile this closure because the cache
+        # mode/state is a Python-object kwarg that ``mx.compile`` would
+        # freeze at trace time.
         def predict(
             latents: mx.array,
             image_latents: mx.array,
@@ -176,6 +236,7 @@ class Flux2KleinEdit(nn.Module):
             negative_text_ids: mx.array | None,
             guidance: float,
             timestep: mx.array,
+            kv_cache: Flux2KVCache | None = None,
         ) -> mx.array:
             hidden_states = mx.concatenate([latents, image_latents], axis=1)
             img_ids = mx.concatenate([latent_ids, image_latent_ids], axis=1)
@@ -187,6 +248,7 @@ class Flux2KleinEdit(nn.Module):
                 img_ids=img_ids,
                 txt_ids=text_ids,
                 guidance=None,
+                kv_cache=kv_cache,
             )
             noise = noise[:, : latents.shape[1]]
             if negative_prompt_embeds is not None and negative_text_ids is not None:
@@ -197,11 +259,59 @@ class Flux2KleinEdit(nn.Module):
                     img_ids=img_ids,
                     txt_ids=negative_text_ids,
                     guidance=None,
+                    kv_cache=kv_cache,
                 )
                 negative_noise = negative_noise[:, : latents.shape[1]]
                 noise = negative_noise + guidance * (noise - negative_noise)
             return noise
 
-        if AppleSiliconUtil.is_m1_or_m2():
+        if AppleSiliconUtil.is_m1_or_m2() or self.model_config.supports_kv_cache:
             return predict
         return mx.compile(predict)
+
+    @staticmethod
+    def _cached_predict(transformer):
+        """Predict closure for KV-cache cached mode.
+
+        Input is target-only ``latents`` (no ``image_latents`` concat); the
+        attention layers splice cached reference K/V at the end. Not compiled
+        because ``kv_cache`` is mutable Python state that ``mx.compile`` would
+        freeze.
+        """
+
+        def predict(
+            latents: mx.array,
+            latent_ids: mx.array,
+            prompt_embeds: mx.array,
+            text_ids: mx.array,
+            negative_prompt_embeds: mx.array | None,
+            negative_text_ids: mx.array | None,
+            guidance: float,
+            timestep: mx.array,
+            kv_cache: Flux2KVCache,
+        ) -> mx.array:
+            noise = transformer(
+                hidden_states=latents,
+                encoder_hidden_states=prompt_embeds,
+                timestep=timestep,
+                img_ids=latent_ids,
+                txt_ids=text_ids,
+                guidance=None,
+                kv_cache=kv_cache,
+            )
+            noise = noise[:, : latents.shape[1]]
+            if negative_prompt_embeds is not None and negative_text_ids is not None:
+                negative_noise = transformer(
+                    hidden_states=latents,
+                    encoder_hidden_states=negative_prompt_embeds,
+                    timestep=timestep,
+                    img_ids=latent_ids,
+                    txt_ids=negative_text_ids,
+                    guidance=None,
+                    kv_cache=kv_cache,
+                )
+                negative_noise = negative_noise[:, : latents.shape[1]]
+                noise = negative_noise + guidance * (noise - negative_noise)
+            return noise
+
+        return predict

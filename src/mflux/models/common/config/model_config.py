@@ -30,6 +30,7 @@ class ModelConfig:
         sigma_shift_terminal: float | None = None,
         lora_training_steps: int | None = None,
         lora_training_guidance: float | None = None,
+        supports_kv_cache: bool = False,
     ):
         self.aliases = aliases
         self.model_name = model_name
@@ -50,6 +51,7 @@ class ModelConfig:
         self.sigma_shift_terminal = sigma_shift_terminal
         self.lora_training_steps = lora_training_steps
         self.lora_training_guidance = lora_training_guidance
+        self.supports_kv_cache = supports_kv_cache
 
     @staticmethod
     @lru_cache
@@ -115,6 +117,11 @@ class ModelConfig:
     @lru_cache
     def flux2_klein_9b() -> "ModelConfig":
         return AVAILABLE_MODELS["flux2-klein-9b"]
+
+    @staticmethod
+    @lru_cache
+    def flux2_klein_9b_kv() -> "ModelConfig":
+        return AVAILABLE_MODELS["flux2-klein-9b-kv"]
 
     @staticmethod
     @lru_cache
@@ -386,6 +393,35 @@ AVAILABLE_MODELS = {
             "hidden_size": 4096,
             "intermediate_size": 12288,
         },
+    ),
+    "flux2-klein-9b-kv": ModelConfig(
+        priority=12,
+        aliases=[
+            "flux2-klein-9b-kv",
+            "flux2-klein-9B-kv",
+            "flux2-klein-9b-KV",
+            "klein-9b-kv",
+            "klein-9B-kv",
+        ],
+        model_name="black-forest-labs/FLUX.2-klein-9b-kv",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,
+        requires_sigma_shift=True,
+        transformer_overrides={
+            "num_layers": 8,
+            "num_single_layers": 24,
+            "num_attention_heads": 32,
+            "joint_attention_dim": 12288,
+        },
+        text_encoder_overrides={
+            "hidden_size": 4096,
+            "intermediate_size": 12288,
+        },
+        supports_kv_cache=True,
     ),
     "flux2-klein-base-4b": ModelConfig(
         priority=13,
