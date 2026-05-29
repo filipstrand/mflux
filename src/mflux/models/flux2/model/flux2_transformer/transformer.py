@@ -3,6 +3,7 @@ from mlx import nn
 
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.flux.model.flux_transformer.ada_layer_norm_continuous import AdaLayerNormContinuous
+from mflux.models.flux2.model.flux2_transformer.flux2_kv_cache import Flux2KVCache
 from mflux.models.flux2.model.flux2_transformer.modulation import Flux2Modulation
 from mflux.models.flux2.model.flux2_transformer.pos_embed import Flux2PosEmbed
 from mflux.models.flux2.model.flux2_transformer.single_transformer_block import Flux2SingleTransformerBlock
@@ -72,6 +73,7 @@ class Flux2Transformer(nn.Module):
         img_ids: mx.array,
         txt_ids: mx.array,
         guidance: mx.array | float | int | None = None,
+        kv_cache: Flux2KVCache | None = None,
     ) -> mx.array:
         if not isinstance(timestep, mx.array):
             timestep = mx.array(timestep, dtype=hidden_states.dtype)
@@ -108,23 +110,27 @@ class Flux2Transformer(nn.Module):
         temb_mod_params_img = self.double_stream_modulation_img(temb)
         temb_mod_params_txt = self.double_stream_modulation_txt(temb)
 
-        for block in self.transformer_blocks:
+        for idx, block in enumerate(self.transformer_blocks):
             encoder_hidden_states, hidden_states = block(
                 hidden_states=hidden_states,
                 encoder_hidden_states=encoder_hidden_states,
                 temb_mod_params_img=temb_mod_params_img,
                 temb_mod_params_txt=temb_mod_params_txt,
                 image_rotary_emb=concat_rotary_emb,
+                kv_cache=kv_cache,
+                kv_cache_layer_idx=idx,
             )
 
         hidden_states = mx.concatenate([encoder_hidden_states, hidden_states], axis=1)
 
         temb_mod_params_single = self.single_stream_modulation(temb)[0]
-        for block in self.single_transformer_blocks:
+        for idx, block in enumerate(self.single_transformer_blocks):
             hidden_states = block(
                 hidden_states=hidden_states,
                 temb_mod_params=temb_mod_params_single,
                 image_rotary_emb=concat_rotary_emb,
+                kv_cache=kv_cache,
+                kv_cache_layer_idx=idx,
             )
 
         hidden_states = hidden_states[:, encoder_hidden_states.shape[1] :, ...]
