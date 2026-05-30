@@ -8,6 +8,7 @@ import mlx.nn as nn
 
 from mflux.models.common.lora.layer.fused_linear_lora_layer import FusedLoRALinear
 from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
+from mflux.models.common.lora.mapping.lokr_loader import LoKrLoader
 from mflux.models.common.lora.mapping.lora_mapping import LoRATarget
 from mflux.models.common.resolution.lora_resolution import LoraResolution
 
@@ -66,18 +67,28 @@ class LoRALoader:
         print(f"🔧 Applying LoRA: {Path(lora_file).name} (scale={scale})")
 
         try:
-            weights = dict(mx.load(lora_file, return_metadata=True)[0].items())
+            loaded = mx.load(lora_file, return_metadata=True)
+            weights = dict(loaded[0].items())
+            file_metadata = loaded[1] or {}
         except (FileNotFoundError, ValueError, RuntimeError) as e:
             print(f"❌ Failed to load LoRA file: {e}")
             return
 
-        # Build pattern mappings from LoRATargets
-        pattern_mappings = LoRALoader._build_pattern_mappings(lora_mapping)
+        # LoKr adapters (networkType=lokr) reconstruct a Kronecker delta instead of a
+        # low-rank A·B residual and use lokr_w1/w2 keys, so they take a separate path
+        # (epic 2193). Plain LoRA keeps the pattern-mapped A/B flow below.
+        if LoKrLoader.is_lokr(file_metadata):
+            applied_count, matched_keys = LoKrLoader.apply(
+                transformer, weights, file_metadata, scale, role=role
+            )
+        else:
+            # Build pattern mappings from LoRATargets
+            pattern_mappings = LoRALoader._build_pattern_mappings(lora_mapping)
 
-        # Apply LoRA using the mappings (allows multiple targets per source)
-        applied_count, matched_keys = LoRALoader._apply_lora_with_mapping(
-            transformer, weights, scale, pattern_mappings, role=role
-        )
+            # Apply LoRA using the mappings (allows multiple targets per source)
+            applied_count, matched_keys = LoRALoader._apply_lora_with_mapping(
+                transformer, weights, scale, pattern_mappings, role=role
+            )
 
         # Report results
         total_keys = len(weights)
