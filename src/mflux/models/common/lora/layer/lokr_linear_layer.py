@@ -73,5 +73,7 @@ class LoKrLinear(nn.Module):
 
     def __call__(self, x):
         base_out = self.linear(x)
-        lokr_out = mx.matmul(x, self.delta.T)
+        # The reconstructed delta is held at the factors' precision (typically fp32);
+        # cast to the activation dtype so it composes with a bf16/quantized base.
+        lokr_out = mx.matmul(x, self.delta.astype(x.dtype).T)
         return base_out + self.scale * lokr_out
