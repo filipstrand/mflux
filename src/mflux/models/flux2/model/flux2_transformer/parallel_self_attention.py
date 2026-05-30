@@ -4,6 +4,7 @@ from mlx import nn
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.flux.model.flux_transformer.common.attention_utils import AttentionUtils
 from mflux.models.flux2.model.flux2_transformer.feed_forward import Flux2SwiGLU
+from mflux.models.flux2.model.flux2_transformer.flux2_kv_cache import Flux2KVCache
 
 
 class Flux2ParallelSelfAttention(nn.Module):
@@ -19,7 +20,13 @@ class Flux2ParallelSelfAttention(nn.Module):
         self.mlp_act = Flux2SwiGLU()
         self.to_out = nn.Linear(self.inner_dim + self.mlp_hidden_dim, dim, bias=False)
 
-    def __call__(self, hidden_states: mx.array, image_rotary_emb):
+    def __call__(
+        self,
+        hidden_states: mx.array,
+        image_rotary_emb,
+        kv_cache: Flux2KVCache | None = None,
+        kv_cache_layer_idx: int | None = None,
+    ):
         proj = self.to_qkv_mlp_proj(hidden_states)
         qkv, mlp_hidden = mx.split(proj, [self.inner_dim * 3], axis=-1)
         query, key, value = mx.split(qkv, 3, axis=-1)
@@ -35,6 +42,18 @@ class Flux2ParallelSelfAttention(nn.Module):
         if image_rotary_emb is not None:
             cos, sin = image_rotary_emb
             query, key = AttentionUtils.apply_rope_bshd(query, key, cos, sin)
+
+        if kv_cache is not None and kv_cache.mode == "extract":
+            ref_count = kv_cache.num_ref_tokens
+            if ref_count > 0:
+                ref_k = key[:, :, -ref_count:, :]
+                ref_v = value[:, :, -ref_count:, :]
+                kv_cache.store("single", kv_cache_layer_idx, ref_k, ref_v)
+
+        if kv_cache is not None and kv_cache.mode == "cached":
+            cached_k, cached_v = kv_cache.load("single", kv_cache_layer_idx)
+            key = mx.concatenate([key, cached_k], axis=2)
+            value = mx.concatenate([value, cached_v], axis=2)
 
         hidden_states = AttentionUtils.compute_attention(
             query=query,

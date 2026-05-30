@@ -26,6 +26,7 @@ MODEL_CHOICES = [
     "z-image-turbo",
     "flux2-klein-4b",
     "flux2-klein-9b",
+    "flux2-klein-9b-kv",
     "flux2-klein-base-4b",
     "flux2-klein-base-9b",
 ]
@@ -44,6 +45,7 @@ MODEL_INFERENCE_STEPS = {
     "z-image-turbo": 9,
     "flux2-klein-4b": 4,
     "flux2-klein-9b": 4,
+    "flux2-klein-9b-kv": 4,
     "flux2-klein-base-4b": 50,
     "flux2-klein-base-9b": 50,
 }
