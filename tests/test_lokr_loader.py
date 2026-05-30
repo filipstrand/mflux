@@ -14,7 +14,9 @@ import mlx.core as mx
 import mlx.nn as nn
 import numpy as np
 
-from mflux.models.common.lora.layer.lokr_linear_layer import LoKrLinear
+from mflux.models.common.lora.layer.fused_linear_lora_layer import FusedLoRALinear
+from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
+from mflux.models.common.lora.layer.lokr_linear_layer import LoKrLinear, reconstruct_lokr_delta
 from mflux.models.common.lora.mapping.lokr_loader import LoKrLoader
 
 
@@ -90,6 +92,76 @@ def test_scale_zero_is_noop_and_scale_one_changes_output():
     LoKrLoader.apply(active, weights, metadata, scale=1.0)
     out = np.array(active.layers[0].attention.to_q(x))
     assert not np.allclose(out, base_out)
+
+
+def test_delta_stored_at_bf16():
+    # The reconstructed ΔW is downcast to bf16 in the layer (memory win).
+    rng = np.random.default_rng(5)
+    dim = 16
+    model = _Tiny(dim)
+    LoKrLoader.apply(model, _lokr_weights(dim, rng), {"networkType": "lokr", "alpha": "8", "rank": "4"}, scale=1.0)
+    assert model.layers[0].attention.to_q.delta.dtype == mx.bfloat16
+
+
+def test_stacking_two_lokr_fuses_and_sums():
+    rng = np.random.default_rng(6)
+    dim = 16
+    metadata = {"networkType": "lokr", "alpha": "8", "rank": "4"}
+    model = _Tiny(dim)
+    base = model.layers[0].attention.to_q  # original nn.Linear, captured before mutation
+    x = mx.array(rng.standard_normal((3, dim)).astype(np.float32))
+    base_out = np.array(base(x))
+
+    LoKrLoader.apply(model, _lokr_weights(dim, rng), metadata, scale=1.0)
+    LoKrLoader.apply(model, _lokr_weights(dim, rng), metadata, scale=1.0)
+
+    fused = model.layers[0].attention.to_q
+    assert isinstance(fused, FusedLoRALinear)
+    assert len(fused.loras) == 2
+    assert fused.base_linear is base  # stacked, not re-wrapped
+    # Output = shared base applied ONCE + both LoKr residuals.
+    expected = base_out + np.array(fused.loras[0].residual(x)) + np.array(fused.loras[1].residual(x))
+    assert np.allclose(np.array(fused(x)), expected, atol=1e-2)
+
+
+def test_lokr_stacks_onto_existing_lora():
+    # Pre-install a LoRA, then apply a LoKr to the same module → mixed fusion.
+    rng = np.random.default_rng(7)
+    dim = 16
+    model = _Tiny(dim)
+    base = model.layers[0].attention.to_q
+    model.layers[0].attention.to_q = LoRALinear.from_linear(base, r=4, scale=1.0)
+
+    applied, _ = LoKrLoader.apply(model, _lokr_weights(dim, rng), {"networkType": "lokr", "alpha": "8", "rank": "4"}, scale=1.0)
+
+    fused = model.layers[0].attention.to_q
+    assert applied == 1
+    assert isinstance(fused, FusedLoRALinear)
+    assert isinstance(fused.loras[0], LoRALinear)
+    assert isinstance(fused.loras[1], LoKrLinear)
+    assert fused.base_linear is base
+
+
+def test_fused_mixes_lora_and_lokr_residuals():
+    # Layer-level: a FusedLoRALinear with one LoRA and one LoKr sums both residuals
+    # on top of a single base application.
+    rng = np.random.default_rng(8)
+    dim = 16
+    base = nn.Linear(dim, dim, bias=False)
+    lora = LoRALinear.from_linear(base, r=4, scale=0.5)
+    lokr = LoKrLinear.from_linear(
+        base,
+        delta=reconstruct_lokr_delta(
+            alpha=8.0, rank=4, base_shape=(dim, dim),
+            w1=mx.array(rng.standard_normal((4, 4)).astype(np.float32)),
+            w2=mx.array(rng.standard_normal((4, 4)).astype(np.float32)),
+        ),
+        scale=0.7,
+    )
+    fused = FusedLoRALinear(base_linear=base, loras=[lora, lokr])
+    x = mx.array(rng.standard_normal((3, dim)).astype(np.float32))
+    expected = np.array(base(x)) + np.array(lora.residual(x)) + np.array(lokr.residual(x))
+    assert np.allclose(np.array(fused(x)), expected, atol=1e-2)
 
 
 def test_metadata_round_trips_through_mx_load():

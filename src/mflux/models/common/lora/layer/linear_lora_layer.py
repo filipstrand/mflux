@@ -47,7 +47,10 @@ class LoRALinear(nn.Module):
             shape=(r, output_dims),
         )
 
+    def residual(self, x):
+        # The adapter's contribution WITHOUT the base, so a FusedLoRALinear can apply
+        # the shared base once and sum residuals across stacked LoRA/LoKr adapters.
+        return self.scale * mx.matmul(mx.matmul(x, self.lora_A), self.lora_B)
+
     def __call__(self, x):
-        base_out = self.linear(x)
-        lora_out = mx.matmul(mx.matmul(x, self.lora_A), self.lora_B)
-        return base_out + self.scale * lora_out
+        return self.linear(x) + self.residual(x)

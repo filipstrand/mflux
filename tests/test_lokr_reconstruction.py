@@ -113,7 +113,8 @@ def test_lokr_linear_forward_applies_delta_residual():
     scale = 0.7
     layer = LoKrLinear.from_linear(base, delta=delta, scale=scale)
     x = mx.array(rng.standard_normal((5, in_dims)).astype(np.float32))
-    # Reference uses the MLX residual matmul too, isolating the __call__ wiring
-    # from Metal's reduced-precision fp32 matmul.
-    expected = np.array(base(x)) + scale * np.array(mx.matmul(x, delta.T))
+    # The layer stores the delta at bf16 (memory win), so build the reference from the
+    # STORED delta — this isolates the __call__/residual wiring from the fp32→bf16 cast.
+    assert layer.delta.dtype == mx.bfloat16
+    expected = np.array(base(x)) + scale * np.array(mx.matmul(x, layer.delta.astype(x.dtype).T))
     assert np.allclose(np.array(layer(x)), expected, atol=1e-5)

@@ -39,11 +39,15 @@ class LoKrLinear(nn.Module):
     """A base Linear plus a fused LoKr delta, applied as a forward-time residual
     exactly like :class:`LoRALinear` (``base_out + scale · x · ΔWᵀ``) so it composes
     with the same quantized/non-quantized base layers and the same per-LoRA ``scale``
-    knob (``scale = 0`` is a bit-exact no-op).
+    knob (``scale = 0`` is a bit-exact no-op). It exposes :meth:`residual` so it can be
+    stacked alongside LoRA and other LoKr adapters inside a :class:`FusedLoRALinear`.
 
     Unlike LoRA, LoKr cannot be expressed as a low-rank ``A·B`` residual, so the full
     Kronecker delta ``ΔW`` (shape ``[out, in]``) is reconstructed once at construction
-    (see :func:`reconstruct_lokr_delta`) and reused every step.
+    (see :func:`reconstruct_lokr_delta`) and reused every step. The delta is stored at
+    bf16 (not the factors' fp32): it sums into a bf16/quantized base, so bf16 is
+    effectively lossless here and halves the per-module resident memory that would
+    otherwise erode the Q4/Q8 win the base was quantized for.
     """
 
     @staticmethod
@@ -68,12 +72,18 @@ class LoKrLinear(nn.Module):
 
     def __init__(self, delta: mx.array, scale: float = 1.0):
         super().__init__()
-        self.delta = delta
+        # Reconstruction runs in the factors' precision (fp32) for an accurate kron,
+        # then the delta is downcast to bf16 for storage — it is summed into a
+        # bf16/quantized base, so bf16 is effectively lossless and halves the
+        # resident memory vs holding the dense ΔW at fp32.
+        self.delta = delta.astype(mx.bfloat16)
         self.scale = scale
 
+    def residual(self, x):
+        # The adapter's contribution WITHOUT the base, so a FusedLoRALinear can sum it
+        # alongside other stacked LoRA/LoKr adapters. astype reconciles the stored
+        # bf16 delta with the activation dtype (a no-op when x is already bf16).
+        return self.scale * mx.matmul(x, self.delta.astype(x.dtype).T)
+
     def __call__(self, x):
-        base_out = self.linear(x)
-        # The reconstructed delta is held at the factors' precision (typically fp32);
-        # cast to the activation dtype so it composes with a bf16/quantized base.
-        lokr_out = mx.matmul(x, self.delta.astype(x.dtype).T)
-        return base_out + self.scale * lokr_out
+        return self.linear(x) + self.residual(x)

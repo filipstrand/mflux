@@ -3,6 +3,7 @@ from pathlib import Path
 import mlx.core as mx
 import mlx.nn as nn
 
+from mflux.models.common.lora.layer.fused_linear_lora_layer import FusedLoRALinear
 from mflux.models.common.lora.layer.lokr_linear_layer import (
     LoKrLinear,
     reconstruct_lokr_delta,
@@ -100,7 +101,10 @@ class LoKrLoader:
             print(f"   ⚠️  LoKr target not found in model: {module_path}")
             return False
 
-        base = module.linear if isinstance(module, LoKrLinear) else module
+        # Unwrap any adapter already installed here (a single LoRA/LoKr or a fusion) to
+        # the shared base + existing adapters, so this LoKr STACKS on top instead of
+        # replacing it — supports LoKr+LoKr and mixed LoRA+LoKr on one module.
+        base, existing = FusedLoRALinear.unwrap(module)
         if not hasattr(base, "weight"):
             print(f"   ❌ LoKr target {module_path} is not a linear layer")
             return False
@@ -119,12 +123,17 @@ class LoKrLoader:
         lokr_layer = LoKrLinear.from_linear(base, delta=delta, scale=scale)
         lokr_layer._mflux_lora_role = role
 
+        adapters = existing + [lokr_layer]
+        if len(adapters) > 1:
+            print(f"   🔀 Stacking LoKr onto {len(existing)} existing adapter(s) at {module_path}")
+        new_module = adapters[0] if len(adapters) == 1 else FusedLoRALinear(base_linear=base, loras=adapters)
+
         parent = LoKrLoader._navigate(transformer, parts[:-1])
         leaf = parts[-1]
         if leaf.isdigit():
-            parent[int(leaf)] = lokr_layer
+            parent[int(leaf)] = new_module
         elif isinstance(parent, dict) and leaf in parent:
-            parent[leaf] = lokr_layer
+            parent[leaf] = new_module
         else:
-            setattr(parent, leaf, lokr_layer)
+            setattr(parent, leaf, new_module)
         return True

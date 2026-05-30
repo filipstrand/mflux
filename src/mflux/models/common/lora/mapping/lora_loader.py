@@ -8,6 +8,7 @@ import mlx.nn as nn
 
 from mflux.models.common.lora.layer.fused_linear_lora_layer import FusedLoRALinear
 from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
+from mflux.models.common.lora.layer.lokr_linear_layer import LoKrLinear
 from mflux.models.common.lora.mapping.lokr_loader import LoKrLoader
 from mflux.models.common.lora.mapping.lora_mapping import LoRATarget
 from mflux.models.common.resolution.lora_resolution import LoraResolution
@@ -252,47 +253,26 @@ class LoRALoader:
         # Calculate final scale - only use user scale, matching Diffusers approach
         effective_scale = scale
 
-        # Create new LoRA layer
-        # Check if it's a linear layer (either nn.Linear, LoRALinear, or FusedLoRALinear)
-        is_linear = hasattr(current_module, "weight")
-        is_lora_linear = isinstance(current_module, LoRALinear)
-        is_fused_linear = isinstance(current_module, FusedLoRALinear)
+        # A target may already carry an adapter (a single LoRA/LoKr) or a fusion of
+        # several. Unwrap to the shared base + existing adapters so this LoRA STACKS on
+        # top of ANY of them (including a LoKr) rather than replacing or skipping it.
+        is_adapter = isinstance(current_module, (LoRALinear, LoKrLinear, FusedLoRALinear))
+        if hasattr(current_module, "weight") or is_adapter:
+            base_linear, existing = FusedLoRALinear.unwrap(current_module)
 
-        if is_linear or is_lora_linear or is_fused_linear:
-            # Handle fusion: if the current module is already a LoRA layer, fuse them
-            if is_lora_linear:
-                print(f"   🔀 Fusing with existing LoRA at {target_path}")
-                lora_layer = LoRALinear.from_linear(current_module.linear, r=lora_A.shape[1], scale=effective_scale)
-                lora_layer._mflux_lora_role = role
-                lora_layer.lora_A = lora_A
-                lora_layer.lora_B = lora_B
-                if "alpha" in lora_data:
-                    lora_layer.lora_B = lora_layer.lora_B * alpha_scale
-                fused_layer = FusedLoRALinear(base_linear=current_module.linear, loras=[current_module, lora_layer])
-                replacement_layer = fused_layer
-            elif is_fused_linear:
-                print(f"   🔀 Adding to existing fusion at {target_path}")
-                lora_layer = LoRALinear.from_linear(
-                    current_module.base_linear, r=lora_A.shape[1], scale=effective_scale
-                )
-                lora_layer._mflux_lora_role = role
-                lora_layer.lora_A = lora_A
-                lora_layer.lora_B = lora_B
-                if "alpha" in lora_data:
-                    lora_layer.lora_B = lora_layer.lora_B * alpha_scale
-                fused_layer = FusedLoRALinear(
-                    base_linear=current_module.base_linear, loras=current_module.loras + [lora_layer]
-                )
-                replacement_layer = fused_layer
-            else:
-                # First LoRA on this layer
-                lora_layer = LoRALinear.from_linear(current_module, r=lora_A.shape[1], scale=effective_scale)
-                lora_layer._mflux_lora_role = role
-                lora_layer.lora_A = lora_A
-                lora_layer.lora_B = lora_B
-                if "alpha" in lora_data:
-                    lora_layer.lora_B = lora_layer.lora_B * alpha_scale
-                replacement_layer = lora_layer
+            lora_layer = LoRALinear.from_linear(base_linear, r=lora_A.shape[1], scale=effective_scale)
+            lora_layer._mflux_lora_role = role
+            lora_layer.lora_A = lora_A
+            lora_layer.lora_B = lora_B
+            if "alpha" in lora_data:
+                lora_layer.lora_B = lora_layer.lora_B * alpha_scale
+
+            adapters = existing + [lora_layer]
+            if len(adapters) > 1:
+                print(f"   🔀 Stacking LoRA onto {len(existing)} existing adapter(s) at {target_path}")
+            replacement_layer = (
+                adapters[0] if len(adapters) == 1 else FusedLoRALinear(base_linear=base_linear, loras=adapters)
+            )
 
             # Replace the layer in the parent module
             parent_module = transformer
