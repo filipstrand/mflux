@@ -19,11 +19,12 @@ def test_register_memory_saver_sets_mlx_cache_limit_without_low_ram():
     ):
         memory_saver = CallbackManager._register_memory_saver(args=args, model=model)
 
-    assert memory_saver is None
+    # MemorySaver is now always registered (encoder eviction is unconditional)
+    assert memory_saver is not None
     mock_set_cache_limit.assert_called_once_with(int(2.5 * (1000**3)))
     mock_clear_cache.assert_called_once()
     mock_reset_peak_memory.assert_called_once()
-    model.callbacks.register.assert_not_called()
+    model.callbacks.register.assert_called_once()
 
 
 @pytest.mark.fast

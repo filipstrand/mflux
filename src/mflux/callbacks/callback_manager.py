@@ -63,25 +63,30 @@ class CallbackManager:
 
     @staticmethod
     def _register_memory_saver(args: Namespace, model) -> MemorySaver | None:
-        memory_saver = None
         cache_limit_bytes = CallbackManager._resolve_cache_limit_bytes(getattr(args, "mlx_cache_limit_gb", None))
+        seeds = getattr(args, "seed", []) or []
+        num_seeds = len(seeds) if seeds else 1
         if args.low_ram:
-            seeds = getattr(args, "seed", []) or []
             images = getattr(args, "image_path", [])
             if not isinstance(images, list):
                 images = [images] if images is not None else []
-            keep_transformer = len(seeds) > 1 or len(images) > 1
+            keep_transformer = num_seeds > 1 or len(images) > 1
             memory_saver = MemorySaver(
                 model=model,
                 keep_transformer=keep_transformer,
                 cache_limit_bytes=cache_limit_bytes or 1000**3,
                 args=args,
+                num_seeds=num_seeds,
             )
-            model.callbacks.register(memory_saver)
-        elif cache_limit_bytes is not None:
-            mx.set_cache_limit(cache_limit_bytes)
-            mx.clear_cache()
-            mx.reset_peak_memory()
+        else:
+            # Always evict text encoders after encoding — they are never needed post-encode
+            # and keeping them wastes 8-12 GB throughout the denoising loop.
+            memory_saver = MemorySaver(model=model, keep_transformer=True, cache_limit_bytes=None, num_seeds=num_seeds)
+            if cache_limit_bytes is not None:
+                mx.set_cache_limit(cache_limit_bytes)
+                mx.clear_cache()
+                mx.reset_peak_memory()
+        model.callbacks.register(memory_saver)
         return memory_saver
 
     @staticmethod
