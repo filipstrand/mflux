@@ -14,6 +14,7 @@ from safetensors.torch import load_file as torch_load_file
 from mflux.cli.defaults.defaults import MFLUX_CACHE_DIR
 from mflux.models.common.resolution.path_resolution import PathResolution
 from mflux.models.common.weights.loading.loaded_weights import LoadedWeights, MetaData
+from mflux.models.common.weights.loading.safetensors_reader import SafetensorsReader
 from mflux.models.common.weights.loading.weight_definition import ComponentDefinition
 from mflux.models.common.weights.mapping.weight_mapper import WeightMapper
 
@@ -85,10 +86,11 @@ class WeightLoader:
                 raise ValueError(f"No root_path and no download_url for component: {component.name}")
             component_path = root_path / component.hf_subdir
 
-            # Try mflux saved format first
-            weights, q_level, version = WeightLoader._try_load_mflux_format(component_path)
-            if weights is not None:
-                return weights, q_level, version
+            if component.loading_mode != "fp8_safetensors":
+                # Try mflux saved format first.
+                weights, q_level, version = WeightLoader._try_load_mflux_format(component_path)
+                if weights is not None:
+                    return weights, q_level, version
 
             # Check cache for shared loading (e.g., FIBO VLM decoder + visual from same source)
             cache_key = (str(component_path), component.loading_mode, tuple(component.weight_files or []))
@@ -110,6 +112,17 @@ class WeightLoader:
                 for k, v in raw_weights.items()
                 if any(k.startswith(prefix) for prefix in component.weight_prefix_filters)
             }
+
+        if component.key_transform is not None:
+            transformed_weights = {}
+            for key, value in raw_weights.items():
+                transformed_key = component.key_transform(key)
+                if transformed_key is not None:
+                    transformed_weights[transformed_key] = value
+            raw_weights = transformed_weights
+
+        if component.weight_transform is not None:
+            raw_weights = {k: component.weight_transform(k, v) for k, v in raw_weights.items()}
 
         # Apply precision conversion if specified
         if component.precision is not None:
@@ -216,6 +229,8 @@ class WeightLoader:
             return WeightLoader._load_single(path)
         elif loading_mode == "multi_glob":
             return WeightLoader._load_multi_glob(path)
+        elif loading_mode == "fp8_safetensors":
+            return WeightLoader._load_fp8_safetensors(path)
         else:
             raise ValueError(f"Unknown loading mode: {loading_mode}")
 
@@ -332,6 +347,10 @@ class WeightLoader:
             all_weights.update(dict(data.items()))
 
         return all_weights
+
+    @staticmethod
+    def _load_fp8_safetensors(path: Path) -> dict[str, mx.array]:
+        return SafetensorsReader.read_directory(path)
 
     @staticmethod
     def _convert_precision(weights: dict[str, mx.array], precision: mx.Dtype) -> dict[str, mx.array]:
