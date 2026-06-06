@@ -54,8 +54,18 @@ Provide a repeatable, MLX-focused workflow for porting ML models (typically from
     - Prefer shared scheduler implementations when they already exist in mflux.
     - Ensure CLIs register callbacks via `CallbackManager.register_callbacks(...)` so shared features like `--stepwise-image-output-dir` work; pass a `latent_creator` that supports `unpack_latents(...)`.
     - Keep running the deterministic image test during refactors to avoid regressions.
-6. **Finalize**
-   - Re-run tests and basic perf checks.
+   - Align the variant class with recent ports (`flux2_klein`, `z_image`): `prompt_cache`, merged `_predict`, RoPE setup inside predict path, `_decode_latents` helper, no verbose comments/docstrings (see repo `RULE.md`).
+   - Strip dead scaffolding (e.g. unused gradient-checkpointing flags) once training/inference paths are stable.
+6. **Pre-merge polish (after core port works)**
+   - **diffusers sanity check**: run matched mflux + diffusers generations; use `mflux-debugging` latent injection if outputs disagree but you need to validate transformer/VAE.
+   - **Golden tests**: pick prompt/seed/settings that are stable on target CI hardware; update reference PNGs only after explicit approval (see `mflux-testing`).
+   - **img2img**: verify latent packing/normalization on the img2img path matches txt2img and training (especially when reusing a shared VAE from another model family).
+   - **Cross-model touch points**: list every file outside `models/<your_model>/`; justify shared changes (`memory_saver` tiling guard, shared VAE `tiling_config`, training `runner` wiring). Drop unrelated edits (e.g. personal `.gitignore` entries).
+   - **README**: follow an existing model README structure (e.g. Flux2): hero image, turbo + base examples, feature section (img2img), disk-size warning, Notes, Training. Measure on-disk sizes with `du` on HF cache and/or `mflux-save` + `du -sh` for quantized sizes.
+   - **Training**: example JSON under `models/common/training/_example/`, un-ignore in `.gitignore`, fast unit tests for training-adapter preview defaults.
+   - Re-run `make lint`, `make test-fast`, then slow golden tests before merge.
+7. **Finalize**
+   - Re-run tests and basic perf checks after polish.
    - Add CLI/pipeline defaults and completions later, once core output is stable.
    - Ensure the model is wired into the standard surfaces:
      - `ModelConfig` entry + aliases
