@@ -38,6 +38,7 @@ class ErnieImageInitializer:
 
     @staticmethod
     def _init_config(model, model_config: ModelConfig) -> None:
+        model.prompt_cache = {}
         model.model_config = model_config
         model.callbacks = CallbackRegistry()
         model.tiling_config = TilingConfig(vae_decode_tiles_per_dim=None)

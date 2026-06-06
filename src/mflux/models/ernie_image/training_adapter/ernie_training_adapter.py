@@ -93,23 +93,16 @@ class ErnieTrainingAdapter(TrainingAdapter):
         image_paths: list[Path | str] | None = None,
     ):
         canonical_steps = self._model_config.lora_training_steps or steps
-        transformer = self._ernie.transformer
-        for attr in ("_compiled_predict", "_compiled_cos"):
-            if hasattr(transformer, attr):
-                delattr(transformer, attr)
-        try:
-            return self._ernie.generate_image(
-                seed=seed,
-                prompt=prompt,
-                num_inference_steps=canonical_steps,
-                height=height,
-                width=width,
-                guidance=self._guidance,
-            )
-        finally:
-            for attr in ("_compiled_predict", "_compiled_cos"):
-                if hasattr(transformer, attr):
-                    delattr(transformer, attr)
+        image = self._ernie.generate_image(
+            seed=seed,
+            prompt=prompt,
+            num_inference_steps=canonical_steps,
+            height=height,
+            width=width,
+            guidance=self._guidance,
+        )
+        self._ernie.prompt_cache = {}
+        return image
 
     def save_lora_adapter(self, *, path: Path, training_spec: TrainingSpec) -> None:
         weights: dict[str, mx.array] = {}

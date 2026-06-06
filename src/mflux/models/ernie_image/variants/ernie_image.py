@@ -34,7 +34,6 @@ class ErnieImage(nn.Module):
         model_config: ModelConfig = ModelConfig.ernie_image_turbo(),
     ):
         super().__init__()
-        self._text_cache = None
         ErnieImageInitializer.init(
             model=self,
             model_config=model_config,
@@ -72,48 +71,27 @@ class ErnieImage(nn.Module):
         )
 
         latents = self._prepare_latents(seed=seed, config=config)
-
-        cache_key = (prompt, negative_prompt, config.guidance)
-        if self._text_cache is None or self._text_cache[0] != cache_key:
-            text_bth, text_lens = self._encode_prompts(
-                prompt=prompt,
-                negative_prompt=negative_prompt,
-                guidance=config.guidance,
-            )
-            mx.eval(text_bth, text_lens)
-            self._text_cache = (cache_key, text_bth, text_lens)
-        else:
-            _, text_bth, text_lens = self._text_cache
-
-        _, _, H_lat, W_lat = latents.shape
-        cos, sin, pos_attn_mask = self.transformer.get_pos_encoding(
-            B=text_bth.shape[0],
-            H=H_lat,
-            W=W_lat,
-            T=text_bth.shape[1],
-            text_lens=text_lens,
+        text_bth, text_lens = self._encode_prompts(
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            guidance=config.guidance,
         )
-        mx.eval(cos, sin, pos_attn_mask)
+        mx.eval(latents, text_bth, text_lens)
 
-        mx.eval(latents)
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
-
-        predict = self._predict(self.transformer, cos, sin, pos_attn_mask)
+        predict = self._predict(self.transformer, text_bth, text_lens, latents)
 
         for t in config.time_steps:
             try:
                 sigma_t = config.scheduler.sigmas[t].reshape((1,))
-
-                noise = self._predict_noise(
-                    predict=predict,
+                noise = predict(
                     latents=latents,
                     sigma=sigma_t,
                     text_bth=text_bth,
                     text_lens=text_lens,
                     guidance=config.guidance,
                 )
-
                 latents = config.scheduler.step(noise=noise, timestep=t, latents=latents)
                 ctx.in_loop(t, latents)
                 mx.eval(latents)
@@ -126,7 +104,7 @@ class ErnieImage(nn.Module):
 
         ctx.after_loop(latents)
 
-        decoded = self.vae.decode_packed_latents(latents, tiling_config=self.tiling_config)
+        decoded = self._decode_latents(latents=latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,
             config=config,
@@ -165,6 +143,10 @@ class ErnieImage(nn.Module):
         negative_prompt: str | None,
         guidance: float,
     ) -> tuple[mx.array, mx.array]:
+        cache_key = (prompt, negative_prompt, guidance)
+        if cache_key in self.prompt_cache:
+            return self.prompt_cache[cache_key]
+
         tokenizer = self.tokenizers["ernie"]
         if guidance <= 1.0:
             prompts = [prompt]
@@ -172,56 +154,17 @@ class ErnieImage(nn.Module):
             neg = negative_prompt if negative_prompt and negative_prompt.strip() else " "
             prompts = [neg, prompt]
 
-        return ErniePromptEncoder.build_text_batch(
+        text_bth, text_lens = ErniePromptEncoder.build_text_batch(
             prompts=prompts,
             tokenizer=tokenizer,
             text_encoder=self.text_encoder,
         )
+        mx.eval(text_bth, text_lens)
+        self.prompt_cache[cache_key] = (text_bth, text_lens)
+        return text_bth, text_lens
 
-    @staticmethod
-    def _predict(transformer: ErnieTransformer, cos: mx.array, sin: mx.array, attn_mask: mx.array):
-        cached = getattr(transformer, "_compiled_predict", None)
-        if cached is not None and getattr(transformer, "_compiled_cos", None) is cos:
-            return cached
-
-        def predict(
-            latents: mx.array,
-            timestep: mx.array,
-            text_bth: mx.array,
-            text_lens: mx.array,
-        ) -> mx.array:
-            return transformer(
-                hidden_states=latents,
-                timestep=timestep,
-                text_bth=text_bth,
-                text_lens=text_lens,
-                cos=cos,
-                sin=sin,
-                attn_mask=attn_mask,
-            )
-
-        fn = predict if AppleSiliconUtil.is_m1_or_m2() else mx.compile(predict)
-        transformer._compiled_predict = fn
-        transformer._compiled_cos = cos
-        return fn
-
-    @staticmethod
-    def _predict_noise(
-        predict,
-        latents: mx.array,
-        sigma: mx.array,
-        text_bth: mx.array,
-        text_lens: mx.array,
-        guidance: float,
-    ) -> mx.array:
-        timestep = sigma * 1000
-        B = text_bth.shape[0]
-        if B == 1:
-            return predict(latents, mx.broadcast_to(timestep, (1,)), text_bth, text_lens)
-        latent_input = mx.concatenate([latents, latents], axis=0)
-        pred = predict(latent_input, mx.broadcast_to(timestep, (2,)), text_bth, text_lens)
-        pred_uncond, pred_cond = pred[:1], pred[1:]
-        return pred_uncond + guidance * (pred_cond - pred_uncond)
+    def _decode_latents(self, *, latents: mx.array) -> mx.array:
+        return self.vae.decode_packed_latents(latents, tiling_config=self.tiling_config)
 
     def save_model(self, base_path: str) -> None:
         ModelSaver.save_model(
@@ -230,3 +173,56 @@ class ErnieImage(nn.Module):
             base_path=base_path,
             weight_definition=ErnieWeightDefinition,
         )
+
+    @staticmethod
+    def _predict(
+        transformer: ErnieTransformer,
+        text_bth: mx.array,
+        text_lens: mx.array,
+        latents: mx.array,
+    ):
+        H_lat, W_lat = latents.shape[-2:]
+        cos, sin, attn_mask = transformer.get_pos_encoding(
+            B=text_bth.shape[0],
+            H=H_lat,
+            W=W_lat,
+            T=text_bth.shape[1],
+            text_lens=text_lens,
+        )
+        mx.eval(cos, sin, attn_mask)
+
+        def predict(
+            latents: mx.array,
+            sigma: mx.array,
+            text_bth: mx.array,
+            text_lens: mx.array,
+            guidance: float,
+        ) -> mx.array:
+            timestep = sigma * 1000
+            if text_bth.shape[0] == 1:
+                return transformer(
+                    hidden_states=latents,
+                    timestep=mx.broadcast_to(timestep, (1,)),
+                    text_bth=text_bth,
+                    text_lens=text_lens,
+                    cos=cos,
+                    sin=sin,
+                    attn_mask=attn_mask,
+                )
+
+            latent_input = mx.concatenate([latents, latents], axis=0)
+            pred = transformer(
+                hidden_states=latent_input,
+                timestep=mx.broadcast_to(timestep, (2,)),
+                text_bth=text_bth,
+                text_lens=text_lens,
+                cos=cos,
+                sin=sin,
+                attn_mask=attn_mask,
+            )
+            pred_uncond, pred_cond = pred[:1], pred[1:]
+            return pred_uncond + guidance * (pred_cond - pred_uncond)
+
+        if AppleSiliconUtil.is_m1_or_m2():
+            return predict
+        return mx.compile(predict)
