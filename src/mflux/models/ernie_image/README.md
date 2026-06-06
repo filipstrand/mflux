@@ -75,19 +75,8 @@ mflux-generate-ernie-image-turbo \
   -q 8
 ```
 
-## LoRA
-Pre-trained LoRA files (`.safetensors`) can be applied at inference time with `--lora-paths` and `--lora-scales`. Both the `diffusion_model.layers.N.*` format (Lucie / ai-toolkit style) and the `lora_unet_layers_N_*` format (kohya / ComfyUI style) are supported.
-
-```sh
-mflux-generate-ernie-image-turbo \
-  --prompt "..." \
-  --lora-paths /path/to/lora.safetensors \
-  --lora-scales 1.0 \
-  --steps 8 -q 8
-```
-
 > [!WARNING]
-> ERNIE-Image weights are large (~22 GB unquantized). Use `-q 8` (~12 GB) or `-q 4` (~6.4 GB) for reduced memory usage.
+> Note: ERNIE-Image requires downloading model weights (~22 GB unquantized on disk), or use `-q 8` (~12 GB) / `-q 4` (~6.2 GB) for smaller on-disk sizes (e.g. via `mflux-save`).
 
 ## Notes
 - ERNIE-Image tends toward vivid, high-contrast output. Prompts like `35mm film grain`, `analog`, or `soft lighting` can soften the look.
