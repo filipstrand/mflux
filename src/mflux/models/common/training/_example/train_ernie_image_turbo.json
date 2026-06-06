@@ -37,11 +37,7 @@
       { "module_path": "layers.{block}.mlp.gate_proj",           "blocks": { "start": 0, "end": 36 }, "rank": 16 },
       { "module_path": "layers.{block}.mlp.up_proj",             "blocks": { "start": 0, "end": 36 }, "rank": 16 },
       { "module_path": "layers.{block}.mlp.linear_fc2",          "blocks": { "start": 0, "end": 36 }, "rank": 16 },
-      { "module_path": "text_proj",                                                                     "rank": 16 },
-      { "module_path": "time_embedding.linear_1",                                                       "rank": 16 },
-      { "module_path": "time_embedding.linear_2",                                                       "rank": 16 },
-      { "module_path": "adaln_modulation",                                                              "rank": 16 },
-      { "module_path": "final_norm.linear",                                                             "rank": 16 }
+      { "module_path": "text_proj",                                                                     "rank": 16 }
     ]
   }
 }

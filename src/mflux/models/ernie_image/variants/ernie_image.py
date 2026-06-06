@@ -6,7 +6,7 @@ from PIL import Image
 
 from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
-from mflux.models.common.latent_creator.latent_creator import Img2Img, LatentCreator
+from mflux.models.common.latent_creator.latent_creator import LatentCreator
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.ernie_image.ernie_image_initializer import ErnieImageInitializer
 from mflux.models.ernie_image.latent_creator import ErnieLatentCreator
@@ -71,19 +71,7 @@ class ErnieImage(nn.Module):
             num_inference_steps=num_inference_steps,
         )
 
-        latents = LatentCreator.create_for_txt2img_or_img2img(
-            seed=seed,
-            width=config.width,
-            height=config.height,
-            img2img=Img2Img(
-                vae=self.vae,
-                latent_creator=ErnieLatentCreator,
-                image_path=config.image_path,
-                sigmas=config.scheduler.sigmas,
-                init_time_step=config.init_time_step,
-                tiling_config=self.tiling_config,
-            ),
-        )
+        latents = self._prepare_latents(seed=seed, config=config)
 
         cache_key = (prompt, negative_prompt, config.guidance)
         if self._text_cache is None or self._text_cache[0] != cache_key:
@@ -152,6 +140,23 @@ class ErnieImage(nn.Module):
             generation_time=config.time_steps.format_dict["elapsed"],
             negative_prompt=negative_prompt,
         )
+
+    def _prepare_latents(self, *, seed: int, config: Config) -> mx.array:
+        if config.image_path is None or config.image_strength is None or config.image_strength <= 0.0:
+            return ErnieLatentCreator.create_noise(seed, config.height, config.width)
+
+        pure_noise = ErnieLatentCreator.create_noise(seed, config.height, config.width)
+        encoded = LatentCreator.encode_image(
+            vae=self.vae,
+            image_path=config.image_path,
+            height=config.height,
+            width=config.width,
+            tiling_config=self.tiling_config,
+        )
+        clean_latents = ErnieLatentCreator.pack_latents(encoded, height=config.height, width=config.width)
+        clean_latents = ErnieLatentCreator.bn_normalize_latents(clean_latents, vae=self.vae)
+        sigma = config.scheduler.sigmas[config.init_time_step]
+        return LatentCreator.add_noise_by_interpolation(clean=clean_latents, noise=pure_noise, sigma=sigma)
 
     def _encode_prompts(
         self,

@@ -70,8 +70,6 @@ class ErnieTransformer(nn.Module):
             for _ in range(num_layers)
         ]
 
-        self._gradient_checkpointing = False
-        self._gradient_checkpointing_every_n = 1
         self._pos_cache: dict = {}
 
         self.final_norm = ErnieAdaLNContinuous(hidden_size, eps)
@@ -154,11 +152,8 @@ class ErnieTransformer(nn.Module):
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = [p[:, None, :] for p in pieces]
         temb = (shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp)
 
-        for i, layer in enumerate(self.layers):
-            if self._gradient_checkpointing and i % self._gradient_checkpointing_every_n == 0:
-                x = mx.checkpoint(layer)(x, cos, sin, temb, attn_mask)
-            else:
-                x = layer(x, cos, sin, temb, attn_mask)
+        for layer in self.layers:
+            x = layer(x, cos, sin, temb, attn_mask)
 
         img_tokens = x[:, :N_img, :]
         img_tokens = self.final_norm(img_tokens, c).astype(hidden_states.dtype)
