@@ -3,6 +3,7 @@ from mflux.cli.parser.parsers import CommandLineParser
 from mflux.models.common.config import ModelConfig
 from mflux.models.ernie_image.latent_creator import ErnieLatentCreator
 from mflux.models.ernie_image.variants.ernie_image import ErnieImage
+from mflux.utils.dimension_resolver import DimensionResolver
 from mflux.utils.exceptions import PromptFileReadError, StopImageGenerationException
 from mflux.utils.prompt_util import PromptUtil
 
@@ -14,11 +15,16 @@ def main():
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
-    parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=False)
+    parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
     parser.add_image_to_image_arguments(required=False)
     parser.add_output_arguments()
     parser.set_defaults(model="ernie-image-turbo")
     args = parser.parse_args()
+
+    if args.guidance is None:
+        args.guidance = 1.0
+    if args.guidance != 1.0:
+        parser.error("--guidance is only supported for base ERNIE-Image. Use --guidance 1.0 for turbo.")
 
     model = ErnieImage(
         model_config=ModelConfig.ernie_image_turbo(),
@@ -35,12 +41,18 @@ def main():
     )
 
     try:
+        width, height = DimensionResolver.resolve(
+            width=args.width,
+            height=args.height,
+            reference_image_path=args.image_path,
+        )
+
         for seed in args.seed:
             image = model.generate_image(
                 seed=seed,
                 prompt=PromptUtil.read_prompt(args),
-                width=args.width,
-                height=args.height,
+                width=width,
+                height=height,
                 guidance=args.guidance,
                 image_path=args.image_path,
                 num_inference_steps=args.steps,

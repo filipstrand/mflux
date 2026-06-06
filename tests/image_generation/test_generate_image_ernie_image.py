@@ -34,7 +34,7 @@ class TestImageGeneratorErnieImage:
             seed=7,
             height=368,
             width=640,
-            guidance=3.5,
+            guidance=4.0,
             quantize=8,
             model_config=ModelConfig.ernie_image(),
         )
