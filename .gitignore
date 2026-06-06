@@ -20,9 +20,6 @@
 !tests/training/config/train.json
 tests/training/tmp/
 
-# personal/local files not for the repo
-_local/
-
 *.egg-info
 
 # build/ generated from 'pip install -e .' in developer mode
