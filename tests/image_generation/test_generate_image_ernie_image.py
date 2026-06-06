@@ -3,7 +3,10 @@ import pytest
 from mflux.models.common.config.model_config import ModelConfig
 from tests.image_generation.helpers.image_generation_ernie_image_test_helper import ImageGeneratorErnieImageTestHelper
 
-BOAT_LAKE_PROMPT = "a small red boat on a calm blue lake surrounded by pine trees"
+BICYCLE_PROMPT = (
+    "A vintage red bicycle leaning against a weathered cobblestone wall covered in green ivy, "
+    "narrow European alley, warm golden afternoon sunlight, shallow depth of field, photorealistic."
+)
 
 
 class TestImageGeneratorErnieImage:
@@ -12,9 +15,9 @@ class TestImageGeneratorErnieImage:
         ImageGeneratorErnieImageTestHelper.assert_matches_reference_image(
             reference_image_path="reference_ernie_image_turbo.png",
             output_image_path="output_ernie_image_turbo.png",
-            prompt=BOAT_LAKE_PROMPT,
+            prompt=BICYCLE_PROMPT,
             steps=8,
-            seed=42,
+            seed=7,
             height=368,
             width=640,
             guidance=1.0,
@@ -26,9 +29,9 @@ class TestImageGeneratorErnieImage:
         ImageGeneratorErnieImageTestHelper.assert_matches_reference_image(
             reference_image_path="reference_ernie_image.png",
             output_image_path="output_ernie_image.png",
-            prompt=BOAT_LAKE_PROMPT,
+            prompt=BICYCLE_PROMPT,
             steps=28,
-            seed=42,
+            seed=7,
             height=368,
             width=640,
             guidance=3.5,
