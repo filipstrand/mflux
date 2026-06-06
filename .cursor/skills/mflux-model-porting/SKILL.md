@@ -74,6 +74,49 @@ Provide a repeatable, MLX-focused workflow for porting ML models (typically from
      - Python API example that matches the CLI/defaults
    - Document any new mapping rules, shape constraints, or tolerances.
 
+## Package layout (reference: `flux2`)
+
+Use `src/mflux/models/flux2/` as the canonical tree. Do **not** invent flat mlx-vlm-style roots (`config.py`, `scheduler.py`, `fp8.py`, `layout.py`, monolithic `model/transformer.py`). Aliases and defaults live in `ModelConfig`; checkpoint validation belongs in the initializer and/or `*WeightDefinition`, not a separate layout module.
+
+```
+{model}/
+  {model}_initializer.py
+  __init__.py                    # export variant + initializer
+  README.md
+  cli/
+    {model}_generate.py          # (+ edit/turbo CLIs when applicable)
+  latent_creator/
+    {model}_latent_creator.py
+  model/
+    {model}_text_encoder/        # prompt_encoder.py, tokenizer pieces, text_encoder.py
+    {model}_transformer/         # attention, blocks, rope, transformer.py (split files)
+    {model}_vae/                 # or reuse shared VAE (e.g. flux2_vae) — document in README
+    {model}_scheduler/           # only when not covered by models/common/schedulers
+  variants/
+    __init__.py                  # re-export public variant class(es)
+    txt2img/
+      __init__.py
+      {model}.py                 # e.g. flux2_klein.py, ideogram4.py
+    edit/                        # when the model supports image-conditioned generation
+      __init__.py
+      {model}_edit.py
+  weights/
+    __init__.py
+    {model}_weight_definition.py # components, download patterns, tokenizers
+    {model}_weight_mapping.py    # WeightTarget list / key transforms for base weights
+    {model}_lora_mapping.py      # LoRA key aliases (diffusers, PEFT, kohya) — when LoRA is supported
+  training_adapter/              # when mflux-train is supported
+    {model}_training_adapter.py
+```
+
+**Variants:** always place txt2img classes under `variants/txt2img/` (even for single-mode models). Use `variants/edit/` for edit/img2img variants. Import from the full path in `save.py` and CLIs, e.g. `variants.txt2img.flux2_klein`.
+
+**Weights:** `*WeightDefinition` is required for every port. Add `*WeightMapping` when diffusers/HF key names need explicit targets. Add `*LoRAMapping` when inference or training supports LoRA — wire `--lora-paths` / `--lora-scales` through the shared parser and add fast tests that community LoRA filenames map to non-zero keys (see integration checklist below).
+
+**Variant class style (post-refactor):** match `flux2_klein` / `z_image` — `prompt_cache`, `_predict` / `_decode_latents`, thin `generate_image`, prompt encoding in `{model}_text_encoder/prompt_encoder.py`.
+
+**Skip when not applicable:** `variants/edit/`, `training_adapter/`, `{model}_lora_mapping.py`, local VAE package (if reusing another model family’s VAE). Document omitted features in the model README.
+
 ## Integration surfaces checklist (don’t forget)
 
 Past [closed PRs](https://github.com/filipstrand/mflux/pulls?q=is%3Apr+is%3Aclosed) show the same wiring gaps recurring on every new model. Use this as a **tick list** alongside the workflow above — not every row applies to every model (e.g. skip vision-encoder rows for txt2img-only), but scan it before opening a port PR.
