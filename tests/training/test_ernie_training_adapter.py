@@ -20,9 +20,7 @@ class _FakeErnieImage:
 def test_ernie_turbo_preview_uses_canonical_guidance_and_steps(monkeypatch):
     monkeypatch.setattr(ernie_adapter_module, "ErnieImage", _FakeErnieImage)
 
-    adapter = ernie_adapter_module.ErnieTrainingAdapter(
-        model_config=ModelConfig.ernie_image_turbo(), quantize=None
-    )
+    adapter = ernie_adapter_module.ErnieTrainingAdapter(model_config=ModelConfig.ernie_image_turbo(), quantize=None)
     training_spec = SimpleNamespace(steps=4, guidance=9.0)
     adapter.create_config(training_spec=training_spec, width=512, height=512)
     adapter.generate_preview_image(seed=0, prompt="test", width=512, height=512, steps=4)
@@ -35,9 +33,7 @@ def test_ernie_turbo_preview_uses_canonical_guidance_and_steps(monkeypatch):
 def test_ernie_base_preview_uses_canonical_guidance_and_steps(monkeypatch):
     monkeypatch.setattr(ernie_adapter_module, "ErnieImage", _FakeErnieImage)
 
-    adapter = ernie_adapter_module.ErnieTrainingAdapter(
-        model_config=ModelConfig.ernie_image(), quantize=None
-    )
+    adapter = ernie_adapter_module.ErnieTrainingAdapter(model_config=ModelConfig.ernie_image(), quantize=None)
     training_spec = SimpleNamespace(steps=10, guidance=9.0)
     adapter.create_config(training_spec=training_spec, width=512, height=512)
     adapter.generate_preview_image(seed=0, prompt="test", width=512, height=512, steps=10)
