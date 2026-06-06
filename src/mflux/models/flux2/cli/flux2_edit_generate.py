@@ -30,9 +30,11 @@ def main():
 
     if args.guidance is None:
         args.guidance = 1.0
-    is_distilled = "base" not in model_config.model_name.lower()
-    if args.guidance != 1.0 and is_distilled:
-        parser.error("--guidance is only supported for FLUX.2 base models. Use --guidance 1.0.")
+    model_name_lower = model_config.model_name.lower()
+    base_model_lower = (model_config.base_model or "").lower()
+    is_flux2 = any(identifier in model_name_lower or identifier in base_model_lower for identifier in ("flux.2", "flux2"))
+    if args.guidance != 1.0 and not is_flux2:
+        parser.error("--guidance is only supported for FLUX.2 models. Use --guidance 1.0.")
 
     model = Flux2KleinEdit(
         model_config=model_config,
