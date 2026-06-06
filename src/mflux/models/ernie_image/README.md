@@ -1,31 +1,44 @@
 # ERNIE-Image
 This directory contains MFLUX's MLX implementation of **ERNIE-Image** and **ERNIE-Image-Turbo**.
 
-MFLUX supports [ERNIE-Image](https://huggingface.co/baidu/ERNIE-Image) and [ERNIE-Image-Turbo](https://huggingface.co/baidu/ERNIE-Image-Turbo) from Baidu. ERNIE-Image is an 8B single-stream Diffusion Transformer for text-to-image generation. ERNIE-Image-Turbo is a distilled variant that produces high-quality images in just 8 steps.
+MFLUX supports [ERNIE-Image](https://huggingface.co/baidu/ERNIE-Image) and [ERNIE-Image-Turbo](https://huggingface.co/baidu/ERNIE-Image-Turbo) from Baidu, released in April 2026. ERNIE-Image is an 8B single-stream Diffusion Transformer for text-to-image generation. ERNIE-Image-Turbo is a distilled variant that produces high-quality images in just 8 steps.
 
 All the standard modes such as img2img, LoRA and quantizations are supported for this model.
 
-> [!NOTE]
-> ERNIE-Image tends toward vivid, high-contrast output — a characteristic of Baidu's training data, not a bug in the port. Prompts like "35mm film grain", "analog", or "soft lighting" can soften the look.
+![ERNIE-Image-Turbo Example](../../assets/ernie_image_turbo_example.jpg)
 
-> [!NOTE]
-> The official ERNIE-Image pipeline includes a **Prompt Enhancer (PE)** — a separate LLM that rewrites short prompts into longer, detailed descriptions before encoding. The model was trained predominantly on PE-expanded prompts, so very short prompts (e.g. "a cat") tend to produce incoherent results. This port does not include the PE. **Use detailed, descriptive prompts for best results.**
-
-## ERNIE-Image-Turbo Example
-ERNIE-Image-Turbo is the recommended starting point. It runs in 8 steps with no classifier-free guidance:
+## Example
+The following uses ERNIE-Image-Turbo to generate a photorealistic barn owl portrait in 8 steps:
 
 ```sh
 mflux-generate-ernie-image-turbo \
-  --prompt "A serene mountain lake at dawn, mist rising from the water, pine trees reflected on the surface, soft morning light." \
+  --prompt "Close-up portrait of a barn owl perched on a mossy branch, heart-shaped face, detailed feathers, soft forest bokeh, natural wildlife photography." \
   --width 1024 \
   --height 576 \
-  --seed 42 \
+  --seed 404 \
   --steps 8 \
   -q 8
 ```
 
+## Base model example
+Base (non-distilled) ERNIE-Image uses more steps and supports classifier-free guidance:
+
+> [!WARNING]
+> Base (non-distilled) ERNIE-Image is typically slower. Use ERNIE-Image-Turbo for most tasks.
+
+```sh
+mflux-generate-ernie-image \
+  --prompt "Close-up portrait of a barn owl perched on a mossy branch, heart-shaped face, detailed feathers, soft forest bokeh, natural wildlife photography." \
+  --width 1024 \
+  --height 576 \
+  --seed 404 \
+  --steps 50 \
+  --guidance 4.0 \
+  -q 8
+```
+
 <details>
-<summary>Python API (Turbo)</summary>
+<summary>Python API</summary>
 
 ```python
 from mflux.models.common.config import ModelConfig
@@ -36,59 +49,16 @@ model = ErnieImage(
     quantize=8,
 )
 image = model.generate_image(
-    seed=42,
-    prompt="A serene mountain lake at dawn, mist rising from the water, pine trees reflected on the surface, soft morning light.",
+    seed=404,
+    prompt="Close-up portrait of a barn owl perched on a mossy branch, heart-shaped face, detailed feathers, soft forest bokeh, natural wildlife photography.",
     num_inference_steps=8,
     width=1024,
     height=576,
     guidance=1.0,
 )
-image.save("ernie_turbo.png")
+image.save("ernie_owl.png")
 ```
 </details>
-
-## ERNIE-Image (Base) Example
-The base SFT model uses more steps and supports classifier-free guidance:
-
-> [!WARNING]
-> Base (non-distilled) ERNIE-Image is typically slower. Use ERNIE-Image-Turbo for most tasks.
-
-```sh
-mflux-generate-ernie-image \
-  --prompt "A serene mountain lake at dawn, mist rising from the water, pine trees reflected on the surface, soft morning light." \
-  --width 1024 \
-  --height 576 \
-  --seed 42 \
-  --steps 50 \
-  --guidance 4.0 \
-  -q 8
-```
-
-<details>
-<summary>Python API (Base)</summary>
-
-```python
-from mflux.models.common.config import ModelConfig
-from mflux.models.ernie_image import ErnieImage
-
-model = ErnieImage(
-    model_config=ModelConfig.ernie_image(),
-    quantize=8,
-)
-image = model.generate_image(
-    seed=42,
-    prompt="A serene mountain lake at dawn, mist rising from the water, pine trees reflected on the surface, soft morning light.",
-    num_inference_steps=50,
-    width=1024,
-    height=576,
-    guidance=4.0,
-)
-image.save("ernie_base.png")
-```
-</details>
-
-> [!WARNING]
-> ERNIE-Image weights are large (~22 GB unquantized). Use `-q 8` (~12 GB) or `-q 4` (~6.4 GB) for reduced memory usage.
 
 ## Image-to-image
 Pass `--image-path` and `--image-strength` (0.0–1.0) to blend an input image with the denoising process:
@@ -106,7 +76,6 @@ mflux-generate-ernie-image-turbo \
 ```
 
 ## LoRA
-
 Pre-trained LoRA files (`.safetensors`) can be applied at inference time with `--lora-paths` and `--lora-scales`. Both the `diffusion_model.layers.N.*` format (Lucie / ai-toolkit style) and the `lora_unet_layers_N_*` format (kohya / ComfyUI style) are supported.
 
 ```sh
@@ -117,59 +86,59 @@ mflux-generate-ernie-image-turbo \
   --steps 8 -q 8
 ```
 
-## Training
+> [!WARNING]
+> ERNIE-Image weights are large (~22 GB unquantized). Use `-q 8` (~12 GB) or `-q 4` (~6.4 GB) for reduced memory usage.
 
+## Notes
+- ERNIE-Image tends toward vivid, high-contrast output. Prompts like `35mm film grain`, `analog`, or `soft lighting` can soften the look.
+- The official pipeline includes a **Prompt Enhancer (PE)** that rewrites short prompts into longer descriptions. This port does not include the PE — use detailed, descriptive prompts for best results.
+- Distilled ERNIE-Image-Turbo uses `--guidance 1.0` and 8 steps. Base ERNIE-Image supports higher guidance (typically around `4.0`) and ~50 steps.
+
+## Training
 ERNIE-Image and ERNIE-Image-Turbo support LoRA fine-tuning via `mflux-train`. Start from the example configs:
 
 - Turbo: [`train_ernie_image_turbo.json`](../common/training/_example/train_ernie_image_turbo.json)
 - Base: [`train_ernie_image.json`](../common/training/_example/train_ernie_image.json)
 
-For the dataset layout and shared training options, see the common training docs ([Training (LoRA)](../common/README.md#training-lora)).
+For the dataset layout and shared training options, see the common [training docs](../common/README.md#training-lora).
 
-### Dataset layout
+Example (turbo defaults to 8 steps):
 
+```json
+{
+  "model": "ernie-image-turbo",
+  "data": "images/",
+  "seed": 42,
+  "steps": 8,
+  "guidance": 1.0,
+  "quantize": 8,
+  "low_ram": false,
+  "max_resolution": 1024,
+  "training_loop": { "num_epochs": 200, "batch_size": 1, "timestep_low": 1, "timestep_high": 8 },
+  "optimizer": { "name": "AdamW", "learning_rate": 1e-4 },
+  "checkpoint": { "output_path": "train_ernie_turbo", "save_frequency": 50 },
+  "monitoring": {
+    "preview_width": 640,
+    "preview_height": 368,
+    "plot_frequency": 20,
+    "generate_image_frequency": 50
+  },
+  "lora_layers": {
+    "targets": [
+      { "module_path": "layers.{block}.self_attention.to_q",     "blocks": { "start": 0, "end": 36 }, "rank": 16 },
+      { "module_path": "layers.{block}.self_attention.to_k",     "blocks": { "start": 0, "end": 36 }, "rank": 16 },
+      { "module_path": "layers.{block}.self_attention.to_v",     "blocks": { "start": 0, "end": 36 }, "rank": 16 },
+      { "module_path": "layers.{block}.self_attention.to_out.0", "blocks": { "start": 0, "end": 36 }, "rank": 16 },
+      { "module_path": "text_proj",                                                                     "rank": 16 }
+    ]
+  }
+}
 ```
-dataset/
-├── 01.jpg         # training image
-├── 01.txt         # caption for 01.jpg
-├── 02.jpg
-├── 02.txt
-└── ...
-```
 
-### Quick start
+Run training:
 
 ```sh
-mflux-train --config src/mflux/models/common/training/_example/train_ernie_image_turbo.json
+mflux-train --config /path/to/train_ernie_image_turbo.json
 ```
 
-Validate the config without training:
-
-```sh
-mflux-train --config train_ernie_image_turbo.json --dry-run
-```
-
-Save a quantized copy after training:
-
-```sh
-mflux-save --model ernie-image-turbo --quantize 8 --path /path/to/save
-```
-
-### LoRA target modules
-
-| Module path | Description |
-|---|---|
-| `layers.{block}.self_attention.to_q` | Query projection |
-| `layers.{block}.self_attention.to_k` | Key projection |
-| `layers.{block}.self_attention.to_v` | Value projection |
-| `layers.{block}.self_attention.to_out.0` | Output projection |
-| `layers.{block}.mlp.gate_proj` | FFN gate |
-| `layers.{block}.mlp.up_proj` | FFN up |
-| `layers.{block}.mlp.linear_fc2` | FFN down |
-| `text_proj` | Text→image projection (global, no `blocks`) |
-| `time_embedding.linear_1` | Timestep embedding (optional, global) |
-| `time_embedding.linear_2` | Timestep embedding (optional, global) |
-| `adaln_modulation` | AdaLN modulation (optional, global) |
-| `final_norm.linear` | Output norm (optional, global) |
-
-Blocks run from `0` to `35` (36 total). The example configs target attention, MLP, and `text_proj` on all layers — a good default. Add the optional global modules if you need broader stylistic control.
+Additional LoRA targets (`mlp.*`, `time_embedding.*`, `adaln_modulation`, `final_norm.linear`) are supported — see the full example configs and `ErnieLoRAMapping` for all options.
