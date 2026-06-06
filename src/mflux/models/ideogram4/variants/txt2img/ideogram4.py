@@ -1,26 +1,18 @@
 from typing import Any
 
 import mlx.core as mx
-import numpy as np
 from mlx import nn
 
 from mflux.models.common.config import Config, ModelConfig
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
-from mflux.models.ideogram4.caption import Ideogram4Caption
-from mflux.models.ideogram4.config import validate_dimensions
-from mflux.models.ideogram4.constants import (
-    IMAGE_POSITION_OFFSET,
-    IMAGE_TOKEN_STRIDE,
-    LLM_TOKEN_INDICATOR,
-    OUTPUT_IMAGE_INDICATOR,
-    SEQUENCE_PADDING_INDICATOR,
-)
 from mflux.models.ideogram4.ideogram4_initializer import Ideogram4Initializer
 from mflux.models.ideogram4.latent_creator import Ideogram4LatentCreator
-from mflux.models.ideogram4.model import Ideogram4Transformer, Qwen3TextEncoder
-from mflux.models.ideogram4.scheduler import Ideogram4Scheduler
+from mflux.models.ideogram4.model.ideogram4_scheduler import Ideogram4Scheduler
+from mflux.models.ideogram4.model.ideogram4_text_encoder import Ideogram4PromptEncoder, Qwen3TextEncoder
+from mflux.models.ideogram4.model.ideogram4_transformer import Ideogram4Transformer
 from mflux.models.ideogram4.weights import Ideogram4WeightDefinition
+from mflux.utils.apple_silicon import AppleSiliconUtil
 from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
@@ -37,6 +29,8 @@ class Ideogram4(nn.Module):
         quantize: int | None = None,
         model_path: str | None = None,
         model_config: ModelConfig = ModelConfig.ideogram4_fp8(),
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
     ):
         super().__init__()
         Ideogram4Initializer.init(
@@ -44,6 +38,8 @@ class Ideogram4(nn.Module):
             quantize=quantize,
             model_path=model_path,
             model_config=model_config,
+            lora_paths=lora_paths,
+            lora_scales=lora_scales,
         )
 
     def generate_image(
@@ -55,45 +51,47 @@ class Ideogram4(nn.Module):
         width: int = 1024,
         guidance: float | None = None,
         preset: str | None = None,
-        use_preset_steps: bool = False,
         strict_caption_validation: bool = False,
         warn_on_caption_issues: bool = True,
     ) -> GeneratedImage:
-        prepared_prompt = Ideogram4Caption.prepare(prompt)
-        if strict_caption_validation:
-            Ideogram4Caption.raise_for_warnings(prepared_prompt.warnings)
-        elif warn_on_caption_issues:
-            Ideogram4Caption.emit_warnings(prepared_prompt.warnings, stacklevel=2)
-        prompt = prepared_prompt.prompt
-        if not prompt:
-            raise ValueError("prompt must not be empty")
-        validate_dimensions(width=width, height=height)
+        prompt = Ideogram4PromptEncoder.resolve_prompt(
+            prompt,
+            strict_caption_validation=strict_caption_validation,
+            warn_on_caption_issues=warn_on_caption_issues,
+        )
+        Ideogram4LatentCreator.validate_dimensions(width=width, height=height)
 
         sampler = Ideogram4Scheduler.get_preset(preset)
-        use_sampler_schedule = use_preset_steps or num_inference_steps is None
-        actual_steps = sampler.num_steps if use_sampler_schedule else num_inference_steps
-        if actual_steps < 1:
-            raise ValueError(f"num_inference_steps must be >= 1, got {actual_steps}")
-        guidance_values = (
-            sampler.guidance_schedule
-            if use_sampler_schedule
-            else (float(guidance if guidance is not None else 7.0),) * actual_steps
-        )
+        if num_inference_steps is None:
+            num_steps = sampler.num_steps
+            guidance_values = sampler.guidance_schedule
+        else:
+            if num_inference_steps < 1:
+                raise ValueError(f"num_inference_steps must be >= 1, got {num_inference_steps}")
+            num_steps = num_inference_steps
+            guidance_values = (float(guidance if guidance is not None else 7.0),) * num_steps
         config = Config(
             width=width,
             height=height,
             guidance=guidance if guidance is not None else guidance_values[-1],
             scheduler="linear",
             model_config=self.model_config,
-            num_inference_steps=actual_steps,
+            num_inference_steps=num_steps,
         )
 
-        inputs = self._build_inputs([prompt], height=config.height, width=config.width)
-        llm_features = self._encode_prompt(
+        inputs = Ideogram4PromptEncoder.build_inputs(
+            self.tokenizers["ideogram4"],
+            [prompt],
+            height=config.height,
+            width=config.width,
+        )
+        llm_features = Ideogram4PromptEncoder.encode_prompt(
             prompt=prompt,
             width=config.width,
             height=config.height,
             inputs=inputs,
+            text_encoder=self.text_encoder,
+            prompt_cache=self.prompt_cache,
         )
         z = Ideogram4LatentCreator.create_noise(
             seed=seed,
@@ -105,9 +103,9 @@ class Ideogram4(nn.Module):
             (1, int(inputs["max_text_tokens"]), self.conditional_transformer.config.in_channels),
             dtype=mx.float32,
         )
-        negative_inputs = self._negative_inputs(inputs, llm_features)
+        negative_inputs = Ideogram4PromptEncoder.negative_inputs(inputs, llm_features)
         t_values, s_values = Ideogram4Scheduler.make_timesteps(
-            num_steps=actual_steps,
+            num_steps=num_steps,
             height=config.height,
             width=config.width,
             mu=sampler.mu,
@@ -116,10 +114,12 @@ class Ideogram4(nn.Module):
 
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(z)
+        predict_conditional = self._predict_conditional(self.conditional_transformer)
+        predict_unconditional = self._predict_unconditional(self.unconditional_transformer)
         time_steps = config.time_steps
         for step_index in time_steps:
             try:
-                schedule_index = actual_steps - 1 - step_index
+                schedule_index = num_steps - 1 - step_index
                 z = self._denoise_step(
                     z=z,
                     t_value=float(t_values[schedule_index]),
@@ -129,6 +129,8 @@ class Ideogram4(nn.Module):
                     llm_features=llm_features,
                     inputs=inputs,
                     negative_inputs=negative_inputs,
+                    predict_conditional=predict_conditional,
+                    predict_unconditional=predict_unconditional,
                 )
                 ctx.in_loop(step_index, z, time_steps=time_steps)
                 mx.eval(z)
@@ -139,7 +141,7 @@ class Ideogram4(nn.Module):
                 )
         ctx.after_loop(z)
 
-        decoded = self.vae.decode(Ideogram4LatentCreator.unpack_latents(z, config.height, config.width))
+        decoded = self._decode_latents(z=z, config=config)
         return ImageUtil.to_image(
             decoded_latents=decoded,
             config=config,
@@ -159,84 +161,54 @@ class Ideogram4(nn.Module):
             weight_definition=Ideogram4WeightDefinition,
         )
 
-    def _build_inputs(self, prompts: list[str], *, height: int, width: int) -> dict[str, Any]:
-        tokenizer = self.tokenizers["ideogram4"]
-        tokenized = [(tokenizer.tokenize_one(prompt), 0) for prompt in prompts]
-        tokenized = [(tokens, int(tokens.shape[0])) for tokens, _ in tokenized]
-        batch_size = len(prompts)
-        grid_h = height // IMAGE_TOKEN_STRIDE
-        grid_w = width // IMAGE_TOKEN_STRIDE
-        num_image_tokens = grid_h * grid_w
-        max_text_tokens = max(num_text for _, num_text in tokenized)
-        total_seq_len = max_text_tokens + num_image_tokens
+    def _decode_latents(self, *, z: mx.array, config: Config) -> mx.array:
+        return self.vae.decode(Ideogram4LatentCreator.unpack_latents(z, config.height, config.width))
 
-        h_idx = np.repeat(np.arange(grid_h, dtype=np.int64), grid_w)
-        w_idx = np.tile(np.arange(grid_w, dtype=np.int64), grid_h)
-        t_idx = np.zeros_like(h_idx)
-        image_pos = np.stack([t_idx, h_idx, w_idx], axis=1) + IMAGE_POSITION_OFFSET
+    @staticmethod
+    def _predict_conditional(transformer: Ideogram4Transformer):
+        def predict(
+            *,
+            z: mx.array,
+            t: mx.array,
+            text_z_padding: mx.array,
+            llm_features: mx.array,
+            inputs: dict[str, Any],
+        ) -> mx.array:
+            pos_z = mx.concatenate([text_z_padding, z], axis=1)
+            pos_out = transformer(
+                llm_features=llm_features,
+                x=pos_z,
+                t=t,
+                position_ids=inputs["position_ids"],
+                segment_ids=inputs["segment_ids"],
+                indicator=inputs["indicator"],
+            )
+            return pos_out[:, int(inputs["max_text_tokens"]) :, :]
 
-        token_ids = np.zeros((batch_size, total_seq_len), dtype=np.int64)
-        text_position_ids = np.zeros((batch_size, total_seq_len, 3), dtype=np.int64)
-        position_ids = np.zeros((batch_size, total_seq_len, 3), dtype=np.int64)
-        segment_ids = np.full((batch_size, total_seq_len), SEQUENCE_PADDING_INDICATOR, dtype=np.int64)
-        indicator = np.zeros((batch_size, total_seq_len), dtype=np.int64)
+        if AppleSiliconUtil.is_m1_or_m2():
+            return predict
+        return mx.compile(predict)
 
-        for batch_idx, (tokens, num_text) in enumerate(tokenized):
-            pad_len = max_text_tokens - num_text
-            total_unpadded = num_text + num_image_tokens
-            offset = pad_len
-            token_ids[batch_idx, offset : offset + num_text] = tokens
+    @staticmethod
+    def _predict_unconditional(transformer: Ideogram4Transformer):
+        def predict(
+            *,
+            z: mx.array,
+            t: mx.array,
+            negative_inputs: dict[str, mx.array],
+        ) -> mx.array:
+            return transformer(
+                llm_features=negative_inputs["llm_features"],
+                x=z,
+                t=t,
+                position_ids=negative_inputs["position_ids"],
+                segment_ids=negative_inputs["segment_ids"],
+                indicator=negative_inputs["indicator"],
+            )
 
-            text_pos = np.arange(num_text, dtype=np.int64)
-            text_pos_3d = np.stack([text_pos, text_pos, text_pos], axis=1)
-            text_position_ids[batch_idx, offset : offset + num_text] = text_pos_3d
-            position_ids[batch_idx, offset : offset + num_text] = text_pos_3d
-            position_ids[batch_idx, offset + num_text :] = image_pos
-
-            indicator[batch_idx, offset : offset + num_text] = LLM_TOKEN_INDICATOR
-            indicator[batch_idx, offset + num_text :] = OUTPUT_IMAGE_INDICATOR
-            segment_ids[batch_idx, offset : offset + total_unpadded] = 1
-
-        return {
-            "token_ids": mx.array(token_ids, dtype=mx.int32),
-            "text_position_ids": mx.array(text_position_ids, dtype=mx.int32),
-            "position_ids": mx.array(position_ids, dtype=mx.int32),
-            "segment_ids": mx.array(segment_ids, dtype=mx.int32),
-            "indicator": mx.array(indicator, dtype=mx.int32),
-            "num_image_tokens": num_image_tokens,
-            "grid_h": grid_h,
-            "grid_w": grid_w,
-            "max_text_tokens": max_text_tokens,
-        }
-
-    def _encode_prompt(self, prompt: str, width: int, height: int, inputs: dict[str, Any]) -> mx.array:
-        cache_key = (prompt, width, height)
-        if cache_key in self.prompt_cache:
-            return self.prompt_cache[cache_key]
-        if self.text_encoder is None:
-            raise RuntimeError("Text encoder has been evicted and prompt features are not cached.")
-        attention_mask = (inputs["indicator"] == LLM_TOKEN_INDICATOR).astype(mx.int32)
-        pos_2d = inputs["text_position_ids"][:, :, 0]
-        embeds = self.text_encoder.get_prompt_embeds(
-            inputs["token_ids"],
-            attention_mask,
-            pos_2d,
-        )
-        embeds = embeds * attention_mask[..., None].astype(embeds.dtype)
-        embeds = embeds.astype(mx.float32)
-        mx.eval(embeds)
-        self.prompt_cache[cache_key] = embeds
-        return embeds
-
-    def _negative_inputs(self, inputs: dict[str, Any], llm_features: mx.array) -> dict[str, mx.array]:
-        max_text_tokens = int(inputs["max_text_tokens"])
-        num_image_tokens = int(inputs["num_image_tokens"])
-        return {
-            "position_ids": inputs["position_ids"][:, max_text_tokens:, :],
-            "segment_ids": inputs["segment_ids"][:, max_text_tokens:],
-            "indicator": inputs["indicator"][:, max_text_tokens:],
-            "llm_features": mx.zeros((1, num_image_tokens, llm_features.shape[-1]), dtype=llm_features.dtype),
-        }
+        if AppleSiliconUtil.is_m1_or_m2():
+            return predict
+        return mx.compile(predict)
 
     def _denoise_step(
         self,
@@ -249,25 +221,17 @@ class Ideogram4(nn.Module):
         llm_features: mx.array,
         inputs: dict[str, Any],
         negative_inputs: dict[str, mx.array],
+        predict_conditional,
+        predict_unconditional,
     ) -> mx.array:
         t = mx.full((1,), t_value, dtype=mx.float32)
-        pos_z = mx.concatenate([text_z_padding, z], axis=1)
-        pos_out = self.conditional_transformer(
+        pos_v = predict_conditional(
+            z=z,
+            t=t,
+            text_z_padding=text_z_padding,
             llm_features=llm_features,
-            x=pos_z,
-            t=t,
-            position_ids=inputs["position_ids"],
-            segment_ids=inputs["segment_ids"],
-            indicator=inputs["indicator"],
+            inputs=inputs,
         )
-        pos_v = pos_out[:, int(inputs["max_text_tokens"]) :, :]
-        neg_v = self.unconditional_transformer(
-            llm_features=negative_inputs["llm_features"],
-            x=z,
-            t=t,
-            position_ids=negative_inputs["position_ids"],
-            segment_ids=negative_inputs["segment_ids"],
-            indicator=negative_inputs["indicator"],
-        )
+        neg_v = predict_unconditional(z=z, t=t, negative_inputs=negative_inputs)
         v = guidance_value * pos_v + (1.0 - guidance_value) * neg_v
         return z + v * (s_value - t_value)

@@ -86,11 +86,10 @@ class WeightLoader:
                 raise ValueError(f"No root_path and no download_url for component: {component.name}")
             component_path = root_path / component.hf_subdir
 
-            if component.loading_mode != "fp8_safetensors":
-                # Try mflux saved format first.
-                weights, q_level, version = WeightLoader._try_load_mflux_format(component_path)
-                if weights is not None:
-                    return weights, q_level, version
+            # Try mflux saved format first (including FP8 components reloaded after mflux-save).
+            weights, q_level, version = WeightLoader._try_load_mflux_format(component_path)
+            if weights is not None:
+                return weights, q_level, version
 
             # Check cache for shared loading (e.g., FIBO VLM decoder + visual from same source)
             cache_key = (str(component_path), component.loading_mode, tuple(component.weight_files or []))

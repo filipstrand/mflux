@@ -8,8 +8,9 @@ from mlx.utils import tree_flatten
 
 from mflux.models.common.resolution.path_resolution import PathResolution
 from mflux.models.common.weights.loading.weight_loader import WeightLoader
-from mflux.models.ideogram4.config import validate_model_layout
+from mflux.models.common.weights.mapping.weight_mapper import WeightMapper
 from mflux.models.ideogram4.weights import Ideogram4WeightDefinition
+from mflux.models.ideogram4.weights.ideogram4_weight_mapping import Ideogram4WeightMapping
 
 MODEL_PATH_ENV = "MFLUX_IDEOGRAM4_MODEL_PATH"
 REPO_ID = "ideogram-ai/ideogram-4-fp8"
@@ -126,7 +127,7 @@ def _assert_header_shapes(actual: dict[str, dict], expected: dict[str, tuple[int
 
 @pytest.mark.fast
 def test_ideogram4_local_checkpoint_headers_match_mflux_model_shapes() -> None:
-    root = validate_model_layout(_model_path())
+    root = _model_path()
 
     for subdir in ("transformer", "unconditional_transformer"):
         header = _read_header(root / subdir / "diffusion_pytorch_model.safetensors")
@@ -143,8 +144,22 @@ def test_ideogram4_local_checkpoint_headers_match_mflux_model_shapes() -> None:
 
 
 @pytest.mark.fast
+def test_ideogram4_transformer_mapping_covers_checkpoint_keys() -> None:
+    root = _model_path()
+    mapping = Ideogram4WeightMapping.get_transformer_mapping()
+
+    for subdir in ("transformer", "unconditional_transformer"):
+        header = _read_header(root / subdir / "diffusion_pytorch_model.safetensors")
+        config = json.loads((root / subdir / "config.json").read_text())
+        num_layers = int(config.get("num_layers", 34))
+        flat_mapping = WeightMapper._build_flat_mapping(mapping, num_blocks=0, num_layers=num_layers)
+        unmapped = sorted(key for key in header if key not in flat_mapping)
+        assert unmapped == []
+
+
+@pytest.mark.fast
 def test_ideogram4_local_checkpoint_vae_mapping_loads() -> None:
-    root = validate_model_layout(_model_path())
+    root = _model_path()
     vae_component = Ideogram4WeightDefinition.get_components()[0]
     weights, quantization_level, version = WeightLoader._load_component(root, vae_component)
 

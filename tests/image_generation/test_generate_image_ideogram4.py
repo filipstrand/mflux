@@ -9,20 +9,17 @@ import pytest
 
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.models.common.config import ModelConfig
-from mflux.models.ideogram4.caption import Ideogram4Caption, Ideogram4CaptionWarning
-from mflux.models.ideogram4.config import (
-    is_ideogram4_alias,
-    validate_dimensions,
-    validate_model_layout,
-    variant_from_local_path,
-)
-from mflux.models.ideogram4.constants import IMAGE_POSITION_OFFSET, LLM_TOKEN_INDICATOR, OUTPUT_IMAGE_INDICATOR
-from mflux.models.ideogram4.fp8 import Fp8Linear, read_safetensors
 from mflux.models.ideogram4.latent_creator import Ideogram4LatentCreator
-from mflux.models.ideogram4.latent_norm import get_latent_norm
 from mflux.models.ideogram4.model import Ideogram4Config, Ideogram4Transformer, Qwen3TextEncoder
-from mflux.models.ideogram4.scheduler import Ideogram4Scheduler
-from mflux.models.ideogram4.variants.txt2img import Ideogram4
+from mflux.models.ideogram4.model.ideogram4_scheduler import Ideogram4Scheduler
+from mflux.models.ideogram4.model.ideogram4_text_encoder import (
+    Ideogram4Caption,
+    Ideogram4CaptionWarning,
+    Ideogram4PromptEncoder,
+)
+from mflux.models.ideogram4.model.ideogram4_transformer import Fp8Linear
+from mflux.models.ideogram4.variants import Ideogram4
+from mflux.models.ideogram4.weights.ideogram4_weight_definition import Ideogram4WeightDefinition
 
 
 class FakeTokenizer:
@@ -40,6 +37,11 @@ class FakeTransformer:
 class FakeVAE:
     def decode(self, latents):
         return mx.zeros((latents.shape[0], 3, latents.shape[2] * 8, latents.shape[3] * 8))
+
+
+class FakeTextEncoder:
+    def get_prompt_embeds(self, input_ids, attention_mask, position_ids):  # noqa: ARG002
+        return mx.zeros((1, input_ids.shape[1], 53248), dtype=mx.float32)
 
 
 def _valid_json_caption() -> dict:
@@ -77,37 +79,17 @@ def _fake_ideogram4_model() -> Ideogram4:
     model.lora_paths = None
     model.lora_scales = None
     model.prompt_cache = {}
-    model.text_encoder = None
-    model._encode_prompt = lambda prompt, width, height, inputs: mx.zeros(
-        (1, inputs["token_ids"].shape[1], 53248),
-        dtype=mx.float32,
-    )
+    model.text_encoder = FakeTextEncoder()
     return model
 
 
-def _write_layout(root: Path) -> None:
-    for relative in (
-        "model_index.json",
-        "scheduler/scheduler_config.json",
-        "text_encoder/config.json",
-        "text_encoder/model.safetensors",
-        "tokenizer/tokenizer.json",
-        "tokenizer/tokenizer_config.json",
-        "transformer/config.json",
-        "transformer/diffusion_pytorch_model.safetensors",
-        "unconditional_transformer/config.json",
-        "unconditional_transformer/diffusion_pytorch_model.safetensors",
-        "vae/config.json",
-        "vae/diffusion_pytorch_model.safetensors",
-    ):
-        path = root / relative
-        path.parent.mkdir(parents=True, exist_ok=True)
-        if relative == "model_index.json":
-            path.write_text('{"_class_name": "Ideogram4Pipeline"}')
-        elif relative == "text_encoder/config.json":
-            path.write_text('{"ideogram_fp8_weight_only": true}')
-        else:
-            path.write_bytes(b"x")
+def _write_fp8_text_encoder_config(root: Path, *, fp8: bool) -> None:
+    config_path = root / "text_encoder" / "config.json"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    if fp8:
+        config_path.write_text('{"ideogram_fp8_weight_only": true}')
+    else:
+        config_path.write_text("{}")
 
 
 def _write_safetensors(path: Path, tensors: dict[str, tuple[str, tuple[int, ...], bytes]]) -> None:
@@ -127,30 +109,39 @@ def _write_safetensors(path: Path, tensors: dict[str, tuple[str, tuple[int, ...]
 
 
 @pytest.mark.fast
-def test_ideogram4_validate_model_layout_accepts_required_files(tmp_path: Path) -> None:
-    _write_layout(tmp_path)
-    assert validate_model_layout(tmp_path) == tmp_path
-    assert variant_from_local_path(tmp_path).name == "ideogram-4-fp8"
+def test_ideogram4_validate_fp8_checkpoint_accepts_fp8_layout(tmp_path: Path) -> None:
+    _write_fp8_text_encoder_config(tmp_path, fp8=True)
+    assert Ideogram4WeightDefinition.validate_fp8_checkpoint(tmp_path) == tmp_path
 
 
 @pytest.mark.fast
-def test_ideogram4_validate_model_layout_rejects_non_fp8_layout(tmp_path: Path) -> None:
-    _write_layout(tmp_path)
-    (tmp_path / "text_encoder" / "config.json").write_text("{}")
+def test_ideogram4_validate_fp8_checkpoint_skips_mflux_saved_layout(tmp_path: Path) -> None:
+    vae_dir = tmp_path / "vae"
+    vae_dir.mkdir(parents=True)
+    (vae_dir / "model.safetensors.index.json").write_text(
+        json.dumps({"metadata": {"mflux_version": "0.0.0", "quantization_level": "8"}, "weight_map": {}})
+    )
+    assert Ideogram4WeightDefinition.validate_fp8_checkpoint(tmp_path) == tmp_path
+
+
+@pytest.mark.fast
+def test_ideogram4_validate_fp8_checkpoint_rejects_non_fp8_layout(tmp_path: Path) -> None:
+    _write_fp8_text_encoder_config(tmp_path, fp8=False)
 
     with pytest.raises(ValueError, match="FP8 checkpoint layout"):
-        validate_model_layout(tmp_path)
+        Ideogram4WeightDefinition.validate_fp8_checkpoint(tmp_path)
 
 
 @pytest.mark.fast
 @pytest.mark.parametrize("model_name", ["ideogram4", "ideogram", "ideogram-4-fp8", "ideogram-ai/ideogram-4-fp8"])
 def test_ideogram4_alias_detection_accepts_builtin_names(model_name: str) -> None:
-    assert is_ideogram4_alias(model_name)
+    assert ModelConfig.from_name(model_name).model_name == ModelConfig.ideogram4_fp8().model_name
 
 
 @pytest.mark.fast
-def test_ideogram4_alias_detection_rejects_local_paths() -> None:
-    assert not is_ideogram4_alias("/tmp/ideogram-4-fp8")
+def test_ideogram4_alias_detection_rejects_unknown_names() -> None:
+    with pytest.raises(Exception):
+        ModelConfig.from_name("not-a-real-model-name")
 
 
 @pytest.mark.fast
@@ -185,8 +176,6 @@ def test_ideogram4_generate_cli_treats_alias_as_builtin(monkeypatch, tmp_path: P
             json.dumps(_valid_json_caption()),
             "--seed",
             "1",
-            "--steps",
-            "1",
             "--width",
             "256",
             "--height",
@@ -201,6 +190,49 @@ def test_ideogram4_generate_cli_treats_alias_as_builtin(monkeypatch, tmp_path: P
     assert captured["model_path"] is None
     assert captured["model_config"].model_name == "ideogram-ai/ideogram-4-fp8"
     assert captured["save_path"] == str(tmp_path / "image.png")
+    assert captured["generate_kwargs"]["preset"] is None
+    assert "num_inference_steps" not in captured["generate_kwargs"]
+
+
+@pytest.mark.fast
+def test_ideogram4_generate_cli_warns_when_steps_provided(monkeypatch, tmp_path: Path) -> None:
+    from mflux.models.ideogram4.cli import ideogram4_generate
+
+    class FakeGeneratedImage:
+        def save(self, path: str, export_json_metadata: bool) -> None:
+            pass
+
+    class FakeIdeogram4:
+        def __init__(self, **kwargs) -> None:
+            pass
+
+        def generate_image(self, **kwargs) -> FakeGeneratedImage:
+            return FakeGeneratedImage()
+
+    monkeypatch.setattr(ideogram4_generate, "Ideogram4", FakeIdeogram4)
+    monkeypatch.setattr(ideogram4_generate.CallbackManager, "register_callbacks", lambda **kwargs: None)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "mflux-generate-ideogram4",
+            "--prompt",
+            json.dumps(_valid_json_caption()),
+            "--seed",
+            "1",
+            "--steps",
+            "4",
+            "--width",
+            "256",
+            "--height",
+            "256",
+            "--output",
+            str(tmp_path / "image.png"),
+        ],
+    )
+
+    with pytest.warns(UserWarning, match="--steps is ignored"):
+        ideogram4_generate.main()
 
 
 @pytest.mark.fast
@@ -276,7 +308,7 @@ def test_ideogram4_save_cli_uses_local_path_with_base_model(monkeypatch, tmp_pat
 @pytest.mark.parametrize("width,height", [(255, 512), (512, 2050), (513, 512)])
 def test_ideogram4_validate_dimensions_rejects_bad_sizes(width: int, height: int) -> None:
     with pytest.raises(ValueError):
-        validate_dimensions(width=width, height=height)
+        Ideogram4LatentCreator.validate_dimensions(width=width, height=height)
 
 
 @pytest.mark.fast
@@ -347,7 +379,7 @@ def test_ideogram4_fp8_safetensors_reader_handles_raw_dtypes(tmp_path: Path) -> 
         },
     )
 
-    weights = read_safetensors(path)
+    weights = Fp8Linear.read_safetensors(path)
 
     assert weights["linear.weight"].dtype == mx.uint8
     assert weights["linear.weight"].shape == (2, 2)
@@ -371,7 +403,7 @@ def test_ideogram4_fp8_linear_matches_explicit_dequant(tmp_path: Path) -> None:
             "linear.bias": ("F32", (2,), bias.tobytes()),
         },
     )
-    weights = read_safetensors(path)
+    weights = Fp8Linear.read_safetensors(path)
     layer = Fp8Linear(3, 2, bias=True)
     layer.weight = weights["linear.weight"]
     layer.weight_scale = weights["linear.weight_scale"]
@@ -439,7 +471,7 @@ def test_ideogram4_transformer_toy_shape() -> None:
         t=mx.array([0.5], dtype=mx.float32),
         position_ids=mx.zeros((1, 5, 3), dtype=mx.int32),
         segment_ids=mx.ones((1, 5), dtype=mx.int32),
-        indicator=mx.array([[LLM_TOKEN_INDICATOR, LLM_TOKEN_INDICATOR, 2, 2, 2]], dtype=mx.int32),
+        indicator=mx.array([[3, 3, 2, 2, 2]], dtype=mx.int32),
     )
     mx.eval(output)
 
@@ -448,24 +480,38 @@ def test_ideogram4_transformer_toy_shape() -> None:
 
 
 @pytest.mark.fast
+def test_ideogram4_tokenizer_max_length_matches_official_limit() -> None:
+    model_config = ModelConfig.ideogram4_fp8()
+    tokenizer_defs = Ideogram4WeightDefinition.get_tokenizers()
+    assert len(tokenizer_defs) == 1
+    assert tokenizer_defs[0].max_length == 2048
+    assert model_config.max_sequence_length == tokenizer_defs[0].max_length
+
+
+@pytest.mark.fast
 def test_ideogram4_build_inputs_packs_text_and_image_tokens() -> None:
     model = Ideogram4.__new__(Ideogram4)
     model.tokenizers = {"ideogram4": FakeTokenizer()}
 
-    inputs = model._build_inputs(["abc"], height=256, width=256)
+    inputs = Ideogram4PromptEncoder.build_inputs(
+        model.tokenizers["ideogram4"],
+        ["abc"],
+        height=256,
+        width=256,
+    )
 
     assert inputs["num_image_tokens"] == 256
     assert inputs["max_text_tokens"] == 3
     indicator = inputs["indicator"].tolist()[0]
-    assert indicator[:3] == [LLM_TOKEN_INDICATOR] * 3
-    assert indicator[3:] == [OUTPUT_IMAGE_INDICATOR] * 256
-    assert inputs["position_ids"].tolist()[0][3] == [IMAGE_POSITION_OFFSET] * 3
+    assert indicator[:3] == [3] * 3
+    assert indicator[3:] == [2] * 256
+    assert inputs["position_ids"].tolist()[0][3] == [65536] * 3
 
 
 @pytest.mark.fast
 def test_ideogram4_generate_image_with_fake_components() -> None:
     model = _fake_ideogram4_model()
-    shift, scale = get_latent_norm()
+    shift, scale = Ideogram4LatentCreator.get_latent_norm()
     assert shift.shape == (128,)
     assert scale.shape == (128,)
 

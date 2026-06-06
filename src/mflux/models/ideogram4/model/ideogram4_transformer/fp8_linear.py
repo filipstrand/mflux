@@ -46,10 +46,10 @@ class Fp8Linear(nn.Module):
             out = out + self.bias.astype(dtype)
         return out
 
+    @staticmethod
+    def read_safetensors(path):
+        return SafetensorsReader.read_file(path)
 
-def read_safetensors(path):
-    return SafetensorsReader.read_file(path)
-
-
-def read_safetensors_directory(directory):
-    return SafetensorsReader.read_directory(directory)
+    @staticmethod
+    def read_safetensors_directory(directory):
+        return SafetensorsReader.read_directory(directory)

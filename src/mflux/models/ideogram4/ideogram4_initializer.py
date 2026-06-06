@@ -2,17 +2,20 @@ import json
 from pathlib import Path
 from typing import Any
 
+import mlx.core as mx
+
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.models.common.config import ModelConfig
+from mflux.models.common.lora.mapping.lora_loader import LoRALoader
 from mflux.models.common.resolution.path_resolution import PathResolution
 from mflux.models.common.tokenizer import TokenizerLoader
 from mflux.models.common.weights.loading.loaded_weights import LoadedWeights
 from mflux.models.common.weights.loading.weight_applier import WeightApplier
 from mflux.models.common.weights.loading.weight_loader import WeightLoader
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
-from mflux.models.ideogram4.config import validate_model_layout
-from mflux.models.ideogram4.model import Ideogram4Config, Ideogram4Transformer, Qwen3TextEncoder
-from mflux.models.ideogram4.weights import Ideogram4WeightDefinition
+from mflux.models.ideogram4.model.ideogram4_text_encoder import Qwen3TextEncoder
+from mflux.models.ideogram4.model.ideogram4_transformer import Ideogram4Config, Ideogram4Transformer
+from mflux.models.ideogram4.weights import Ideogram4LoRAMapping, Ideogram4WeightDefinition
 
 
 class Ideogram4Initializer:
@@ -22,6 +25,8 @@ class Ideogram4Initializer:
         model_config: ModelConfig,
         quantize: int | None,
         model_path: str | None = None,
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
     ) -> None:
         path = model_path if model_path else model_config.model_name
         root_path = Ideogram4Initializer._resolve_model_path(path)
@@ -30,6 +35,10 @@ class Ideogram4Initializer:
         Ideogram4Initializer._init_tokenizers(model, root_path)
         Ideogram4Initializer._init_models(model, root_path)
         Ideogram4Initializer._apply_weights(model, weights, quantize)
+        del weights
+        mx.eval(model)
+        mx.clear_cache()
+        Ideogram4Initializer._apply_lora(model, lora_paths, lora_scales)
 
     @staticmethod
     def _resolve_model_path(path: str) -> Path:
@@ -39,7 +48,7 @@ class Ideogram4Initializer:
         )
         if root_path is None:
             raise ValueError(f"No model path resolved for {path!r}")
-        return validate_model_layout(root_path)
+        return Ideogram4WeightDefinition.validate_fp8_checkpoint(root_path)
 
     @staticmethod
     def _init_config(model, model_config: ModelConfig, model_path: Path) -> None:
@@ -89,6 +98,26 @@ class Ideogram4Initializer:
                 "text_encoder": model.text_encoder,
             },
         )
+
+    @staticmethod
+    def _apply_lora(model, lora_paths: list[str] | None, lora_scales: list[float] | None) -> None:
+        lora_mapping = Ideogram4LoRAMapping.get_mapping()
+        model.lora_paths, model.lora_scales = LoRALoader.load_and_apply_lora(
+            lora_mapping=lora_mapping,
+            transformer=model.conditional_transformer,
+            lora_paths=lora_paths,
+            lora_scales=lora_scales,
+        )
+        if not model.lora_paths:
+            return
+        for lora_file, scale in zip(model.lora_paths, model.lora_scales):
+            LoRALoader._apply_single_lora(
+                model.unconditional_transformer,
+                lora_file,
+                scale,
+                lora_mapping,
+                role=None,
+            )
 
     @staticmethod
     def _text_encoder_kwargs(directory: Path) -> dict[str, Any]:

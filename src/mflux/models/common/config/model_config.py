@@ -631,7 +631,7 @@ AVAILABLE_MODELS = {
         controlnet_model=None,
         custom_transformer_model=None,
         num_train_steps=None,
-        max_sequence_length=512,
+        max_sequence_length=2048,
         supports_guidance=True,
         requires_sigma_shift=False,
     ),
