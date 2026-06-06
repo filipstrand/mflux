@@ -22,6 +22,8 @@ from mflux.models.common.training.state.zip_util import ZipUtil
 from mflux.models.common.training.statistics.statistics import Statistics
 from mflux.models.common.training.trainer import TrainingTrainer
 from mflux.models.common.training.utils import TrainingUtil
+from mflux.models.common.vae.tiling_config import TilingConfig
+from mflux.models.ernie_image.training_adapter.ernie_training_adapter import ErnieTrainingAdapter
 from mflux.models.flux2.training_adapter.flux2_edit_training_adapter import Flux2EditTrainingAdapter
 from mflux.models.flux2.training_adapter.flux2_training_adapter import Flux2TrainingAdapter
 from mflux.models.z_image.training_adapter.z_image_training_adapter import ZImageTrainingAdapter
@@ -64,21 +66,37 @@ class TrainingRunner:
             ModelConfig.z_image().model_name,
             ModelConfig.z_image_turbo().model_name,
         }
+        is_ernie = model_config.model_name in {
+            ModelConfig.ernie_image_turbo().model_name,
+            ModelConfig.ernie_image().model_name,
+        }
         is_flux2 = model_config.model_name.startswith("black-forest-labs/FLUX.2")
         is_flux2_base = model_config.model_name.startswith("black-forest-labs/FLUX.2-klein-base")
         if training_spec.is_edit and not is_flux2_base:
             raise ValueError("Edit training currently supports only FLUX.2-klein-base models.")
-        if is_zimage:
-            adapter = ZImageTrainingAdapter(model_config=model_config, quantize=training_spec.quantize,
-                                            model_path=training_spec.model_path)
+        if is_ernie:
+            adapter = ErnieTrainingAdapter(
+                model_config=model_config, quantize=training_spec.quantize, model_path=training_spec.model_path
+            )
+        elif is_zimage:
+            adapter = ZImageTrainingAdapter(
+                model_config=model_config, quantize=training_spec.quantize, model_path=training_spec.model_path
+            )
         elif training_spec.is_edit:
-            adapter = Flux2EditTrainingAdapter(model_config=model_config, quantize=training_spec.quantize,
-                                               model_path=training_spec.model_path)
+            adapter = Flux2EditTrainingAdapter(
+                model_config=model_config, quantize=training_spec.quantize, model_path=training_spec.model_path
+            )
         elif is_flux2:
-            adapter = Flux2TrainingAdapter(model_config=model_config, quantize=training_spec.quantize,
-                                           model_path=training_spec.model_path)
+            adapter = Flux2TrainingAdapter(
+                model_config=model_config, quantize=training_spec.quantize, model_path=training_spec.model_path
+            )
         else:
             raise ValueError("Flux1 training is no longer supported.")
+
+        if training_spec.low_ram:
+            model = adapter.model()
+            if hasattr(model, "tiling_config") and model.tiling_config is None:
+                model.tiling_config = TilingConfig()
 
         # For Z-Image-Turbo we always apply the assistant training adapter (automatic, no config needed).
         if is_zimage_turbo:

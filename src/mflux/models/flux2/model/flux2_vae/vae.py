@@ -1,6 +1,8 @@
 import mlx.core as mx
 from mlx import nn
 
+from mflux.models.common.vae.tiling_config import TilingConfig
+from mflux.models.common.vae.vae_util import VAEUtil
 from mflux.models.flux2.model.flux2_vae.common.batch_norm_stats import Flux2BatchNormStats
 from mflux.models.flux2.model.flux2_vae.decoder.decoder import Flux2Decoder
 from mflux.models.flux2.model.flux2_vae.encoder.encoder import Flux2Encoder
@@ -40,14 +42,14 @@ class Flux2VAE(nn.Module):
         decoded = self.decoder(latents)
         return decoded
 
-    def decode_packed_latents(self, packed_latents: mx.array) -> mx.array:
+    def decode_packed_latents(self, packed_latents: mx.array, tiling_config: TilingConfig | None = None) -> mx.array:
         if packed_latents.ndim == 5:
             packed_latents = packed_latents[:, :, 0, :, :]
         bn_mean = self.bn.running_mean.reshape(1, -1, 1, 1)
         bn_std = mx.sqrt(self.bn.running_var.reshape(1, -1, 1, 1) + self.bn.eps)
         latents = packed_latents * bn_std + bn_mean
         latents = self._unpatchify_latents(latents)
-        return self.decode(latents)
+        return VAEUtil.decode(vae=self, latent=latents, tiling_config=tiling_config)
 
     @staticmethod
     def _unpatchify_latents(latents: mx.array) -> mx.array:

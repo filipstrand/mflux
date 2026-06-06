@@ -28,6 +28,8 @@ class ModelConfig:
         sigma_base_seq_len: int = 256,
         sigma_max_seq_len: int = 4096,
         sigma_shift_terminal: float | None = None,
+        lora_training_steps: int | None = None,
+        lora_training_guidance: float | None = None,
     ):
         self.aliases = aliases
         self.model_name = model_name
@@ -46,6 +48,8 @@ class ModelConfig:
         self.sigma_base_seq_len = sigma_base_seq_len
         self.sigma_max_seq_len = sigma_max_seq_len
         self.sigma_shift_terminal = sigma_shift_terminal
+        self.lora_training_steps = lora_training_steps
+        self.lora_training_guidance = lora_training_guidance
 
     @staticmethod
     @lru_cache
@@ -151,6 +155,16 @@ class ModelConfig:
     @lru_cache
     def fibo_edit_rmbg() -> "ModelConfig":
         return AVAILABLE_MODELS["fibo-edit-rmbg"]
+
+    @staticmethod
+    @lru_cache
+    def ernie_image_turbo() -> "ModelConfig":
+        return AVAILABLE_MODELS["ernie-image-turbo"]
+
+    @staticmethod
+    @lru_cache
+    def ernie_image() -> "ModelConfig":
+        return AVAILABLE_MODELS["ernie-image"]
 
     @staticmethod
     @lru_cache
@@ -539,6 +553,40 @@ AVAILABLE_MODELS = {
         max_sequence_length=None,
         supports_guidance=True,
         requires_sigma_shift=None,
+    ),
+    "ernie-image": ModelConfig(
+        priority=27,
+        aliases=["ernie-image"],
+        model_name="baidu/ERNIE-Image",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=2048,
+        supports_guidance=True,
+        requires_sigma_shift=True,
+        sigma_base_shift=1.3863,
+        sigma_max_shift=1.3863,
+        lora_training_steps=50,
+        lora_training_guidance=4.0,
+        transformer_overrides={"rope_axes_dim": [32, 48, 48]},
+    ),
+    "ernie-image-turbo": ModelConfig(
+        priority=26,
+        aliases=["ernie-image-turbo"],
+        model_name="baidu/ERNIE-Image-Turbo",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=2048,
+        supports_guidance=True,
+        requires_sigma_shift=True,
+        sigma_base_shift=1.3863,
+        sigma_max_shift=1.3863,
+        lora_training_steps=8,
+        lora_training_guidance=1.0,
+        transformer_overrides={"rope_axes_dim": [32, 48, 48]},
     ),
     "seedvr2-7b": ModelConfig(
         priority=23,

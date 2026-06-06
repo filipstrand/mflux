@@ -121,6 +121,7 @@ MFLUX supports the following model families. They have different strengths and w
 | --- | --- | --- | --- | --- | --- |
 |[Z-Image](src/mflux/models/z_image/README.md) | Nov 2025 | 6B | Distilled & Base | Yes | Fast, small, very good quality and realism. |
 |[FLUX.2](src/mflux/models/flux2/README.md) | Jan 2026 | 4B & 9B | Distilled & Base | Yes | Fastest + smallest with very good qaility and edit capabilities. |
+|[ERNIE-Image](src/mflux/models/ernie_image/README.md) | Apr 2026 | 8B | Distilled & Base | No | Single-stream DiT from Baidu. Vivid, high-contrast output. |
 |[FIBO](src/mflux/models/fibo/README.md) | Oct 2025+ | 8B | Distilled & Base | No | Very good JSON-based prompt understanding. Has edit capabilities. |
 |[SeedVR2](src/mflux/models/seedvr2/README.md) | Jun 2025 | 3B & 7B | — | No | Best upscaling model. |
 |[Qwen Image](src/mflux/models/qwen/README.md) | Aug 2025+ | 20B | Base | No | Large model (slower); strong prompt understanding and world knowledge. Has edit capabilities |
@@ -172,6 +173,7 @@ MFLUX would not be possible without the great work of:
 - Black Forest Labs for the [FLUX project](https://github.com/black-forest-labs/flux)
 - Bria for the [FIBO project](https://huggingface.co/briaai/FIBO)
 - Tongyi Lab for the [Z-Image project](https://tongyi-mai.github.io/Z-Image-blog/)
+- Baidu for the [ERNIE-Image project](https://huggingface.co/baidu/ERNIE-Image)
 - Qwen Team for the [Qwen Image project](https://qwen.ai/blog?id=a6f483777144685d33cd3d2af95136fcbeb57652&from=research.research-list)
 - ByteDance, @numz and @adrientoupet for the [SeedVR2 project](https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler)
 - Hugging Face for the [Diffusers library implementations](https://github.com/huggingface/diffusers) 

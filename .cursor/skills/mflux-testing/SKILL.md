@@ -24,6 +24,22 @@ This repo uses pytest with image-producing tests. Always preserve outputs for in
   - Point to any generated images/artifacts on disk for manual review.
 - Do **not** regenerate/replace reference (“golden”) images unless the user explicitly requests it.
 
+## Updating golden images (new model or hardware refresh)
+
+Golden tests compare generated PNGs to `tests/resources/reference_*.png` (typically 15% mismatch threshold).
+
+**When to update** (only with explicit user approval):
+- After validating the port on target hardware (CI Mac) via slow tests with `MFLUX_PRESERVE_TEST_OUTPUT=1`
+- After choosing a stable prompt/seed/settings via diffusers comparison and/or latent-injection confidence (`mflux-debugging`)
+- When old references used a bad prompt (e.g. ambiguous subject) or wrong seed for mflux’s RNG
+
+**Workflow**:
+1. Run slow test → inspect `tests/resources/output_*.png` vs `reference_*.png`
+2. If output is correct but reference is stale, re-run generation with same test parameters and replace reference PNGs
+3. Commit test + reference images together with a clear message (e.g. `test(<model>): update golden images for local hardware`)
+
+**Important**: Golden tests lock **mflux-native** sampling (`mx.random` + mflux schedulers), not diffusers pixel parity. A good diffusers side-by-side or injected-latent run builds confidence in the model code; the golden still reflects mflux’s full recipe on CI hardware.
+
 ## Manual validation (config resolution + local model paths)
 
 Use when a change touches model config resolution, `mflux-save`, or the model’s generate CLI, or when a PR fixes local model-path handling for the model under investigation. Refer to the `mflux-cli` skill to find the correct generate command for the model you are testing.
