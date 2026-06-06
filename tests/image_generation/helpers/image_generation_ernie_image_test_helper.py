@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 from mflux.models.common.config.model_config import ModelConfig
-from mflux.models.ernie_image.variants.ernie_image import ErnieImage
+from mflux.models.ernie_image.variants.txt2img.ernie_image import ErnieImage
 from mflux.utils.image_compare import ImageCompare
 
 

@@ -7,7 +7,7 @@ import pytest
 
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.weights.loading.weight_loader import WeightLoader
-from mflux.models.ernie_image.variants.ernie_image import ErnieImage
+from mflux.models.ernie_image.variants.txt2img.ernie_image import ErnieImage
 from mflux.utils.version_util import VersionUtil
 
 PATH = "tests/ernie_turbo_q8_saved/"

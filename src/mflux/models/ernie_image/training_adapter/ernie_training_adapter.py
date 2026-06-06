@@ -14,7 +14,7 @@ from mflux.models.common.training.state.training_spec import TrainingSpec
 from mflux.models.common.training.utils import TrainingUtil
 from mflux.models.ernie_image.latent_creator.ernie_latent_creator import ErnieLatentCreator
 from mflux.models.ernie_image.model.ernie_text_encoder.prompt_encoder import ErniePromptEncoder
-from mflux.models.ernie_image.variants.ernie_image import ErnieImage
+from mflux.models.ernie_image.variants.txt2img.ernie_image import ErnieImage
 from mflux.models.ernie_image.weights.ernie_lora_mapping import ErnieLoRAMapping
 from mflux.utils.version_util import VersionUtil
 

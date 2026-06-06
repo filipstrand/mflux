@@ -1,6 +1,6 @@
 from mflux.cli.parser.parsers import CommandLineParser
 from mflux.models.common.config import ModelConfig
-from mflux.models.ernie_image.variants.ernie_image import ErnieImage
+from mflux.models.ernie_image.variants.txt2img.ernie_image import ErnieImage
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
 from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.models.flux2.variants.txt2img.flux2_klein import Flux2Klein

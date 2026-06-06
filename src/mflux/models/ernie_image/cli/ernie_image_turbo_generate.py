@@ -2,7 +2,7 @@ from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.parser.parsers import CommandLineParser
 from mflux.models.common.config import ModelConfig
 from mflux.models.ernie_image.latent_creator import ErnieLatentCreator
-from mflux.models.ernie_image.variants.ernie_image import ErnieImage
+from mflux.models.ernie_image.variants.txt2img.ernie_image import ErnieImage
 from mflux.utils.dimension_resolver import DimensionResolver
 from mflux.utils.exceptions import PromptFileReadError, StopImageGenerationException
 from mflux.utils.prompt_util import PromptUtil
