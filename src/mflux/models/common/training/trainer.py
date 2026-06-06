@@ -156,6 +156,9 @@ class TrainingTrainer:
             if training_state.should_save(training_spec):
                 training_state.save(adapter, training_spec)
 
+            if training_spec.low_ram:
+                mx.clear_cache()
+
         training_state.save(adapter, training_spec)
 
     @staticmethod
