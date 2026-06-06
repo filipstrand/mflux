@@ -2,6 +2,7 @@ import mlx.core as mx
 import mlx.nn as nn
 
 from mflux.models.common.lora.layer.fused_linear_lora_layer import FusedLoRALinear
+from mflux.models.common.lora.layer.linear_lokr_layer import LoKrLinear
 from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
 
 
@@ -19,21 +20,28 @@ class LoRASaver:
                 setattr(parent, attr_name, new_child)
 
         def _bake_single(lora_layer: LoRALinear) -> nn.Module:
-            base_linear = lora_layer.linear
-            LoRASaver._apply_lora_delta(base_linear, lora_layer)
-            return base_linear
+            return LoRASaver._bake_lora_into_linear(lora_layer.linear, lora_layer)
+
+        def _bake_lokr(lokr_layer: LoKrLinear) -> nn.Module:
+            return LoRASaver._bake_lokr_into_linear(lokr_layer.linear, lokr_layer)
 
         def _bake_fused(fused_layer: FusedLoRALinear) -> nn.Module:
-            base_linear = fused_layer.base_linear
+            current = fused_layer.base_linear
             for lora in fused_layer.loras:
                 if isinstance(lora, LoRALinear):
-                    LoRASaver._apply_lora_delta(base_linear, lora)
-            return base_linear
+                    current = LoRASaver._bake_lora_into_linear(current, lora)
+                elif isinstance(lora, LoKrLinear):
+                    current = LoRASaver._bake_lokr_into_linear(current, lora)
+            return current
 
         def _walk(obj, parent=None, attr_name=None, idx=None):
             # Replace wrappers first
             if isinstance(obj, FusedLoRALinear):
                 new_child = _bake_fused(obj)
+                _assign(parent, attr_name, idx, new_child)
+                obj = new_child
+            elif isinstance(obj, LoKrLinear):
+                new_child = _bake_lokr(obj)
                 _assign(parent, attr_name, idx, new_child)
                 obj = new_child
             elif isinstance(obj, LoRALinear):
@@ -63,20 +71,65 @@ class LoRASaver:
         return module
 
     @staticmethod
-    def _apply_lora_delta(base_linear: nn.Module, lora_layer: LoRALinear) -> None:
-        if not hasattr(base_linear, "weight"):
-            return
+    def _dense_weight(linear: nn.Linear | nn.QuantizedLinear) -> mx.array:
+        if isinstance(linear, nn.QuantizedLinear):
+            return mx.dequantize(
+                linear.weight,
+                linear.scales,
+                biases=linear.biases,
+                group_size=linear.group_size,
+                bits=linear.bits,
+                mode=linear.mode,
+            )
+        return linear.weight
 
-        weight = base_linear.weight
-        delta = mx.matmul(lora_layer.lora_A, lora_layer.lora_B)  # shape: [in, out]
-        delta = mx.transpose(delta)  # shape: [out, in]
+    @staticmethod
+    def _bake_lora_into_linear(base_linear: nn.Linear | nn.QuantizedLinear, lora_layer: LoRALinear) -> nn.Module:
+        delta = mx.matmul(lora_layer.lora_A, lora_layer.lora_B)
+        delta = mx.transpose(delta)
         delta = lora_layer.scale * delta
+        return LoRASaver._bake_delta_into_linear(base_linear, delta)
 
-        if weight.shape != delta.shape:
-            print(f"⚠️  Skipping LoRA bake due to shape mismatch: weight {weight.shape} vs delta {delta.shape}")
-            return
+    @staticmethod
+    def _bake_lokr_into_linear(base_linear: nn.Linear | nn.QuantizedLinear, lokr_layer: LoKrLinear) -> nn.Module:
+        dense_weight = LoRASaver._dense_weight(base_linear)
+        delta = lokr_layer.scale * lokr_layer.delta_weight(base_weight=dense_weight)
+        return LoRASaver._bake_delta_into_linear(base_linear, delta)
+
+    @staticmethod
+    def _bake_delta_into_linear(
+        base_linear: nn.Linear | nn.QuantizedLinear,
+        delta: mx.array,
+    ) -> nn.Module:
+        if not hasattr(base_linear, "weight"):
+            return base_linear
+
+        dense_weight = LoRASaver._dense_weight(base_linear)
+        if dense_weight.shape != delta.shape:
+            print(
+                "⚠️  Skipping LoRA bake due to shape mismatch: "
+                f"weight {dense_weight.shape} vs delta {delta.shape}"
+            )
+            return base_linear
+
+        merged = dense_weight + delta.astype(dense_weight.dtype)
 
         try:
-            base_linear.weight = weight + delta.astype(weight.dtype)
+            if isinstance(base_linear, nn.QuantizedLinear):
+                has_bias = hasattr(base_linear, "bias") and getattr(base_linear, "bias", None) is not None
+                dense_linear = nn.Linear(merged.shape[1], merged.shape[0], bias=has_bias)
+                dense_linear.weight = merged
+                if has_bias:
+                    dense_linear.bias = base_linear.bias
+                return nn.QuantizedLinear.from_linear(
+                    dense_linear,
+                    group_size=base_linear.group_size,
+                    bits=base_linear.bits,
+                    mode=base_linear.mode,
+                )
+
+            base_linear.weight = merged.astype(base_linear.weight.dtype)
+            return base_linear
         except Exception as e:  # noqa: BLE001
             print(f"⚠️  Failed to bake LoRA into base layer: {e}")
+            return base_linear
