@@ -1,5 +1,9 @@
+import pytest
+
 from mflux.models.common.lora.mapping.lora_loader import LoRALoader
 from mflux.models.ernie_image.weights.ernie_lora_mapping import ErnieLoRAMapping
+
+pytestmark = pytest.mark.fast
 
 
 class TestErnieLoRAMapping:

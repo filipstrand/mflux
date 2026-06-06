@@ -9,6 +9,7 @@ from mflux.cli.defaults import defaults as ui_defaults
 from mflux.cli.parser.parsers import CommandLineParser
 from mflux.models.fibo.cli.fibo_edit import _resolve_fibo_edit_model_config
 from mflux.utils.box_values import BoxValues
+from mflux.utils.scale_factor import ScaleFactor
 
 
 def _create_mflux_generate_parser(with_controlnet=False, require_model_arg=False) -> CommandLineParser:
@@ -1277,6 +1278,98 @@ def test_z_image_turbo_args(mflux_z_image_turbo_parser, mflux_z_image_turbo_mini
             args = mflux_z_image_turbo_parser.parse_args()
             assert args.lora_paths == ["some/lora.safetensors"]
             assert args.lora_scales == [pytest.approx(0.8)]
+
+
+# ============================================================================
+# ERNIE-Image Tests
+# ============================================================================
+
+
+@pytest.fixture
+def mflux_ernie_image_parser() -> CommandLineParser:
+    parser = CommandLineParser(description="Generate an image using ERNIE-Image (50 steps, CFG) based on a prompt.")
+    parser.add_general_arguments()
+    parser.add_model_arguments(require_model_arg=False)
+    parser.add_lora_arguments()
+    parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
+    parser.add_image_to_image_arguments(required=False)
+    parser.add_output_arguments()
+    parser.set_defaults(model="ernie-image", guidance=4.0)
+    return parser
+
+
+@pytest.fixture
+def mflux_ernie_image_minimal_argv() -> list[str]:
+    return ["mflux-generate-ernie-image", "--prompt", "a bicycle on a beach"]
+
+
+@pytest.fixture
+def mflux_ernie_image_turbo_parser() -> CommandLineParser:
+    parser = CommandLineParser(
+        description="Generate an image using ERNIE-Image-Turbo (distilled, 8 steps) based on a prompt."
+    )
+    parser.add_general_arguments()
+    parser.add_model_arguments(require_model_arg=False)
+    parser.add_lora_arguments()
+    parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
+    parser.add_image_to_image_arguments(required=False)
+    parser.add_output_arguments()
+    parser.set_defaults(model="ernie-image-turbo")
+    return parser
+
+
+@pytest.fixture
+def mflux_ernie_image_turbo_minimal_argv() -> list[str]:
+    return ["mflux-generate-ernie-image-turbo", "--prompt", "a bicycle on a beach"]
+
+
+@pytest.mark.fast
+def test_ernie_image_args(mflux_ernie_image_parser, mflux_ernie_image_minimal_argv):
+    with patch("sys.argv", mflux_ernie_image_minimal_argv):
+        args = mflux_ernie_image_parser.parse_args()
+        assert args.prompt == "a bicycle on a beach"
+        assert args.guidance == pytest.approx(4.0)
+        assert mflux_ernie_image_parser.supports_dimension_scale_factor is True
+        assert isinstance(args.width, ScaleFactor)
+        assert isinstance(args.height, ScaleFactor)
+        assert args.width.value == 1
+        assert args.height.value == 1
+
+    with patch("sys.argv", mflux_ernie_image_minimal_argv + ["--guidance", "3.0"]):
+        args = mflux_ernie_image_parser.parse_args()
+        assert args.guidance == pytest.approx(3.0)
+
+    with patch("sys.argv", mflux_ernie_image_minimal_argv + ["--image-path", "input.png", "--image-strength", "0.7"]):
+        args = mflux_ernie_image_parser.parse_args()
+        assert args.image_path == Path("input.png")
+        assert args.image_strength == pytest.approx(0.7)
+
+
+@pytest.mark.fast
+def test_ernie_image_turbo_args(mflux_ernie_image_turbo_parser, mflux_ernie_image_turbo_minimal_argv):
+    with patch("sys.argv", mflux_ernie_image_turbo_minimal_argv):
+        args = mflux_ernie_image_turbo_parser.parse_args()
+        assert args.prompt == "a bicycle on a beach"
+        assert args.guidance is None
+        assert mflux_ernie_image_turbo_parser.supports_dimension_scale_factor is True
+        assert isinstance(args.width, ScaleFactor)
+        assert isinstance(args.height, ScaleFactor)
+
+    with patch("sys.argv", mflux_ernie_image_turbo_minimal_argv + ["--guidance", "1.0"]):
+        args = mflux_ernie_image_turbo_parser.parse_args()
+        assert args.guidance == pytest.approx(1.0)
+
+
+@pytest.mark.fast
+def test_ernie_image_turbo_rejects_non_unit_guidance(mflux_ernie_image_turbo_minimal_argv):
+    from mflux.models.ernie_image.cli import ernie_image_turbo_generate as turbo_cli
+
+    with patch("sys.argv", mflux_ernie_image_turbo_minimal_argv + ["--guidance", "4.0"]):
+        with patch.object(turbo_cli, "ErnieImage"):
+            with patch.object(turbo_cli.CallbackManager, "register_callbacks", return_value=None):
+                with pytest.raises(SystemExit) as exc_info:
+                    turbo_cli.main()
+                assert exc_info.value.code == 2
 
 
 # ============================================================================
