@@ -74,6 +74,69 @@ Provide a repeatable, MLX-focused workflow for porting ML models (typically from
      - Python API example that matches the CLI/defaults
    - Document any new mapping rules, shape constraints, or tolerances.
 
+## Integration surfaces checklist (don’t forget)
+
+Past [closed PRs](https://github.com/filipstrand/mflux/pulls?q=is%3Apr+is%3Aclosed) show the same wiring gaps recurring on every new model. Use this as a **tick list** alongside the workflow above — not every row applies to every model (e.g. skip vision-encoder rows for txt2img-only), but scan it before opening a port PR.
+
+### Repo wiring (required for every new model family)
+
+| Surface | What to do |
+|---|---|
+| `pyproject.toml` | Register `mflux-generate-<model>` (and edit/turbo variants if separate) |
+| `ModelConfig` | Entry in `AVAILABLE_MODELS`: aliases, HF repo id, `num_train_steps`, guidance support, sigma shift, `transformer_overrides`, distilled vs base step defaults |
+| `cli/defaults/defaults.py` | `MODEL_CHOICES` + `MODEL_INFERENCE_STEPS` |
+| `models/common/cli/save.py` | Route `mflux-save` to the **correct variant class** (txt2img vs edit vs turbo — wrong class silently drops weights; see [#405](https://github.com/filipstrand/mflux/pull/405)) |
+| Main `README.md` | Model table row + attribution line |
+| `src/mflux/models/<model>/README.md` | Examples aligned with Flux2-style layout; disk sizes measured (`du`, `mflux-save`) |
+| `src/mflux/assets/` | Hero/showcase image if other models have one (`git add -f` when `*.jpg` is gitignored) |
+
+### Weights, tokenizer, download scope
+
+| Surface | What to do |
+|---|---|
+| `*WeightDefinition` | `get_components()`, `get_download_patterns()`, `get_tokenizers()` — **only** list artifacts mflux actually loads |
+| Weight mapping | Explicit `WeightTarget` list; verify tensor names/shapes against HF cache blobs |
+| Tokenizer | Exercise local-path load, partial HF cache, and any special formats (protobuf, sentencepiece, etc.) — see [#383](https://github.com/filipstrand/mflux/pull/383), [#389](https://github.com/filipstrand/mflux/pull/389), [#390](https://github.com/filipstrand/mflux/pull/390) |
+| Optional reference components | Document in README what the upstream pipeline includes but mflux omits (extra encoders, preprocessors, etc.) |
+
+### LoRA
+
+| Surface | What to do |
+|---|---|
+| `*LoRAMapping` | Support **multiple export key conventions** (diffusers, PEFT `.default.weight`, kohya/`diffusion_model.*` aliases) — silent zero-key loads were fixed repeatedly ([#376](https://github.com/filipstrand/mflux/pull/376), [#374](https://github.com/filipstrand/mflux/pull/374), [#397](https://github.com/filipstrand/mflux/pull/397)) |
+| Tests | Fast tests that real community LoRA filenames map to non-zero keys |
+| Inference CLI | `--lora-paths` / `--lora-scales` via shared parser (no bespoke loader) |
+
+### Inference CLI & shared features
+
+| Surface | What to do |
+|---|---|
+| Thin CLI | `CommandLineParser` + `CallbackManager.register_callbacks(...)` |
+| `DimensionResolver` | Use in generate/edit CLIs when width/height can be omitted (API/OpenWebUI paths) — [#378](https://github.com/filipstrand/mflux/pull/378) |
+| `latent_creator` | `pack_latents` / `unpack_latents`; img2img path must match txt2img normalization (BN, scale factor) |
+| `tiling_config` | If initializer sets custom tiling, ensure `MemorySaver` does not overwrite it |
+| Guidance defaults | Distilled vs base: match `ModelConfig`, CLI default, README, and training preview adapter |
+| `mflux-save` round-trip | Save quantized model → load from local path → generate; confirm `model.safetensors.index.json` if sharded |
+
+### Training (if supported)
+
+| Surface | What to do |
+|---|---|
+| `training/runner.py` | Register `*TrainingAdapter`; handle `low_ram` / tiling like other models |
+| Example JSON | `models/common/training/_example/train_<model>.json` + `.gitignore` un-ignore |
+| Preview generation | Adapter should use canonical steps/guidance for distilled vs base (unit test this) |
+| Local `model_path` | Confirm `mflux-train` works with saved local weights — [#370](https://github.com/filipstrand/mflux/pull/370) |
+
+### Tests & CI
+
+| Surface | What to do |
+|---|---|
+| Slow golden test | `tests/image_generation/test_generate_image_<model>.py` + `reference_*.png` on CI hardware |
+| Fast tests | LoRA mapping, training-adapter preview defaults, argparser if new CLI flags |
+| `make lint` / `make test-fast` | Before slow tests |
+
+When fixing a gap for model *N*, ask whether the same gap exists for other recent models and whether a **shared** fix belongs in `models/common/` (preferred over copy-paste per model).
+
 ## Tooling expectations
 - Use `uv` for running scripts and tests: `uv run <command>`.
 - Prefer `uv run python -m <module>` for local modules.

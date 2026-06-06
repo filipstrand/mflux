@@ -19,7 +19,7 @@ description: Make a clean PR in mflux (inspect diff, quick verification, commit,
 
 ## Pre-merge checklist (model port PRs)
 
-Use after the core port lands and you are polishing for merge.
+Use after the core port lands and you are polishing for merge. For the full **integration surfaces** tick list (LoRA key formats, save routing, tokenizer edge cases, etc. learned from past closed PRs), see `mflux-model-porting` → *Integration surfaces checklist*.
 
 ### Correctness
 
