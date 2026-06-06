@@ -1,10 +1,13 @@
 import mlx.core as mx
 from mlx import nn
 
-from mflux.models.ernie_image.model.ernie_transformer.rope_embedder import ErnieRopeEmbedder
-from mflux.models.ernie_image.model.ernie_transformer.timestep_embedder import ErnieTimestepEmbedder, get_timestep_embedding
-from mflux.models.ernie_image.model.ernie_transformer.transformer_block import ErnieTransformerBlock
 from mflux.models.common.config.model_config import ModelConfig
+from mflux.models.ernie_image.model.ernie_transformer.rope_embedder import ErnieRopeEmbedder
+from mflux.models.ernie_image.model.ernie_transformer.timestep_embedder import (
+    ErnieTimestepEmbedder,
+    get_timestep_embedding,
+)
+from mflux.models.ernie_image.model.ernie_transformer.transformer_block import ErnieTransformerBlock
 
 
 class ErniePatchEmbed(nn.Module):
@@ -13,10 +16,9 @@ class ErniePatchEmbed(nn.Module):
         self.proj = nn.Conv2d(in_channels, embed_dim, kernel_size=patch_size, stride=patch_size)
 
     def __call__(self, x: mx.array) -> mx.array:
-        # x: [B, H, W, C] (MLX channel-last)
-        x = self.proj(x)  # [B, H', W', embed_dim]
+        x = self.proj(x)
         B, H, W, C = x.shape
-        return x.reshape(B, H * W, C)  # [B, S, embed_dim]
+        return x.reshape(B, H * W, C)
 
 
 class ErnieAdaLNContinuous(nn.Module):
@@ -26,8 +28,7 @@ class ErnieAdaLNContinuous(nn.Module):
         self.linear = nn.Linear(hidden_size, hidden_size * 2)
 
     def __call__(self, x: mx.array, c: mx.array) -> mx.array:
-        # x: [B, S, H], c: [B, H]
-        scale, shift = mx.split(self.linear(c), 2, axis=-1)  # each [B, H]
+        scale, shift = mx.split(self.linear(c), 2, axis=-1)
         x = self.norm(x)
         return x * (1 + scale[:, None, :]) + shift[:, None, :]
 
@@ -59,22 +60,11 @@ class ErnieTransformer(nn.Module):
 
         rope_axes_dim = rope_axes_dim or [32, 48, 48]
 
-        # Patch embedding: Conv2d(in_channels, hidden_size, kernel=patch_size)
         self.x_embedder = ErniePatchEmbed(in_channels, hidden_size, patch_size)
-
-        # Text projection: Linear(text_in_dim, hidden_size, bias=False)
         self.text_proj = nn.Linear(text_in_dim, hidden_size, bias=False)
-
-        # Timestep MLP (linear_1/linear_2 to match diffusers TimestepEmbedding key names)
         self.time_embedding = ErnieTimestepEmbedder(hidden_size)
-
-        # Shared AdaLN modulation: Sequential(SiLU, Linear) – weight key: adaLN_modulation.1.{w,b}
         self.adaln_modulation = nn.Linear(hidden_size, 6 * hidden_size)
-
-        # RoPE positional embedder
         self.pos_embed = ErnieRopeEmbedder(dim=self.head_dim, theta=rope_theta, axes_dim=rope_axes_dim)
-
-        # Transformer blocks
         self.layers = [
             ErnieTransformerBlock(hidden_size, num_attention_heads, ffn_hidden_size, eps, qk_layernorm)
             for _ in range(num_layers)
@@ -82,9 +72,8 @@ class ErnieTransformer(nn.Module):
 
         self._gradient_checkpointing = False
         self._gradient_checkpointing_every_n = 1
-        self._pos_cache: dict = {}  # (H, W, T, text_lens_tuple) -> (freqs_cis, attn_mask)
+        self._pos_cache: dict = {}
 
-        # Final AdaLN norm + linear projection
         self.final_norm = ErnieAdaLNContinuous(hidden_size, eps)
         self.final_linear = nn.Linear(hidden_size, patch_size * patch_size * out_channels)
 
@@ -96,13 +85,6 @@ class ErnieTransformer(nn.Module):
         T: int,
         text_lens: mx.array,
     ) -> tuple[mx.array, mx.array, mx.array]:
-        """Return (cos, sin, attn_mask) for the given geometry and text lengths.
-
-        Results are cached by (H, W, T, text_lens) — all are constant across
-        denoising steps for a fixed resolution and prompt.  Callers should
-        mx.eval the returned tensors once before the denoising loop so that
-        mx.compile never needs to re-trace or re-compute them.
-        """
         N_img = H * W
         cache_key = (H, W, T, tuple(text_lens.tolist()))
         if cache_key not in self._pos_cache:
@@ -111,34 +93,31 @@ class ErnieTransformer(nn.Module):
                 mx.arange(W, dtype=mx.float32),
                 indexing="ij",
             )
-            grid_yx = mx.stack([grid_y.reshape(-1), grid_x.reshape(-1)], axis=-1)  # [N_img, 2]
+            grid_yx = mx.stack([grid_y.reshape(-1), grid_x.reshape(-1)], axis=-1)
 
-            t_coord = text_lens.astype(mx.float32)[:, None, None]  # [B, 1, 1]
+            t_coord = text_lens.astype(mx.float32)[:, None, None]
             image_ids = mx.concatenate(
-                [mx.broadcast_to(t_coord, (B, N_img, 1)),
-                 mx.broadcast_to(grid_yx[None, :, :], (B, N_img, 2))],
+                [mx.broadcast_to(t_coord, (B, N_img, 1)), mx.broadcast_to(grid_yx[None, :, :], (B, N_img, 2))],
                 axis=-1,
-            )  # [B, N_img, 3]
+            )
 
-            text_pos = mx.arange(T, dtype=mx.float32)[None, :, None]  # [1, T, 1]
+            text_pos = mx.arange(T, dtype=mx.float32)[None, :, None]
             text_ids = mx.concatenate(
-                [mx.broadcast_to(text_pos, (B, T, 1)),
-                 mx.zeros((B, T, 2), dtype=mx.float32)],
+                [mx.broadcast_to(text_pos, (B, T, 1)), mx.zeros((B, T, 2), dtype=mx.float32)],
                 axis=-1,
-            )  # [B, T, 3]
+            )
 
-            all_ids = mx.concatenate([image_ids, text_ids], axis=1)  # [B, S, 3]
-            freqs_cis = self.pos_embed(all_ids)  # [B, S, 1, head_dim]
+            all_ids = mx.concatenate([image_ids, text_ids], axis=1)
+            freqs_cis = self.pos_embed(all_ids)
 
-            # Pre-compute cos/sin once — constant across all denoising steps.
-            cos = mx.cos(freqs_cis).astype(ModelConfig.precision)  # [B, S, 1, head_dim]
+            cos = mx.cos(freqs_cis).astype(ModelConfig.precision)
             sin = mx.sin(freqs_cis).astype(ModelConfig.precision)
 
-            valid_text = mx.arange(T)[None, :] < text_lens[:, None]  # [B, T]
+            valid_text = mx.arange(T)[None, :] < text_lens[:, None]
             img_mask = mx.ones((B, N_img), dtype=mx.bool_)
-            bool_mask = mx.concatenate([img_mask, valid_text], axis=1)  # [B, S]
+            bool_mask = mx.concatenate([img_mask, valid_text], axis=1)
             float_mask = mx.where(bool_mask, 0.0, -float("inf")).astype(mx.bfloat16)
-            attn_mask = float_mask[:, None, None, :]  # [B, 1, 1, S]
+            attn_mask = float_mask[:, None, None, :]
 
             if len(self._pos_cache) >= 64:
                 self._pos_cache.pop(next(iter(self._pos_cache)))
@@ -148,12 +127,12 @@ class ErnieTransformer(nn.Module):
 
     def __call__(
         self,
-        hidden_states: mx.array,  # [B, in_channels, H', W'] channel-first latents
-        timestep: mx.array,        # [B] timestep values in [0, 1000] (sigma * 1000)
-        text_bth: mx.array,        # [B, T, text_in_dim] padded text embeddings
-        text_lens: mx.array,       # [B] actual text lengths
+        hidden_states: mx.array,
+        timestep: mx.array,
+        text_bth: mx.array,
+        text_lens: mx.array,
         *,
-        cos: mx.array | None = None,       # pre-computed by caller; None → compute internally
+        cos: mx.array | None = None,
         sin: mx.array | None = None,
         attn_mask: mx.array | None = None,
     ) -> mx.array:
@@ -161,42 +140,30 @@ class ErnieTransformer(nn.Module):
         N_img = H * W
         T = text_bth.shape[1]
 
-        # 1. Embed image patches: [B, C, H, W] → [B, H, W, C] for MLX Conv2d
-        img_emb = self.x_embedder(hidden_states.transpose(0, 2, 3, 1))  # [B, N_img, hidden_size]
+        img_emb = self.x_embedder(hidden_states.transpose(0, 2, 3, 1))
+        text_emb = self.text_proj(text_bth)
+        x = mx.concatenate([img_emb, text_emb], axis=1)
 
-        # 2. Project text embeddings
-        text_emb = self.text_proj(text_bth)  # [B, T, hidden_size]
-
-        # 3. Concatenate: image tokens first, then text tokens
-        x = mx.concatenate([img_emb, text_emb], axis=1)  # [B, N_img+T, hidden_size]
-
-        # 4. Positional encoding — pre-computed by caller for inference; computed here for training.
         if cos is None:
             cos, sin, attn_mask = self.get_pos_encoding(B, H, W, T, text_lens)
 
-        # 5. Compute timestep conditioning
-        t_emb = get_timestep_embedding(timestep.astype(mx.float32), self.hidden_size)  # [B, hidden_size]
-        c = self.time_embedding(t_emb)  # [B, hidden_size]
-        adaln_out = self.adaln_modulation(nn.silu(c))  # [B, 6*hidden_size]
-        pieces = mx.split(adaln_out, 6, axis=-1)  # 6 × [B, hidden_size]
-        shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = [
-            p[:, None, :] for p in pieces  # expand to [B, 1, hidden_size] for broadcasting
-        ]
+        t_emb = get_timestep_embedding(timestep.astype(mx.float32), self.hidden_size)
+        c = self.time_embedding(t_emb)
+        adaln_out = self.adaln_modulation(nn.silu(c))
+        pieces = mx.split(adaln_out, 6, axis=-1)
+        shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = [p[:, None, :] for p in pieces]
         temb = (shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp)
 
-        # 6. Transformer blocks
         for i, layer in enumerate(self.layers):
             if self._gradient_checkpointing and i % self._gradient_checkpointing_every_n == 0:
                 x = mx.checkpoint(layer)(x, cos, sin, temb, attn_mask)
             else:
                 x = layer(x, cos, sin, temb, attn_mask)
 
-        # 7. Final norm on image tokens only, then project
-        img_tokens = x[:, :N_img, :]  # [B, N_img, hidden_size]
+        img_tokens = x[:, :N_img, :]
         img_tokens = self.final_norm(img_tokens, c).astype(hidden_states.dtype)
-        patches = self.final_linear(img_tokens)  # [B, N_img, patch_size²*out_channels]
+        patches = self.final_linear(img_tokens)
 
-        # 8. Reshape to [B, out_channels, H', W']
         output = patches.reshape(B, H, W, self.patch_size, self.patch_size, self.out_channels)
         output = output.transpose(0, 5, 1, 3, 2, 4)
         output = output.reshape(B, self.out_channels, H * self.patch_size, W * self.patch_size)

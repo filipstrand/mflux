@@ -9,7 +9,6 @@ class ErnieWeightMapping(WeightMapping):
     @staticmethod
     def get_transformer_mapping() -> List[WeightTarget]:
         return [
-            # Renamed: strip Sequential index ".1." from adaLN_modulation
             WeightTarget(
                 to_pattern="adaln_modulation.weight",
                 from_pattern=["adaLN_modulation.1.weight"],
@@ -18,7 +17,6 @@ class ErnieWeightMapping(WeightMapping):
                 to_pattern="adaln_modulation.bias",
                 from_pattern=["adaLN_modulation.1.bias"],
             ),
-            # Patch embed Conv2d: transpose [out, in, H, W] → [out, H, W, in]
             WeightTarget(
                 to_pattern="x_embedder.proj.weight",
                 from_pattern=["x_embedder.proj.weight"],
@@ -64,7 +62,6 @@ class ErnieWeightMapping(WeightMapping):
                 to_pattern="final_linear.bias",
                 from_pattern=["final_linear.bias"],
             ),
-            # Per-layer weights (36 layers)
             WeightTarget(
                 to_pattern="layers.{layer}.adaLN_sa_ln.weight",
                 from_pattern=["layers.{layer}.adaLN_sa_ln.weight"],

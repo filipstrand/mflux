@@ -85,7 +85,6 @@ class ErnieImage(nn.Module):
             ),
         )
 
-        # Encode text — cache on (prompt, negative_prompt, guidance)
         cache_key = (prompt, negative_prompt, config.guidance)
         if self._text_cache is None or self._text_cache[0] != cache_key:
             text_bth, text_lens = self._encode_prompts(
@@ -98,9 +97,6 @@ class ErnieImage(nn.Module):
         else:
             _, text_bth, text_lens = self._text_cache
 
-        # Pre-compute positional encoding once — constant for this resolution + prompt length.
-        # mx.eval materialises the tensors so mx.compile captures them as fixed buffers,
-        # avoiding re-computation of cos/sin inside the compiled Metal graph every step.
         _, _, H_lat, W_lat = latents.shape
         cos, sin, pos_attn_mask = self.transformer.get_pos_encoding(
             B=text_bth.shape[0],
@@ -121,7 +117,6 @@ class ErnieImage(nn.Module):
             try:
                 sigma_t = config.scheduler.sigmas[t].reshape((1,))
 
-                # Predict velocity (with CFG if guidance > 1)
                 noise = self._predict_noise(
                     predict=predict,
                     latents=latents,
@@ -165,7 +160,6 @@ class ErnieImage(nn.Module):
         negative_prompt: str | None,
         guidance: float,
     ) -> tuple[mx.array, mx.array]:
-        """Returns (text_bth [B, T, 3072], text_lens [B]) for the denoising batch."""
         tokenizer = self.tokenizers["ernie"]
         if guidance <= 1.0:
             prompts = [prompt]
@@ -181,8 +175,6 @@ class ErnieImage(nn.Module):
 
     @staticmethod
     def _predict(transformer: ErnieTransformer, cos: mx.array, sin: mx.array, attn_mask: mx.array):
-        # Cache key: same cos object → same resolution + text_lens → reuse compiled graph.
-        # Different prompt length or resolution → new cos from get_pos_encoding → recompile.
         cached = getattr(transformer, "_compiled_predict", None)
         if cached is not None and getattr(transformer, "_compiled_cos", None) is cos:
             return cached
@@ -193,8 +185,6 @@ class ErnieImage(nn.Module):
             text_bth: mx.array,
             text_lens: mx.array,
         ) -> mx.array:
-            # cos, sin, attn_mask are closure captures — already-evaluated Metal buffers.
-            # mx.compile sees them as constant inputs: no re-computation inside the Metal graph.
             return transformer(
                 hidden_states=latents,
                 timestep=timestep,
@@ -223,7 +213,6 @@ class ErnieImage(nn.Module):
         B = text_bth.shape[0]
         if B == 1:
             return predict(latents, mx.broadcast_to(timestep, (1,)), text_bth, text_lens)
-        # CFG: text_bth is [2, T, H] with uncond first, cond second
         latent_input = mx.concatenate([latents, latents], axis=0)
         pred = predict(latent_input, mx.broadcast_to(timestep, (2,)), text_bth, text_lens)
         pred_uncond, pred_cond = pred[:1], pred[1:]

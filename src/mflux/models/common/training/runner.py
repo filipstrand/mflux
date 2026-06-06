@@ -8,7 +8,6 @@ import mlx.core.random as mx_random  # type: ignore[import-not-found]
 from PIL import Image as PILImage
 
 from mflux.models.common.config.model_config import ModelConfig
-from mflux.models.common.vae.tiling_config import TilingConfig
 from mflux.models.common.training.adapters.base import TrainingAdapter
 from mflux.models.common.training.dataset.batch import DataItem
 from mflux.models.common.training.dataset.data_cache import TrainingDataCache
@@ -23,6 +22,7 @@ from mflux.models.common.training.state.zip_util import ZipUtil
 from mflux.models.common.training.statistics.statistics import Statistics
 from mflux.models.common.training.trainer import TrainingTrainer
 from mflux.models.common.training.utils import TrainingUtil
+from mflux.models.common.vae.tiling_config import TilingConfig
 from mflux.models.ernie_image.training_adapter.ernie_training_adapter import ErnieTrainingAdapter
 from mflux.models.flux2.training_adapter.flux2_edit_training_adapter import Flux2EditTrainingAdapter
 from mflux.models.flux2.training_adapter.flux2_training_adapter import Flux2TrainingAdapter
@@ -75,23 +75,24 @@ class TrainingRunner:
         if training_spec.is_edit and not is_flux2_base:
             raise ValueError("Edit training currently supports only FLUX.2-klein-base models.")
         if is_ernie:
-            adapter = ErnieTrainingAdapter(model_config=model_config, quantize=training_spec.quantize,
-                                           model_path=training_spec.model_path)
+            adapter = ErnieTrainingAdapter(
+                model_config=model_config, quantize=training_spec.quantize, model_path=training_spec.model_path
+            )
         elif is_zimage:
-            adapter = ZImageTrainingAdapter(model_config=model_config, quantize=training_spec.quantize,
-                                            model_path=training_spec.model_path)
+            adapter = ZImageTrainingAdapter(
+                model_config=model_config, quantize=training_spec.quantize, model_path=training_spec.model_path
+            )
         elif training_spec.is_edit:
-            adapter = Flux2EditTrainingAdapter(model_config=model_config, quantize=training_spec.quantize,
-                                               model_path=training_spec.model_path)
+            adapter = Flux2EditTrainingAdapter(
+                model_config=model_config, quantize=training_spec.quantize, model_path=training_spec.model_path
+            )
         elif is_flux2:
-            adapter = Flux2TrainingAdapter(model_config=model_config, quantize=training_spec.quantize,
-                                           model_path=training_spec.model_path)
+            adapter = Flux2TrainingAdapter(
+                model_config=model_config, quantize=training_spec.quantize, model_path=training_spec.model_path
+            )
         else:
             raise ValueError("Flux1 training is no longer supported.")
 
-        # Enable VAE tiling when low_ram is active, matching inference --low-ram behaviour.
-        # Only set tiling if the model hasn't already configured it (e.g. ERNIE disables tiling
-        # by setting vae_decode_tiles_per_dim=None; overwriting would cause red-channel banding).
         if training_spec.low_ram:
             model = adapter.model()
             if hasattr(model, "tiling_config") and model.tiling_config is None:

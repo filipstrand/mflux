@@ -20,11 +20,9 @@ from mflux.utils.version_util import VersionUtil
 
 
 class ErnieTrainingAdapter(TrainingAdapter):
-    def __init__(self, *, model_config: ModelConfig, quantize: int | None,
-                 model_path: str | None = None):
+    def __init__(self, *, model_config: ModelConfig, quantize: int | None, model_path: str | None = None):
         self._model_config = model_config
-        self._ernie = ErnieImage(quantize=quantize, model_config=model_config,
-                                  model_path=model_path)
+        self._ernie = ErnieImage(quantize=quantize, model_config=model_config, model_path=model_path)
         self._guidance: float | None = None
 
     def model(self):
@@ -53,12 +51,17 @@ class ErnieTrainingAdapter(TrainingAdapter):
         self._ernie.transformer.freeze()
         self._ernie.text_encoder.freeze()
 
-    def encode_data(self, *, data_id: int, image_path: Path, prompt: str,
-                    width: int, height: int,
-                    input_image_path: Path | None = None) -> tuple[mx.array, Any]:
-        encoded = LatentCreator.encode_image(
-            vae=self._ernie.vae, image_path=image_path, height=height, width=width
-        )
+    def encode_data(
+        self,
+        *,
+        data_id: int,
+        image_path: Path,
+        prompt: str,
+        width: int,
+        height: int,
+        input_image_path: Path | None = None,
+    ) -> tuple[mx.array, Any]:
+        encoded = LatentCreator.encode_image(vae=self._ernie.vae, image_path=image_path, height=height, width=width)
         clean_latents = ErnieLatentCreator.pack_latents(encoded, height=height, width=width)
         clean_latents = ErnieLatentCreator.bn_normalize_latents(clean_latents, vae=self._ernie.vae)
         text_bth, text_lens = ErniePromptEncoder.build_text_batch(
@@ -69,8 +72,7 @@ class ErnieTrainingAdapter(TrainingAdapter):
         mx.eval(clean_latents, text_bth, text_lens)
         return clean_latents, {"text_bth": text_bth, "text_lens": text_lens}
 
-    def predict_noise(self, *, t: int, latents_t: mx.array, sigmas: mx.array,
-                      cond: Any, config: Config) -> mx.array:
+    def predict_noise(self, *, t: int, latents_t: mx.array, sigmas: mx.array, cond: Any, config: Config) -> mx.array:
         text_bth, text_lens = cond["text_bth"], cond["text_lens"]
         timestep = sigmas[t].reshape((1,)) * 1000
         return self._ernie.transformer(
@@ -80,9 +82,16 @@ class ErnieTrainingAdapter(TrainingAdapter):
             text_lens=text_lens,
         )
 
-    def generate_preview_image(self, *, seed: int, prompt: str, width: int,
-                                height: int, steps: int,
-                                image_paths: list[Path | str] | None = None):
+    def generate_preview_image(
+        self,
+        *,
+        seed: int,
+        prompt: str,
+        width: int,
+        height: int,
+        steps: int,
+        image_paths: list[Path | str] | None = None,
+    ):
         canonical_steps = self._model_config.lora_training_steps or steps
         transformer = self._ernie.transformer
         for attr in ("_compiled_predict", "_compiled_cos"):
@@ -90,9 +99,11 @@ class ErnieTrainingAdapter(TrainingAdapter):
                 delattr(transformer, attr)
         try:
             return self._ernie.generate_image(
-                seed=seed, prompt=prompt,
+                seed=seed,
+                prompt=prompt,
                 num_inference_steps=canonical_steps,
-                height=height, width=width,
+                height=height,
+                width=width,
                 guidance=self._guidance,
             )
         finally:
@@ -107,17 +118,13 @@ class ErnieTrainingAdapter(TrainingAdapter):
             if target.blocks is not None:
                 for b in target.blocks.get_blocks():
                     mp = module_path.format(block=b)
-                    ErnieTrainingAdapter._append_lora_weights(
-                        weights, self._ernie.transformer, mp
-                    )
+                    ErnieTrainingAdapter._append_lora_weights(weights, self._ernie.transformer, mp)
             else:
-                ErnieTrainingAdapter._append_lora_weights(
-                    weights, self._ernie.transformer, module_path
-                )
+                ErnieTrainingAdapter._append_lora_weights(weights, self._ernie.transformer, module_path)
         mx.save_safetensors(
-            str(path), weights,
-            metadata={"mflux_version": VersionUtil.get_mflux_version(),
-                      "model": training_spec.model},
+            str(path),
+            weights,
+            metadata={"mflux_version": VersionUtil.get_mflux_version(), "model": training_spec.model},
         )
 
     def load_lora_adapter(self, *, path: str | Path) -> None:

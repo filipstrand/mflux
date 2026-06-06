@@ -8,7 +8,9 @@ from mflux.utils.prompt_util import PromptUtil
 
 
 def main():
-    parser = CommandLineParser(description="Generate an image using ERNIE-Image-Turbo (distilled, 8 steps) based on a prompt.")
+    parser = CommandLineParser(
+        description="Generate an image using ERNIE-Image-Turbo (distilled, 8 steps) based on a prompt."
+    )
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()

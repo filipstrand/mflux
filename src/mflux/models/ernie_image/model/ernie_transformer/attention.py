@@ -15,7 +15,6 @@ class ErnieAttention(nn.Module):
         self.to_q = nn.Linear(hidden_size, hidden_size, bias=False)
         self.to_k = nn.Linear(hidden_size, hidden_size, bias=False)
         self.to_v = nn.Linear(hidden_size, hidden_size, bias=False)
-        # List to match diffusers' to_out ModuleList: weight key is to_out.0.weight
         self.to_out = [nn.Linear(hidden_size, hidden_size, bias=False)]
 
         if qk_layernorm:
@@ -44,7 +43,6 @@ class ErnieAttention(nn.Module):
 
         q, k = apply_rotary_emb(q, k, cos, sin)
 
-        # [B, heads, S, head_dim] for sdpa
         q = q.transpose(0, 2, 1, 3)
         k = k.transpose(0, 2, 1, 3)
         v = v.transpose(0, 2, 1, 3)

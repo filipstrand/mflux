@@ -5,7 +5,6 @@ class ErnieLoRAMapping(LoRAMapping):
     @staticmethod
     def get_mapping() -> list[LoRATarget]:
         return [
-            # ── Global (non per-layer) targets ────────────────────────────────
             LoRATarget(
                 model_path="adaln_modulation",
                 possible_up_patterns=[
@@ -114,7 +113,6 @@ class ErnieLoRAMapping(LoRAMapping):
                     "lora_unet_final_linear.alpha",
                 ],
             ),
-            # ── Per-layer targets ─────────────────────────────────────────────
             LoRATarget(
                 model_path="layers.{block}.self_attention.to_q",
                 possible_up_patterns=[

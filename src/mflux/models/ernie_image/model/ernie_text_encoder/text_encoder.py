@@ -1,5 +1,3 @@
-import math
-
 import mlx.core as mx
 from mlx import nn
 from mlx.core.fast import rms_norm, scaled_dot_product_attention
@@ -53,14 +51,12 @@ class _Attention(nn.Module):
         k = self.k_proj(x).reshape(B, T, self.num_kv_heads, self.head_dim)
         v = self.v_proj(x).reshape(B, T, self.num_kv_heads, self.head_dim)
 
-        q = q.transpose(0, 2, 1, 3)  # [B, heads, T, head_dim]
+        q = q.transpose(0, 2, 1, 3)
         k = k.transpose(0, 2, 1, 3)
         v = v.transpose(0, 2, 1, 3)
 
-        # Apply RoPE (interleaved rotate_half style matching Mistral/LLaMA)
         q, k = _apply_rotary(q, k, cos, sin)
 
-        # Expand KV for GQA
         if self.num_kv_groups > 1:
             k = mx.repeat(k, self.num_kv_groups, axis=1)
             v = mx.repeat(v, self.num_kv_groups, axis=1)
@@ -78,8 +74,6 @@ class _Attention(nn.Module):
 
 
 def _apply_rotary(q, k, cos, sin):
-    # q, k: [B, heads, T, head_dim]
-    # cos, sin: [1, 1, T, head_dim]
     def rotate_half(x):
         half = x.shape[-1] // 2
         return mx.concatenate([-x[..., half:], x[..., :half]], axis=-1)
@@ -139,18 +133,17 @@ class _TextModel(nn.Module):
         ]
         self.norm = _RMSNorm(hidden_size, rms_norm_eps)
 
-        # Precompute RoPE frequencies
         self._head_dim = head_dim
         self._rope_theta = rope_theta
         self._max_pos = max_position_embeddings
         inv_freq = 1.0 / (rope_theta ** (mx.arange(0, head_dim, 2, dtype=mx.float32) / head_dim))
-        self._inv_freq = inv_freq  # [head_dim//2]
+        self._inv_freq = inv_freq
 
     def _get_rotary(self, seq_len: int, dtype) -> tuple[mx.array, mx.array]:
-        positions = mx.arange(seq_len, dtype=mx.float32)  # [T]
-        freqs = positions[:, None] * self._inv_freq[None, :]  # [T, head_dim//2]
-        emb = mx.concatenate([freqs, freqs], axis=-1)  # [T, head_dim] – duplicated
-        cos = mx.cos(emb)[None, None, :, :].astype(dtype)  # [1, 1, T, head_dim]
+        positions = mx.arange(seq_len, dtype=mx.float32)
+        freqs = positions[:, None] * self._inv_freq[None, :]
+        emb = mx.concatenate([freqs, freqs], axis=-1)
+        cos = mx.cos(emb)[None, None, :, :].astype(dtype)
         sin = mx.sin(emb)[None, None, :, :].astype(dtype)
         return cos, sin
 
@@ -162,10 +155,6 @@ class _LanguageModel(nn.Module):
 
 
 class ErnieMistralTextEncoder(nn.Module):
-    """Mistral3 language model used as text encoder for ERNIE-Image.
-    Returns the second-to-last hidden state (matching diffusers pipeline).
-    """
-
     def __init__(
         self,
         vocab_size: int = 131072,
@@ -199,7 +188,6 @@ class ErnieMistralTextEncoder(nn.Module):
         input_ids: mx.array,
         attention_mask: mx.array | None = None,
     ) -> mx.array:
-        # Returns the second-to-last hidden state: [B, T, hidden_size]
         model = self.language_model.model
         B, T = input_ids.shape
 
@@ -208,30 +196,28 @@ class ErnieMistralTextEncoder(nn.Module):
         if attention_mask is None:
             attention_mask = mx.ones((B, T), dtype=mx.int32)
 
-        # Build causal + padding float mask [B, 1, T, T]
         dtype = hidden_states.dtype
         pad_mask = mx.where(
             attention_mask == 1,
             mx.zeros(attention_mask.shape, dtype=mx.float32),
             mx.full(attention_mask.shape, -1e9, dtype=mx.float32),
-        )[:, None, None, :]  # [B, 1, 1, T]
+        )[:, None, None, :]
 
         idx = mx.arange(T, dtype=mx.int32)
         causal_mask = mx.where(
             idx[None, :] > idx[:, None],
             mx.full((T, T), -1e9, dtype=mx.float32),
             mx.zeros((T, T), dtype=mx.float32),
-        )[None, None, :, :]  # [1, 1, T, T]
+        )[None, None, :, :]
 
         combined_mask = (causal_mask + pad_mask).astype(dtype)
 
         cos, sin = model._get_rotary(T, dtype)
 
-        # Run layers, collect second-to-last output
-        second_to_last = hidden_states  # fallback
+        second_to_last = hidden_states
         for i, layer in enumerate(model.layers):
             hidden_states = layer(hidden_states, combined_mask, cos, sin)
             if i == self._num_hidden_layers - 2:
                 second_to_last = hidden_states
 
-        return second_to_last  # [B, T, hidden_size]
+        return second_to_last
