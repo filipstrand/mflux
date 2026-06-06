@@ -186,6 +186,11 @@ class ModelConfig:
     def seedvr2_7b() -> "ModelConfig":
         return AVAILABLE_MODELS["seedvr2-7b"]
 
+    @staticmethod
+    @lru_cache
+    def ideogram4_fp8() -> "ModelConfig":
+        return AVAILABLE_MODELS["ideogram-4-fp8"]
+
     def x_embedder_input_dim(self) -> int:
         if "Fill" in self.model_name:
             return 384
@@ -611,5 +616,23 @@ AVAILABLE_MODELS = {
             "use_output_ada": False,
             "last_layer_vid_only": False,
         },
+    ),
+    "ideogram-4-fp8": ModelConfig(
+        priority=25,
+        aliases=[
+            "ideogram-4-fp8",
+            "ideogram4-fp8",
+            "ideogram4",
+            "ideogram-4",
+            "ideogram",
+        ],
+        model_name="ideogram-ai/ideogram-4-fp8",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=None,
+        max_sequence_length=2048,
+        supports_guidance=True,
+        requires_sigma_shift=False,
     ),
 }

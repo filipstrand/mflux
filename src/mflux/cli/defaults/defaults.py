@@ -30,6 +30,7 @@ MODEL_CHOICES = [
     "flux2-klein-base-9b",
     "ernie-image-turbo",
     "ernie-image",
+    "ideogram4",
 ]
 MODEL_INFERENCE_STEPS = {
     "dev": 25,
@@ -50,6 +51,8 @@ MODEL_INFERENCE_STEPS = {
     "flux2-klein-9b": 4,
     "flux2-klein-base-4b": 50,
     "flux2-klein-base-9b": 50,
+    "ideogram4": 20,
+    "ideogram-4-fp8": 20,
 }
 QUANTIZE_CHOICES = [3, 5, 4, 6, 8]
 

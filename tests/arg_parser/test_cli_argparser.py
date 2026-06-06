@@ -1373,6 +1373,79 @@ def test_ernie_image_turbo_rejects_non_unit_guidance(mflux_ernie_image_turbo_min
 
 
 # ============================================================================
+# Ideogram 4 Tests
+# ============================================================================
+
+
+@pytest.fixture
+def mflux_ideogram4_parser() -> CommandLineParser:
+    from mflux.models.ideogram4.model.ideogram4_scheduler import Ideogram4Scheduler
+
+    parser = CommandLineParser(description="Generate an image using Ideogram 4.")
+    parser.add_general_arguments()
+    parser.add_model_arguments(require_model_arg=False)
+    parser.add_lora_arguments()
+    parser.add_image_generator_arguments(supports_metadata_config=True)
+    parser.add_output_arguments()
+    parser.add_argument(
+        "--preset",
+        type=str,
+        default=None,
+        choices=sorted(Ideogram4Scheduler.PRESETS),
+        help="Ideogram 4 sampler preset (step count, guidance schedule, and noise schedule). Default is V4_DEFAULT_20.",
+    )
+    parser.add_argument(
+        "--strict-caption-validation",
+        action="store_true",
+        help="Fail when an Ideogram 4 JSON caption has schema warnings.",
+    )
+    return parser
+
+
+@pytest.fixture
+def mflux_ideogram4_minimal_argv() -> list[str]:
+    return ["mflux-generate-ideogram4", "--prompt", '{"high_level_description": "a ceramic teapot"}']
+
+
+@pytest.mark.fast
+def test_ideogram4_args(mflux_ideogram4_parser, mflux_ideogram4_minimal_argv):
+    with patch("sys.argv", mflux_ideogram4_minimal_argv):
+        args = mflux_ideogram4_parser.parse_args()
+        assert args.prompt == '{"high_level_description": "a ceramic teapot"}'
+        assert args.preset is None
+        assert args.strict_caption_validation is False
+        assert args.model is None
+
+    with patch("sys.argv", mflux_ideogram4_minimal_argv + ["--model", "ideogram4"]):
+        args = mflux_ideogram4_parser.parse_args()
+        assert args.model == "ideogram4"
+
+    with patch("sys.argv", mflux_ideogram4_minimal_argv + ["--preset", "V4_TURBO_12"]):
+        args = mflux_ideogram4_parser.parse_args()
+        assert args.preset == "V4_TURBO_12"
+
+    with patch("sys.argv", mflux_ideogram4_minimal_argv + ["--strict-caption-validation"]):
+        args = mflux_ideogram4_parser.parse_args()
+        assert args.strict_caption_validation is True
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize("preset", ["V4_DEFAULT_20", "V4_QUALITY_48", "V4_TURBO_12"])
+def test_ideogram4_preset_choices(mflux_ideogram4_parser, mflux_ideogram4_minimal_argv, preset: str):
+    with patch("sys.argv", mflux_ideogram4_minimal_argv + ["--preset", preset]):
+        args = mflux_ideogram4_parser.parse_args()
+        assert args.preset == preset
+
+
+@pytest.mark.fast
+def test_ideogram4_rejects_invalid_preset(mflux_ideogram4_parser, mflux_ideogram4_minimal_argv):
+    with patch("sys.argv", mflux_ideogram4_minimal_argv + ["--preset", "V4_NOT_A_PRESET"]):
+        with pytest.raises(SystemExit) as exc_info:
+            mflux_ideogram4_parser.parse_args()
+        assert exc_info.value.code == 2
+
+
+# ============================================================================
 # Kontext Tests
 # ============================================================================
 
