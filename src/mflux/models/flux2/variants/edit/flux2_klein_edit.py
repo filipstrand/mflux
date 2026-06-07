@@ -102,11 +102,19 @@ class Flux2KleinEdit(nn.Module):
             and image_latents.shape[1] > 0
         )
         kv_cache: Flux2KVCache | None = None
+        negative_kv_cache: Flux2KVCache | None = None
         if cache_enabled:
             kv_cache = Flux2KVCache(
                 num_double_layers=len(self.transformer.transformer_blocks),
                 num_single_layers=len(self.transformer.single_transformer_blocks),
             )
+            if negative_prompt_embeds is not None:
+                # CFG branches need distinct cache state because single-stream
+                # reference K/V becomes prompt-specific after earlier layers.
+                negative_kv_cache = Flux2KVCache(
+                    num_double_layers=len(self.transformer.transformer_blocks),
+                    num_single_layers=len(self.transformer.single_transformer_blocks),
+                )
 
         # 4. Denoising loop
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
@@ -122,6 +130,12 @@ class Flux2KleinEdit(nn.Module):
                         num_ref_tokens=image_latents.shape[1],
                         num_txt_tokens=prompt_embeds.shape[1],
                     )
+                    if negative_kv_cache is not None:
+                        negative_kv_cache.configure(
+                            mode="extract",
+                            num_ref_tokens=image_latents.shape[1],
+                            num_txt_tokens=negative_prompt_embeds.shape[1],
+                        )
                     noise = predict(
                         latents=latents,
                         image_latents=image_latents,
@@ -134,6 +148,7 @@ class Flux2KleinEdit(nn.Module):
                         guidance=guidance,
                         timestep=config.scheduler.timesteps[t],
                         kv_cache=kv_cache,
+                        negative_kv_cache=negative_kv_cache,
                     )
                 elif cache_enabled:
                     # Steps 1+: target-only input, splice cached ref K/V inside attention.
@@ -142,6 +157,13 @@ class Flux2KleinEdit(nn.Module):
                         num_ref_tokens=image_latents.shape[1],
                         num_txt_tokens=prompt_embeds.shape[1],
                     )
+                    if negative_kv_cache is not None:
+                        negative_kv_cache.configure(
+                            mode="cached",
+                            num_ref_tokens=image_latents.shape[1],
+                            num_txt_tokens=negative_prompt_embeds.shape[1],
+                        )
+                    assert cached_predict is not None
                     noise = cached_predict(
                         latents=latents,
                         latent_ids=latent_ids,
@@ -152,6 +174,7 @@ class Flux2KleinEdit(nn.Module):
                         guidance=guidance,
                         timestep=config.scheduler.timesteps[t],
                         kv_cache=kv_cache,
+                        negative_kv_cache=negative_kv_cache,
                     )
                 else:
                     noise = predict(
@@ -237,6 +260,7 @@ class Flux2KleinEdit(nn.Module):
             guidance: float,
             timestep: mx.array,
             kv_cache: Flux2KVCache | None = None,
+            negative_kv_cache: Flux2KVCache | None = None,
         ) -> mx.array:
             hidden_states = mx.concatenate([latents, image_latents], axis=1)
             img_ids = mx.concatenate([latent_ids, image_latent_ids], axis=1)
@@ -259,7 +283,7 @@ class Flux2KleinEdit(nn.Module):
                     img_ids=img_ids,
                     txt_ids=negative_text_ids,
                     guidance=None,
-                    kv_cache=kv_cache,
+                    kv_cache=negative_kv_cache or kv_cache,
                 )
                 negative_noise = negative_noise[:, : latents.shape[1]]
                 noise = negative_noise + guidance * (noise - negative_noise)
@@ -289,6 +313,7 @@ class Flux2KleinEdit(nn.Module):
             guidance: float,
             timestep: mx.array,
             kv_cache: Flux2KVCache,
+            negative_kv_cache: Flux2KVCache | None = None,
         ) -> mx.array:
             noise = transformer(
                 hidden_states=latents,
@@ -308,7 +333,7 @@ class Flux2KleinEdit(nn.Module):
                     img_ids=latent_ids,
                     txt_ids=negative_text_ids,
                     guidance=None,
-                    kv_cache=kv_cache,
+                    kv_cache=negative_kv_cache or kv_cache,
                 )
                 negative_noise = negative_noise[:, : latents.shape[1]]
                 noise = negative_noise + guidance * (noise - negative_noise)
