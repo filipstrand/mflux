@@ -57,6 +57,7 @@ class Flux2KleinEdit(nn.Module):
         if image_paths:
             primary_image_path = image_paths[0]
 
+        # 0. Create a new config based on the model type and input parameters
         config = Config(
             model_config=self.model_config,
             num_inference_steps=num_inference_steps,
@@ -67,18 +68,21 @@ class Flux2KleinEdit(nn.Module):
             image_strength=image_strength,
             scheduler=scheduler,
         )
+        # 1. Encode prompt(s)
         prompt_embeds, text_ids, negative_prompt_embeds, negative_text_ids = self._encode_prompt_pair(
             prompt=prompt,
             negative_prompt=" ",
             guidance=guidance,
         )
 
+        # 2. Prepare latents
         latents, latent_ids, latent_height, latent_width = _Flux2KleinEditHelpers.prepare_generation_latents(
             seed=seed,
             height=config.height,
             width=config.width,
         )
 
+        # 3. Reference image conditioning (edit-style, concat reference tokens)
         image_latents, image_latent_ids = _Flux2KleinEditHelpers.prepare_reference_image_conditioning(
             vae=self.vae,
             tiling_config=self.tiling_config,
@@ -98,6 +102,7 @@ class Flux2KleinEdit(nn.Module):
             needs_negative_cache=negative_prompt_embeds is not None,
         )
 
+        # 4. Denoising loop
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
         predict = self._predict(self.transformer)
@@ -174,6 +179,7 @@ class Flux2KleinEdit(nn.Module):
 
         ctx.after_loop(latents)
 
+        # 6. Decode latents
         packed_latents = latents.reshape(latents.shape[0], latent_height, latent_width, latents.shape[-1]).transpose(0, 3, 1, 2)  # fmt: off
         decoded = self.vae.decode_packed_latents(packed_latents)
         return ImageUtil.to_image(
