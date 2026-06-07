@@ -1,26 +1,3 @@
-"""
-KV-cache container for the FLUX.2-klein-9b-kv variant.
-
-The 9B-KV checkpoint distilled from FLUX.2 [klein] 9B at 4 inference steps with
-an attention-side optimisation: reference-image (and text) K/V tensors are
-computed once on step 0 and re-used on steps 1-3, skipping redundant
-reference-token processing. BFL's reference implementation lives in the
-``Flux2KleinKVPipeline`` in upstream diffusers.
-
-This container holds the per-layer K/V slots for both the double-stream
-(``transformer_blocks``) and single-stream (``single_transformer_blocks``)
-stacks, plus the slice metadata each attention layer needs to know.
-
-mflux's concat order inside the transformer differs from diffusers'. In
-mflux the post-concat sequence is ``[txt, target, ref]`` (because
-``Flux2KleinEdit._predict`` concatenates ``[latents, image_latents]`` and then
-``Flux2Attention`` prepends the text-derived stream). Diffusers uses
-``[txt, ref, target]``. The cache protocol is identical; only the slice
-indices differ — we slice ``[:, :, num_txt + num_target :, :]`` in extract
-mode and splice the cached ref K/V at the *end* of the fresh K/V in cached
-mode.
-"""
-
 from __future__ import annotations
 
 from typing import Literal
@@ -34,72 +11,75 @@ StreamType = Literal["double", "single"]
 
 
 class Flux2KVCache:
-    """Per-layer K/V slot store for FLUX.2-klein-9b-kv.
-
-    Attributes
-    ----------
-    mode :
-        ``"extract"`` populates the cache during the first denoise step,
-        ``"cached"`` reads from it on subsequent steps.
-    num_ref_tokens :
-        Count of reference-image tokens (the static slice we cache).
-    num_txt_tokens :
-        Count of text-encoder tokens (also static across steps; needed in
-        both modes so attention layers know where target tokens start).
-    """
-
     def __init__(self, num_double_layers: int, num_single_layers: int) -> None:
         self._double: list[tuple[mx.array, mx.array] | None] = [None] * num_double_layers
         self._single: list[tuple[mx.array, mx.array] | None] = [None] * num_single_layers
         self.mode: CacheMode | None = None
         self.num_ref_tokens: int = 0
-        self.num_txt_tokens: int = 0
 
     def configure(
         self,
         *,
         mode: CacheMode,
         num_ref_tokens: int,
-        num_txt_tokens: int,
     ) -> None:
         self.mode = mode
         self.num_ref_tokens = int(num_ref_tokens)
-        self.num_txt_tokens = int(num_txt_tokens)
 
-    # ------- store (extract mode) ----------------------------------------
+    @property
+    def has_reference_tokens(self) -> bool:
+        return self.num_ref_tokens > 0
 
-    def store(self, stream: StreamType, layer_idx: int, key: mx.array, value: mx.array) -> None:
-        slot = (key, value)
-        if stream == "double":
-            self._double[layer_idx] = slot
-        elif stream == "single":
-            self._single[layer_idx] = slot
-        else:
-            raise ValueError(f"Unknown stream {stream!r}")
+    @property
+    def is_extracting(self) -> bool:
+        return self.mode == "extract" and self.has_reference_tokens
 
-    # ------- load (cached mode) ------------------------------------------
+    @property
+    def is_cached(self) -> bool:
+        return self.mode == "cached"
 
-    def load(self, stream: StreamType, layer_idx: int) -> tuple[mx.array, mx.array]:
-        slot = self._double[layer_idx] if stream == "double" else self._single[layer_idx]
-        if slot is None:
-            raise RuntimeError(
-                f"KV cache slot for {stream} layer {layer_idx} not populated; "
-                "did you forget the extract pass on step 0?"
-            )
-        return slot
+    def store_reference(self, stream: StreamType, layer_idx: int | None, key: mx.array, value: mx.array) -> None:
+        if not self.is_extracting:
+            return
+        # mflux uses [txt, target, ref], so reference tokens are the trailing slice.
+        self._slots(stream)[self._layer_idx(layer_idx)] = (
+            key[:, :, -self.num_ref_tokens :, :],
+            value[:, :, -self.num_ref_tokens :, :],
+        )
 
-    @staticmethod
+    def append_reference(
+        self,
+        stream: StreamType,
+        layer_idx: int | None,
+        key: mx.array,
+        value: mx.array,
+    ) -> tuple[mx.array, mx.array]:
+        if not self.is_cached:
+            return key, value
+        ref_key, ref_value = self._load(stream, layer_idx)
+        return mx.concatenate([key, ref_key], axis=2), mx.concatenate([value, ref_value], axis=2)
+
     def compute_extract_attention(
+        self,
         *,
         query: mx.array,
         key: mx.array,
         value: mx.array,
-        num_ref_tokens: int,
         batch_size: int,
         num_heads: int,
         head_dim: int,
     ) -> mx.array:
-        non_ref_count = query.shape[2] - num_ref_tokens
+        if not self.is_extracting:
+            return AttentionUtils.compute_attention(
+                query=query,
+                key=key,
+                value=value,
+                batch_size=batch_size,
+                num_heads=num_heads,
+                head_dim=head_dim,
+            )
+
+        non_ref_count = query.shape[2] - self.num_ref_tokens
         non_ref_attn = AttentionUtils.compute_attention(
             query=query[:, :, :non_ref_count, :],
             key=key,
@@ -118,14 +98,21 @@ class Flux2KVCache:
         )
         return mx.concatenate([non_ref_attn, ref_attn], axis=1)
 
-    # ------- inspection --------------------------------------------------
+    def _slots(self, stream: StreamType) -> list[tuple[mx.array, mx.array] | None]:
+        if stream == "double":
+            return self._double
+        if stream == "single":
+            return self._single
+        raise ValueError(f"Unknown stream {stream!r}")
 
-    def is_populated(self) -> bool:
-        return all(s is not None for s in self._double) and all(s is not None for s in self._single)
+    @staticmethod
+    def _layer_idx(layer_idx: int | None) -> int:
+        if layer_idx is None:
+            raise ValueError("KV cache layer index is required")
+        return layer_idx
 
-    def reset(self) -> None:
-        self._double = [None] * len(self._double)
-        self._single = [None] * len(self._single)
-        self.mode = None
-        self.num_ref_tokens = 0
-        self.num_txt_tokens = 0
+    def _load(self, stream: StreamType, layer_idx: int | None) -> tuple[mx.array, mx.array]:
+        slot = self._slots(stream)[self._layer_idx(layer_idx)]
+        if slot is None:
+            raise RuntimeError(f"KV cache slot for {stream} layer {layer_idx} is empty")
+        return slot

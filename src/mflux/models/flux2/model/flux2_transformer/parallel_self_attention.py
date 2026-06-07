@@ -43,24 +43,13 @@ class Flux2ParallelSelfAttention(nn.Module):
             cos, sin = image_rotary_emb
             query, key = AttentionUtils.apply_rope_bshd(query, key, cos, sin)
 
-        if kv_cache is not None and kv_cache.mode == "extract":
-            ref_count = kv_cache.num_ref_tokens
-            if ref_count > 0:
-                ref_k = key[:, :, -ref_count:, :]
-                ref_v = value[:, :, -ref_count:, :]
-                kv_cache.store("single", kv_cache_layer_idx, ref_k, ref_v)
-
-        if kv_cache is not None and kv_cache.mode == "cached":
-            cached_k, cached_v = kv_cache.load("single", kv_cache_layer_idx)
-            key = mx.concatenate([key, cached_k], axis=2)
-            value = mx.concatenate([value, cached_v], axis=2)
-
-        if kv_cache is not None and kv_cache.mode == "extract" and kv_cache.num_ref_tokens > 0:
-            hidden_states = Flux2KVCache.compute_extract_attention(
+        if kv_cache is not None:
+            kv_cache.store_reference("single", kv_cache_layer_idx, key, value)
+            key, value = kv_cache.append_reference("single", kv_cache_layer_idx, key, value)
+            hidden_states = kv_cache.compute_extract_attention(
                 query=query,
                 key=key,
                 value=value,
-                num_ref_tokens=kv_cache.num_ref_tokens,
                 batch_size=batch,
                 num_heads=self.heads,
                 head_dim=self.dim_head,

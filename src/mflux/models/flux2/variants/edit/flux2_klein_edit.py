@@ -7,7 +7,7 @@ from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.flux2.flux2_initializer import Flux2Initializer
 from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3TextEncoder
-from mflux.models.flux2.model.flux2_transformer.flux2_kv_cache import Flux2KVCache
+from mflux.models.flux2.model.flux2_transformer.flux2_kv_cache import CacheMode, Flux2KVCache
 from mflux.models.flux2.model.flux2_transformer.transformer import Flux2Transformer
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 from mflux.models.flux2.variants.edit.flux2_klein_edit_helpers import _Flux2KleinEditHelpers
@@ -53,12 +53,10 @@ class Flux2KleinEdit(nn.Module):
         scheduler: str = "flow_match_euler_discrete",
         use_kv_cache: bool | None = None,
     ) -> GeneratedImage:
-        # For metadata + dimension inference purposes, pick a primary reference image (if any).
         primary_image_path = None
         if image_paths:
             primary_image_path = image_paths[0]
 
-        # 0. Create a new config based on the model type and input parameters
         config = Config(
             model_config=self.model_config,
             num_inference_steps=num_inference_steps,
@@ -69,21 +67,18 @@ class Flux2KleinEdit(nn.Module):
             image_strength=image_strength,
             scheduler=scheduler,
         )
-        # 1. Encode prompt(s)
         prompt_embeds, text_ids, negative_prompt_embeds, negative_text_ids = self._encode_prompt_pair(
             prompt=prompt,
             negative_prompt=" ",
             guidance=guidance,
         )
 
-        # 2. Prepare latents
         latents, latent_ids, latent_height, latent_width = _Flux2KleinEditHelpers.prepare_generation_latents(
             seed=seed,
             height=config.height,
             width=config.width,
         )
 
-        # 3. Reference image conditioning (edit-style, concat reference tokens)
         image_latents, image_latent_ids = _Flux2KleinEditHelpers.prepare_reference_image_conditioning(
             vae=self.vae,
             tiling_config=self.tiling_config,
@@ -93,30 +88,16 @@ class Flux2KleinEdit(nn.Module):
             batch_size=latents.shape[0],
         )
 
-        # KV-cache opt-in. Defaults to ON when the model declares support
-        # (FLUX.2-klein-9b-kv) AND a reference image is present, since the
-        # cache is meaningless without static reference tokens to skip.
         cache_enabled = (
             (use_kv_cache if use_kv_cache is not None else self.model_config.supports_kv_cache)
             and image_latents is not None
             and image_latents.shape[1] > 0
         )
-        kv_cache: Flux2KVCache | None = None
-        negative_kv_cache: Flux2KVCache | None = None
-        if cache_enabled:
-            kv_cache = Flux2KVCache(
-                num_double_layers=len(self.transformer.transformer_blocks),
-                num_single_layers=len(self.transformer.single_transformer_blocks),
-            )
-            if negative_prompt_embeds is not None:
-                # CFG branches need distinct cache state because single-stream
-                # reference K/V becomes prompt-specific after earlier layers.
-                negative_kv_cache = Flux2KVCache(
-                    num_double_layers=len(self.transformer.transformer_blocks),
-                    num_single_layers=len(self.transformer.single_transformer_blocks),
-                )
+        kv_cache, negative_kv_cache = self._create_kv_caches(
+            cache_enabled=cache_enabled,
+            needs_negative_cache=negative_prompt_embeds is not None,
+        )
 
-        # 4. Denoising loop
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
         predict = self._predict(self.transformer)
@@ -124,18 +105,12 @@ class Flux2KleinEdit(nn.Module):
         for step_idx, t in enumerate(config.time_steps):
             try:
                 if cache_enabled and step_idx == 0:
-                    # Step 0: extract cache from the full [txt, target, ref] forward.
-                    kv_cache.configure(
+                    self._configure_kv_caches(
+                        kv_cache=kv_cache,
+                        negative_kv_cache=negative_kv_cache,
                         mode="extract",
                         num_ref_tokens=image_latents.shape[1],
-                        num_txt_tokens=prompt_embeds.shape[1],
                     )
-                    if negative_kv_cache is not None:
-                        negative_kv_cache.configure(
-                            mode="extract",
-                            num_ref_tokens=image_latents.shape[1],
-                            num_txt_tokens=negative_prompt_embeds.shape[1],
-                        )
                     noise = predict(
                         latents=latents,
                         image_latents=image_latents,
@@ -151,18 +126,12 @@ class Flux2KleinEdit(nn.Module):
                         negative_kv_cache=negative_kv_cache,
                     )
                 elif cache_enabled:
-                    # Steps 1+: target-only input, splice cached ref K/V inside attention.
-                    kv_cache.configure(
+                    self._configure_kv_caches(
+                        kv_cache=kv_cache,
+                        negative_kv_cache=negative_kv_cache,
                         mode="cached",
                         num_ref_tokens=image_latents.shape[1],
-                        num_txt_tokens=prompt_embeds.shape[1],
                     )
-                    if negative_kv_cache is not None:
-                        negative_kv_cache.configure(
-                            mode="cached",
-                            num_ref_tokens=image_latents.shape[1],
-                            num_txt_tokens=negative_prompt_embeds.shape[1],
-                        )
                     assert cached_predict is not None
                     noise = cached_predict(
                         latents=latents,
@@ -205,7 +174,6 @@ class Flux2KleinEdit(nn.Module):
 
         ctx.after_loop(latents)
 
-        # 6. Decode latents
         packed_latents = latents.reshape(latents.shape[0], latent_height, latent_width, latents.shape[-1]).transpose(0, 3, 1, 2)  # fmt: off
         decoded = self.vae.decode_packed_latents(packed_latents)
         return ImageUtil.to_image(
@@ -219,6 +187,38 @@ class Flux2KleinEdit(nn.Module):
             image_path=config.image_path,
             generation_time=config.time_steps.format_dict["elapsed"],
         )
+
+    def _create_kv_caches(
+        self,
+        *,
+        cache_enabled: bool,
+        needs_negative_cache: bool,
+    ) -> tuple[Flux2KVCache | None, Flux2KVCache | None]:
+        if not cache_enabled:
+            return None, None
+
+        kv_cache = self._new_kv_cache()
+        negative_kv_cache = self._new_kv_cache() if needs_negative_cache else None
+        return kv_cache, negative_kv_cache
+
+    def _new_kv_cache(self) -> Flux2KVCache:
+        return Flux2KVCache(
+            num_double_layers=len(self.transformer.transformer_blocks),
+            num_single_layers=len(self.transformer.single_transformer_blocks),
+        )
+
+    @staticmethod
+    def _configure_kv_caches(
+        *,
+        kv_cache: Flux2KVCache | None,
+        negative_kv_cache: Flux2KVCache | None,
+        mode: CacheMode,
+        num_ref_tokens: int,
+    ) -> None:
+        assert kv_cache is not None
+        kv_cache.configure(mode=mode, num_ref_tokens=num_ref_tokens)
+        if negative_kv_cache is not None:
+            negative_kv_cache.configure(mode=mode, num_ref_tokens=num_ref_tokens)
 
     def _encode_prompt_pair(
         self,
@@ -243,11 +243,6 @@ class Flux2KleinEdit(nn.Module):
         return prompt_embeds, text_ids, negative_prompt_embeds, negative_text_ids
 
     def _predict(self, transformer):
-        # Full-input predict closure for the non-cache path (and for the
-        # step-0 extract pass when KV-cache is enabled). When the model is
-        # KV-cache aware we cannot compile this closure because the cache
-        # mode/state is a Python-object kwarg that ``mx.compile`` would
-        # freeze at trace time.
         def predict(
             latents: mx.array,
             image_latents: mx.array,
@@ -295,14 +290,6 @@ class Flux2KleinEdit(nn.Module):
 
     @staticmethod
     def _cached_predict(transformer):
-        """Predict closure for KV-cache cached mode.
-
-        Input is target-only ``latents`` (no ``image_latents`` concat); the
-        attention layers splice cached reference K/V at the end. Not compiled
-        because ``kv_cache`` is mutable Python state that ``mx.compile`` would
-        freeze.
-        """
-
         def predict(
             latents: mx.array,
             latent_ids: mx.array,
