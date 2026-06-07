@@ -106,28 +106,6 @@ mflux-generate-flux2-edit \
 
 KV caching speeds up later denoising steps by reusing reference-image attention state from the first step. It only applies when reference images are provided via `--image-paths`.
 
-For comparison or debugging, use `flux2-klein-9b` when you want the standard 9B edit weights without KV caching.
-
-<details>
-<summary>Python API</summary>
-
-```python
-from mflux.models.common.config import ModelConfig
-from mflux.models.flux2.variants import Flux2KleinEdit
-
-model = Flux2KleinEdit(model_config=ModelConfig.flux2_klein_9b_kv())
-image = model.generate_image(
-    seed=42,
-    prompt="Make the woman wear the eyeglasses (regular glasses, not sunglasses)",
-    image_paths=["person.jpg", "glasses.jpg"],
-    num_inference_steps=4,
-)
-image.save("flux2_edit_kv.png")
-```
-
-`use_kv_cache` defaults to the model config (`True` for `flux2-klein-9b-kv`, `False` for `flux2-klein-9b`). Pass `use_kv_cache=False` to disable caching on the KV model, or `use_kv_cache=True` to request it explicitly.
-</details>
-
 > [!WARNING]
 > Note: FLUX.2-klein-4B requires downloading the `black-forest-labs/FLUX.2-klein-4B` model weights (~15GB), FLUX.2-klein-9B requires `black-forest-labs/FLUX.2-klein-9B` model weights (~32GB), and FLUX.2-klein-9b-kv requires `black-forest-labs/FLUX.2-klein-9b-kv` model weights. Use quantization for smaller sizes.
 
