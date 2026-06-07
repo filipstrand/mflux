@@ -87,14 +87,25 @@ class Flux2Attention(nn.Module):
             key = mx.concatenate([key, cached_k], axis=2)
             value = mx.concatenate([value, cached_v], axis=2)
 
-        hidden_states = AttentionUtils.compute_attention(
-            query=query,
-            key=key,
-            value=value,
-            batch_size=hidden_states.shape[0],
-            num_heads=self.heads,
-            head_dim=self.dim_head,
-        )
+        if kv_cache is not None and kv_cache.mode == "extract" and kv_cache.num_ref_tokens > 0:
+            hidden_states = Flux2KVCache.compute_extract_attention(
+                query=query,
+                key=key,
+                value=value,
+                num_ref_tokens=kv_cache.num_ref_tokens,
+                batch_size=hidden_states.shape[0],
+                num_heads=self.heads,
+                head_dim=self.dim_head,
+            )
+        else:
+            hidden_states = AttentionUtils.compute_attention(
+                query=query,
+                key=key,
+                value=value,
+                batch_size=hidden_states.shape[0],
+                num_heads=self.heads,
+                head_dim=self.dim_head,
+            )
 
         if encoder_hidden_states is not None and self.added_kv_proj_dim is not None:
             encoder_hidden_states, hidden_states = (

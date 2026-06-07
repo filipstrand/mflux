@@ -92,6 +92,10 @@ class Flux2Transformer(nn.Module):
             guidance = guidance * guidance_scale
         temb = self.time_guidance_embed(timestep, guidance)
         temb = temb.astype(ModelConfig.precision)
+        ref_temb = None
+        if kv_cache is not None and kv_cache.mode == "extract" and kv_cache.num_ref_tokens > 0:
+            ref_temb = self.time_guidance_embed(mx.zeros_like(timestep), guidance)
+            ref_temb = ref_temb.astype(ModelConfig.precision)
 
         hidden_states = self.x_embedder(hidden_states)
         encoder_hidden_states = self.context_embedder(encoder_hidden_states)
@@ -109,6 +113,17 @@ class Flux2Transformer(nn.Module):
 
         temb_mod_params_img = self.double_stream_modulation_img(temb)
         temb_mod_params_txt = self.double_stream_modulation_txt(temb)
+        if ref_temb is not None:
+            ref_temb_mod_params_img = self.double_stream_modulation_img(ref_temb)
+            temb_mod_params_img = tuple(
+                self._blend_trailing_ref_mod_params(
+                    mod_params=mod_params,
+                    ref_mod_params=ref_mod_params,
+                    seq_len=hidden_states.shape[1],
+                    num_ref_tokens=kv_cache.num_ref_tokens,
+                )
+                for mod_params, ref_mod_params in zip(temb_mod_params_img, ref_temb_mod_params_img, strict=True)
+            )
 
         for idx, block in enumerate(self.transformer_blocks):
             encoder_hidden_states, hidden_states = block(
@@ -124,6 +139,14 @@ class Flux2Transformer(nn.Module):
         hidden_states = mx.concatenate([encoder_hidden_states, hidden_states], axis=1)
 
         temb_mod_params_single = self.single_stream_modulation(temb)[0]
+        if ref_temb is not None:
+            ref_temb_mod_params_single = self.single_stream_modulation(ref_temb)[0]
+            temb_mod_params_single = self._blend_trailing_ref_mod_params(
+                mod_params=temb_mod_params_single,
+                ref_mod_params=ref_temb_mod_params_single,
+                seq_len=hidden_states.shape[1],
+                num_ref_tokens=kv_cache.num_ref_tokens,
+            )
         for idx, block in enumerate(self.single_transformer_blocks):
             hidden_states = block(
                 hidden_states=hidden_states,
@@ -134,6 +157,27 @@ class Flux2Transformer(nn.Module):
             )
 
         hidden_states = hidden_states[:, encoder_hidden_states.shape[1] :, ...]
+        if kv_cache is not None and kv_cache.mode == "extract" and kv_cache.num_ref_tokens > 0:
+            hidden_states = hidden_states[:, : -kv_cache.num_ref_tokens, ...]
         hidden_states = self.norm_out(hidden_states, temb)
         hidden_states = self.proj_out(hidden_states)
         return hidden_states
+
+    @staticmethod
+    def _blend_trailing_ref_mod_params(
+        *,
+        mod_params: tuple[mx.array, ...],
+        ref_mod_params: tuple[mx.array, ...],
+        seq_len: int,
+        num_ref_tokens: int,
+    ) -> tuple[mx.array, ...]:
+        non_ref_tokens = seq_len - num_ref_tokens
+        blended = []
+        for mod_param, ref_mod_param in zip(mod_params, ref_mod_params, strict=True):
+            mod_expanded = mx.broadcast_to(mod_param, (mod_param.shape[0], non_ref_tokens, mod_param.shape[-1]))
+            ref_expanded = mx.broadcast_to(
+                ref_mod_param,
+                (ref_mod_param.shape[0], num_ref_tokens, ref_mod_param.shape[-1]),
+            )
+            blended.append(mx.concatenate([mod_expanded, ref_expanded], axis=1))
+        return tuple(blended)

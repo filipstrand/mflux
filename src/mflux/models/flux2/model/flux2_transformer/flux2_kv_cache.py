@@ -27,6 +27,8 @@ from typing import Literal
 
 import mlx.core as mx
 
+from mflux.models.flux.model.flux_transformer.common.attention_utils import AttentionUtils
+
 CacheMode = Literal["extract", "cached"]
 StreamType = Literal["double", "single"]
 
@@ -85,6 +87,36 @@ class Flux2KVCache:
                 "did you forget the extract pass on step 0?"
             )
         return slot
+
+    @staticmethod
+    def compute_extract_attention(
+        *,
+        query: mx.array,
+        key: mx.array,
+        value: mx.array,
+        num_ref_tokens: int,
+        batch_size: int,
+        num_heads: int,
+        head_dim: int,
+    ) -> mx.array:
+        non_ref_count = query.shape[2] - num_ref_tokens
+        non_ref_attn = AttentionUtils.compute_attention(
+            query=query[:, :, :non_ref_count, :],
+            key=key,
+            value=value,
+            batch_size=batch_size,
+            num_heads=num_heads,
+            head_dim=head_dim,
+        )
+        ref_attn = AttentionUtils.compute_attention(
+            query=query[:, :, non_ref_count:, :],
+            key=key[:, :, non_ref_count:, :],
+            value=value[:, :, non_ref_count:, :],
+            batch_size=batch_size,
+            num_heads=num_heads,
+            head_dim=head_dim,
+        )
+        return mx.concatenate([non_ref_attn, ref_attn], axis=1)
 
     # ------- inspection --------------------------------------------------
 
