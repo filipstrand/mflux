@@ -20,6 +20,9 @@ def main():
     parser.add_output_arguments()
     args = parser.parse_args()
 
+    if (args.base_model and "klein" in args.base_model.lower()) or (args.model and "flux2-klein" in args.model.lower()):
+        parser.error("FLUX.2 Klein is not supported by mflux-generate. Use mflux-generate-flux2 instead.")
+
     # 0. Set default guidance value if not provided by user
     if args.guidance is None:
         args.guidance = ui_defaults.GUIDANCE_SCALE
