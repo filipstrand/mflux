@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-06-07
+
+### 🎨 New Model Support
+
+- **ERNIE-Image & ERNIE-Image-Turbo**: Port Baidu's ERNIE-Image models with text-to-image CLI entrypoints, LoRA inference and training, and `mflux-save` support.
+- **Ideogram 4 FP8**: Add Ideogram 4 FP8 text-to-image support with JSON caption handling, FP8 safetensors loading, and a dedicated CLI entrypoint.
+
+### ✨ Improvements
+
+- **FLUX.2 Klein 9B KV-cache**: Add KV-cache support for `flux2-klein-9b-kv` with roughly 2.4× speedup on multi-reference edit workloads.
+
+### 🐛 Bug Fixes
+
+- **FLUX.2 Klein Edit guidance**: Allow `--guidance > 1.0` for FLUX.2 Klein edits by checking the resolved FLUX.2 model config instead of requiring a base model name; defaults remain unchanged.
+- **FLUX.2 Klein `mflux-generate`**: Fix `FileNotFoundError: text_encoder_2` by routing Klein models through `Flux2Klein` and skipping the unused T5/`text_encoder_2` weight path.
+- **Memory management**: Evict the text encoder after encoding and clear the MLX cache between seeds on multi-seed runs to prevent OOM on large models such as FLUX.2 Klein 9B.
+
+### 📝 Documentation
+
+- **Related projects**: Add mlx-taef and mlx-teacache to the Related projects list.
+
+### 👩‍💻 Contributors
+
+- **@azrahello**
+- **@c2p-cmd**
+- **@IonDen**
+- **@lpalbou**
+- **@michaeltrefry**
+- **@omercelik**
+- **@plz12345**
+
+---
+
 ## [0.17.5] - 2026-04-10
 
 ### 🐛 Bug Fixes
@@ -25,14 +58,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **@anthonywu**
 - **@f-gibellini**
 - **@JiwaniZakir**
-
----
-
-## [Unreleased]
-
-### 🐛 Bug Fixes
-
-- **FLUX.2 Klein Edit guidance**: Allow `--guidance > 1.0` for FLUX.2 Klein edits by checking the resolved FLUX.2 model config instead of requiring a base model name; defaults remain unchanged.
 
 ---
 
