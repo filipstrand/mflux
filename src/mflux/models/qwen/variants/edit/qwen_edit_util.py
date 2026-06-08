@@ -1,5 +1,3 @@
-import os
-
 import mlx.core as mx
 
 from mflux.models.common.latent_creator.latent_creator import LatentCreator
@@ -14,25 +12,14 @@ class QwenEditUtil:
         height: int,
         width: int,
         image_paths: list[str] | str,
-        vl_width: int | None = None,
-        vl_height: int | None = None,
         tiling_config: TilingConfig | None = None,
     ) -> tuple[mx.array, mx.array, int, int, int]:
         if not isinstance(image_paths, list):
             image_paths = [str(image_paths)]
 
-        if vl_width is not None and vl_height is not None:
-            calc_w, calc_h = vl_width, vl_height
-        else:
-            from mflux.utils.image_util import ImageUtil
-
-            pil_image = ImageUtil.load_image(image_paths[-1]).convert("RGB")
-            img_w, img_h = pil_image.size
-            target_area_env = os.getenv("MFLUX_QWEN_VL_TARGET_AREA")
-            target_area = int(target_area_env) if target_area_env is not None else 1024 * 1024
-            ratio = img_w / img_h
-            calc_w = int(round(((target_area * ratio) ** 0.5) / 32) * 32)
-            calc_h = int(round((calc_w / ratio) / 32) * 32)
+        # The vision-language encoder uses a smaller conditioning image resolution (~384px by area),
+        # but the edit transformer conditions on VAE latents encoded at the edit target dimensions.
+        calc_w, calc_h = width, height
 
         all_image_latents = []
         for image_path in image_paths:
