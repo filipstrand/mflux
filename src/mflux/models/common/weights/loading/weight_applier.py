@@ -56,7 +56,19 @@ class WeightApplier:
         weight_definition: "WeightDefinitionType",
     ) -> int | None:
         stored_q = weights.meta_data.quantization_level
+        component_quant_levels = weights.meta_data.component_quantization_levels
         components = {c.name: c for c in weight_definition.get_components()}
+
+        if component_quant_levels:
+            return WeightApplier._apply_per_component(
+                weights=weights,
+                models=models,
+                components=components,
+                quantize_arg=quantize_arg,
+                stored_q=stored_q,
+                component_quant_levels=component_quant_levels,
+                weight_definition=weight_definition,
+            )
 
         bits, warning = QuantizationResolution.resolve(stored=stored_q, requested=quantize_arg)
 
@@ -73,6 +85,50 @@ class WeightApplier:
             WeightApplier._set_weights(weights, models, components)
 
         return bits
+
+    @staticmethod
+    def _apply_per_component(
+        weights: LoadedWeights,
+        models: dict[str, nn.Module],
+        components: dict,
+        quantize_arg: int | None,
+        stored_q: int | None,
+        component_quant_levels: dict[str, int | None],
+        weight_definition: "WeightDefinitionType",
+    ) -> int | None:
+        bits_seen = set()
+        for name, model in models.items():
+            component = components.get(name)
+            if component and component.skip_quantization:
+                component_weights = weights.components.get(name)
+                if component_weights is not None:
+                    model.update(component_weights, strict=False)
+                continue
+
+            # Override components use their own stored quant; others fall back to global stored_q
+            comp_stored = component_quant_levels.get(name, stored_q)
+            comp_bits, warning = QuantizationResolution.resolve(stored=comp_stored, requested=quantize_arg)
+            if warning:
+                print(f"⚠️  [{name}] {warning}")
+
+            component_weights = weights.components.get(name)
+            if component_weights is None:
+                continue
+            if component and component.weight_subkey is not None:
+                component_weights = component_weights.get(component.weight_subkey, component_weights)
+
+            if comp_bits is None:
+                model.update(component_weights, strict=False)
+            elif comp_stored is None:
+                model.update(component_weights, strict=False)
+                nn.quantize(model, class_predicate=weight_definition.quantization_predicate, bits=comp_bits)
+            else:
+                nn.quantize(model, class_predicate=weight_definition.quantization_predicate, bits=comp_bits)
+                model.update(component_weights, strict=False)
+
+            bits_seen.add(comp_bits)
+
+        return next(iter(bits_seen)) if len(bits_seen) == 1 else None
 
     @staticmethod
     def _set_weights(
