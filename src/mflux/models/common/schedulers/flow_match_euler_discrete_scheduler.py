@@ -40,8 +40,17 @@ class FlowMatchEulerDiscreteScheduler(BaseScheduler):
         )
 
     def set_mu(self, mu: float) -> None:
+        if self.config.shift is not None:
+            mu = float(self.config.shift)
+            
         num_steps = self.config.num_inference_steps
-        sigmas = mx.linspace(1.0, 1.0 / num_steps, num_steps, dtype=mx.float32)
+        
+        custom_sigmas = FlowMatchEulerDiscreteScheduler._generate_base_sigmas(num_steps, self.config.sigma_schedule)
+        if custom_sigmas is not None:
+            sigmas = mx.array(custom_sigmas, dtype=mx.float32)
+        else:
+            sigmas = mx.linspace(1.0, 1.0 / num_steps, num_steps, dtype=mx.float32)
+            
         sigmas = FlowMatchEulerDiscreteScheduler._time_shift_exponential_array(mu, 1.0, sigmas)
         self._timesteps = sigmas * self.num_train_timesteps
         sigmas = mx.concatenate([sigmas, mx.zeros((1,), dtype=sigmas.dtype)], axis=0)
@@ -58,6 +67,29 @@ class FlowMatchEulerDiscreteScheduler(BaseScheduler):
         m = (max_shift - base_shift) / (max_seq_len - base_seq_len)
         b = base_shift - m * base_seq_len
         return float(m * image_seq_len + b)
+
+    @staticmethod
+    def _generate_base_sigmas(num_steps: int, schedule: str = "linear") -> list[float]:
+        sigma_max = 1.0
+        sigma_min = 1.0 / 1000  # 1/num_train_timesteps
+        if schedule == "cosine":
+            import numpy as np
+            t = np.linspace(0, 1, num_steps)
+            sigmas = (1.0 + np.cos(t * math.pi)) / 2.0
+            return sigmas.tolist()
+        elif schedule == "karras":
+            rho = 7.0
+            ramp = [i / max(num_steps - 1, 1) for i in range(num_steps)]
+            min_inv_rho = sigma_min ** (1.0 / rho)
+            max_inv_rho = sigma_max ** (1.0 / rho)
+            return [(max_inv_rho + r * (min_inv_rho - max_inv_rho)) ** rho for r in ramp]
+        elif schedule == "exponential":
+            log_max = math.log(sigma_max)
+            log_min = math.log(sigma_min)
+            return [math.exp(log_max + i * (log_min - log_max) / max(num_steps - 1, 1)) for i in range(num_steps)]
+        else:
+            # linear (original behavior)
+            return None  # signal to use original logic
 
     @staticmethod
     def get_timesteps_and_sigmas(
@@ -89,11 +121,14 @@ class FlowMatchEulerDiscreteScheduler(BaseScheduler):
 
     @staticmethod
     def _time_shift_exponential(mu: float, sigma_power: float, t: float) -> float:
+        if t <= 0.0:
+            return 0.0
         return math.exp(mu) / (math.exp(mu) + ((1.0 / t - 1.0) ** sigma_power))
 
     @staticmethod
     def _time_shift_exponential_array(mu: float, sigma_power: float, t: mx.array) -> mx.array:
-        return mx.exp(mu) / (mx.exp(mu) + ((1.0 / t - 1.0) ** sigma_power))
+        safe_t = mx.clip(t, 1e-12, None)
+        return mx.exp(mu) / (mx.exp(mu) + ((1.0 / safe_t - 1.0) ** sigma_power))
 
     def _stretch_to_terminal(self, sigmas: list[float]) -> list[float]:
         one_minus_sigmas = [1.0 - s for s in sigmas]
@@ -105,12 +140,17 @@ class FlowMatchEulerDiscreteScheduler(BaseScheduler):
         num_steps = self.config.num_inference_steps
         sigma_min = 1.0 / self.num_train_timesteps
         sigma_max = 1.0
-        timesteps_linear = [
-            sigma_max * self.num_train_timesteps
-            - i * (sigma_max - sigma_min) * self.num_train_timesteps / (num_steps - 1)
-            for i in range(num_steps)
-        ]
-        sigmas_linear = [t / self.num_train_timesteps for t in timesteps_linear]
+        schedule = self.config.sigma_schedule
+        custom_sigmas = FlowMatchEulerDiscreteScheduler._generate_base_sigmas(num_steps, schedule)
+        if custom_sigmas is not None:
+            sigmas_linear = custom_sigmas
+        else:
+            timesteps_linear = [
+                sigma_max * self.num_train_timesteps
+                - i * (sigma_max - sigma_min) * self.num_train_timesteps / (num_steps - 1)
+                for i in range(num_steps)
+            ]
+            sigmas_linear = [t / self.num_train_timesteps for t in timesteps_linear]
         sigmas_shifted = [FlowMatchEulerDiscreteScheduler._time_shift_exponential(1.0, 1.0, s) for s in sigmas_linear]
         sigmas_final = self._stretch_to_terminal(sigmas_shifted)
         timesteps = [s * self.num_train_timesteps for s in sigmas_final]
