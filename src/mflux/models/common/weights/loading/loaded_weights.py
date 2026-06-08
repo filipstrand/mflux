@@ -5,6 +5,11 @@ from dataclasses import dataclass
 class MetaData:
     quantization_level: int | None = None
     mflux_version: str | None = None
+    component_quantization_levels: dict[str, int | None] = None
+
+    def __post_init__(self):
+        if self.component_quantization_levels is None:
+            self.component_quantization_levels = {}
 
 
 @dataclass

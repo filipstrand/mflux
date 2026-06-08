@@ -21,10 +21,17 @@ class Flux2Initializer:
         model_path: str | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
+        transformer_path: str | None = None,
+        text_encoder_path: str | None = None,
     ) -> None:
         path = model_path if model_path else model_config.model_name
+        path_overrides = {}
+        if transformer_path:
+            path_overrides["transformer"] = transformer_path
+        if text_encoder_path:
+            path_overrides["text_encoder"] = text_encoder_path
         Flux2Initializer._init_config(model, model_config)
-        weights = Flux2Initializer._load_weights(path)
+        weights = Flux2Initializer._load_weights(path, path_overrides or None)
         Flux2Initializer._init_tokenizers(model, path)
         Flux2Initializer._init_models(model)
         Flux2Initializer._apply_weights(model, weights, quantize)
@@ -38,10 +45,11 @@ class Flux2Initializer:
         model.tiling_config = None
 
     @staticmethod
-    def _load_weights(model_path: str) -> LoadedWeights:
+    def _load_weights(model_path: str, path_overrides: dict[str, str] | None = None) -> LoadedWeights:
         return WeightLoader.load(
             weight_definition=Flux2KleinWeightDefinition,
             model_path=model_path,
+            path_overrides=path_overrides,
         )
 
     @staticmethod
