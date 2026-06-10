@@ -516,6 +516,116 @@ def test_image_to_image_args(mflux_generate_parser, mflux_generate_minimal_argv,
 
 
 @pytest.mark.fast
+def test_atomic_lora_arg(mflux_generate_parser, mflux_generate_minimal_model_argv):
+    # Each --lora pairs a path with an optional scale; omitted scale defaults to 1.0.
+    argv = mflux_generate_minimal_model_argv + [
+        "--lora",
+        "/some/lora/A.safetensors",
+        "0.7",
+        "--lora",
+        "/some/lora/B.safetensors",
+    ]
+    with patch("mflux.cli.parser.parsers.LoraResolution.resolve", side_effect=lambda x: x):
+        with patch("sys.argv", argv):
+            args = mflux_generate_parser.parse_args()
+    assert args.lora_paths == ["/some/lora/A.safetensors", "/some/lora/B.safetensors"]
+    assert args.lora_scales == [pytest.approx(0.7), pytest.approx(1.0)]
+
+
+@pytest.mark.fast
+def test_atomic_lora_merges_with_metadata(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off
+    metadata_file = temp_dir / "atomic_lora.json"
+    with metadata_file.open("wt") as m:
+        base_metadata_dict["lora_paths"] = ["/meta/lora.safetensors"]
+        base_metadata_dict["lora_scales"] = [0.3]
+        json.dump(base_metadata_dict, m, indent=4)
+    argv = mflux_generate_minimal_argv + [
+        "--lora",
+        "/cli/lora.safetensors",
+        "0.9",
+        "--config-from-metadata",
+        metadata_file.as_posix(),
+    ]
+    with patch("mflux.cli.parser.parsers.LoraResolution.resolve", side_effect=lambda x: x):
+        with patch("sys.argv", argv):
+            args = mflux_generate_parser.parse_args()
+    # metadata loras are prepended to the CLI-provided ones, scales stay aligned
+    assert args.lora_paths == ["/meta/lora.safetensors", "/cli/lora.safetensors"]
+    assert args.lora_scales == [pytest.approx(0.3), pytest.approx(0.9)]
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize(
+    "bad_args",
+    [
+        ["--lora", "A.safetensors", "0.7", "--lora-paths", "B.safetensors"],  # mixing new + legacy
+        ["--lora", "A.safetensors", "not-a-number"],  # non-numeric scale
+        ["--lora", "A.safetensors", "B.safetensors", "0.7"],  # too many values in one group
+    ],
+)
+def test_atomic_lora_arg_errors(mflux_generate_parser, mflux_generate_minimal_model_argv, bad_args):
+    with patch("sys.argv", mflux_generate_minimal_model_argv + bad_args):
+        with pytest.raises(SystemExit):
+            mflux_generate_parser.parse_args()
+
+
+@pytest.mark.fast
+def test_atomic_image_arg(mflux_generate_parser, mflux_generate_minimal_model_argv):
+    # --image with explicit strength
+    with patch("sys.argv", mflux_generate_minimal_model_argv + ["--image", "/some/photo.jpg", "0.6"]):
+        args = mflux_generate_parser.parse_args()
+    assert args.image_path == Path("/some/photo.jpg")
+    assert args.image_strength == pytest.approx(0.6)
+
+    # --image with omitted strength falls back to the default
+    with patch("sys.argv", mflux_generate_minimal_model_argv + ["--image", "/some/photo.jpg"]):
+        args = mflux_generate_parser.parse_args()
+    assert args.image_path == Path("/some/photo.jpg")
+    assert args.image_strength == ui_defaults.IMAGE_STRENGTH
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize(
+    "bad_args",
+    [
+        ["--image", "p.jpg", "--image-strength", "0.6"],  # mixing new + legacy
+        ["--image", "p.jpg", "not-a-number"],  # non-numeric strength
+        ["--image", "p.jpg", "0.6", "extra"],  # too many values
+    ],
+)
+def test_atomic_image_arg_errors(mflux_generate_parser, mflux_generate_minimal_model_argv, bad_args):
+    with patch("sys.argv", mflux_generate_minimal_model_argv + bad_args):
+        with pytest.raises(SystemExit):
+            mflux_generate_parser.parse_args()
+
+
+@pytest.mark.fast
+def test_required_init_image_satisfied_by_either_flag():
+    # Kontext-style commands require an init image; either --image or the legacy
+    # --image-path must satisfy it, and neither present is an error.
+    def _required_image_parser() -> CommandLineParser:
+        parser = CommandLineParser(description="x")
+        parser.add_general_arguments()
+        parser.add_model_arguments(require_model_arg=False)
+        parser.add_image_generator_arguments(supports_metadata_config=True)
+        parser.add_image_to_image_arguments(required=True)
+        parser.add_output_arguments()
+        return parser
+
+    base = ["mflux-generate-kontext", "--prompt", "x", "-m", "dev"]
+
+    with patch("sys.argv", base + ["--image", "p.jpg"]):
+        assert _required_image_parser().parse_args().image_path == Path("p.jpg")
+
+    with patch("sys.argv", base + ["--image-path", "p.jpg"]):
+        assert _required_image_parser().parse_args().image_path == Path("p.jpg")
+
+    with patch("sys.argv", base):
+        with pytest.raises(SystemExit):
+            _required_image_parser().parse_args()
+
+
+@pytest.mark.fast
 def test_image_outpaint_args(mflux_generate_parser, mflux_generate_minimal_argv, base_metadata_dict, temp_dir):  # fmt: off
     metadata_file = temp_dir / "image_outpaint.json"
     test_padding = "10,20,30,40"
