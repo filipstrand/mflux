@@ -260,7 +260,7 @@ class CommandLineParser(argparse.ArgumentParser):
                 except ValueError:
                     self.error(f"Invalid LoRA scale '{group[1]}' for '{group[0]}'.\nTip: --lora takes a PATH and an optional numeric SCALE: --lora {group[0]} 0.7")  # fmt: off
             else:
-                self.error(f"--lora takes one PATH and an optional SCALE but got {len(group)} values: {' '.join(group)}\nTip: repeat --lora for each adapter: --lora {group[0]} {group[1]} --lora {group[2]} ...")  # fmt: off
+                self.error(f"--lora takes one PATH and an optional SCALE but got {len(group)} values: {' '.join(group)}\nTip: give each adapter its own --lora: --lora A.safetensors 0.7 --lora B.safetensors")  # fmt: off
             paths.append(path)
             scales.append(scale)
         namespace.lora_paths = paths
