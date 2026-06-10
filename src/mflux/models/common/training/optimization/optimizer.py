@@ -39,8 +39,12 @@ class Optimizer:
     @staticmethod
     def from_spec(training_spec: TrainingSpec) -> "Optimizer":
         opt_cls = Optimizers.from_alias(training_spec.optimizer.name)
+        # Forward any caller-provided optimizer kwargs (weight_decay, betas, eps, ...).
+        # Previously only learning_rate was passed, so values set in the training config's
+        # "optimizer" section were silently ignored in favor of the MLX defaults.
+        extra_params = getattr(training_spec.optimizer, "optimizer_params", None) or {}
         # noinspection PyCallingNonCallable
-        opt = opt_cls(learning_rate=training_spec.optimizer.learning_rate)
+        opt = opt_cls(learning_rate=training_spec.optimizer.learning_rate, **extra_params)
 
         if training_spec.optimizer.state_path is not None:
             state = ZipUtil.unzip(
