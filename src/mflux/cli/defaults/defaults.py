@@ -32,6 +32,8 @@ MODEL_CHOICES = [
     "ernie-image-turbo",
     "ernie-image",
     "ideogram4",
+    "boogu-image-turbo",
+    "boogu",
 ]
 MODEL_INFERENCE_STEPS = {
     "dev": 25,
@@ -48,6 +50,7 @@ MODEL_INFERENCE_STEPS = {
     "z-image-turbo": 9,
     "ernie-image-turbo": 8,
     "ernie-image": 50,
+    "boogu-image-turbo": 4,
     "flux2-klein-4b": 4,
     "flux2-klein-9b": 4,
     "flux2-klein-9b-kv": 4,
