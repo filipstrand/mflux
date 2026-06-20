@@ -84,6 +84,8 @@ class OptimizerSpec:
     name: str
     learning_rate: float
     state_path: str | None = None
+    # Global-norm gradient clipping; None = off (preserves prior behavior).
+    max_grad_norm: float | None = None
 
 
 @dataclass
