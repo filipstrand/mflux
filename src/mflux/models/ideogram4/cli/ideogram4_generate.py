@@ -31,6 +31,13 @@ def main():
         action="store_true",
         help="Fail when an Ideogram 4 JSON caption has schema warnings.",
     )
+    parser.add_argument(
+        "--cfg-end",
+        type=float,
+        default=None,
+        help="Fraction of steps (0-1) that run CFG; the remaining steps run cond-only "
+        "(guidance 1.0, skipping the unconditional forward). Lower = faster. Default: full CFG.",
+    )
     args = parser.parse_args()
 
     model_name = args.model or "ideogram4"
@@ -74,6 +81,7 @@ def main():
                 height=height,
                 preset=args.preset,
                 strict_caption_validation=args.strict_caption_validation,
+                cfg_end=args.cfg_end,
             )
             image.save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)
     except (StopImageGenerationException, PromptFileReadError) as exc:
