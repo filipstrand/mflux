@@ -84,6 +84,12 @@ class OptimizerSpec:
     name: str
     learning_rate: float
     state_path: str | None = None
+    # LR schedule: None = constant; "cosine" = cosine decay (needs lr_total_steps). A linear
+    # warmup of lr_warmup_steps is prepended either way (0 = none). Resumes correctly: the
+    # schedule is rebuilt from these fields and applied at the optimizer's restored step.
+    lr_schedule: str | None = None
+    lr_warmup_steps: int = 0
+    lr_total_steps: int | None = None
 
 
 @dataclass
