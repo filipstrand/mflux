@@ -77,6 +77,11 @@ class TrainingLoopSpec:
     timestep_low: int = 0
     timestep_high: int | None = None
     iterator_state_path: str | None = None
+    # Timestep-index sampling distribution: None/"uniform" (flat), "sigmoid" (mid-concentrated,
+    # ai-toolkit's default — best for subject identity), "content" (cubic, favors low-noise /
+    # fine detail), "style" (favors high-noise / coarse style). Applies to adapters that sample
+    # sigma from the index grid (flux/z-image/ernie); Ideogram has its own sample_sigma override.
+    timestep_type: str | None = None
 
 
 @dataclass
