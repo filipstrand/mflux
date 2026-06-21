@@ -61,6 +61,10 @@ class Ideogram4Initializer:
         )
         if root_path is None:
             raise ValueError(f"No model path resolved for {path!r}")
+        # mlx-forge repos (resolved from an HF id or a local path) carry split_model.json;
+        # load them directly instead of demanding the FP8 checkpoint layout.
+        if (root_path / "split_model.json").exists():
+            return root_path
         return Ideogram4WeightDefinition.validate_fp8_checkpoint(root_path)
 
     @staticmethod

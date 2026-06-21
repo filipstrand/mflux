@@ -92,3 +92,20 @@ class TestMlxForgeDetection:
     def test_bits_read_when_quantized(self, tmp_path):
         (tmp_path / "split_model.json").write_text(json.dumps({"quantized": True, "quantization_bits": 8}))
         assert Ideogram4Initializer._mlx_forge_bits(tmp_path) == 8
+
+
+class TestResolveModelPath:
+    _RESOLVE = "mflux.models.ideogram4.ideogram4_initializer.PathResolution.resolve"
+
+    def test_hf_resolved_mlx_forge_repo_skips_fp8_validation(self, tmp_path, monkeypatch):
+        # A repo id (no local dir) that resolves to an mlx-forge checkpoint must load
+        # directly — not be rejected by the FP8-layout validator.
+        (tmp_path / "split_model.json").write_text(json.dumps({"quantized": True, "quantization_bits": 8}))
+        monkeypatch.setattr(self._RESOLVE, lambda path, patterns: tmp_path)
+        assert Ideogram4Initializer._resolve_model_path("Org/some-mlx-forge-repo") == tmp_path
+
+    def test_hf_resolved_non_forge_repo_still_validated(self, tmp_path, monkeypatch):
+        # Without split_model.json the resolved repo must still go through FP8 validation.
+        monkeypatch.setattr(self._RESOLVE, lambda path, patterns: tmp_path)
+        with pytest.raises(ValueError):
+            Ideogram4Initializer._resolve_model_path("Org/not-fp8-repo")

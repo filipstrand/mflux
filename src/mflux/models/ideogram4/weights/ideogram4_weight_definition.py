@@ -77,6 +77,12 @@ class Ideogram4WeightDefinition:
             "text_encoder/*.safetensors",
             "text_encoder/*.json",
             "tokenizer/**",
+            # mlx-forge flat quantized layout (split_model.json + root-level configs/weights).
+            "split_model.json",
+            "quantize_config.json",
+            "*_config.json",
+            "*.safetensors",
+            "tokenizer_*",
         ]
 
     @staticmethod
