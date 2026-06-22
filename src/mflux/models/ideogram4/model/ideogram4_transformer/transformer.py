@@ -82,10 +82,16 @@ class Ideogram4Transformer(nn.Module):
         cos, sin = self.rotary_emb(position_ids)
         cos = cos.astype(h.dtype)
         sin = sin.astype(h.dtype)
+
+        # Segment-block attention mask is identical for every layer (segment_ids
+        # never change), so build it once here instead of per-block. A boolean
+        # keep-mask (True = attend) lets SDPA take its fast masked path.
+        attn_mask = (segment_ids[:, :, None] == segment_ids[:, None, :])[:, None, :, :]
+
         for layer in self.layers:
             h = layer(
                 h,
-                segment_ids=segment_ids,
+                mask=attn_mask,
                 cos=cos,
                 sin=sin,
                 adaln_input=adaln_input,

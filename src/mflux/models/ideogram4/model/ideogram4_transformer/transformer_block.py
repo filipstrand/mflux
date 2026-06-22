@@ -28,7 +28,7 @@ class Ideogram4TransformerBlock(nn.Module):
     def __call__(
         self,
         x: mx.array,
-        segment_ids: mx.array,
+        mask: mx.array,
         cos: mx.array,
         sin: mx.array,
         adaln_input: mx.array,
@@ -42,7 +42,7 @@ class Ideogram4TransformerBlock(nn.Module):
 
         attn_out = self.attention(
             self.attention_norm1(x) * scale_msa,
-            segment_ids=segment_ids,
+            mask=mask,
             cos=cos,
             sin=sin,
         )
