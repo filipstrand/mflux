@@ -1,10 +1,10 @@
 """Krea-2 text-to-image pipeline (text-only).
 
-Flow-matching Euler loop over the Krea-2 single-stream DiT, conditioned on the
-Qwen3-VL-4B 12-layer tap, decoded with the Qwen-Image VAE.
+Denoising loop (er_sde by default, euler fallback) over the Krea-2 single-stream
+DiT, conditioned on the Qwen3-VL-4B 12-layer tap (prefix-stripped), decoded with
+the Qwen-Image VAE.
 
-TODO(krea2): ``er_sde`` sampler, prompt prefix-strip, and the vision/edit path
-(see NOTES.md).
+TODO(krea2): vision/edit path (see NOTES.md).
 """
 
 import time
@@ -15,10 +15,12 @@ from mlx import nn
 
 from mflux.models.common.config import ModelConfig
 from mflux.models.common.config.config import Config
+from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.krea2.krea2_initializer import Krea2Initializer
 from mflux.models.krea2.model.krea2_sampler import flow_sigmas, make_stepper
 from mflux.models.krea2.model.krea2_text_encoder.text_encoder import Krea2TextEncoder
 from mflux.models.krea2.model.krea2_transformer.transformer import Krea2Transformer
+from mflux.models.krea2.weights.krea2_weight_definition import Krea2WeightDefinition
 from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
 from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
@@ -119,4 +121,13 @@ class Krea2(nn.Module):
             quantization=self.bits,
             generation_time=time.time() - t0,
             negative_prompt=negative_prompt,
+        )
+
+    def save_model(self, base_path: str) -> None:
+        """Save the (quantized) weights to disk for fast reload without re-quantizing."""
+        ModelSaver.save_model(
+            model=self,
+            bits=self.bits,
+            base_path=base_path,
+            weight_definition=Krea2WeightDefinition,
         )

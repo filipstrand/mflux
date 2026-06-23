@@ -103,9 +103,9 @@ prefixes — but the official bundled TE is authoritative.
 1. **Vision / edit path**: add the Qwen3-VL vision tower + mRoPE + image-token
    splice (mirror `qwen` `init_edit` + `common_models/qwen3_vl` vision model) for
    image references and edits. Vision weights are already in the staged TE file
-   (`visual.*`, currently dropped at load).
-2. **`save_model`**: quantized-weight export for distribution (CLI done ✅).
-3. **Validation**: bit-exact DiT forward vs ComfyUI on a fixed latent + context
+   (`visual.*`, currently dropped at load). Pinned — official README doesn't
+   document edits.
+2. **Validation**: bit-exact DiT forward vs ComfyUI on a fixed latent + context
    (incl. the er_sde sampler — current port is faithful but not reference-verified).
 
 ## Done (continued)
@@ -115,3 +115,7 @@ prefixes — but the official bundled TE is authoritative.
   ComfyUI) so only real prompt tokens condition the DiT.
 - **Official `krea/Krea-2-Turbo` weights** staged + validated end-to-end (transformer
   + single-file TE + VAE). Confirms `last.up`/`last.down` were vestigial (absent here).
+- **Quantization caching**: `Krea2.save_model` + `mflux-save` dispatch. Saves the
+  quantized model (q8 ≈ 21 GB: q8 transformer + bf16 TE + VAE) for fast reload with
+  no re-quantize. Reloaded q8 is visually identical to on-the-fly q8 (sub-perceptual
+  numerical diff). `mflux-save --model <staged> --quantize 8 --path <out>`.
