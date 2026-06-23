@@ -46,6 +46,13 @@ as an LM: "The capital of France is" → " Paris".
 - Rectified flow (`ModelType.FLUX`), `sampling_settings = {multiplier:1.0, shift:1.15}`.
 - Turbo: 8 steps, CFG 1.0, `er_sde` sampler, `simple` scheduler, 1280×720.
 - Raw: full step count + CFG>1.
+- Implemented (`model/krea2_sampler.py`): `ErSdeStepper` (default; flux-branch port
+  of ComfyUI `sample_er_sde` — `ModelSamplingFlux` is NOT `CONST`, so `alpha=1`,
+  `er_lambda=sigma`, half-logSNR `-log(sigma)`; 3-stage multistep + SDE noise) and
+  `EulerStepper` (`--scheduler euler` fallback). Schedule is the flux static-shift
+  `flow_sigmas` (≈ ComfyUI `simple` over `ModelSamplingFlux.sigmas`; not bit-exact).
+  At 8 steps the two steppers are visually near-identical — er_sde is for reference
+  parity, not a quality jump.
 
 ## Done
 
@@ -81,14 +88,13 @@ for the non-turbo flavor.
 
 ## Open items (next) — quality/features, not blockers
 
-1. **`er_sde` sampler**: reference turbo uses `er_sde` + `simple` scheduler; we use
-   plain flow-Euler (shift 1.15). Output is clearly good; not bit-identical.
-2. **Prompt prefix strip**: ComfyUI trims the system+user-opening tokens from the
+1. **Prompt prefix strip**: ComfyUI trims the system+user-opening tokens from the
    tapped hidden states (`encode_token_weights` template_end logic). Not yet done —
    affects conditioning quality, not whether it runs.
-3. **Vision / edit path**: add the Qwen3-VL vision tower + mRoPE + image-token
+2. **Vision / edit path**: add the Qwen3-VL vision tower + mRoPE + image-token
    splice (mirror `qwen` `init_edit` + `common_models/qwen3_vl` vision model) for
    image references and edits. Vision weights are already in the staged TE shards.
-4. **`save_model`**: quantized-weight export for distribution (CLI done ✅).
-5. **`last.up` / `last.down`**: confirmed unused by ComfyUI; left unmapped.
-6. **Validation**: bit-exact DiT forward vs ComfyUI on a fixed latent + context.
+3. **`save_model`**: quantized-weight export for distribution (CLI done ✅).
+4. **`last.up` / `last.down`**: confirmed unused by ComfyUI; left unmapped.
+5. **Validation**: bit-exact DiT forward vs ComfyUI on a fixed latent + context
+   (incl. the er_sde sampler — current port is faithful but not reference-verified).

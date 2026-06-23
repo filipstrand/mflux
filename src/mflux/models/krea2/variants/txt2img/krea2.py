@@ -16,7 +16,7 @@ from mlx import nn
 from mflux.models.common.config import ModelConfig
 from mflux.models.common.config.config import Config
 from mflux.models.krea2.krea2_initializer import Krea2Initializer
-from mflux.models.krea2.model.krea2_sampler import flow_sigmas
+from mflux.models.krea2.model.krea2_sampler import flow_sigmas, make_stepper
 from mflux.models.krea2.model.krea2_text_encoder.text_encoder import Krea2TextEncoder
 from mflux.models.krea2.model.krea2_transformer.transformer import Krea2Transformer
 from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
@@ -58,6 +58,8 @@ class Krea2(nn.Module):
         image_strength: float | None = None,
         scheduler: str | None = None,
     ) -> GeneratedImage:
+        # Reference turbo sampler is er_sde; "euler" is the plain flow fallback.
+        sampler_name = scheduler if scheduler in ("er_sde", "euler") else "er_sde"
         if image_path is not None:
             raise NotImplementedError("Krea-2 image conditioning (edit/reference) is not wired yet — see NOTES.md.")
 
@@ -85,21 +87,21 @@ class Krea2(nn.Module):
             neg = tok.tokenize(negative_prompt or " ")
             neg_embeds = self.text_encoder.get_prompt_embeds(neg.input_ids, neg.attention_mask)
 
-        # 3. Flow-matching Euler loop (timestep = sigma in [0, 1]).
-        #    Iterate config.time_steps (tqdm) so the standard denoising progress bar shows;
-        #    the per-step mx.eval forces materialization so the bar advances live.
+        # 3. Denoising loop (timestep = sigma in [0, 1]). Iterate config.time_steps (tqdm)
+        #    so the standard progress bar shows; per-step mx.eval advances it live.
         sigmas = flow_sigmas(num_inference_steps, shift)
+        stepper = make_stepper(sampler_name, sigmas, seed)
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
         for t in config.time_steps:
             try:
-                s, s_next = sigmas[t], sigmas[t + 1]
-                ts = s.reshape(1)
+                ts = sigmas[t].reshape(1)
                 v = self.transformer(latents, ts, embeds)
                 if do_cfg:
                     v_neg = self.transformer(latents, ts, neg_embeds)
                     v = v_neg + guidance * (v - v_neg)
-                latents = latents + (s_next - s) * v
+                denoised = latents - sigmas[t] * v  # flow x0
+                latents = stepper.step(t, latents, v, denoised)
                 ctx.in_loop(t, latents)
                 mx.eval(latents)
             except KeyboardInterrupt:  # noqa: PERF203
