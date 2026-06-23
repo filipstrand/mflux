@@ -98,15 +98,24 @@ Point mflux at this path via `--model`. The standalone `Qwen/Qwen3-VL-4B-Instruc
 TE (sharded, `model.language_model.*`) also loads — `_strip_te_prefix` accepts both
 prefixes — but the official bundled TE is authoritative.
 
-## Open items (next) — quality/features, not blockers
+## Validation
 
-1. **Vision / edit path**: add the Qwen3-VL vision tower + mRoPE + image-token
+Considered sufficient without a ComfyUI cross-check (intentionally skipped — ComfyUI
+was only a code reference for the forward graph, never a needed runtime):
+
+- Official `krea/Krea-2-Turbo` `model_index.json` confirms the architecture
+  (`text_encoder_select_layers [2,5,…,35]`, `patch_size 2`, `AutoencoderKLQwenImage`,
+  `Qwen3VLModel`).
+- TE passes an LM sanity check ("The capital of France is" → " Paris").
+- VAE encode→decode round-trips cleanly; TE weights verified `match=True` vs shards.
+- End-to-end generation produces coherent, prompt-faithful images.
+
+## Open items (next) — optional
+
+1. **Vision / edit path** (pinned): add the Qwen3-VL vision tower + mRoPE + image-token
    splice (mirror `qwen` `init_edit` + `common_models/qwen3_vl` vision model) for
    image references and edits. Vision weights are already in the staged TE file
-   (`visual.*`, currently dropped at load). Pinned — official README doesn't
-   document edits.
-2. **Validation**: bit-exact DiT forward vs ComfyUI on a fixed latent + context
-   (incl. the er_sde sampler — current port is faithful but not reference-verified).
+   (`visual.*`, currently dropped at load). Official README doesn't document edits.
 
 ## Done (continued)
 
