@@ -125,4 +125,13 @@ class ConfigResolution:
             requires_sigma_shift=base.requires_sigma_shift,
             priority=base.priority,
             transformer_overrides=base.transformer_overrides,
+            text_encoder_overrides=base.text_encoder_overrides,
+            sigma_base_shift=base.sigma_base_shift,
+            sigma_max_shift=base.sigma_max_shift,
+            sigma_base_seq_len=base.sigma_base_seq_len,
+            sigma_max_seq_len=base.sigma_max_seq_len,
+            sigma_shift_terminal=base.sigma_shift_terminal,
+            lora_training_steps=base.lora_training_steps,
+            lora_training_guidance=base.lora_training_guidance,
+            supports_kv_cache=base.supports_kv_cache,
         )

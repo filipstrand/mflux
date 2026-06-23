@@ -65,12 +65,15 @@ class Qwen3VLDecoder(nn.Module):
         self,
         input_ids: mx.array,
         attention_mask: mx.array | None = None,
+        position_ids: mx.array | None = None,
         pixel_values: mx.array | None = None,
         image_grid_thw: mx.array | None = None,
         use_cache: bool = False,
         past_key_values: list[Qwen3VLKVCache] | None = None,
         max_cache_length: int | None = None,
-    ) -> mx.array | tuple[mx.array, list[Qwen3VLKVCache]]:
+        output_hidden_states: bool = False,
+        return_logits: bool = True,
+    ) -> mx.array | tuple[mx.array, list[Qwen3VLKVCache]] | tuple[mx.array, list[mx.array]]:
         batch_size, seq_len = input_ids.shape
 
         # Get embeddings
@@ -105,14 +108,21 @@ class Qwen3VLDecoder(nn.Module):
         if attention_mask is None:
             attention_mask = mx.ones((batch_size, seq_len), dtype=mx.int32)
 
-        # Position embeddings
-        if use_cache and past_key_values is not None:
-            cached_seq_len = past_key_values[0][2] if len(past_key_values) > 0 else 0
-            cache_position = mx.arange(cached_seq_len, cached_seq_len + seq_len, dtype=mx.int32)
+        # Position embeddings. Krea-2 passes attention-mask-derived position ids so suffix tokens
+        # appended after max-length padding continue from the last real token.
+        if position_ids is None:
+            if use_cache and past_key_values is not None:
+                cached_seq_len = past_key_values[0][2] if len(past_key_values) > 0 else 0
+                cache_position = mx.arange(cached_seq_len, cached_seq_len + seq_len, dtype=mx.int32)
+            else:
+                cache_position = mx.arange(seq_len, dtype=mx.int32)
+            position_ids = mx.expand_dims(mx.expand_dims(cache_position, axis=0), axis=0)
+            position_ids = mx.broadcast_to(position_ids, (3, batch_size, seq_len))
+        elif len(position_ids.shape) == 2:
+            position_ids = mx.expand_dims(position_ids, axis=0)
+            position_ids = mx.broadcast_to(position_ids, (3, batch_size, seq_len))
         else:
-            cache_position = mx.arange(seq_len, dtype=mx.int32)
-        position_ids = mx.expand_dims(mx.expand_dims(cache_position, axis=0), axis=0)
-        position_ids = mx.broadcast_to(position_ids, (3, batch_size, seq_len))
+            position_ids = position_ids.astype(mx.int32)
 
         # Create causal + padding mask
         mask_dtype = inputs_embeds.dtype
@@ -141,6 +151,7 @@ class Qwen3VLDecoder(nn.Module):
         position_embeddings = self.rotary_emb(hidden_states, position_ids)
 
         present_key_values = [] if use_cache else None
+        all_hidden_states = [hidden_states] if output_hidden_states else None
         for layer_idx, layer in enumerate(self.layers):
             layer_past = None
             if use_cache and past_key_values is not None:
@@ -154,14 +165,28 @@ class Qwen3VLDecoder(nn.Module):
                 max_cache_length=max_cache_length,
             )
 
-            if use_cache:
+            if isinstance(layer_output, tuple):
                 hidden_states, layer_present = layer_output
-                present_key_values.append(layer_present)
             else:
                 hidden_states = layer_output
+                layer_present = None
+
+            if use_cache:
+                present_key_values.append(layer_present)
+
+            if output_hidden_states:
+                all_hidden_states.append(hidden_states)
 
         # Final norm
         hidden_states = self.norm(hidden_states)
+        if output_hidden_states and not return_logits:
+            return hidden_states, all_hidden_states
+
+        if not return_logits:
+            if use_cache:
+                return hidden_states, present_key_values
+            return hidden_states
+
         hidden_states_f32 = hidden_states.astype(mx.float32)
         weight_f32 = self.lm_head.weight.astype(mx.float32)
         logits_f32 = mx.matmul(hidden_states_f32, weight_f32.T)

@@ -110,6 +110,11 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
+    def krea2_turbo() -> "ModelConfig":
+        return AVAILABLE_MODELS["krea2-turbo"]
+
+    @staticmethod
+    @lru_cache
     def flux2_klein_4b() -> "ModelConfig":
         return AVAILABLE_MODELS["flux2-klein-4b"]
 
@@ -212,7 +217,13 @@ class ModelConfig:
     @staticmethod
     def from_name(
         model_name: str,
-        base_model: Literal["dev", "schnell", "krea-dev"] | None = None,
+        base_model: Literal[
+            "dev",
+            "schnell",
+            "krea-dev",
+            "krea2-turbo",
+        ]
+        | None = None,
     ) -> "ModelConfig":
         return ConfigResolution.resolve(model_name=model_name, base_model=base_model)
 
@@ -349,6 +360,20 @@ AVAILABLE_MODELS = {
         max_sequence_length=512,
         supports_guidance=True,
         requires_sigma_shift=True,
+    ),
+    "krea2-turbo": ModelConfig(
+        priority=28,
+        aliases=["krea2-turbo", "krea-2-turbo"],
+        model_name="krea/Krea-2-Turbo",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=False,
+        requires_sigma_shift=False,
+        sigma_base_seq_len=256,
+        sigma_max_seq_len=6400,
     ),
     "flux2-klein-4b": ModelConfig(
         priority=11,
