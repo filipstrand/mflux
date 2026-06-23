@@ -56,9 +56,7 @@ class Krea2PromptEncoder:
             return_length=False,
             return_overflowing_tokens=False,
             padding="max_length",
-            max_length=max_length
-            + Krea2PromptEncoder.PREFIX_START_IDX
-            - Krea2PromptEncoder.SUFFIX_START_IDX,
+            max_length=max_length + Krea2PromptEncoder.PREFIX_START_IDX - Krea2PromptEncoder.SUFFIX_START_IDX,
             return_tensors="np",
         )
         input_ids = mx.concatenate(

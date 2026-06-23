@@ -131,8 +131,9 @@ class Krea2LoRAMapping(LoRAMapping):
     def _alpha_patterns(module_paths: list[str], flat_paths: list[str]) -> list[str]:
         patterns = []
         for path in module_paths:
-            for prefix in ("", "transformer.", "diffusion_model.", "base_model.model."):
-                patterns.append(f"{prefix}{path}.alpha")
+            patterns.extend(
+                f"{prefix}{path}.alpha" for prefix in ("", "transformer.", "diffusion_model.", "base_model.model.")
+            )
         patterns.extend(f"lora_unet_{path}.alpha" for path in flat_paths)
         return patterns
 

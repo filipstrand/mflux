@@ -182,7 +182,6 @@ class Krea2Image(nn.Module):
         unpacked = Krea2LatentCreator.unpack_latents(latents=latents, height=config.height, width=config.width)
         return VAEUtil.decode(vae=self.vae, latent=unpacked, tiling_config=self.tiling_config)
 
-
     def save_model(self, base_path: str) -> None:
         ModelSaver.save_model(
             model=self,
