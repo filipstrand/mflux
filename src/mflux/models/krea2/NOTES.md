@@ -77,24 +77,41 @@ as an LM: "The capital of France is" → " Paris".
 
 ## Assembled model dir
 
-`~/mlx-forge/models/krea-2-mlx/` (mflux-standard subdir layout, symlinks into HF cache):
+`~/mlx-forge/models/krea-2-mlx/` — staged from the **official** `krea/Krea-2-Turbo`
+diffusers repo (symlinks into HF cache):
 
-- `transformer/` ← `Lumatrix/Krea-2` `turbo.safetensors`
-- `vae/` ← `Qwen/Qwen-Image` `vae/` (diffusers)
-- `text_encoder/` + `tokenizer/` ← `Qwen/Qwen3-VL-4B-Instruct`
+- `transformer/` ← official root `turbo.safetensors` (native/ComfyUI single-file,
+  430 tensors, no vestigial `last.up`/`last.down`). NOTE: the repo's `transformer/`
+  subdir is *diffusers*-format (different keys) — use the root file, which matches
+  our mapping.
+- `vae/` ← official `vae/` (`AutoencoderKLQwenImage`; key-identical to `Qwen/Qwen-Image`).
+- `text_encoder/` ← official `text_encoder/model.safetensors` (single file,
+  `language_model.*` + `visual.*`; loaded `mlx_native`, prefix stripped to the LM).
+- `tokenizer/` ← official `tokenizer/`.
 
-Point mflux at this path (`model_path=`). Swap `transformer/` to `raw.safetensors`
-for the non-turbo flavor.
+`model_index.json` confirms the port: `text_encoder_select_layers [2,5,…,35]`,
+`patch_size 2`, VAE `AutoencoderKLQwenImage`, TE `Qwen3VLModel`. The diffusers
+scheduler is `FlowMatchEulerDiscreteScheduler` — so our `EulerStepper` is the
+official-reference sampler; `er_sde` is ComfyUI's default (both shipped).
+
+Point mflux at this path via `--model`. The standalone `Qwen/Qwen3-VL-4B-Instruct`
+TE (sharded, `model.language_model.*`) also loads — `_strip_te_prefix` accepts both
+prefixes — but the official bundled TE is authoritative.
 
 ## Open items (next) — quality/features, not blockers
 
-1. **Prompt prefix strip**: ComfyUI trims the system+user-opening tokens from the
-   tapped hidden states (`encode_token_weights` template_end logic). Not yet done —
-   affects conditioning quality, not whether it runs.
-2. **Vision / edit path**: add the Qwen3-VL vision tower + mRoPE + image-token
+1. **Vision / edit path**: add the Qwen3-VL vision tower + mRoPE + image-token
    splice (mirror `qwen` `init_edit` + `common_models/qwen3_vl` vision model) for
-   image references and edits. Vision weights are already in the staged TE shards.
-3. **`save_model`**: quantized-weight export for distribution (CLI done ✅).
-4. **`last.up` / `last.down`**: confirmed unused by ComfyUI; left unmapped.
-5. **Validation**: bit-exact DiT forward vs ComfyUI on a fixed latent + context
+   image references and edits. Vision weights are already in the staged TE file
+   (`visual.*`, currently dropped at load).
+2. **`save_model`**: quantized-weight export for distribution (CLI done ✅).
+3. **Validation**: bit-exact DiT forward vs ComfyUI on a fixed latent + context
    (incl. the er_sde sampler — current port is faithful but not reference-verified).
+
+## Done (continued)
+
+- **Prompt prefix-strip**: `get_prompt_embeds` drops the system + `<|im_start|>user\n`
+  template positions from the conditioning (token-id `template_end` logic, mirrors
+  ComfyUI) so only real prompt tokens condition the DiT.
+- **Official `krea/Krea-2-Turbo` weights** staged + validated end-to-end (transformer
+  + single-file TE + VAE). Confirms `last.up`/`last.down` were vestigial (absent here).

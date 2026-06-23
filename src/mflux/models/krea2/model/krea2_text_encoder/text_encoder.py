@@ -24,8 +24,31 @@ from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_rotary_embedding imp
 # tap k == HF hidden_states[k] (index 0 = embeddings), 12 layers.
 KREA2_TAP_LAYERS: tuple[int, ...] = (2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35)
 
-# Same system template as Qwen-Image; Krea2 strips the system+user-opening prefix
-# from the tapped hidden states (prefix strip is a follow-up — see NOTES.md).
+# Qwen2 tokenizer ids used to locate the chat-template prefix to strip.
+_IM_START, _USER, _NEWLINE = 151644, 872, 198
+
+
+def _template_end(input_ids: "mx.array") -> int:
+    """Index of the first real prompt token (drops system + ``<|im_start|>user\\n``).
+
+    Finds the 2nd ``<|im_start|>`` (the one opening the user turn); if it is followed
+    by ``user`` + ``\\n``, advance past them. Mirrors ComfyUI ``encode_token_weights``.
+    Assumes batch size 1.
+    """
+    ids = input_ids[0].tolist()
+    count = 0
+    end = 0
+    for i, tok in enumerate(ids):
+        if tok == _IM_START and count < 2:
+            end = i
+            count += 1
+    if len(ids) > end + 3 and ids[end + 1] == _USER and ids[end + 2] == _NEWLINE:
+        end += 3
+    return end
+
+
+# Same system template as Qwen-Image; the system+user-opening prefix is stripped
+# from the tapped hidden states in get_prompt_embeds (see _template_end).
 KREA2_TEMPLATE = (
     "<|im_start|>system\nDescribe the image by detailing the color, shape, size, texture, quantity, text, "
     "spatial relationships of the objects and background:<|im_end|>\n<|im_start|>user\n{}<|im_end|>\n"
@@ -119,4 +142,8 @@ class Krea2TextEncoder(nn.Module):
         hidden_states_list = self(input_ids, attention_mask)
         stacked = mx.stack([hidden_states_list[i] for i in tap_layers], axis=2)
         b, s, n, h = stacked.shape
-        return stacked.reshape(b, s, n * h)
+        embeds = stacked.reshape(b, s, n * h)
+        # Strip the system + user-opening chat-template prefix from the conditioning
+        # (matches ComfyUI), so only the actual prompt tokens onward condition the DiT.
+        end = _template_end(input_ids)
+        return embeds[:, end:, :]
