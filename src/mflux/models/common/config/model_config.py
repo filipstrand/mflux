@@ -226,7 +226,7 @@ AVAILABLE_MODELS = {
     "krea-2": ModelConfig(
         priority=15,
         aliases=["krea-2", "krea2"],
-        model_name="krea-2-mlx",
+        model_name="krea/Krea-2-Turbo",
         base_model=None,
         controlnet_model=None,
         custom_transformer_model=None,

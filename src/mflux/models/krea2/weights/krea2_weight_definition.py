@@ -46,9 +46,13 @@ class Krea2WeightDefinition:
                 mapping_getter=Krea2WeightMapping.get_vae_mapping,
             ),
             ComponentDefinition(
+                # The official repo's transformer/ subdir is diffusers-format (different
+                # keys). We load the native single-file turbo.safetensors from the repo
+                # root instead (hf_subdir="" -> the model root), which matches our mapping.
                 name="transformer",
-                hf_subdir="transformer",
-                loading_mode="multi_glob",
+                hf_subdir="",
+                loading_mode="mlx_native",
+                weight_files=["turbo.safetensors"],
                 precision=ModelConfig.precision,
                 mapping_getter=Krea2WeightMapping.get_transformer_mapping,
                 num_layers=28,
@@ -81,11 +85,13 @@ class Krea2WeightDefinition:
 
     @staticmethod
     def get_download_patterns() -> List[str]:
+        # Fetch the native root transformer (turbo.safetensors) + VAE + single-file
+        # text encoder + tokenizer. Deliberately skip the diffusers-format
+        # transformer/ subdir (different keys, and ~26 GB of redundant shards).
         return [
+            "turbo.safetensors",
             "vae/*.safetensors",
             "vae/*.json",
-            "transformer/*.safetensors",
-            "transformer/*.json",
             "text_encoder/*.safetensors",
             "text_encoder/*.json",
             "tokenizer/**",
