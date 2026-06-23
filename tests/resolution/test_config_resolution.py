@@ -128,6 +128,55 @@ class TestConfigResolutionIdeogram4:
         assert config.max_sequence_length == 2048
 
 
+class TestConfigResolutionKrea2:
+    @pytest.mark.fast
+    @pytest.mark.parametrize(
+        ("model_name", "expected_model_name", "supports_guidance"),
+        [
+            ("krea2-turbo", "krea/Krea-2-Turbo", False),
+            ("krea-2-turbo", "krea/Krea-2-Turbo", False),
+        ],
+    )
+    def test_exact_alias_match(self, model_name: str, expected_model_name: str, supports_guidance: bool):
+        config = ConfigResolution.resolve(model_name=model_name)
+
+        assert config.model_name == expected_model_name
+        assert model_name in config.aliases
+        assert config.supports_guidance is supports_guidance
+        assert config.sigma_max_seq_len == 6400
+
+    @pytest.mark.fast
+    @pytest.mark.parametrize(
+        ("model_name", "supports_guidance"),
+        [
+            ("krea/Krea-2-Turbo", False),
+        ],
+    )
+    def test_exact_hf_name_match(self, model_name: str, supports_guidance: bool):
+        config = ConfigResolution.resolve(model_name=model_name)
+
+        assert config.model_name == model_name
+        assert config.supports_guidance is supports_guidance
+
+    @pytest.mark.fast
+    @pytest.mark.parametrize(
+        "model_name",
+        [
+            "krea2-raw",
+            "krea-2-raw",
+            "krea2-comfy-turbo-bf16",
+            "krea-2-comfy-turbo-bf16",
+            "krea2-comfy-raw-bf16",
+            "krea-2-comfy-raw-bf16",
+            "krea/Krea-2-Raw",
+            "Comfy-Org/Krea-2",
+        ],
+    )
+    def test_removed_variants_are_not_supported(self, model_name: str):
+        with pytest.raises(ModelConfigError):
+            ConfigResolution.resolve(model_name=model_name)
+
+
 class TestConfigResolutionRules:
     @pytest.mark.fast
     def test_exact_match_takes_priority(self):

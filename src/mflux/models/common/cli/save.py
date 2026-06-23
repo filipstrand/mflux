@@ -6,6 +6,7 @@ from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.models.flux2.variants.txt2img.flux2_klein import Flux2Klein
 from mflux.models.ideogram4.variants.txt2img.ideogram4 import Ideogram4
 from mflux.models.ideogram4.weights.ideogram4_weight_definition import Ideogram4WeightDefinition
+from mflux.models.krea2.variants.txt2img.krea2 import Krea2Image
 from mflux.models.qwen.variants.edit.qwen_image_edit import QwenImageEdit
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
 from mflux.models.z_image import ZImage, ZImageTurbo
@@ -23,6 +24,8 @@ def main():
     base_model_lower = (args.base_model or "").lower()
     if "ernie" in model_name_lower:
         model_class = ErnieImage
+    elif "krea2" in model_name_lower or "krea-2" in model_name_lower or "krea2" in base_model_lower:
+        model_class = Krea2Image
     elif "qwen" in model_name_lower and "edit" in model_name_lower:
         model_class = QwenImageEdit
     elif "qwen" in model_name_lower:
