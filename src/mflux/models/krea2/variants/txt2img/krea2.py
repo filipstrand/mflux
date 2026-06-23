@@ -30,6 +30,8 @@ class Krea2Image(nn.Module):
         self,
         quantize: int | None = None,
         model_path: str | None = None,
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
         model_config: ModelConfig = ModelConfig.krea2_turbo(),
     ):
         super().__init__()
@@ -38,6 +40,8 @@ class Krea2Image(nn.Module):
             model_config=model_config,
             quantize=quantize,
             model_path=model_path,
+            lora_paths=lora_paths,
+            lora_scales=lora_scales,
         )
 
     def generate_image(

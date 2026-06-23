@@ -37,10 +37,55 @@ def test_krea2_cli_defaults_to_turbo_zero_guidance(monkeypatch):
     krea2_generate.main()
 
     assert captured["init"]["model_config"].model_name == "krea/Krea-2-Turbo"
+    assert captured["init"]["lora_paths"] is None
+    assert captured["init"]["lora_scales"] is None
     assert captured["generate"]["num_inference_steps"] == 8
     assert captured["generate"]["guidance"] == pytest.approx(0.0)
     assert captured["generate"]["scheduler"] == "flow_match_euler_discrete"
     assert captured["save_path"] == "image.png"
+
+
+@pytest.mark.fast
+def test_krea2_cli_passes_lora_args(monkeypatch, tmp_path):
+    from mflux.models.krea2.cli import krea2_generate
+
+    captured = {}
+    lora_path = tmp_path / "style.safetensors"
+    lora_path.touch()
+
+    class FakeImage:
+        def save(self, path: str, export_json_metadata: bool) -> None:
+            captured["save_path"] = path
+
+    class FakeKrea2Image:
+        def __init__(self, **kwargs) -> None:
+            captured["init"] = kwargs
+
+        def generate_image(self, **kwargs) -> FakeImage:
+            captured["generate"] = kwargs
+            return FakeImage()
+
+    monkeypatch.setattr(krea2_generate, "Krea2Image", FakeKrea2Image)
+    monkeypatch.setattr(krea2_generate.CallbackManager, "register_callbacks", lambda **kwargs: None)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "mflux-generate-krea2",
+            "--prompt",
+            "a fox walking in the snow",
+            "--lora-paths",
+            str(lora_path),
+            "--lora-scales",
+            "0.7",
+        ],
+    )
+
+    krea2_generate.main()
+
+    assert captured["init"]["lora_paths"] == [str(lora_path)]
+    assert captured["init"]["lora_scales"] == [pytest.approx(0.7)]
+    assert captured["generate"]["guidance"] == pytest.approx(0.0)
 
 
 @pytest.mark.fast

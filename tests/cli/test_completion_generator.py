@@ -29,5 +29,7 @@ def test_completion_generator_includes_krea2_command():
 
     assert "_mflux_generate_krea2()" in script
     assert "--model" in script
+    assert "--lora-paths" in script
+    assert "--lora-scales" in script
     assert "--image-path" in script
     assert "--prompt" in script
