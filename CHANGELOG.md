@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 🎨 New Model Support
+
+- **Krea 2**: Add text-to-image support for `krea/Krea-2-Turbo` — a single-stream MMDiT built on the Qwen-Image stack (Qwen-Image VAE + a 12-layer Qwen3-VL-4B text-encoder tap). Includes the `mflux-generate-krea2` CLI (live progress, `--metadata`, stepwise output), `er_sde` and Euler samplers, and `mflux-save` quantization caching.
+
 ## [0.18.0] - 2026-06-07
 
 ### 🎨 New Model Support
