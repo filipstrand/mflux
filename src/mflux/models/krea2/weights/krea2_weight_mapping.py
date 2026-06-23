@@ -1,0 +1,99 @@
+"""Weight mapping for Krea-2.
+
+On-disk keys (``Lumatrix/Krea-2`` turbo/raw safetensors) map almost 1:1 to the
+MLX module tree. The only renames are the ``nn.Sequential`` index keys
+(``tmlp.0/2``, ``tproj.1``, ``txtmlp.0/1/3``) -> named submodules.
+
+``last.up`` / ``last.down`` are intentionally NOT mapped: the ComfyUI reference
+loads them non-strict and never uses them (see NOTES.md). The VAE reuses the
+Qwen-Image VAE mapping.
+"""
+
+from typing import List
+
+from mflux.models.common.weights.mapping.weight_mapping import WeightMapping, WeightTarget
+from mflux.models.qwen.weights.qwen_weight_mapping import QwenWeightMapping
+
+
+def _identity(*keys: str) -> List[WeightTarget]:
+    return [WeightTarget(to_pattern=k, from_pattern=[k]) for k in keys]
+
+
+def _attn(prefix: str) -> List[WeightTarget]:
+    keys = [
+        f"{prefix}.attn.wq.weight",
+        f"{prefix}.attn.wk.weight",
+        f"{prefix}.attn.wv.weight",
+        f"{prefix}.attn.wo.weight",
+        f"{prefix}.attn.gate.weight",
+        f"{prefix}.attn.qknorm.qnorm.scale",
+        f"{prefix}.attn.qknorm.knorm.scale",
+    ]
+    return _identity(*keys)
+
+
+def _mlp(prefix: str) -> List[WeightTarget]:
+    return _identity(f"{prefix}.mlp.gate.weight", f"{prefix}.mlp.up.weight", f"{prefix}.mlp.down.weight")
+
+
+def _norm_pair(prefix: str) -> List[WeightTarget]:
+    return _identity(f"{prefix}.prenorm.scale", f"{prefix}.postnorm.scale")
+
+
+def _text_fusion_block(prefix: str) -> List[WeightTarget]:
+    return _norm_pair(prefix) + _attn(prefix) + _mlp(prefix)
+
+
+class Krea2WeightMapping(WeightMapping):
+    @staticmethod
+    def get_transformer_mapping() -> List[WeightTarget]:
+        targets: List[WeightTarget] = []
+
+        # Patch embed
+        targets += _identity("first.weight", "first.bias")
+
+        # Main single-stream blocks (expanded over num_layers via {layer})
+        targets += _norm_pair("blocks.{layer}")
+        targets += _attn("blocks.{layer}")
+        targets += _mlp("blocks.{layer}")
+        targets += _identity("blocks.{layer}.mod.lin")
+
+        # Timestep path: tmlp (Sequential 0/2), tproj (Sequential 1)
+        targets += [
+            WeightTarget(to_pattern="tmlp.linear_in.weight", from_pattern=["tmlp.0.weight"]),
+            WeightTarget(to_pattern="tmlp.linear_in.bias", from_pattern=["tmlp.0.bias"]),
+            WeightTarget(to_pattern="tmlp.linear_out.weight", from_pattern=["tmlp.2.weight"]),
+            WeightTarget(to_pattern="tmlp.linear_out.bias", from_pattern=["tmlp.2.bias"]),
+            WeightTarget(to_pattern="tproj.linear.weight", from_pattern=["tproj.1.weight"]),
+            WeightTarget(to_pattern="tproj.linear.bias", from_pattern=["tproj.1.bias"]),
+        ]
+
+        # Text fusion: 2 layerwise + projector + 2 refiner blocks
+        for i in range(2):
+            targets += _text_fusion_block(f"txtfusion.layerwise_blocks.{i}")
+        targets += _identity("txtfusion.projector.weight")
+        for i in range(2):
+            targets += _text_fusion_block(f"txtfusion.refiner_blocks.{i}")
+
+        # Text MLP: Sequential (0=RMSNorm, 1=Linear, 3=Linear)
+        targets += [
+            WeightTarget(to_pattern="txtmlp.norm.scale", from_pattern=["txtmlp.0.scale"]),
+            WeightTarget(to_pattern="txtmlp.linear_in.weight", from_pattern=["txtmlp.1.weight"]),
+            WeightTarget(to_pattern="txtmlp.linear_in.bias", from_pattern=["txtmlp.1.bias"]),
+            WeightTarget(to_pattern="txtmlp.linear_out.weight", from_pattern=["txtmlp.3.weight"]),
+            WeightTarget(to_pattern="txtmlp.linear_out.bias", from_pattern=["txtmlp.3.bias"]),
+        ]
+
+        # Final layer (last.up / last.down deliberately omitted)
+        targets += _identity(
+            "last.norm.scale",
+            "last.linear.weight",
+            "last.linear.bias",
+            "last.modulation.lin",
+        )
+
+        return targets
+
+    @staticmethod
+    def get_vae_mapping() -> List[WeightTarget]:
+        return QwenWeightMapping.get_vae_mapping()
