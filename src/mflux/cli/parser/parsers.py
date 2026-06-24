@@ -59,6 +59,7 @@ class CommandLineParser(argparse.ArgumentParser):
         self.supports_image_outpaint = False
         self.supports_lora = False
         self.require_model_arg = True
+        self.require_init_image = False
 
     def add_general_arguments(self) -> None:
         self.add_argument("--battery-percentage-stop-limit", "-B", type=lambda v: max(min(int(v), 99), 1), default=ui_defaults.BATTERY_PERCENTAGE_STOP_LIMIT, help=f"On Macs powered by battery, stop image generation when battery reaches this percentage. Default: {ui_defaults.BATTERY_PERCENTAGE_STOP_LIMIT}")
@@ -93,8 +94,9 @@ class CommandLineParser(argparse.ArgumentParser):
         self.supports_lora = True
         lora_group = self.add_argument_group("LoRA configuration")
         lora_group.add_argument("--lora-style", type=str, choices=sorted(LORA_NAME_MAP.keys()), help="Style of the LoRA to use (e.g., 'storyboard' for film storyboard style)")
-        self.add_argument("--lora-paths", type=str, nargs="*", default=None, help="LoRA paths: local files, HuggingFace repos (org/model), or collection format (repo:filename.safetensors)")
-        self.add_argument("--lora-scales", type=float, nargs="*", default=None, help="Scaling factor to adjust the impact of LoRA weights on the model. A value of 1.0 applies the LoRA weights as they are.")
+        lora_group.add_argument("--lora", dest="lora", action="append", nargs="+", default=None, metavar=("PATH", "SCALE"), help="Add a LoRA as an atomic PATH with optional SCALE (default 1.0). Repeatable: --lora A.safetensors 0.7 --lora B.safetensors. PATH accepts local files, HuggingFace repos (org/model), or collection format (repo:filename.safetensors). Preferred over --lora-paths/--lora-scales.")
+        self.add_argument("--lora-paths", type=str, nargs="*", default=None, help="[DEPRECATED: use --lora] LoRA paths: local files, HuggingFace repos (org/model), or collection format (repo:filename.safetensors)")
+        self.add_argument("--lora-scales", type=float, nargs="*", default=None, help="[DEPRECATED: use --lora] Scaling factor to adjust the impact of LoRA weights on the model. A value of 1.0 applies the LoRA weights as they are.")
 
     def _add_image_generator_common_arguments(self, supports_dimension_scale_factor=False) -> None:
         self.supports_image_generation = True
@@ -124,8 +126,12 @@ class CommandLineParser(argparse.ArgumentParser):
 
     def add_image_to_image_arguments(self, required=False) -> None:
         self.supports_image_to_image = True
-        self.add_argument("--image-path", type=Path, required=required, default=None, help="Local path to init image")
-        self.add_argument("--image-strength", type=float, required=False, default=ui_defaults.IMAGE_STRENGTH, help=f"Controls how strongly the init image influences the output image. A value of 0.0 means no influence. (Default is {ui_defaults.IMAGE_STRENGTH})")
+        # The requirement is enforced after normalization (see parse_args) so it can be
+        # satisfied by either the new --image flag or the legacy --image-path flag.
+        self.require_init_image = required
+        self.add_argument("--image", dest="image", nargs="+", default=None, metavar=("PATH", "STRENGTH"), help=f"Init image as an atomic PATH with optional STRENGTH (default {ui_defaults.IMAGE_STRENGTH}): --image photo.jpg 0.6. Preferred over --image-path/--image-strength.")
+        self.add_argument("--image-path", type=Path, required=False, default=None, help="[DEPRECATED: use --image] Local path to init image")
+        self.add_argument("--image-strength", type=float, required=False, default=ui_defaults.IMAGE_STRENGTH, help=f"[DEPRECATED: use --image] Controls how strongly the init image influences the output image. A value of 0.0 means no influence. (Default is {ui_defaults.IMAGE_STRENGTH})")
 
     def add_batch_image_generator_arguments(self) -> None:
         self.add_argument("--batch-prompts-file", type=Path, required=True, default=argparse.SUPPRESS, help="Local path for a file that holds a batch of prompts.")
@@ -237,8 +243,54 @@ class CommandLineParser(argparse.ArgumentParser):
                     return True
         return False
 
+    def _normalize_atomic_lora_args(self, namespace: argparse.Namespace) -> None:
+        if not self.supports_lora or not hasattr(namespace, "lora") or namespace.lora is None:
+            return
+        if self._option_was_provided("--lora-paths", "--lora-scales"):
+            self.error("Use either --lora or the legacy --lora-paths/--lora-scales, not both.\nTip: --lora pairs each path with its scale: --lora A.safetensors 0.7 --lora B.safetensors 0.4")  # fmt: off
+        paths: list[str] = []
+        scales: list[float] = []
+        for group in namespace.lora:
+            if len(group) == 1:
+                path, scale = group[0], 1.0
+            elif len(group) == 2:
+                path = group[0]
+                try:
+                    scale = float(group[1])
+                except ValueError:
+                    self.error(f"Invalid LoRA scale '{group[1]}' for '{group[0]}'.\nTip: --lora takes a PATH and an optional numeric SCALE: --lora {group[0]} 0.7")  # fmt: off
+            else:
+                self.error(f"--lora takes one PATH and an optional SCALE but got {len(group)} values: {' '.join(group)}\nTip: give each adapter its own --lora: --lora A.safetensors 0.7 --lora B.safetensors")  # fmt: off
+            paths.append(path)
+            scales.append(scale)
+        namespace.lora_paths = paths
+        namespace.lora_scales = scales
+
+    def _normalize_atomic_image_args(self, namespace: argparse.Namespace) -> None:
+        if not hasattr(namespace, "image") or namespace.image is None:
+            return
+        if self._option_was_provided("--image-path", "--image-strength"):
+            self.error("Use either --image or the legacy --image-path/--image-strength, not both.\nTip: --image pairs the path with its strength: --image photo.jpg 0.6")  # fmt: off
+        group = namespace.image
+        if len(group) == 1:
+            namespace.image_path = Path(group[0])
+        elif len(group) == 2:
+            namespace.image_path = Path(group[0])
+            try:
+                namespace.image_strength = float(group[1])
+            except ValueError:
+                self.error(f"Invalid image strength '{group[1]}' for '{group[0]}'.\nTip: --image takes a PATH and an optional numeric STRENGTH: --image {group[0]} 0.6")  # fmt: off
+        else:
+            self.error(f"--image takes one PATH and an optional STRENGTH but got {len(group)} values: {' '.join(group)}\nTip: --image photo.jpg 0.6")  # fmt: off
+
     def parse_args(self) -> argparse.Namespace:  # type: ignore
         namespace = super().parse_args()
+
+        # Fold the atomic --lora / --image flags into the legacy lora_paths/lora_scales
+        # and image_path/image_strength fields so all downstream logic (metadata merge,
+        # path resolution, model init) stays unchanged. Runs before the metadata block.
+        self._normalize_atomic_lora_args(namespace)
+        self._normalize_atomic_image_args(namespace)
 
         # Check if either training arguments are provided
         has_training_args = (hasattr(namespace, "config") and namespace.config is not None) or \
@@ -321,6 +373,9 @@ class CommandLineParser(argparse.ArgumentParser):
         # Only require model if we're not in training mode and require_model_arg is True
         if hasattr(namespace, "model") and namespace.model is None and not has_training_args and self.require_model_arg:
             self.error("--model / -m must be provided, or 'model' must be specified in the config file.")
+
+        if self.require_init_image and getattr(namespace, "image_path", None) is None:
+            self.error("An init image is required. Provide one with --image PATH [STRENGTH] (e.g. --image photo.jpg 0.8).")
 
         if self.supports_image_generation and namespace.seed is None and namespace.auto_seeds > 0:
             # choose N unique int seeds in the range of  0 < value < 1 billion
