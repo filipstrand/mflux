@@ -37,6 +37,8 @@ class Krea2(nn.Module):
         quantize: int | None = None,
         model_path: str | None = None,
         model_config: ModelConfig = None,  # noqa: RUF013 - resolved to ModelConfig.krea2() below
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
     ):
         super().__init__()
         Krea2Initializer.init(
@@ -44,6 +46,8 @@ class Krea2(nn.Module):
             model_config=model_config or ModelConfig.krea2(),
             quantize=quantize,
             model_path=model_path,
+            lora_paths=lora_paths,
+            lora_scales=lora_scales,
         )
 
     def generate_image(
@@ -120,6 +124,8 @@ class Krea2(nn.Module):
             prompt=prompt,
             quantization=self.bits,
             generation_time=time.time() - t0,
+            lora_paths=self.lora_paths,
+            lora_scales=self.lora_scales,
             negative_prompt=negative_prompt,
         )
 

@@ -22,6 +22,7 @@ def main():
     parser = CommandLineParser(description="Generate an image using Krea-2 based on a prompt.")
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
+    parser.add_lora_arguments()
     parser.add_image_generator_arguments(supports_metadata_config=True)
     parser.add_output_arguments()
     args = parser.parse_args()
@@ -31,6 +32,8 @@ def main():
         model_config=ModelConfig.krea2(),
         quantize=args.quantize,
         model_path=args.model_path,
+        lora_paths=args.lora_paths,
+        lora_scales=args.lora_scales,
     )
 
     # 2. Register callbacks (stepwise image output, memory stats, battery saver)
