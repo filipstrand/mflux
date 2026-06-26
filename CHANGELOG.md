@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Atomic `--lora` and `--image` flags**: Pair each path with its value on a single, repeatable flag — `--lora A.safetensors 0.7 --lora B.safetensors` (scale defaults to `1.0`) and `--image photo.jpg 0.6` (strength defaults to the model default). This removes the positional-alignment footgun of the parallel `--lora-paths`/`--lora-scales` and `--image-path`/`--image-strength` lists, which remain fully supported and are marked deprecated in `--help`. (#357)
 
+### ✨ Features
+
+- **LyCORIS LoKr adapters (FLUX.1 and FLUX.2)**: Load community LyCORIS LoKr safetensors through the existing `--lora-paths` / `lora_paths` API. Supports direct and factorized (`lokr_w1_a`/`lokr_w1_b`, `lokr_w2_a`/`lokr_w2_b`, optional `lokr_t2`) tensors, observed LyCORIS key layouts, alpha scaling for decomposed factors, optional `dora_scale`, multi-adapter fusion with classic LoRA, and baking into non-quantized base weights as well as quantized layers (via dequantization and re-quantization). Inference applies the Kronecker product without materializing full dense deltas for standard (non-DoRA) LoKr layers.
+
 ## [0.18.0] - 2026-06-07
 
 ### 🎨 New Model Support
