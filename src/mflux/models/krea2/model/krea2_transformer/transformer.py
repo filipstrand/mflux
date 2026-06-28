@@ -338,8 +338,15 @@ class Krea2Transformer(nn.Module):
         if rotary_cos_sin is None:
             rotary_cos_sin = self.rotary_emb.compute(position_ids, dtype=dtype)
 
+        # Optional gradient checkpointing: recompute each block's activations during backward instead
+        # of storing them, which trades compute for a large drop in peak memory (the 28-block activation
+        # graph of a ~12B transformer dominates training RAM). Off by default (inference unaffected); the
+        # training adapter turns it on. nn.utils.checkpoint checkpoints w.r.t. the module's trainable
+        # params too, so LoRA gradients stay exact.
+        gradient_checkpointing = getattr(self, "gradient_checkpointing", False)
         for block in self.transformer_blocks:
-            hidden_states = block(hidden_states, temb_mod, rotary_cos_sin, attention_mask)
+            run = nn.utils.checkpoint(block) if gradient_checkpointing else block
+            hidden_states = run(hidden_states, temb_mod, rotary_cos_sin, attention_mask)
 
         hidden_states = hidden_states[:, text_seq_len:]
         return self.final_layer(hidden_states, temb[:, 0, :])
