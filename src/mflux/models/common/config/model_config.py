@@ -198,6 +198,16 @@ class ModelConfig:
     def ideogram4_fp8() -> "ModelConfig":
         return AVAILABLE_MODELS["ideogram-4-fp8"]
 
+    @staticmethod
+    @lru_cache
+    def krea2_turbo() -> "ModelConfig":
+        return AVAILABLE_MODELS["krea-2-turbo"]
+
+    @staticmethod
+    @lru_cache
+    def krea2_raw() -> "ModelConfig":
+        return AVAILABLE_MODELS["krea-2-raw"]
+
     def x_embedder_input_dim(self) -> int:
         if "Fill" in self.model_name:
             return 384
@@ -670,5 +680,29 @@ AVAILABLE_MODELS = {
         max_sequence_length=2048,
         supports_guidance=True,
         requires_sigma_shift=False,
+    ),
+    "krea-2-turbo": ModelConfig(
+        priority=28,
+        aliases=["krea-2-turbo", "krea2-turbo", "krea2", "krea-2"],
+        model_name="krea/Krea-2-Turbo",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=False,  # Turbo is distilled: guidance 0 (CFG-free)
+        requires_sigma_shift=True,
+    ),
+    "krea-2-raw": ModelConfig(
+        priority=29,
+        aliases=["krea-2-raw", "krea2-raw"],
+        model_name="krea/Krea-2",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=512,
+        supports_guidance=True,  # Raw is undistilled (CFG-capable); used as the LoRA-training base
+        requires_sigma_shift=True,
     ),
 }
