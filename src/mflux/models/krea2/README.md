@@ -19,6 +19,14 @@ Krea 2 is a single-stream MMDiT built on the Qwen-Image stack: it reuses the
 **Qwen-Image VAE** and conditions on a 12-layer hidden-state tap from a
 **Qwen3-VL-4B** text encoder.
 
+![Krea 2 showcase](../../assets/krea2_example.jpg)
+
+The collage above uses four official style LoRAs from Krea's
+[Krea 2 LoRAs collection](https://huggingface.co/collections/krea/krea-2-loras)
+on Turbo at 1024×1024, seed 42, 8 steps: **soft watercolor**, **dark brush**,
+**neon drip**, and **vintage tarot**. Prompts match the examples shipped with each
+LoRA on Hugging Face.
+
 ## Example
 
 ```sh
@@ -47,13 +55,15 @@ Standard CLI options are supported: `--metadata`, `--stepwise-image-output-dir`,
 
 Krea 2 supports community LoRAs via `--lora-paths` (train on
 [`krea/Krea-2-Raw`](https://huggingface.co/krea/Krea-2-Raw), run on Turbo).
-Paths can be local files, Hugging Face repos, or `org/repo:filename.safetensors`
-when a repo ships multiple adapters.
+Krea publishes nine official style adapters in the
+[Krea 2 LoRAs collection](https://huggingface.co/collections/krea/krea-2-loras)
+(`krea/Krea-2-LoRA-*`). Paths can be local files, Hugging Face repos, or
+`org/repo:filename.safetensors` when a repo ships multiple adapters.
 
 ```sh
 mflux-generate-krea2 \
-  --prompt "a misty forest path at dawn, painterly brush strokes" \
-  --lora-paths krea/Krea-2-LoRA-darkbrush \
+  --prompt "A sunset over snowy mountains. Art Deco watercolor style" \
+  --lora-paths krea/Krea-2-LoRA-softwatercolor \
   --lora-scales 1.0 \
   --steps 8 \
   -q 8
@@ -62,6 +72,18 @@ mflux-generate-krea2 \
 Supported export formats include official Krea (`transformer.*`), diffusers/PEFT
 (`base_model.model.*`), Comfy (`diffusion_model.*`), and flat `lora_unet_*` keys.
 LoKr adapters with `.magnitude` tensors are only partially applied today.
+
+<details>
+<summary>Showcase prompts (seed 42, 8 steps, q8)</summary>
+
+| Panel | LoRA | Prompt |
+| --- | --- | --- |
+| Soft watercolor | `krea/Krea-2-LoRA-softwatercolor` | A sunset over snowy mountains. Art Deco watercolor style |
+| Dark brush | `krea/Krea-2-LoRA-darkbrush` | A deer grazing in the forest surrounded by dense trees and the sun bright in the sky. monochrome ink wash style |
+| Neon drip | `krea/Krea-2-LoRA-neondrip` | A close-up portrait of a woman, glowing neon highlights and vivid paint dripping down her face. Textured abstract style |
+| Vintage tarot | `krea/Krea-2-LoRA-vintagetarot` | an angel with metallic wings and a crown of flowers. vintage tarot style |
+
+</details>
 
 > [!NOTE]
 > Krea 2 ships as a diffusers repo whose `transformer/` subdir is *diffusers*-format
