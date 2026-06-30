@@ -1,9 +1,7 @@
-import time
 from pathlib import Path
 
 import mlx.core as mx
 from mlx import nn
-from tqdm import tqdm
 
 from mflux.models.common.config import ModelConfig
 from mflux.models.common.config.config import Config
@@ -12,10 +10,12 @@ from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.krea2.krea2_initializer import Krea2Initializer
 from mflux.models.krea2.latent_creator.krea2_latent_creator import Krea2LatentCreator
 from mflux.models.krea2.model.krea2_sampler import flow_sigmas, make_stepper
+from mflux.models.krea2.model.krea2_text_encoder.prompt_encoder import Krea2PromptEncoder
 from mflux.models.krea2.model.krea2_text_encoder.text_encoder import Krea2TextEncoder
 from mflux.models.krea2.model.krea2_transformer.transformer import Krea2Transformer
 from mflux.models.krea2.weights.krea2_weight_definition import Krea2WeightDefinition
 from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
+from mflux.utils.apple_silicon import AppleSiliconUtil
 from mflux.utils.exceptions import StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
@@ -30,7 +30,7 @@ class Krea2(nn.Module):
         self,
         quantize: int | None = None,
         model_path: str | None = None,
-        model_config: ModelConfig = None,  # noqa: RUF013 - resolved to ModelConfig.krea2() below
+        model_config: ModelConfig | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
     ):
@@ -53,12 +53,10 @@ class Krea2(nn.Module):
         width: int = 1024,
         guidance: float = 1.0,
         negative_prompt: str | None = None,
-        shift: float = 1.15,
         image_path: Path | str | None = None,
         image_strength: float | None = None,
         scheduler: str | None = None,
     ) -> GeneratedImage:
-        # Reference turbo sampler is er_sde; "euler" is the plain flow fallback.
         sampler_name = scheduler if scheduler in ("er_sde", "euler") else "er_sde"
 
         config = Config(
@@ -71,49 +69,45 @@ class Krea2(nn.Module):
             image_strength=image_strength,
         )
 
-        sigmas = flow_sigmas(num_inference_steps, shift)
-        init_time_step = self._init_time_step(config)
+        sigmas = flow_sigmas(config.num_inference_steps, self.model_config.sigma_max_shift)
         latents = self._prepare_latents(seed=seed, config=config, sigmas=sigmas)
+        embeds, neg_embeds = self._encode_prompts(
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            guidance=guidance,
+        )
+        mx.eval(latents, embeds)
+        if neg_embeds is not None:
+            mx.eval(neg_embeds)
 
-        t0 = time.time()
-        tok = self.tokenizers["qwen3vl"]
-        pos = tok.tokenize(prompt)
-        embeds = self.text_encoder.get_prompt_embeds(pos.input_ids, pos.attention_mask)
-        do_cfg = guidance != 1.0
-        if do_cfg:
-            neg = tok.tokenize(negative_prompt or " ")
-            neg_embeds = self.text_encoder.get_prompt_embeds(neg.input_ids, neg.attention_mask)
-
-        # 1. Encode prompt (12-layer tap -> (B, seq, 12*2560))
         stepper = make_stepper(sampler_name, sigmas, seed)
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
-        time_steps = tqdm(range(init_time_step, num_inference_steps))
-        for t in time_steps:
+        predict = self._predict(self.transformer, embeds, neg_embeds, guidance)
+
+        for t in config.time_steps:
             try:
                 ts = sigmas[t].reshape(1)
-                v = self.transformer(latents, ts, embeds)
-                if do_cfg:
-                    v_neg = self.transformer(latents, ts, neg_embeds)
-                    v = v_neg + guidance * (v - v_neg)
-                denoised = latents - sigmas[t] * v  # flow x0
+                v = predict(latents=latents, timestep=ts)
+                denoised = latents - sigmas[t] * v
                 latents = stepper.step(t, latents, v, denoised)
                 ctx.in_loop(t, latents)
                 mx.eval(latents)
             except KeyboardInterrupt:  # noqa: PERF203
                 ctx.interruption(t, latents)
-                raise StopImageGenerationException(f"Stopping image generation at step {t + 1}/{num_inference_steps}")
+                raise StopImageGenerationException(
+                    f"Stopping image generation at step {t + 1}/{config.num_inference_steps}"
+                )
         ctx.after_loop(latents)
 
-        # 2. Decode (Qwen-Image VAE denormalizes internally) and wrap as GeneratedImage
-        decoded = self.vae.decode(latents)
+        decoded = self._decode_latents(latents=latents)
         return ImageUtil.to_image(
             decoded_latents=decoded,
             config=config,
             seed=seed,
             prompt=prompt,
             quantization=self.bits,
-            generation_time=time.time() - t0,
+            generation_time=config.time_steps.format_dict["elapsed"],
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
             negative_prompt=negative_prompt,
@@ -121,12 +115,29 @@ class Krea2(nn.Module):
             image_strength=config.image_strength,
         )
 
-    @staticmethod
-    def _init_time_step(config: Config) -> int:
-        if config.image_path is None or config.image_strength is None or config.image_strength <= 0.0:
-            return 0
-        strength = max(0.0, min(1.0, config.image_strength))
-        return max(1, int(config.num_inference_steps * strength))
+    def save_model(self, base_path: str) -> None:
+        ModelSaver.save_model(
+            model=self,
+            bits=self.bits,
+            base_path=base_path,
+            weight_definition=Krea2WeightDefinition,
+        )
+
+    def _encode_prompts(
+        self,
+        *,
+        prompt: str,
+        negative_prompt: str | None,
+        guidance: float,
+    ) -> tuple[mx.array, mx.array | None]:
+        return Krea2PromptEncoder.encode_prompt_pair(
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            guidance=guidance,
+            tokenizer=self.tokenizers["qwen3vl"],
+            text_encoder=self.text_encoder,
+            prompt_cache=self.prompt_cache,
+        )
 
     def _prepare_latents(self, *, seed: int, config: Config, sigmas: mx.array) -> mx.array:
         if config.image_path is None or config.image_strength is None or config.image_strength <= 0.0:
@@ -141,14 +152,26 @@ class Krea2(nn.Module):
             tiling_config=self.tiling_config,
         )
         clean_latents = Krea2LatentCreator.pack_latents(encoded, config.height, config.width)
-        init_time_step = self._init_time_step(config)
-        sigma = float(sigmas[init_time_step])
+        sigma = float(sigmas[config.init_time_step])
         return LatentCreator.add_noise_by_interpolation(clean=clean_latents, noise=pure_noise, sigma=sigma)
 
-    def save_model(self, base_path: str) -> None:
-        ModelSaver.save_model(
-            model=self,
-            bits=self.bits,
-            base_path=base_path,
-            weight_definition=Krea2WeightDefinition,
-        )
+    def _decode_latents(self, *, latents: mx.array) -> mx.array:
+        return self.vae.decode(latents)
+
+    @staticmethod
+    def _predict(
+        transformer: Krea2Transformer,
+        embeds: mx.array,
+        neg_embeds: mx.array | None,
+        guidance: float,
+    ):
+        def predict(latents: mx.array, timestep: mx.array) -> mx.array:
+            v = transformer(latents, timestep, embeds)
+            if neg_embeds is not None:
+                v_neg = transformer(latents, timestep, neg_embeds)
+                v = v_neg + guidance * (v - v_neg)
+            return v
+
+        if AppleSiliconUtil.is_m1_or_m2():
+            return predict
+        return mx.compile(predict)
