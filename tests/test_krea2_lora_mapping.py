@@ -69,6 +69,32 @@ class TestKrea2LoRAMapping:
         ]
         assert self._matched_keys(keys) == set(keys)
 
+    def test_matches_official_krea_collection_export_keys(self):
+        # krea/Krea-2-LoRA-* uses transformer.* diffusers exports (e.g. retroanime).
+        keys = [
+            "transformer.img_in.lora_A.weight",
+            "transformer.img_in.lora_B.weight",
+            "transformer.final_layer.linear.lora_A.weight",
+            "transformer.final_layer.linear.lora_B.weight",
+            "transformer.text_fusion.layerwise_blocks.0.attn.to_gate.lora_A.weight",
+            "transformer.text_fusion.layerwise_blocks.0.attn.to_gate.lora_B.weight",
+            "transformer.text_fusion.projector.lora_A.weight",
+            "transformer.text_fusion.projector.lora_B.weight",
+        ]
+        assert self._matched_keys(keys) == set(keys)
+
+    def test_matches_peft_base_model_export_keys(self):
+        # gokaygokay/Krea-2-Realism-LoRA and similar trainers use base_model.model.* with official names.
+        keys = [
+            "base_model.model.blocks.0.attn.wq.lora_A.weight",
+            "base_model.model.blocks.0.attn.wq.lora_B.weight",
+            "base_model.model.blocks.0.attn.gate.lora_A.weight",
+            "base_model.model.blocks.0.attn.gate.lora_B.weight",
+            "base_model.model.txtfusion.refiner_blocks.1.mlp.down.lora_A.weight",
+            "base_model.model.txtfusion.refiner_blocks.1.mlp.down.lora_B.weight",
+        ]
+        assert self._matched_keys(keys) == set(keys)
+
     def test_applies_official_block_lora_to_transformer(self, tmp_path):
         transformer = _tiny_transformer()
         lora_path = tmp_path / "krea2_lora.safetensors"
@@ -112,6 +138,27 @@ class TestKrea2LoRAMapping:
         )
 
         assert isinstance(transformer.blocks[0].mlp.down, LoRALinear)
+
+    def test_applies_krea_collection_projector_lora_to_transformer(self, tmp_path):
+        transformer = _tiny_transformer()
+        lora_path = tmp_path / "krea2_projector_lora.safetensors"
+        mx.save_safetensors(
+            str(lora_path),
+            {
+                "transformer.text_fusion.projector.lora_A.weight": mx.ones((2, 16)),
+                "transformer.text_fusion.projector.lora_B.weight": mx.ones((16, 2)),
+            },
+        )
+
+        LoRALoader.load_and_apply_lora(
+            lora_mapping=Krea2LoRAMapping.get_mapping(),
+            transformer=transformer,
+            lora_paths=[str(lora_path)],
+            lora_scales=[0.5],
+        )
+
+        assert isinstance(transformer.txtfusion.projector, LoRALinear)
+        assert transformer.txtfusion.projector.scale == pytest.approx(0.5)
 
     def _matched_keys(self, keys: list[str]) -> set[str]:
         matched_keys: set[str] = set()
