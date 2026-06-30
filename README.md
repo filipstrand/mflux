@@ -120,6 +120,7 @@ MFLUX supports the following model families. They have different strengths and w
 | Model | Release date | Size | Type | Training | Description |
 | --- | --- | --- | --- | --- | --- |
 |[Z-Image](src/mflux/models/z_image/README.md) | Nov 2025 | 6B | Distilled & Base | Yes | Fast, small, very good quality and realism. |
+|[Krea 2](src/mflux/models/krea2/README.md) | Jun 2026 | 12B | Turbo (distilled) | No | Very good quality with a wide range of styles; good for creative exploration. |
 |[FLUX.2](src/mflux/models/flux2/README.md) | Jan 2026 | 4B & 9B | Distilled & Base | Yes | Fastest + smallest with very good qaility and edit capabilities. |
 |[Ideogram 4](src/mflux/models/ideogram4/README.md) | Jun 2026 | 9B | Base | No | JSON-caption-native, typography-focused text-to-image generation. |
 |[ERNIE-Image](src/mflux/models/ernie_image/README.md) | Apr 2026 | 8B | Distilled & Base | No | Single-stream DiT from Baidu. Vivid, high-contrast output. |
@@ -178,6 +179,7 @@ MFLUX would not be possible without the great work of:
 - Tongyi Lab for the [Z-Image project](https://tongyi-mai.github.io/Z-Image-blog/)
 - Baidu for the [ERNIE-Image project](https://huggingface.co/baidu/ERNIE-Image)
 - Ideogram for the [Ideogram 4 project](https://huggingface.co/ideogram-ai/ideogram-4-fp8)
+- Krea.ai for the [Krea 2 project](https://www.krea.ai/blog/krea-2-technical-report)
 - Qwen Team for the [Qwen Image project](https://qwen.ai/blog?id=a6f483777144685d33cd3d2af95136fcbeb57652&from=research.research-list)
 - ByteDance, @numz and @adrientoupet for the [SeedVR2 project](https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler)
 - Hugging Face for the [Diffusers library implementations](https://github.com/huggingface/diffusers) 
