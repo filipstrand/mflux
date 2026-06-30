@@ -26,7 +26,7 @@ class Ideogram4Attention(nn.Module):
     def __call__(
         self,
         x: mx.array,
-        segment_ids: mx.array,
+        mask: mx.array,
         cos: mx.array,
         sin: mx.array,
     ) -> mx.array:
@@ -42,12 +42,6 @@ class Ideogram4Attention(nn.Module):
         v = v.transpose(0, 2, 1, 3)
 
         q, k = Ideogram4MRoPE.apply_rotary_pos_emb(q, k, cos, sin)
-        same_segment = segment_ids[:, :, None] == segment_ids[:, None, :]
-        mask = mx.where(
-            same_segment[:, None, :, :],
-            mx.zeros((batch_size, 1, seq_len, seq_len), dtype=mx.float32),
-            mx.full((batch_size, 1, seq_len, seq_len), -float("inf"), dtype=mx.float32),
-        )
         out = scaled_dot_product_attention(
             q.astype(mx.float32),
             k.astype(mx.float32),

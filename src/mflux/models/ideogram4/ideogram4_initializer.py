@@ -3,6 +3,8 @@ from pathlib import Path
 from typing import Any
 
 import mlx.core as mx
+import mlx.nn as nn
+from mlx.utils import tree_map_with_path, tree_unflatten
 
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.models.common.config import ModelConfig
@@ -15,6 +17,7 @@ from mflux.models.common.weights.loading.weight_loader import WeightLoader
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 from mflux.models.ideogram4.model.ideogram4_text_encoder import Qwen3TextEncoder
 from mflux.models.ideogram4.model.ideogram4_transformer import Ideogram4Config, Ideogram4Transformer
+from mflux.models.ideogram4.model.ideogram4_transformer.fp8_linear import Fp8Linear
 from mflux.models.ideogram4.weights import Ideogram4LoRAMapping, Ideogram4WeightDefinition
 
 
@@ -31,24 +34,50 @@ class Ideogram4Initializer:
         path = model_path if model_path else model_config.model_name
         root_path = Ideogram4Initializer._resolve_model_path(path)
         Ideogram4Initializer._init_config(model, model_config, root_path)
-        weights = Ideogram4Initializer._load_weights(root_path)
         Ideogram4Initializer._init_tokenizers(model, root_path)
-        Ideogram4Initializer._init_models(model, root_path)
-        Ideogram4Initializer._apply_weights(model, weights, quantize)
-        del weights
+        if Ideogram4Initializer._is_mlx_forge(root_path):
+            Ideogram4Initializer._init_models_mlx_forge(model, root_path)
+            bits = Ideogram4Initializer._mlx_forge_bits(root_path)
+            Ideogram4Initializer._apply_mlx_forge_weights(model, root_path, bits)
+            model.bits = bits
+        else:
+            weights = Ideogram4Initializer._load_weights(root_path)
+            Ideogram4Initializer._init_models(model, root_path)
+            Ideogram4Initializer._apply_weights(model, weights, quantize)
+            del weights
         mx.eval(model)
         mx.clear_cache()
         Ideogram4Initializer._apply_lora(model, lora_paths, lora_scales)
 
     @staticmethod
     def _resolve_model_path(path: str) -> Path:
+        # Fast-path: local mlx-forge directory (detected by split_model.json).
+        local = Path(path).expanduser()
+        if local.exists() and (local / "split_model.json").exists():
+            return local
         root_path = PathResolution.resolve(
             path=path,
             patterns=Ideogram4WeightDefinition.get_download_patterns(),
         )
         if root_path is None:
             raise ValueError(f"No model path resolved for {path!r}")
+        # mlx-forge repos (resolved from an HF id or a local path) carry split_model.json;
+        # load them directly instead of demanding the FP8 checkpoint layout.
+        if (root_path / "split_model.json").exists():
+            return root_path
         return Ideogram4WeightDefinition.validate_fp8_checkpoint(root_path)
+
+    @staticmethod
+    def _is_mlx_forge(root_path: Path) -> bool:
+        return (root_path / "split_model.json").exists()
+
+    @staticmethod
+    def _mlx_forge_bits(root_path: Path) -> int | None:
+        with open(root_path / "split_model.json") as f:
+            info = json.load(f)
+        if not info.get("quantized", False):
+            return None
+        return info.get("quantization_bits")
 
     @staticmethod
     def _init_config(model, model_config: ModelConfig, model_path: Path) -> None:
@@ -78,12 +107,69 @@ class Ideogram4Initializer:
     def _init_models(model, model_path: Path) -> None:
         model.vae = Flux2VAE()
         model.conditional_transformer = Ideogram4Transformer(
-            Ideogram4Initializer._transformer_config(model_path / "transformer")
+            Ideogram4Initializer._transformer_config(model_path / "transformer" / "config.json")
         )
         model.unconditional_transformer = Ideogram4Transformer(
-            Ideogram4Initializer._transformer_config(model_path / "unconditional_transformer")
+            Ideogram4Initializer._transformer_config(model_path / "unconditional_transformer" / "config.json")
         )
-        model.text_encoder = Qwen3TextEncoder(**Ideogram4Initializer._text_encoder_kwargs(model_path / "text_encoder"))
+        model.text_encoder = Qwen3TextEncoder(
+            **Ideogram4Initializer._text_encoder_kwargs(model_path / "text_encoder" / "config.json")
+        )
+
+    @staticmethod
+    def _init_models_mlx_forge(model, root_path: Path) -> None:
+        model.vae = Flux2VAE()
+        model.conditional_transformer = Ideogram4Transformer(
+            Ideogram4Initializer._transformer_config(root_path / "conditional_transformer_config.json")
+        )
+        model.unconditional_transformer = Ideogram4Transformer(
+            Ideogram4Initializer._transformer_config(root_path / "unconditional_transformer_config.json")
+        )
+        model.text_encoder = Qwen3TextEncoder(
+            **Ideogram4Initializer._text_encoder_kwargs(root_path / "text_encoder_config.json")
+        )
+
+    @staticmethod
+    def _apply_mlx_forge_weights(model, root_path: Path, bits: int | None) -> None:
+        components = {
+            "conditional_transformer": model.conditional_transformer,
+            "unconditional_transformer": model.unconditional_transformer,
+            "text_encoder": model.text_encoder,
+            "vae": model.vae,
+        }
+        for comp_name, comp_model in components.items():
+            raw = mx.load(str(root_path / f"{comp_name}.safetensors"))
+            prefix = f"{comp_name}."
+            stripped = {k[len(prefix):]: v for k, v in raw.items() if k.startswith(prefix)}
+            if bits is not None and comp_name != "vae":
+                Ideogram4Initializer._replace_fp8_with_quantized(comp_model, bits)
+            comp_model.update(tree_unflatten(list(stripped.items())), strict=False)
+            del raw, stripped
+
+    @staticmethod
+    def _replace_fp8_with_quantized(model: nn.Module, bits: int, group_size: int = 64) -> None:
+        """Swap every Fp8Linear submodule for an empty nn.QuantizedLinear.
+
+        Mirrors mlx.nn.quantize's leaf_modules → tree_map_with_path →
+        update_modules idiom. The QuantizedLinear modules are zero-initialized
+        here; their packed weight/scales/biases are populated by the subsequent
+        model.update() against the mlx-forge int8 safetensors.
+        """
+
+        def maybe_replace(_path: str, module: nn.Module) -> nn.Module:
+            if isinstance(module, Fp8Linear):
+                return nn.QuantizedLinear(
+                    input_dims=module.in_features,
+                    output_dims=module.out_features,
+                    bias=module.bias is not None,
+                    bits=bits,
+                    group_size=group_size,
+                )
+            return module
+
+        leaves = model.leaf_modules()
+        leaves = tree_map_with_path(maybe_replace, leaves, is_leaf=nn.Module.is_module)
+        model.update_modules(leaves)
 
     @staticmethod
     def _apply_weights(model, weights: LoadedWeights, quantize: int | None) -> None:
@@ -120,8 +206,8 @@ class Ideogram4Initializer:
             )
 
     @staticmethod
-    def _text_encoder_kwargs(directory: Path) -> dict[str, Any]:
-        config = Ideogram4Initializer._load_json(directory / "config.json")
+    def _text_encoder_kwargs(config_file: Path) -> dict[str, Any]:
+        config = Ideogram4Initializer._load_json(config_file)
         text_config = config.get("text_config") if isinstance(config, dict) else None
         if not isinstance(text_config, dict):
             text_config = {}
@@ -142,8 +228,8 @@ class Ideogram4Initializer:
         }
 
     @staticmethod
-    def _transformer_config(directory: Path) -> Ideogram4Config:
-        config = Ideogram4Initializer._load_json(directory / "config.json")
+    def _transformer_config(config_file: Path) -> Ideogram4Config:
+        config = Ideogram4Initializer._load_json(config_file)
         num_heads = int(config.get("num_attention_heads", 18))
         head_dim = int(config.get("attention_head_dim", 256))
         return Ideogram4Config(

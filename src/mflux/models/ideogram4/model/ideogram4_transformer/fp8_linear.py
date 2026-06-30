@@ -34,13 +34,15 @@ class Fp8Linear(nn.Module):
                 "Fp8Linear weights have not been loaded: "
                 f"expected {(self.out_features, self.in_features)}, got {self.weight.shape}"
             )
-        if self.weight_scale.shape != (self.out_features,):
-            raise RuntimeError(
-                f"Fp8Linear scales have not been loaded: expected {(self.out_features,)}, got {self.weight_scale.shape}"
-            )
         dtype = x.dtype if x.dtype in (mx.float16, mx.bfloat16, mx.float32) else self.compute_dtype
-        weight = mx.from_fp8(self.weight, dtype=dtype)
-        weight = weight * self.weight_scale.astype(dtype)[:, None]
+        if self.weight.dtype == mx.uint8:
+            if self.weight_scale.shape != (self.out_features,):
+                raise RuntimeError(
+                    f"Fp8Linear scales have not been loaded: expected {(self.out_features,)}, got {self.weight_scale.shape}"
+                )
+            weight = mx.from_fp8(self.weight, dtype=dtype) * self.weight_scale.astype(dtype)[:, None]
+        else:
+            weight = self.weight.astype(dtype)
         out = mx.matmul(x.astype(dtype), mx.transpose(weight))
         if self.bias is not None:
             out = out + self.bias.astype(dtype)
