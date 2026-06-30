@@ -1,10 +1,3 @@
-"""Krea-2 text-to-image pipeline (text-only).
-
-Denoising loop (er_sde by default, euler fallback) over the Krea-2 single-stream
-DiT, conditioned on the Qwen3-VL-4B 12-layer tap (prefix-stripped), decoded with
-the Qwen-Image VAE.
-"""
-
 import time
 from pathlib import Path
 
@@ -153,7 +146,6 @@ class Krea2(nn.Module):
         return LatentCreator.add_noise_by_interpolation(clean=clean_latents, noise=pure_noise, sigma=sigma)
 
     def save_model(self, base_path: str) -> None:
-        """Save the (quantized) weights to disk for fast reload without re-quantizing."""
         ModelSaver.save_model(
             model=self,
             bits=self.bits,

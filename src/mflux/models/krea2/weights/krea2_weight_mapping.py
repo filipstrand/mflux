@@ -1,14 +1,3 @@
-"""Weight mapping for Krea-2.
-
-On-disk keys (``Lumatrix/Krea-2`` turbo/raw safetensors) map almost 1:1 to the
-MLX module tree. The only renames are the ``nn.Sequential`` index keys
-(``tmlp.0/2``, ``tproj.1``, ``txtmlp.0/1/3``) -> named submodules.
-
-``last.up`` / ``last.down`` are intentionally NOT mapped: the ComfyUI reference
-loads them non-strict and never uses them (see NOTES.md). The VAE reuses the
-Qwen-Image VAE mapping.
-"""
-
 from typing import List
 
 from mflux.models.common.weights.mapping.weight_mapping import WeightMapping, WeightTarget

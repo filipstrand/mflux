@@ -1,9 +1,3 @@
-"""Single-stream transformer block for Krea-2.
-
-AdaLN-single modulation (six chunks from the shared timestep vector plus a
-per-block learned bias), GQA + gated attention, SwiGLU MLP.
-"""
-
 import mlx.core as mx
 from mlx import nn
 

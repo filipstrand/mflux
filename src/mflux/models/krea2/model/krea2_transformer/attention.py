@@ -1,10 +1,3 @@
-"""GQA attention with per-head QK-norm and sigmoid gating for Krea-2.
-
-48 query heads / 12 KV heads (GQA, repeat factor 4), head_dim 128. Attention
-output is gated by ``sigmoid(gate(x))`` before the output projection:
-``wo(attn_out * sigmoid(gate(x)))``.
-"""
-
 import mlx.core as mx
 from mlx import nn
 from mlx.core.fast import scaled_dot_product_attention

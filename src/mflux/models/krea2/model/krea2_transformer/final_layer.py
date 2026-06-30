@@ -1,10 +1,3 @@
-"""Final layer for Krea-2: AdaLN-modulated RMSNorm + patch-projection.
-
-Note: the on-disk weights also carry ``last.up`` / ``last.down`` (6144x6144),
-which the ComfyUI reference loads non-strict and does NOT use. They are omitted
-here to match the reference forward; see NOTES.md.
-"""
-
 import mlx.core as mx
 from mlx import nn
 

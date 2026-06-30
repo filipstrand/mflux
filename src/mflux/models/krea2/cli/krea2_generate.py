@@ -1,5 +1,3 @@
-"""CLI entry point for Krea-2 text-to-image generation."""
-
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.parser.parsers import CommandLineParser
 from mflux.models.common.config import ModelConfig

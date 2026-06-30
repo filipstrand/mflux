@@ -1,13 +1,3 @@
-"""Weight definition for Krea-2.
-
-Components: Qwen-Image VAE (reused from the ``qwen`` family), the Krea-2
-single-stream DiT (28 layers), and Qwen3-VL-4B text encoder (12-layer tap).
-
-Weights load from [`krea/Krea-2-Turbo`](https://huggingface.co/krea/Krea-2-Turbo):
-the native root ``turbo.safetensors`` checkpoint (not the diffusers ``transformer/``
-shards), plus VAE, text encoder, and tokenizer artifacts from the same repo.
-"""
-
 from typing import List
 
 import mlx.core as mx

@@ -1,19 +1,3 @@
-"""Krea-2 text encoder: Qwen3-VL-4B with a 12-layer hidden-state tap.
-
-Krea-2 conditions on a stack of hidden states from 12 layers of Qwen3-VL-4B
-(HF ``hidden_states[2,5,8,…,35]``), flattened **layer-major** to
-``(B, seq, 12*2560)`` for the DiT's ``txtfusion`` adapter (feature index =
-``layer * 2560 + h``; matches ComfyUI ``out.permute(0,2,1,3).reshape(b, seq, n*h)``).
-
-HF hidden-state indexing: ``hidden_states[0]`` is the embedding output and
-``hidden_states[k]`` (k>=1) is the output of decoder layer ``k-1``.
-
-Mirrors the proven flux2 ``Qwen3TextEncoder`` (common ``Qwen3VLDecoderLayer`` +
-plain text rotary). For text-only conditioning, Qwen3-VL's interleaved mRoPE
-reduces to plain rope (all three position axes share the sequential ids), so the
-text rotary is exact here. Vision/edit conditioning is a follow-up (see NOTES.md).
-"""
-
 import mlx.core as mx
 from mlx import nn
 
@@ -29,12 +13,6 @@ _IM_START, _USER, _NEWLINE = 151644, 872, 198
 
 
 def _template_end(input_ids: "mx.array") -> int:
-    """Index of the first real prompt token (drops system + ``<|im_start|>user\\n``).
-
-    Finds the 2nd ``<|im_start|>`` (the one opening the user turn); if it is followed
-    by ``user`` + ``\\n``, advance past them. Mirrors ComfyUI ``encode_token_weights``.
-    Assumes batch size 1.
-    """
     ids = input_ids[0].tolist()
     count = 0
     end = 0

@@ -1,13 +1,3 @@
-"""Krea-2 single-stream MMDiT.
-
-Patchified image tokens and the Qwen3-VL ``txtfusion`` text tokens are
-concatenated into one sequence and run through ``layers`` shared transformer
-blocks with AdaLN-single modulation, GQA + per-head QK-norm + sigmoid-gated
-attention, SwiGLU MLP and 3-axis RoPE.
-
-Port of ``comfy/ldm/krea2/model.py`` (``SingleStreamDiT``).
-"""
-
 import mlx.core as mx
 from mlx import nn
 
@@ -119,8 +109,6 @@ class Krea2Transformer(nn.Module):
 
 
 class _TextMLP(nn.Module):
-    """``txtmlp``: RMSNorm -> Linear -> GELU(tanh) -> Linear (2560 -> 6144)."""
-
     def __init__(self, txtdim: int, features: int):
         super().__init__()
         from mflux.models.krea2.model.krea2_transformer.common import Krea2RMSNorm

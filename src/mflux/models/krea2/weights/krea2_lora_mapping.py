@@ -1,17 +1,3 @@
-"""LoRA key mapping for Krea-2.
-
-Maps LoRA file keys onto the Krea-2 transformer module tree. The MLX modules
-already use the official Krea names (``first``, ``blocks.*.attn.wq``,
-``txtfusion.*``, ``last.linear``), so ``model_path`` is the MLX attribute path
-and each target also accepts the diffusers-style aliases
-(``transformer_blocks.*.attn.to_q`` …) plus the ``nn.Sequential`` index names
-the on-disk checkpoint uses for the timestep / text MLPs (``tmlp.0``,
-``tproj.1``, ``txtmlp.1`` …).
-
-Krea trains LoRAs on the Raw model and applies them on Turbo, so both the
-official Krea module names and the Comfy/diffusers export names are supported.
-"""
-
 from mflux.models.common.lora.mapping.lora_mapping import LoRAMapping, LoRATarget
 
 

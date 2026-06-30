@@ -1,32 +1,12 @@
-"""Sampling for Krea-2.
-
-Rectified-flow (``ModelType.FLUX``) sigma schedule with a static shift, plus two
-steppers:
-
-- ``EulerStepper`` — plain flow-matching Euler.
-- ``ErSdeStepper`` — Extended Reverse-Time SDE solver (VP ER-SDE-Solver-3), the
-  reference turbo sampler. Ported from ComfyUI ``sample_er_sde`` for the
-  ``ModelSamplingFlux`` branch (not ``CONST``): ``alpha_t = 1`` and
-  ``er_lambda_t = sigma_t``, so half-logSNR is ``-log(sigma)``.
-
-Both steppers consume the guided velocity ``v`` and the model prediction
-``denoised = x - sigma * v`` (flow ``x0``). The schedule here is the flux
-static-shift schedule (close to ComfyUI's ``simple`` scheduler over
-``ModelSamplingFlux.sigmas``); not bit-exact — see NOTES.md.
-"""
-
 import mlx.core as mx
 
 
 def flow_sigmas(num_steps: int, shift: float = 1.15) -> mx.array:
-    """Return ``num_steps + 1`` sigmas from 1 -> 0 with a static flow shift."""
     sigmas = mx.linspace(1.0, 0.0, num_steps + 1)
     return shift * sigmas / (1.0 + (shift - 1.0) * sigmas)
 
 
 class EulerStepper:
-    """Plain flow-matching Euler: ``x += (sigma_next - sigma) * v``."""
-
     def __init__(self, sigmas: mx.array):
         self.sigmas = sigmas
 
@@ -35,12 +15,6 @@ class EulerStepper:
 
 
 class ErSdeStepper:
-    """ER-SDE-Solver-3 (flux branch: alpha=1, er_lambda=sigma).
-
-    Multistep — keeps the previous one/two model predictions for the 2nd/3rd
-    order correction terms. Injects SDE noise each step (``s_noise``).
-    """
-
     NUM_POINTS = 200.0
 
     def __init__(self, sigmas: mx.array, seed: int, s_noise: float = 1.0, max_stage: int = 3):

@@ -1,11 +1,3 @@
-"""Qwen3-VL 12-layer text-fusion adapter for Krea-2.
-
-Consumes a ``(B, seq, txtlayers, txtdim)`` stack of Qwen3-VL hidden states:
-two ``layerwise_blocks`` attend across the 12 layers, a learned ``projector``
-(Linear 12 -> 1) collapses the layer axis, then two ``refiner_blocks`` attend
-across the sequence. Output is ``(B, seq, txtdim)``. These blocks use no RoPE.
-"""
-
 import mlx.core as mx
 from mlx import nn
 

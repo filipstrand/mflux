@@ -1,9 +1,3 @@
-"""SwiGLU feed-forward for Krea-2.
-
-``mlpdim = round_up_to_multiple(int(2 * features / 3) * multiplier, 128)``.
-For ``features=6144, multiplier=4`` this is ``16384`` (already 128-aligned).
-"""
-
 import mlx.core as mx
 from mlx import nn
 

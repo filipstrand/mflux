@@ -1,11 +1,3 @@
-"""Timestep embedding for Krea-2.
-
-Flux-style sinusoidal embedding (``time_factor=1000``, ``cos`` then ``sin``) fed
-through ``tmlp`` (Linear -> GELU(tanh) -> Linear) to produce the base timestep
-vector ``t``, then through ``tproj`` (GELU(tanh) -> Linear) to the 6x-wide
-modulation vector ``tvec``.
-"""
-
 import math
 
 import mlx.core as mx
@@ -24,8 +16,6 @@ def timestep_embedding(t: mx.array, dim: int, max_period: int = 10000, time_fact
 
 
 class Krea2TimestepMLP(nn.Module):
-    """``tmlp``: maps the sinusoidal embedding to the feature dim."""
-
     def __init__(self, tdim: int, features: int):
         super().__init__()
         self.linear_in = nn.Linear(tdim, features)
@@ -36,8 +26,6 @@ class Krea2TimestepMLP(nn.Module):
 
 
 class Krea2TimestepProj(nn.Module):
-    """``tproj``: GELU then expand to ``6 * features`` for AdaLN modulation."""
-
     def __init__(self, features: int):
         super().__init__()
         self.linear = nn.Linear(features, features * 6)

@@ -1,10 +1,3 @@
-"""Initializer for Krea-2.
-
-Builds the Qwen-Image VAE (reused) + the Krea-2 single-stream DiT, loads and
-(optionally) quantizes their weights. Reuses the Qwen-Image VAE and the
-Qwen3-VL-4B text encoder (12-layer tap, text-only path for now).
-"""
-
 import mlx.core as mx
 
 from mflux.callbacks.callback_registry import CallbackRegistry

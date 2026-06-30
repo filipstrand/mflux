@@ -1,18 +1,8 @@
-"""AdaLN-single modulation for Krea-2.
-
-``DoubleSharedModulation`` adds a per-block learned bias to the shared
-timestep vector and splits it into the six attn/mlp (scale, shift, gate)
-chunks. ``SimpleModulation`` produces the (scale, shift) pair for the final
-layer.
-"""
-
 import mlx.core as mx
 from mlx import nn
 
 
 class DoubleSharedModulation(nn.Module):
-    """Per-block ``mod.lin`` bias on the shared timestep vector -> 6 chunks."""
-
     def __init__(self, dim: int):
         super().__init__()
         self.lin = mx.zeros((6 * dim,))
@@ -23,8 +13,6 @@ class DoubleSharedModulation(nn.Module):
 
 
 class SimpleModulation(nn.Module):
-    """Final-layer modulation: ``vec + lin`` -> (scale, shift)."""
-
     def __init__(self, dim: int):
         super().__init__()
         self.lin = mx.zeros((2, dim))

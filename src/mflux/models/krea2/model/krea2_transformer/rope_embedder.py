@@ -1,12 +1,3 @@
-"""3-axis RoPE for Krea-2.
-
-Identical math to Flux's ``EmbedND`` / ``apply_rope`` (adjacent-pair rotation
-with a ``[cos, -sin, sin, cos]`` 2x2 block), but with Krea-2's axes and theta:
-``head_dim = 128``, ``axes_dim = [32, 48, 48]`` (temporal, height, width),
-``theta = 1000``. Position ids are ``(B, N, 3)``: text tokens at ``(0, 0, 0)``,
-image tokens at ``(0, h_idx, w_idx)``.
-"""
-
 import mlx.core as mx
 from mlx import nn
 
