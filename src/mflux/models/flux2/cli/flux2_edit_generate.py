@@ -16,6 +16,8 @@ def main():
     parser = CommandLineParser(description="Generate an image using Flux2 Klein Edit with image conditioning.")
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
+    parser.add_argument("--model-transformer", type=str, default=None, help="Path to a model directory to load the transformer from (overrides --model-path for this component).")  # fmt: off
+    parser.add_argument("--model-text-encoder", type=str, default=None, help="Path to a model directory to load the text encoder from (overrides --model-path for this component).")  # fmt: off
     parser.add_lora_arguments()
     parser.add_argument("--image-paths", type=Path, nargs="+", required=True, help="Local paths to one or more init images. For single image editing, provide one path. For multiple image editing, provide multiple paths.")  # fmt: off
     parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
@@ -44,6 +46,8 @@ def main():
         model_path=args.model_path,
         lora_paths=args.lora_paths,
         lora_scales=args.lora_scales,
+        transformer_path=args.model_transformer,
+        text_encoder_path=args.model_text_encoder,
     )
 
     memory_saver = CallbackManager.register_callbacks(
