@@ -1566,7 +1566,8 @@ def mflux_krea2_parser() -> CommandLineParser:
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
-    parser.add_image_generator_arguments(supports_metadata_config=True)
+    parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
+    parser.add_image_to_image_arguments(required=False)
     parser.add_output_arguments()
     return parser
 
@@ -1599,6 +1600,11 @@ def test_krea2_args(mflux_krea2_parser, mflux_krea2_minimal_argv):
         args = mflux_krea2_parser.parse_args()
         assert args.steps == 8
         assert args.guidance == pytest.approx(1.0)
+
+    with patch("sys.argv", mflux_krea2_minimal_argv + ["--image-path", "input.png", "--image-strength", "0.65"]):
+        args = mflux_krea2_parser.parse_args()
+        assert args.image_path == Path("input.png")
+        assert args.image_strength == pytest.approx(0.65)
 
 
 @pytest.mark.fast

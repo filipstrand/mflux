@@ -101,5 +101,11 @@ Supported export formats include official Krea (`transformer.*`), diffusers/PEFT
 
 > [!WARNING]
 > Note: Krea 2 Turbo requires downloading model weights (~24 GB for `turbo.safetensors`
-> plus text encoder and VAE). Use `-q 8` or save a quantized copy with `mflux-save`; see
-> [quantization docs](../common/README.md#quantization).
+> plus text encoder and VAE, ~33 GB total on first run). Use `-q 8` at inference or save
+> a quantized copy with `mflux-save`; see [quantization docs](../common/README.md#quantization).
+
+## Training
+
+`mflux-train` does not support Krea 2 yet. Train LoRAs on
+[`krea/Krea-2-Raw`](https://huggingface.co/krea/Krea-2-Raw) with external tooling, then
+apply them at inference with `--lora-paths` on Turbo.

@@ -30,6 +30,8 @@ def test_completion_generator_includes_krea2_command():
     assert "_mflux_generate_krea2()" in script
     assert "--prompt" in script
     assert "--scheduler" in script
+    assert "--image-path" in script
+    assert "--image-strength" in script
 
 
 @pytest.mark.fast
