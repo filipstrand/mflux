@@ -3,31 +3,24 @@
 This directory contains MFLUX's MLX implementation of **Krea 2 Turbo**
 ([`krea/Krea-2-Turbo`](https://huggingface.co/krea/Krea-2-Turbo)).
 
-Krea 2 is Krea.ai's open-weights text-to-image foundation model family — see the
-[Krea 2 technical report](https://www.krea.ai/blog/krea-2-technical-report)
-(released June 2026). The release includes two checkpoints:
+MFLUX supports [Krea 2 Turbo](https://huggingface.co/krea/Krea-2-Turbo) from Krea.ai — an
+open-weights single-stream MMDiT built on the Qwen-Image stack (Qwen3-VL-4B text encoder,
+Qwen-Image VAE). Turbo is a timestep-distilled 8-step checkpoint; see the
+[Krea 2 technical report](https://www.krea.ai/blog/krea-2-technical-report) for details.
 
-- **[Krea 2 Raw](https://huggingface.co/krea/Krea-2-Raw)** — undistilled base for
-  fine-tuning and LoRA training.
-- **Krea 2 Turbo** — timestep-distilled 8-step inference checkpoint (TDM); this
-  is what `mflux-generate-krea2` loads by default.
-
-MFLUX implements Turbo for text-to-image generation. Train LoRAs on Raw and apply
-them on Turbo (Krea's recommended workflow).
-
-Krea 2 is a single-stream MMDiT built on the Qwen-Image stack: it reuses the
-**Qwen-Image VAE** and conditions on a 12-layer hidden-state tap from a
-**Qwen3-VL-4B** text encoder.
+All the standard modes such as img2img, LoRA and quantizations are supported for this model.
 
 ![Krea 2 showcase](../../assets/krea2_example.jpg)
 
-The collage above uses four official style LoRAs from Krea's
+*Showcase collage: official style LoRAs from the
 [Krea 2 LoRAs collection](https://huggingface.co/collections/krea/krea-2-loras)
-on Turbo at 1024×1024, seed 42, 8 steps: **soft watercolor**, **dark brush**,
-**neon drip**, and **vintage tarot**. Prompts match the examples shipped with each
-LoRA on Hugging Face.
+(rainy window, neon drip, sunset blur, retro anime) plus a plain Turbo portrait — seed 42,
+8 steps, q8.*
 
 ## Example
+
+The following generates a photorealistic fox image with Turbo defaults (8 steps,
+guidance 1.0, `er_sde` sampler):
 
 ```sh
 mflux-generate-krea2 \
@@ -42,81 +35,6 @@ mflux-generate-krea2 \
 Weights download automatically from [`krea/Krea-2-Turbo`](https://huggingface.co/krea/Krea-2-Turbo)
 on first run (accept the model's terms and set a Hugging Face token if prompted).
 No `--model` is needed; pass `--model /path/to/local/dir` only to use a local copy.
-
-Turbo defaults: 8 steps, guidance 1.0 (CFG off), `er_sde` sampler. The plain
-flow-matching Euler sampler — which matches the official diffusers
-`FlowMatchEulerDiscreteScheduler` — is available via `--scheduler euler`.
-
-Standard CLI options are supported: `--metadata`, `--stepwise-image-output-dir`,
-`--lora-paths` / `--lora-scales`, `--image` / `--image-path` for img2img, and
-multiple `--seed` values. Krea's vision-tower **style-reference / edit** path (image
-tokens in the text encoder) is not implemented yet.
-
-## Image-to-image
-
-Strength-based img2img via `--image` (or `--image-path` / `--image-strength`). The
-init image is VAE-encoded, noised to the requested strength, then denoised with
-your prompt. This differs from Krea's hosted **style-reference** path, which
-feeds reference images through the Qwen3-VL vision tower.
-
-```sh
-mflux-generate-krea2 \
-  --image path/to/photo.jpg 0.65 \
-  --prompt "a pair of futuristic chrome sunglasses on a marble pedestal" \
-  --steps 8 \
-  -q 8
-```
-
-When `--image` is set, omitted `--width` / `--height` default to the source image
-size (rounded to multiples of 16).
-
-## LoRA
-
-Krea 2 supports community LoRAs via `--lora-paths` (train on
-[`krea/Krea-2-Raw`](https://huggingface.co/krea/Krea-2-Raw), run on Turbo).
-Krea publishes nine official style adapters in the
-[Krea 2 LoRAs collection](https://huggingface.co/collections/krea/krea-2-loras)
-(`krea/Krea-2-LoRA-*`). Paths can be local files, Hugging Face repos, or
-`org/repo:filename.safetensors` when a repo ships multiple adapters.
-
-```sh
-mflux-generate-krea2 \
-  --prompt "A sunset over snowy mountains. Art Deco watercolor style" \
-  --lora-paths krea/Krea-2-LoRA-softwatercolor \
-  --lora-scales 1.0 \
-  --steps 8 \
-  -q 8
-```
-
-Supported export formats include official Krea (`transformer.*`), diffusers/PEFT
-(`base_model.model.*`), Comfy (`diffusion_model.*`), and flat `lora_unet_*` keys.
-LoKr adapters with `.magnitude` tensors are only partially applied today.
-
-<details>
-<summary>Showcase prompts (seed 42, 8 steps, q8)</summary>
-
-| Panel | LoRA | Prompt |
-| --- | --- | --- |
-| Soft watercolor | `krea/Krea-2-LoRA-softwatercolor` | A sunset over snowy mountains. Art Deco watercolor style |
-| Dark brush | `krea/Krea-2-LoRA-darkbrush` | A deer grazing in the forest surrounded by dense trees and the sun bright in the sky. monochrome ink wash style |
-| Neon drip | `krea/Krea-2-LoRA-neondrip` | A close-up portrait of a woman, glowing neon highlights and vivid paint dripping down her face. Textured abstract style |
-| Vintage tarot | `krea/Krea-2-LoRA-vintagetarot` | an angel with metallic wings and a crown of flowers. vintage tarot style |
-
-</details>
-
-> [!NOTE]
-> Krea 2 ships as a diffusers repo whose `transformer/` subdir is *diffusers*-format
-> (different key names). MFLUX loads the native single-file `turbo.safetensors` from
-> the repo root instead, so the diffusers transformer shards are never downloaded.
-
-## Quantization caching
-
-Save a quantized model once and reload it without re-quantizing:
-
-```sh
-mflux-save --model krea/Krea-2-Turbo --quantize 8 --path /path/to/krea-2-mlx-q8
-mflux-generate-krea2 --model /path/to/krea-2-mlx-q8 --prompt "..." --steps 8
-```
 
 <details>
 <summary>Python API</summary>
@@ -139,16 +57,68 @@ image = model.generate_image(
 )
 image.save("krea2_fox.png")
 ```
-
 </details>
 
-## Architecture
+## Image-to-image
 
-- **Transformer**: 28-layer single-stream MMDiT — hidden 6144, GQA (48 query /
-  12 KV heads, head_dim 128), SwiGLU, 3-axis Flux-style RoPE `[32, 48, 48]`,
-  per-head QK-norm + sigmoid-gated attention, AdaLN-single 6-way modulation, and
-  a `txtfusion` adapter that fuses the 12 text-encoder hidden states.
-- **Text encoder**: Qwen3-VL-4B, 12-layer tap `[2, 5, …, 35]` flattened
-  layer-major; the chat-template prefix is stripped so only prompt tokens
-  condition the DiT.
-- **VAE**: Qwen-Image VAE (Wan2.1 16-channel latent).
+Strength-based img2img via `--image` (or `--image-path` / `--image-strength`). The
+init image is VAE-encoded, noised to the requested strength, then denoised with
+your prompt. This differs from Krea's hosted **style-reference** path, which
+feeds reference images through the Qwen3-VL vision tower.
+
+```sh
+mflux-generate-krea2 \
+  --image path/to/photo.jpg 0.65 \
+  --prompt "a pair of futuristic chrome sunglasses on a marble pedestal" \
+  --steps 8 \
+  --scheduler euler \
+  -q 8
+```
+
+When `--image` is set, omitted `--width` / `--height` default to the source image
+size (rounded to multiples of 16).
+
+## LoRA
+
+Krea 2 supports community LoRAs via `--lora-paths`. Train on
+[`krea/Krea-2-Raw`](https://huggingface.co/krea/Krea-2-Raw), run on Turbo (Krea's
+recommended workflow). Krea publishes nine official style adapters in the
+[Krea 2 LoRAs collection](https://huggingface.co/collections/krea/krea-2-loras)
+(`krea/Krea-2-LoRA-*`). Paths can be local files, Hugging Face repos, or
+`org/repo:filename.safetensors` when a repo ships multiple adapters.
+
+```sh
+mflux-generate-krea2 \
+  --prompt "A close-up portrait of a woman, glowing neon highlights and vivid paint dripping down her face. Textured abstract style" \
+  --lora-paths krea/Krea-2-LoRA-neondrip \
+  --lora-scales 1.0 \
+  --steps 8 \
+  -q 8
+```
+
+Supported export formats include official Krea (`transformer.*`), diffusers/PEFT
+(`base_model.model.*`), Comfy (`diffusion_model.*`), and flat `lora_unet_*` keys.
+
+> [!WARNING]
+> Note: Krea 2 Turbo requires downloading model weights (~24 GB for `turbo.safetensors`
+> plus text encoder and VAE). Use `-q 8` or save a quantized copy with `mflux-save`; see
+> [quantization docs](../common/README.md#quantization).
+
+## Notes
+
+- Turbo defaults: 8 steps, guidance 1.0 (CFG off), `er_sde` sampler. The plain
+  flow-matching Euler sampler — matching the official diffusers
+  `FlowMatchEulerDiscreteScheduler` — is available via `--scheduler euler`.
+- For **img2img**, prefer `--scheduler euler`; the default `er_sde` sampler can
+  produce speckle artifacts at partial strength.
+- [`krea/Krea-2-Raw`](https://huggingface.co/krea/Krea-2-Raw) is the undistilled base
+  for fine-tuning and LoRA training. MFLUX implements Turbo inference only; apply
+  LoRAs trained on Raw when generating with Turbo.
+- Krea 2 ships as a diffusers repo whose `transformer/` subdir uses diffusers key names.
+  MFLUX loads the native single-file `turbo.safetensors` from the repo root instead,
+  so the diffusers transformer shards are never downloaded.
+- LoKr adapters with `.magnitude` tensors are only partially applied today.
+- Krea's vision-tower **style-reference / edit** path (image tokens in the text encoder)
+  is not implemented yet.
+- Standard CLI options are supported: `--metadata`, `--stepwise-image-output-dir`,
+  `--lora-paths` / `--lora-scales`, `--image` / `--image-path`, and multiple `--seed` values.
