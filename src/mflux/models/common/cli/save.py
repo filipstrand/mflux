@@ -46,9 +46,10 @@ def main():
 
     # 2. Load, quantize and save the model
     if model_class is Krea2:
-        # Krea 2 has no LoRA support; load with its fixed config.
         model = Krea2(
             quantize=args.quantize,
+            lora_paths=args.lora_paths,
+            lora_scales=args.lora_scales,
             model_path=args.model_path,
             model_config=ModelConfig.krea2(),
         )

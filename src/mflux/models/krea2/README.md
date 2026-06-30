@@ -29,8 +29,28 @@ flow-matching Euler sampler — which matches the official diffusers
 `FlowMatchEulerDiscreteScheduler` — is available via `--scheduler euler`.
 
 Standard CLI options are supported: `--metadata`, `--stepwise-image-output-dir`,
-and multiple `--seed` values. Image conditioning (edit / reference) is not yet
-implemented.
+`--lora-paths` / `--lora-scales`, and multiple `--seed` values. Image conditioning
+(edit / reference) is not yet implemented.
+
+## LoRA
+
+Krea 2 supports community LoRAs via `--lora-paths` (train on
+[`krea/Krea-2-Raw`](https://huggingface.co/krea/Krea-2-Raw), run on Turbo).
+Paths can be local files, Hugging Face repos, or `org/repo:filename.safetensors`
+when a repo ships multiple adapters.
+
+```sh
+mflux-generate-krea2 \
+  --prompt "a misty forest path at dawn, painterly brush strokes" \
+  --lora-paths krea/Krea-2-LoRA-darkbrush \
+  --lora-scales 1.0 \
+  --steps 8 \
+  -q 8
+```
+
+Supported export formats include official Krea (`transformer.*`), diffusers/PEFT
+(`base_model.model.*`), Comfy (`diffusion_model.*`), and flat `lora_unet_*` keys.
+LoKr adapters with `.magnitude` tensors are only partially applied today.
 
 > [!NOTE]
 > Krea 2 ships as a diffusers repo whose `transformer/` subdir is *diffusers*-format

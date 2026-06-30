@@ -1,14 +1,11 @@
 """Weight definition for Krea-2.
 
-Components: the Qwen-Image VAE (reused from the ``qwen`` family) and the custom
-Krea-2 single-stream DiT (28 layers).
+Components: Qwen-Image VAE (reused from the ``qwen`` family), the Krea-2
+single-stream DiT (28 layers), and Qwen3-VL-4B text encoder (12-layer tap).
 
-Open items (see NOTES.md):
-  * Text encoder: Qwen3-VL-4B (12-layer tap) is not yet wired as a component.
-  * Weight source layout: ``Lumatrix/Krea-2`` ships single-file ``turbo``/``raw``
-    safetensors at the repo root, not in a ``transformer/`` subdir. This
-    definition assumes the mflux-standard assembled layout (the eventual
-    ``+save`` output); point ``model_path`` at a local assembled dir for dev.
+Weights load from [`krea/Krea-2-Turbo`](https://huggingface.co/krea/Krea-2-Turbo):
+the native root ``turbo.safetensors`` checkpoint (not the diffusers ``transformer/``
+shards), plus VAE, text encoder, and tokenizer artifacts from the same repo.
 """
 
 from typing import List
