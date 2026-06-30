@@ -17,6 +17,8 @@ MODEL_CHOICES = [
     "schnell",
     "krea-dev",
     "dev-krea",
+    "krea-2",
+    "krea2",
     "qwen",
     "fibo",
     "fibo-lite",
