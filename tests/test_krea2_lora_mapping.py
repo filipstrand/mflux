@@ -177,10 +177,8 @@ class TestKrea2LoRAMapping:
                     break
         return matched_keys
 
+    def test_latent_creator_noise_shape(self):
+        from mflux.models.krea2.latent_creator.krea2_latent_creator import Krea2LatentCreator
 
-@pytest.mark.fast
-def test_krea2_latent_creator_noise_shape():
-    from mflux.models.krea2.latent_creator.krea2_latent_creator import Krea2LatentCreator
-
-    noise = Krea2LatentCreator.create_noise(seed=0, height=1024, width=1024)
-    assert noise.shape == (1, 16, 128, 128)
+        noise = Krea2LatentCreator.create_noise(seed=0, height=1024, width=1024)
+        assert noise.shape == (1, 16, 128, 128)

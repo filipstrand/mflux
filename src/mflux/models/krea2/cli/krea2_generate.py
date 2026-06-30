@@ -10,7 +10,6 @@ from mflux.utils.prompt_util import PromptUtil
 # Krea-2 turbo defaults (reference: 8 steps, CFG 1.0, er_sde, shift 1.15).
 DEFAULT_STEPS = 8
 DEFAULT_GUIDANCE = 1.0
-DEFAULT_SCHEDULER = "er_sde"
 
 
 def main():
@@ -43,7 +42,6 @@ def main():
     try:
         steps = args.steps if args.steps is not None else DEFAULT_STEPS
         guidance = args.guidance if args.guidance is not None else DEFAULT_GUIDANCE
-        scheduler = args.scheduler if args.scheduler != "linear" else DEFAULT_SCHEDULER
         width, height = DimensionResolver.resolve(
             width=args.width,
             height=args.height,
@@ -58,7 +56,7 @@ def main():
                 height=height,
                 width=width,
                 guidance=guidance,
-                scheduler=scheduler,
+                scheduler=args.scheduler,
                 negative_prompt=args.negative_prompt,
                 image_path=args.image_path,
                 image_strength=args.image_strength,

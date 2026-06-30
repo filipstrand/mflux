@@ -57,7 +57,7 @@ class Krea2(nn.Module):
         image_strength: float | None = None,
         scheduler: str | None = None,
     ) -> GeneratedImage:
-        sampler_name = scheduler if scheduler in ("er_sde", "euler") else "er_sde"
+        resolved_scheduler = Krea2._resolve_scheduler(scheduler)
 
         config = Config(
             model_config=self.model_config,
@@ -67,10 +67,11 @@ class Krea2(nn.Module):
             guidance=guidance,
             image_path=image_path,
             image_strength=image_strength,
+            scheduler=resolved_scheduler,
         )
 
-        sigmas = Krea2Sampler.flow_sigmas(config.num_inference_steps, self.model_config.sigma_max_shift)
-        latents = self._prepare_latents(seed=seed, config=config, sigmas=sigmas)
+        sigmas = config.scheduler.sigmas
+        latents = self._prepare_latents(seed=seed, config=config)
         embeds, neg_embeds = self._encode_prompts(
             prompt=prompt,
             negative_prompt=negative_prompt,
@@ -80,7 +81,7 @@ class Krea2(nn.Module):
         if neg_embeds is not None:
             mx.eval(neg_embeds)
 
-        stepper = Krea2Sampler.make_stepper(sampler_name, sigmas, seed)
+        stepper = Krea2Sampler.make_stepper(resolved_scheduler, sigmas, seed)
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
         predict = self._predict(self.transformer, embeds, neg_embeds, guidance)
@@ -139,7 +140,7 @@ class Krea2(nn.Module):
             prompt_cache=self.prompt_cache,
         )
 
-    def _prepare_latents(self, *, seed: int, config: Config, sigmas: mx.array) -> mx.array:
+    def _prepare_latents(self, *, seed: int, config: Config) -> mx.array:
         if config.image_path is None or config.image_strength is None or config.image_strength <= 0.0:
             return Krea2LatentCreator.create_noise(seed, config.height, config.width)
 
@@ -152,7 +153,7 @@ class Krea2(nn.Module):
             tiling_config=self.tiling_config,
         )
         clean_latents = Krea2LatentCreator.pack_latents(encoded, config.height, config.width)
-        sigma = float(sigmas[config.init_time_step])
+        sigma = float(config.scheduler.sigmas[config.init_time_step])
         return LatentCreator.add_noise_by_interpolation(clean=clean_latents, noise=pure_noise, sigma=sigma)
 
     def _decode_latents(self, *, latents: mx.array) -> mx.array:
@@ -175,3 +176,11 @@ class Krea2(nn.Module):
         if AppleSiliconUtil.is_m1_or_m2():
             return predict
         return mx.compile(predict)
+
+    @staticmethod
+    def _resolve_scheduler(scheduler: str | None) -> str:
+        if scheduler is None or scheduler == "linear":
+            return "er_sde"
+        if scheduler in ("er_sde", "euler"):
+            return scheduler
+        raise ValueError(f"Unknown Krea-2 scheduler {scheduler!r}. Expected 'er_sde' or 'euler'.")

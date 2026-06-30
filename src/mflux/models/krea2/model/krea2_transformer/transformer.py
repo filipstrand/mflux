@@ -4,6 +4,7 @@ from mlx import nn
 from mflux.models.krea2.model.krea2_transformer.final_layer import LastLayer
 from mflux.models.krea2.model.krea2_transformer.rope_embedder import Krea2RopeEmbedder
 from mflux.models.krea2.model.krea2_transformer.text_fusion import TextFusionTransformer
+from mflux.models.krea2.model.krea2_transformer.text_mlp import Krea2TextMLP
 from mflux.models.krea2.model.krea2_transformer.timestep_embedder import Krea2TimestepMLP, Krea2TimestepProj
 from mflux.models.krea2.model.krea2_transformer.transformer_block import SingleStreamBlock
 
@@ -43,7 +44,7 @@ class Krea2Transformer(nn.Module):
         self.tmlp = Krea2TimestepMLP(tdim, features)
         self.tproj = Krea2TimestepProj(features)
         self.txtfusion = TextFusionTransformer(txtlayers, txtdim, txtheads, multiplier, bias, txtkvheads)
-        self.txtmlp = _TextMLP(txtdim, features)
+        self.txtmlp = Krea2TextMLP(txtdim, features)
         self.last = LastLayer(features, patch, channels)
 
     def __call__(
@@ -111,16 +112,3 @@ class Krea2Transformer(nn.Module):
         if pad_h == 0 and pad_w == 0:
             return x
         return mx.pad(x, [(0, 0), (0, 0), (0, pad_h), (0, pad_w)])
-
-
-class _TextMLP(nn.Module):
-    def __init__(self, txtdim: int, features: int):
-        super().__init__()
-        from mflux.models.krea2.model.krea2_transformer.common import Krea2RMSNorm
-
-        self.norm = Krea2RMSNorm(txtdim)
-        self.linear_in = nn.Linear(txtdim, features)
-        self.linear_out = nn.Linear(features, features)
-
-    def __call__(self, x: mx.array) -> mx.array:
-        return self.linear_out(nn.gelu_approx(self.linear_in(self.norm(x))))

@@ -1,5 +1,6 @@
 import mlx.core as mx
 
+import mflux.models.krea2.model.krea2_scheduler  # noqa: F401 — register er_sde/euler schedulers
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.models.common.config import ModelConfig
 from mflux.models.common.lora.mapping.lora_loader import LoRALoader
@@ -48,7 +49,6 @@ class Krea2Initializer:
         model.model_config = model_config
         model.callbacks = CallbackRegistry()
         model.tiling_config = None
-        # Populated by _apply_lora; callbacks (e.g. the stepwise handler) read these.
         model.lora_paths = None
         model.lora_scales = None
 
