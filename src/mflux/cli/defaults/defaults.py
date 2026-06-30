@@ -48,6 +48,8 @@ MODEL_INFERENCE_STEPS = {
     "fibo-edit-rmbg": 10,
     "z-image": 50,
     "z-image-turbo": 9,
+    "krea-2": 8,
+    "krea2": 8,
     "ernie-image-turbo": 8,
     "ernie-image": 50,
     "flux2-klein-4b": 4,

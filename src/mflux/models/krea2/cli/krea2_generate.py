@@ -1,8 +1,4 @@
-"""CLI entry point for Krea-2 text-to-image generation.
-
-Until pre-converted weights are published, pass ``--model-path`` pointing at an
-assembled model dir (``vae/``, ``transformer/``, ``text_encoder/``, ``tokenizer/``).
-"""
+"""CLI entry point for Krea-2 text-to-image generation."""
 
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.parser.parsers import CommandLineParser
@@ -12,9 +8,10 @@ from mflux.models.krea2.variants.txt2img.krea2 import Krea2
 from mflux.utils.exceptions import PromptFileReadError, StopImageGenerationException
 from mflux.utils.prompt_util import PromptUtil
 
-# Krea-2 turbo defaults (reference: 8 steps, CFG 1.0, shift 1.15).
+# Krea-2 turbo defaults (reference: 8 steps, CFG 1.0, er_sde, shift 1.15).
 DEFAULT_STEPS = 8
 DEFAULT_GUIDANCE = 1.0
+DEFAULT_SCHEDULER = "er_sde"
 
 
 def main():
@@ -46,6 +43,7 @@ def main():
     try:
         steps = args.steps if args.steps is not None else DEFAULT_STEPS
         guidance = args.guidance if args.guidance is not None else DEFAULT_GUIDANCE
+        scheduler = args.scheduler if args.scheduler != "linear" else DEFAULT_SCHEDULER
         for seed in args.seed:
             # 3. Generate an image for each seed value
             image = model.generate_image(
@@ -55,6 +53,7 @@ def main():
                 height=args.height,
                 width=args.width,
                 guidance=guidance,
+                scheduler=scheduler,
                 negative_prompt=args.negative_prompt,
             )
             # 4. Save the image
