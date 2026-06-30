@@ -1,12 +1,23 @@
 # Krea 2
 
-This directory contains MFLUX's MLX implementation of **Krea 2** (the
-[`krea/Krea-2-Turbo`](https://huggingface.co/krea/Krea-2-Turbo) release).
+This directory contains MFLUX's MLX implementation of **Krea 2 Turbo**
+([`krea/Krea-2-Turbo`](https://huggingface.co/krea/Krea-2-Turbo)).
 
-Krea 2 is a single-stream MMDiT text-to-image model built on the Qwen-Image
-stack: it reuses the **Qwen-Image VAE** and conditions on a 12-layer hidden-state
-tap from a **Qwen3-VL-4B** text encoder. The Turbo variant is distilled and
-produces high-quality images in 8 steps.
+Krea 2 is Krea.ai's open-weights text-to-image foundation model family — see the
+[Krea 2 technical report](https://www.krea.ai/blog/krea-2-technical-report)
+(released June 2026). The release includes two checkpoints:
+
+- **[Krea 2 Raw](https://huggingface.co/krea/Krea-2-Raw)** — undistilled base for
+  fine-tuning and LoRA training.
+- **Krea 2 Turbo** — timestep-distilled 8-step inference checkpoint (TDM); this
+  is what `mflux-generate-krea2` loads by default.
+
+MFLUX implements Turbo for text-to-image generation. Train LoRAs on Raw and apply
+them on Turbo (Krea's recommended workflow).
+
+Krea 2 is a single-stream MMDiT built on the Qwen-Image stack: it reuses the
+**Qwen-Image VAE** and conditions on a 12-layer hidden-state tap from a
+**Qwen3-VL-4B** text encoder.
 
 ## Example
 
