@@ -48,8 +48,27 @@ flow-matching Euler sampler — which matches the official diffusers
 `FlowMatchEulerDiscreteScheduler` — is available via `--scheduler euler`.
 
 Standard CLI options are supported: `--metadata`, `--stepwise-image-output-dir`,
-`--lora-paths` / `--lora-scales`, and multiple `--seed` values. Image conditioning
-(edit / reference) is not yet implemented.
+`--lora-paths` / `--lora-scales`, `--image` / `--image-path` for img2img, and
+multiple `--seed` values. Krea's vision-tower **style-reference / edit** path (image
+tokens in the text encoder) is not implemented yet.
+
+## Image-to-image
+
+Strength-based img2img via `--image` (or `--image-path` / `--image-strength`). The
+init image is VAE-encoded, noised to the requested strength, then denoised with
+your prompt. This differs from Krea's hosted **style-reference** path, which
+feeds reference images through the Qwen3-VL vision tower.
+
+```sh
+mflux-generate-krea2 \
+  --image path/to/photo.jpg 0.65 \
+  --prompt "a pair of futuristic chrome sunglasses on a marble pedestal" \
+  --steps 8 \
+  -q 8
+```
+
+When `--image` is set, omitted `--width` / `--height` default to the source image
+size (rounded to multiples of 16).
 
 ## LoRA
 

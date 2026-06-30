@@ -176,3 +176,11 @@ class TestKrea2LoRAMapping:
                 if key in matched_keys:
                     break
         return matched_keys
+
+
+@pytest.mark.fast
+def test_krea2_latent_creator_noise_shape():
+    from mflux.models.krea2.latent_creator.krea2_latent_creator import Krea2LatentCreator
+
+    noise = Krea2LatentCreator.create_noise(seed=0, height=1024, width=1024)
+    assert noise.shape == (1, 16, 128, 128)

@@ -5,6 +5,7 @@ from mflux.cli.parser.parsers import CommandLineParser
 from mflux.models.common.config import ModelConfig
 from mflux.models.krea2.latent_creator import Krea2LatentCreator
 from mflux.models.krea2.variants.txt2img.krea2 import Krea2
+from mflux.utils.dimension_resolver import DimensionResolver
 from mflux.utils.exceptions import PromptFileReadError, StopImageGenerationException
 from mflux.utils.prompt_util import PromptUtil
 
@@ -20,7 +21,8 @@ def main():
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
-    parser.add_image_generator_arguments(supports_metadata_config=True)
+    parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
+    parser.add_image_to_image_arguments(required=False)
     parser.add_output_arguments()
     args = parser.parse_args()
 
@@ -44,17 +46,24 @@ def main():
         steps = args.steps if args.steps is not None else DEFAULT_STEPS
         guidance = args.guidance if args.guidance is not None else DEFAULT_GUIDANCE
         scheduler = args.scheduler if args.scheduler != "linear" else DEFAULT_SCHEDULER
+        width, height = DimensionResolver.resolve(
+            width=args.width,
+            height=args.height,
+            reference_image_path=args.image_path,
+        )
         for seed in args.seed:
             # 3. Generate an image for each seed value
             image = model.generate_image(
                 seed=seed,
                 prompt=PromptUtil.read_prompt(args),
                 num_inference_steps=steps,
-                height=args.height,
-                width=args.width,
+                height=height,
+                width=width,
                 guidance=guidance,
                 scheduler=scheduler,
                 negative_prompt=args.negative_prompt,
+                image_path=args.image_path,
+                image_strength=args.image_strength,
             )
             # 4. Save the image
             image.save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)
