@@ -103,22 +103,3 @@ Supported export formats include official Krea (`transformer.*`), diffusers/PEFT
 > Note: Krea 2 Turbo requires downloading model weights (~24 GB for `turbo.safetensors`
 > plus text encoder and VAE). Use `-q 8` or save a quantized copy with `mflux-save`; see
 > [quantization docs](../common/README.md#quantization).
-
-## Notes
-
-- Turbo defaults: 8 steps, guidance 1.0 (CFG off), `er_sde` sampler. The plain
-  flow-matching Euler sampler — matching the official diffusers
-  `FlowMatchEulerDiscreteScheduler` — is available via `--scheduler euler`.
-- For **img2img**, prefer `--scheduler euler`; the default `er_sde` sampler can
-  produce speckle artifacts at partial strength.
-- [`krea/Krea-2-Raw`](https://huggingface.co/krea/Krea-2-Raw) is the undistilled base
-  for fine-tuning and LoRA training. MFLUX implements Turbo inference only; apply
-  LoRAs trained on Raw when generating with Turbo.
-- Krea 2 ships as a diffusers repo whose `transformer/` subdir uses diffusers key names.
-  MFLUX loads the native single-file `turbo.safetensors` from the repo root instead,
-  so the diffusers transformer shards are never downloaded.
-- LoKr adapters with `.magnitude` tensors are only partially applied today.
-- Krea's vision-tower **style-reference / edit** path (image tokens in the text encoder)
-  is not implemented yet.
-- Standard CLI options are supported: `--metadata`, `--stepwise-image-output-dir`,
-  `--lora-paths` / `--lora-scales`, `--image` / `--image-path`, and multiple `--seed` values.
