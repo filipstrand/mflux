@@ -3,7 +3,7 @@ from mlx import nn
 from mlx.core.fast import scaled_dot_product_attention
 
 from mflux.models.krea2.model.krea2_transformer.common import Krea2QKNorm
-from mflux.models.krea2.model.krea2_transformer.rope_embedder import apply_rope
+from mflux.models.krea2.model.krea2_transformer.rope_embedder import Krea2RopeEmbedder
 
 
 class Krea2Attention(nn.Module):
@@ -30,7 +30,7 @@ class Krea2Attention(nn.Module):
 
         q, k = self.qknorm(q, k)
         if freqs is not None:
-            q, k = apply_rope(q, k, freqs)
+            q, k = Krea2RopeEmbedder.apply_rope(q, k, freqs)
 
         if self.kvheads != self.heads:
             rep = self.heads // self.kvheads

@@ -12,19 +12,6 @@ KREA2_TAP_LAYERS: tuple[int, ...] = (2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35
 _IM_START, _USER, _NEWLINE = 151644, 872, 198
 
 
-def _template_end(input_ids: "mx.array") -> int:
-    ids = input_ids[0].tolist()
-    count = 0
-    end = 0
-    for i, tok in enumerate(ids):
-        if tok == _IM_START and count < 2:
-            end = i
-            count += 1
-    if len(ids) > end + 3 and ids[end + 1] == _USER and ids[end + 2] == _NEWLINE:
-        end += 3
-    return end
-
-
 # Same system template as Qwen-Image; the system+user-opening prefix is stripped
 # from the tapped hidden states in get_prompt_embeds (see _template_end).
 KREA2_TEMPLATE = (
@@ -123,5 +110,18 @@ class Krea2TextEncoder(nn.Module):
         embeds = stacked.reshape(b, s, n * h)
         # Strip the system + user-opening chat-template prefix from the conditioning
         # (matches ComfyUI), so only the actual prompt tokens onward condition the DiT.
-        end = _template_end(input_ids)
+        end = Krea2TextEncoder._template_end(input_ids)
         return embeds[:, end:, :]
+
+    @staticmethod
+    def _template_end(input_ids: mx.array) -> int:
+        ids = input_ids[0].tolist()
+        count = 0
+        end = 0
+        for i, tok in enumerate(ids):
+            if tok == _IM_START and count < 2:
+                end = i
+                count += 1
+        if len(ids) > end + 3 and ids[end + 1] == _USER and ids[end + 2] == _NEWLINE:
+            end += 3
+        return end

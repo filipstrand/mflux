@@ -1,9 +1,19 @@
 import mlx.core as mx
 
 
-def flow_sigmas(num_steps: int, shift: float = 1.15) -> mx.array:
-    sigmas = mx.linspace(1.0, 0.0, num_steps + 1)
-    return shift * sigmas / (1.0 + (shift - 1.0) * sigmas)
+class Krea2Sampler:
+    @staticmethod
+    def flow_sigmas(num_steps: int, shift: float = 1.15) -> mx.array:
+        sigmas = mx.linspace(1.0, 0.0, num_steps + 1)
+        return shift * sigmas / (1.0 + (shift - 1.0) * sigmas)
+
+    @staticmethod
+    def make_stepper(name: str, sigmas: mx.array, seed: int):
+        if name == "euler":
+            return EulerStepper(sigmas)
+        if name == "er_sde":
+            return ErSdeStepper(sigmas, seed)
+        raise ValueError(f"Unknown Krea-2 sampler '{name}' (expected 'er_sde' or 'euler').")
 
 
 class EulerStepper:
@@ -69,11 +79,3 @@ class ErSdeStepper:
 
         self._old_denoised = denoised
         return x
-
-
-def make_stepper(name: str, sigmas: mx.array, seed: int):
-    if name == "euler":
-        return EulerStepper(sigmas)
-    if name == "er_sde":
-        return ErSdeStepper(sigmas, seed)
-    raise ValueError(f"Unknown Krea-2 sampler '{name}' (expected 'er_sde' or 'euler').")

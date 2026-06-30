@@ -9,7 +9,7 @@ from mflux.models.common.latent_creator.latent_creator import LatentCreator
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.krea2.krea2_initializer import Krea2Initializer
 from mflux.models.krea2.latent_creator.krea2_latent_creator import Krea2LatentCreator
-from mflux.models.krea2.model.krea2_sampler import flow_sigmas, make_stepper
+from mflux.models.krea2.model.krea2_sampler import Krea2Sampler
 from mflux.models.krea2.model.krea2_text_encoder.prompt_encoder import Krea2PromptEncoder
 from mflux.models.krea2.model.krea2_text_encoder.text_encoder import Krea2TextEncoder
 from mflux.models.krea2.model.krea2_transformer.transformer import Krea2Transformer
@@ -69,7 +69,7 @@ class Krea2(nn.Module):
             image_strength=image_strength,
         )
 
-        sigmas = flow_sigmas(config.num_inference_steps, self.model_config.sigma_max_shift)
+        sigmas = Krea2Sampler.flow_sigmas(config.num_inference_steps, self.model_config.sigma_max_shift)
         latents = self._prepare_latents(seed=seed, config=config, sigmas=sigmas)
         embeds, neg_embeds = self._encode_prompts(
             prompt=prompt,
@@ -80,7 +80,7 @@ class Krea2(nn.Module):
         if neg_embeds is not None:
             mx.eval(neg_embeds)
 
-        stepper = make_stepper(sampler_name, sigmas, seed)
+        stepper = Krea2Sampler.make_stepper(sampler_name, sigmas, seed)
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
         predict = self._predict(self.transformer, embeds, neg_embeds, guidance)

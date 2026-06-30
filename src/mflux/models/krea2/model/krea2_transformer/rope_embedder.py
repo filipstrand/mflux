@@ -27,10 +27,10 @@ class Krea2RopeEmbedder(nn.Module):
         stacked = mx.stack([cos, -sin, sin, cos], axis=-1)
         return mx.reshape(stacked, (*pos.shape, dim // 2, 2, 2))
 
-
-def apply_rope(xq: mx.array, xk: mx.array, freqs_cis: mx.array) -> tuple[mx.array, mx.array]:
-    xq_ = xq.astype(mx.float32).reshape(*xq.shape[:-1], -1, 1, 2)
-    xk_ = xk.astype(mx.float32).reshape(*xk.shape[:-1], -1, 1, 2)
-    xq_out = freqs_cis[..., 0] * xq_[..., 0] + freqs_cis[..., 1] * xq_[..., 1]
-    xk_out = freqs_cis[..., 0] * xk_[..., 0] + freqs_cis[..., 1] * xk_[..., 1]
-    return xq_out.reshape(*xq.shape), xk_out.reshape(*xk.shape)
+    @staticmethod
+    def apply_rope(xq: mx.array, xk: mx.array, freqs_cis: mx.array) -> tuple[mx.array, mx.array]:
+        xq_ = xq.astype(mx.float32).reshape(*xq.shape[:-1], -1, 1, 2)
+        xk_ = xk.astype(mx.float32).reshape(*xk.shape[:-1], -1, 1, 2)
+        xq_out = freqs_cis[..., 0] * xq_[..., 0] + freqs_cis[..., 1] * xq_[..., 1]
+        xk_out = freqs_cis[..., 0] * xk_[..., 0] + freqs_cis[..., 1] * xk_[..., 1]
+        return xq_out.reshape(*xq.shape), xk_out.reshape(*xk.shape)

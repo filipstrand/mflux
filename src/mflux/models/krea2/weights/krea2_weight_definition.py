@@ -8,21 +8,17 @@ from mflux.models.common.weights.loading.weight_definition import ComponentDefin
 from mflux.models.krea2.model.krea2_text_encoder.text_encoder import KREA2_TEMPLATE
 from mflux.models.krea2.weights.krea2_weight_mapping import Krea2WeightMapping
 
-# The official Krea-2-Turbo TE uses `language_model.*`; the standalone
-# Qwen/Qwen3-VL-4B-Instruct repo uses `model.language_model.*`. Accept both.
-_TE_PREFIXES = ("model.language_model.", "language_model.")
-
-
-def _strip_te_prefix(key: str) -> str | None:
-    # Keep only the Qwen3-VL language model and strip its prefix so keys match the
-    # flat Krea2TextEncoder module (embed_tokens / layers.N / norm). Drops vision keys.
-    for prefix in _TE_PREFIXES:
-        if key.startswith(prefix):
-            return key[len(prefix) :]
-    return None
-
 
 class Krea2WeightDefinition:
+    _TE_PREFIXES = ("model.language_model.", "language_model.")
+
+    @staticmethod
+    def strip_te_prefix(key: str) -> str | None:
+        for prefix in Krea2WeightDefinition._TE_PREFIXES:
+            if key.startswith(prefix):
+                return key[len(prefix) :]
+        return None
+
     @staticmethod
     def get_components() -> List[ComponentDefinition]:
         return [
@@ -51,7 +47,7 @@ class Krea2WeightDefinition:
                 precision=mx.bfloat16,
                 skip_quantization=True,  # quantizing the TE degrades conditioning
                 mapping_getter=None,  # direct load; key_transform strips prefix to match module paths
-                key_transform=_strip_te_prefix,
+                key_transform=Krea2WeightDefinition.strip_te_prefix,
             ),
         ]
 

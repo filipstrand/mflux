@@ -4,11 +4,7 @@ from mlx import nn
 from mflux.models.krea2.model.krea2_transformer.final_layer import LastLayer
 from mflux.models.krea2.model.krea2_transformer.rope_embedder import Krea2RopeEmbedder
 from mflux.models.krea2.model.krea2_transformer.text_fusion import TextFusionTransformer
-from mflux.models.krea2.model.krea2_transformer.timestep_embedder import (
-    Krea2TimestepMLP,
-    Krea2TimestepProj,
-    timestep_embedding,
-)
+from mflux.models.krea2.model.krea2_transformer.timestep_embedder import Krea2TimestepMLP, Krea2TimestepProj
 from mflux.models.krea2.model.krea2_transformer.transformer_block import SingleStreamBlock
 
 
@@ -60,7 +56,7 @@ class Krea2Transformer(nn.Module):
         bs, c, H_orig, W_orig = hidden_states.shape
         patch = self.patch
 
-        x = _pad_to_multiple(hidden_states, patch)
+        x = Krea2Transformer._pad_to_multiple(hidden_states, patch)
         H, W = x.shape[-2], x.shape[-1]
         h_, w_ = H // patch, W // patch
 
@@ -70,7 +66,7 @@ class Krea2Transformer(nn.Module):
         img = x.reshape(bs, c, h_, patch, w_, patch).transpose(0, 2, 4, 1, 3, 5).reshape(bs, h_ * w_, c * patch * patch)
         img = self.first(img)
 
-        t = self.tmlp(timestep_embedding(timestep, self.tdim)[:, None, :].astype(img.dtype))
+        t = self.tmlp(Krea2TimestepMLP.timestep_embedding(timestep, self.tdim)[:, None, :].astype(img.dtype))
         tvec = self.tproj(t)
 
         context = self.txtfusion(context, mask=None)
@@ -107,6 +103,15 @@ class Krea2Transformer(nn.Module):
             )
         return context.reshape(b, seq, self.txtlayers, self.txtdim)
 
+    @staticmethod
+    def _pad_to_multiple(x: mx.array, patch: int) -> mx.array:
+        H, W = x.shape[-2], x.shape[-1]
+        pad_h = (patch - H % patch) % patch
+        pad_w = (patch - W % patch) % patch
+        if pad_h == 0 and pad_w == 0:
+            return x
+        return mx.pad(x, [(0, 0), (0, 0), (0, pad_h), (0, pad_w)])
+
 
 class _TextMLP(nn.Module):
     def __init__(self, txtdim: int, features: int):
@@ -119,12 +124,3 @@ class _TextMLP(nn.Module):
 
     def __call__(self, x: mx.array) -> mx.array:
         return self.linear_out(nn.gelu_approx(self.linear_in(self.norm(x))))
-
-
-def _pad_to_multiple(x: mx.array, patch: int) -> mx.array:
-    H, W = x.shape[-2], x.shape[-1]
-    pad_h = (patch - H % patch) % patch
-    pad_w = (patch - W % patch) % patch
-    if pad_h == 0 and pad_w == 0:
-        return x
-    return mx.pad(x, [(0, 0), (0, 0), (0, pad_h), (0, pad_w)])
