@@ -101,6 +101,11 @@ class Ideogram4Initializer:
 
     @staticmethod
     def _apply_lora(model, lora_paths: list[str] | None, lora_scales: list[float] | None) -> None:
+        # Apply ONLY to the conditional transformer. The unconditional transformer is a
+        # DIFFERENT (distilled) model: a LoRA trained against the conditional's weights pushes
+        # it off-distribution, and CFG then amplifies that corrupted negative by the guidance
+        # factor (output degrades into a patch mosaic at any guidance > 1). With a LoRA active,
+        # generation routes the CFG negative through the (LoRA'd) conditional transformer.
         lora_mapping = Ideogram4LoRAMapping.get_mapping()
         model.lora_paths, model.lora_scales = LoRALoader.load_and_apply_lora(
             lora_mapping=lora_mapping,
@@ -108,16 +113,6 @@ class Ideogram4Initializer:
             lora_paths=lora_paths,
             lora_scales=lora_scales,
         )
-        if not model.lora_paths:
-            return
-        for lora_file, scale in zip(model.lora_paths, model.lora_scales):
-            LoRALoader._apply_single_lora(
-                model.unconditional_transformer,
-                lora_file,
-                scale,
-                lora_mapping,
-                role=None,
-            )
 
     @staticmethod
     def _text_encoder_kwargs(directory: Path) -> dict[str, Any]:
