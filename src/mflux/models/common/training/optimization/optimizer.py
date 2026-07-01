@@ -15,6 +15,8 @@ from mflux.models.common.training.state.zip_util import ZipUtil
 class Optimizers(Enum):
     ADAM = ("Adam", optim.Adam)
     ADAMW = ("AdamW", optim.AdamW)
+    ADAFACTOR = ("Adafactor", optim.Adafactor)  # ~half the optimizer state of Adam (memory-light)
+    LION = ("Lion", optim.Lion)
 
     def __init__(self, alias: str, optimizer: mlx.optimizers.Optimizer):
         self.alias = alias
