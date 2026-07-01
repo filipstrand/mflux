@@ -77,6 +77,12 @@ class WeightLoader:
         component: ComponentDefinition,
         raw_weights_cache: dict[tuple, dict] | None = None,
     ) -> tuple[dict, int | None, str | None]:
+        # Some components are distributed in more than one on-disk layout (e.g. a native
+        # single-file checkpoint vs a diffusers sharded directory with different keys).
+        # Let the component pick the concrete definition based on what is present on disk.
+        if component.variant_selector is not None and root_path is not None:
+            component = component.variant_selector(root_path)
+
         # Handle direct URL downloads (e.g., Apple CDN for DepthPro)
         if component.download_url is not None:
             file_path = WeightLoader._download_from_url(component.download_url, component.name)

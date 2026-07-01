@@ -106,6 +106,42 @@ Supported export formats include official Krea (`transformer.*`), diffusers/PEFT
 
 ## Training
 
-`mflux-train` does not support Krea 2 yet. Train LoRAs on
-[`krea/Krea-2-Raw`](https://huggingface.co/krea/Krea-2-Raw) with external tooling, then
-apply them at inference with `--lora-paths` on Turbo.
+Train a LoRA on **Krea 2 Raw** ([`krea/Krea-2-Raw`](https://huggingface.co/krea/Krea-2-Raw)),
+the base checkpoint Krea recommends for finetuning, then run the trained adapter on Turbo. Pass a
+config to `mflux-train`; for the images/captions folder layout see the common
+[training docs](../common/README.md#training-lora).
+
+```sh
+mflux-train --config /path/to/train.json
+```
+
+A minimal config (QLoRA over the q8 base, attention + MLP on all 28 blocks):
+
+```json
+{
+  "model": "krea-2-raw",
+  "data": "/path/to/images",
+  "seed": 42,
+  "steps": 20,
+  "guidance": 0.0,
+  "quantize": 8,
+  "max_resolution": 512,
+  "training_loop": { "num_epochs": 16, "batch_size": 1 },
+  "optimizer": { "name": "AdamW", "learning_rate": 2e-4 },
+  "checkpoint": { "output_path": "output", "save_frequency": 96 },
+  "lora_layers": { "targets": [
+    { "module_path": "transformer_blocks.{block}.attn.to_q",     "blocks": { "start": 0, "end": 28 }, "rank": 16 },
+    { "module_path": "transformer_blocks.{block}.attn.to_k",     "blocks": { "start": 0, "end": 28 }, "rank": 16 },
+    { "module_path": "transformer_blocks.{block}.attn.to_v",     "blocks": { "start": 0, "end": 28 }, "rank": 16 },
+    { "module_path": "transformer_blocks.{block}.attn.to_out.0", "blocks": { "start": 0, "end": 28 }, "rank": 16 },
+    { "module_path": "transformer_blocks.{block}.ff.gate",       "blocks": { "start": 0, "end": 28 }, "rank": 16 },
+    { "module_path": "transformer_blocks.{block}.ff.up",         "blocks": { "start": 0, "end": 28 }, "rank": 16 },
+    { "module_path": "transformer_blocks.{block}.ff.down",       "blocks": { "start": 0, "end": 28 }, "rank": 16 }
+  ] }
+}
+```
+
+Captions come from a sibling `.txt` per image (plain text, or an Ideogram-style JSON object whose
+`high_level_description` is used). The base is quantized and only the LoRA trains over it (QLoRA),
+with gradient checkpointing across the 28 blocks to keep memory in range. The trained adapter
+loads on Turbo with `--lora-paths` (see [LoRA](#lora) above), Krea's recommended workflow.

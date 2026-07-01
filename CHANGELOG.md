@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🎨 New Model Support
 
 - **Krea 2**: Add text-to-image support for `krea/Krea-2-Turbo` — a single-stream MMDiT built on the Qwen-Image stack (Qwen-Image VAE + a 12-layer Qwen3-VL-4B text-encoder tap). Includes the `mflux-generate-krea2` CLI (live progress, `--metadata`, stepwise output), `er_sde` and Euler samplers, and `mflux-save` quantization caching.
+- **Krea 2 Raw + LoRA training**: Add `krea/Krea-2-Raw` as a trainable base and `mflux-train` LoRA training for Krea 2 (flow-matching velocity, QLoRA over the quantized base, gradient checkpointing across the 28 blocks). The transformer also loads from the diffusers `transformer/` shard layout in addition to the native single-file checkpoint, and the official `krea/Krea-2-LoRA-*` adapters load as-is. Train on Raw, run the adapter on Turbo (Krea's recommended workflow). (#462)
 
 ### ✨ Improvements
 

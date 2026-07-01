@@ -84,8 +84,13 @@ class Krea2Transformer(nn.Module):
         pos = mx.concatenate([txtpos, imgpos], axis=1)
         freqs = self.pe_embedder(pos)
 
+        # Optional gradient checkpointing: recompute each block in backward instead of storing its
+        # activations, trading compute for a large drop in peak memory during training. Off by
+        # default, so inference is unaffected; the training adapter turns it on.
+        gradient_checkpointing = getattr(self, "gradient_checkpointing", False)
         for block in self.blocks:
-            combined = block(combined, tvec, freqs, attention_mask)
+            run = nn.utils.checkpoint(block) if gradient_checkpointing else block
+            combined = run(combined, tvec, freqs, attention_mask)
 
         final = self.last(combined, t)
         out = final[:, txtlen : txtlen + imglen, :]

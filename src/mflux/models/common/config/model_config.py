@@ -140,6 +140,11 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
+    def krea2_raw() -> "ModelConfig":
+        return AVAILABLE_MODELS["krea-2-raw"]
+
+    @staticmethod
+    @lru_cache
     def qwen_image() -> "ModelConfig":
         return AVAILABLE_MODELS["qwen-image"]
 
@@ -227,6 +232,21 @@ AVAILABLE_MODELS = {
         priority=15,
         aliases=["krea-2", "krea2"],
         model_name="krea/Krea-2-Turbo",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=None,
+        max_sequence_length=1024,
+        supports_guidance=True,
+        requires_sigma_shift=True,
+        sigma_max_shift=1.15,
+    ),
+    "krea-2-raw": ModelConfig(
+        # Krea 2 Raw: the base checkpoint. Krea recommends it as the base for finetuning /
+        # training LoRAs (Turbo is the distilled inference checkpoint). Same architecture as Turbo.
+        priority=15,
+        aliases=["krea-2-raw", "krea2-raw"],
+        model_name="krea/Krea-2-Raw",
         base_model=None,
         controlnet_model=None,
         custom_transformer_model=None,
