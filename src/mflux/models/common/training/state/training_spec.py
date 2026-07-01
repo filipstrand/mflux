@@ -116,6 +116,9 @@ class LoraTargetSpec:
     module_path: str
     rank: int
     blocks: BlockRange | None = None
+    # LoRA alpha; effective scale = alpha / rank (published-recipe convention).
+    # None keeps the prior behavior (scale = 1.0).
+    alpha: float | None = None
 
 
 @dataclass
@@ -373,6 +376,7 @@ class TrainingSpec:
                     module_path=t["module_path"],
                     rank=t["rank"],
                     blocks=blocks,
+                    alpha=t.get("alpha"),
                 )
             )
 
