@@ -21,6 +21,8 @@ class ImageGeneratorKrea2TestHelper:
         quantize: int | None = 8,
         guidance: float = 1.0,
         scheduler: str | None = None,
+        model_config: ModelConfig | None = None,
+        model_path: str | None = None,
         mismatch_threshold: float | None = None,
     ) -> None:
         reference_image_path = ImageGeneratorKrea2TestHelper.resolve_path(reference_image_path)
@@ -28,8 +30,9 @@ class ImageGeneratorKrea2TestHelper:
 
         try:
             model = Krea2(
-                model_config=ModelConfig.krea2(),
+                model_config=model_config or ModelConfig.krea2(),
                 quantize=quantize,
+                model_path=model_path,
             )
             image = model.generate_image(
                 seed=seed,
