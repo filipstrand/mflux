@@ -229,6 +229,10 @@ class TrainingSpec:
     checkpoint_path: str | None = None
     # If true, training will use a disk-backed cache for encoded data to reduce RAM usage.
     low_ram: bool = False
+    # Cap (in GB) on MLX's buffer-cache pool (mx.set_cache_limit). The pool otherwise grows
+    # to hold the largest transient allocations seen; bounding it returns freed buffers to
+    # the OS at ~no speed cost (unlike low_ram's clear-every-step). None = MLX default.
+    cache_limit_gb: float | None = None
 
     @staticmethod
     def resolve(
@@ -286,6 +290,11 @@ class TrainingSpec:
         low_ram = bool(config.get("low_ram", False))
         if low_ram and data_root_dir is None:
             raise ValueError("'low_ram' requires a valid data path.")
+
+        cache_limit_raw = config.get("cache_limit_gb", None)
+        cache_limit_gb = None if cache_limit_raw is None else float(cache_limit_raw)
+        if cache_limit_gb is not None and cache_limit_gb <= 0:
+            raise ValueError("'cache_limit_gb' must be > 0")
 
         monitoring_conf = config.get("monitoring", None)
         preview_prompt_paths: list[Path] = []
@@ -424,6 +433,7 @@ class TrainingSpec:
             data_root=str(data_root_dir.resolve()),
             config_path=None if absolute_config_path is None else str(absolute_config_path),
             low_ram=low_ram,
+            cache_limit_gb=cache_limit_gb,
         )
 
     @staticmethod
