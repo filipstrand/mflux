@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List
 
 import mlx.core as mx
@@ -29,9 +30,11 @@ class Krea2WeightDefinition:
                 mapping_getter=Krea2WeightMapping.get_vae_mapping,
             ),
             ComponentDefinition(
-                # The official repo's transformer/ subdir is diffusers-format (different
-                # keys). We load the native single-file turbo.safetensors from the repo
-                # root instead (hf_subdir="" -> the model root), which matches our mapping.
+                # Two transformer layouts are supported, chosen at load time by
+                # _select_transformer_variant: the native single-file turbo.safetensors
+                # at the repo root, or the official diffusers transformer/ shard dir
+                # (different keys -> a different mapping). The static fields below match
+                # the native layout (what the saver/applier see).
                 name="transformer",
                 hf_subdir="",
                 loading_mode="mlx_native",
@@ -39,6 +42,7 @@ class Krea2WeightDefinition:
                 precision=ModelConfig.precision,
                 mapping_getter=Krea2WeightMapping.get_transformer_mapping,
                 num_layers=28,
+                variant_selector=Krea2WeightDefinition._select_transformer_variant,
             ),
             ComponentDefinition(
                 name="text_encoder",
@@ -50,6 +54,43 @@ class Krea2WeightDefinition:
                 key_transform=Krea2WeightDefinition.strip_te_prefix,
             ),
         ]
+
+    @staticmethod
+    def _native_transformer() -> ComponentDefinition:
+        return ComponentDefinition(
+            name="transformer",
+            hf_subdir="",
+            loading_mode="mlx_native",
+            weight_files=["turbo.safetensors"],
+            precision=ModelConfig.precision,
+            mapping_getter=Krea2WeightMapping.get_transformer_mapping,
+            num_layers=28,
+        )
+
+    @staticmethod
+    def _diffusers_transformer() -> ComponentDefinition:
+        return ComponentDefinition(
+            name="transformer",
+            hf_subdir="transformer",
+            loading_mode="mlx_native",  # globs the transformer/*.safetensors shards
+            precision=ModelConfig.precision,
+            mapping_getter=Krea2WeightMapping.get_transformer_mapping_diffusers,
+            num_layers=28,
+        )
+
+    @staticmethod
+    def _select_transformer_variant(root_path: Path) -> ComponentDefinition:
+        # Prefer a native single-file checkpoint when present (unchanged behavior);
+        # otherwise fall back to the diffusers transformer/ shard directory.
+        for native_file in ("turbo.safetensors", "raw.safetensors"):
+            if (root_path / native_file).exists():
+                component = Krea2WeightDefinition._native_transformer()
+                component.weight_files = [native_file]
+                return component
+        if (root_path / "transformer").is_dir():
+            return Krea2WeightDefinition._diffusers_transformer()
+        # Nothing recognized: keep native so the missing-file error stays clear.
+        return Krea2WeightDefinition._native_transformer()
 
     @staticmethod
     def get_tokenizers() -> List[TokenizerDefinition]:

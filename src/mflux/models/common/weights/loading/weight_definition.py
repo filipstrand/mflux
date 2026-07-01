@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable, List, TypeAlias
 
 import mlx.core as mx
@@ -46,6 +47,10 @@ class ComponentDefinition:
     weight_files: List[str] | None = None  # Specific files to load (if None, loads all *.safetensors)
     key_transform: Callable[[str], str | None] | None = None
     weight_transform: Callable[[str, mx.array], mx.array] | None = None
+    # Picks a concrete component definition from what is on disk at the resolved root
+    # path. Lets a single component support more than one storage layout (e.g. a native
+    # single-file checkpoint vs a diffusers sharded directory with different keys).
+    variant_selector: Callable[[Path], "ComponentDefinition"] | None = None
 
 
 @dataclass
