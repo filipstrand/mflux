@@ -1070,7 +1070,7 @@ def mflux_qwen_edit_parser() -> CommandLineParser:
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
-    parser.add_image_generator_arguments(supports_metadata_config=True)
+    parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
     parser.add_argument("--image-paths", type=Path, nargs="+", required=True, help="Local paths to init images")
     parser.add_output_arguments()
     return parser
@@ -1089,6 +1089,8 @@ def test_qwen_edit_args(mflux_qwen_edit_parser, mflux_qwen_edit_minimal_argv):
         assert args.prompt == "make it blue"
         assert len(args.image_paths) == 1
         assert args.image_paths[0] == Path("image1.png")
+        assert args.width == ScaleFactor(1)
+        assert args.height == ScaleFactor(1)
 
     # Test with multiple images
     with patch(
@@ -1102,6 +1104,12 @@ def test_qwen_edit_args(mflux_qwen_edit_parser, mflux_qwen_edit_minimal_argv):
     # Test missing required image-paths
     with patch("sys.argv", ["mflux-generate-qwen-edit", "--prompt", "test"]):
         pytest.raises(SystemExit, mflux_qwen_edit_parser.parse_args)
+
+    # Test explicit scale factors
+    with patch("sys.argv", mflux_qwen_edit_minimal_argv + ["--width", "2x", "--height", "1.5x"]):
+        args = mflux_qwen_edit_parser.parse_args()
+        assert args.width == ScaleFactor(2)
+        assert args.height == ScaleFactor(1.5)
 
 
 # ============================================================================

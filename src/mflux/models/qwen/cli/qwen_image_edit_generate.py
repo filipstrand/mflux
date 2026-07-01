@@ -3,9 +3,11 @@ from pathlib import Path
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.defaults import defaults as ui_defaults
 from mflux.cli.parser.parsers import CommandLineParser
+from mflux.models.common.config import ModelConfig
 from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
 from mflux.models.qwen.variants.edit.qwen_image_edit import QwenImageEdit
-from mflux.utils.exceptions import PromptFileReadError, StopImageGenerationException
+from mflux.utils.dimension_resolver import DimensionResolver
+from mflux.utils.exceptions import ModelConfigError, PromptFileReadError, StopImageGenerationException
 from mflux.utils.prompt_util import PromptUtil
 
 
@@ -15,7 +17,7 @@ def main():
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False)
     parser.add_lora_arguments()
-    parser.add_image_generator_arguments(supports_metadata_config=True)
+    parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
     parser.add_argument("--image-paths", type=Path, nargs="+", required=True, help="Local paths to one or more init images. For single image editing, provide one path. For multiple image editing, provide multiple paths.")  # fmt: off
     parser.add_output_arguments()
     args = parser.parse_args()
@@ -25,8 +27,17 @@ def main():
         args.guidance = ui_defaults.GUIDANCE_SCALE_KONTEXT
 
     # 1. Load the model
+    model_config = ModelConfig.qwen_image_edit()
+    if args.model is not None:
+        try:
+            model_config = ModelConfig.from_name(args.model)
+        except ModelConfigError:
+            if args.model_path is None:
+                raise
+
     qwen = QwenImageEdit(
         quantize=args.quantize,
+        model_config=model_config,
         model_path=args.model_path,
         lora_paths=args.lora_paths,
         lora_scales=args.lora_scales,
@@ -40,21 +51,27 @@ def main():
     )
 
     try:
-        for seed in args.seed:
-            # 3. Prepare image paths
-            image_paths = [str(p) for p in args.image_paths]
+        # 3. Prepare image paths and resolve dimensions against the source image by default.
+        image_paths = [str(p) for p in args.image_paths]
+        width, height = DimensionResolver.resolve(
+            width=args.width,
+            height=args.height,
+            reference_image_path=image_paths[0],
+        )
 
+        for seed in args.seed:
             # 4. Generate an image for each seed value
             image = qwen.generate_image(
                 seed=seed,
                 prompt=PromptUtil.read_prompt(args),
                 negative_prompt=PromptUtil.read_negative_prompt(args),
-                width=args.width,
-                height=args.height,
+                width=width,
+                height=height,
                 guidance=args.guidance,
                 image_path=image_paths[0],  # Use first image for metadata
                 image_paths=image_paths,
                 num_inference_steps=args.steps,
+                scheduler=args.scheduler,
             )
 
             # 5. Save the image
