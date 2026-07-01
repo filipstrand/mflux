@@ -7,7 +7,8 @@ from pathlib import Path
 
 import mlx.core as mx
 from mlx import nn
-from mlx.utils import tree_unflatten
+from mlx.optimizers import clip_grad_norm
+from mlx.utils import tree_map, tree_unflatten
 from PIL import Image as PILImage
 from tqdm import tqdm
 
@@ -137,11 +138,33 @@ class TrainingTrainer:
             initial=training_state.iterator.num_iterations,
         )
 
+        max_grad_norm = training_spec.optimizer.max_grad_norm
+        accum_steps = max(1, training_spec.optimizer.gradient_accumulation_steps)
+        accumulated_grads = None
         for batch in batches:
             loss, grads = train_step_function(batch)
-            training_state.optimizer.optimizer.update(model=adapter.model(), gradients=grads)
-            mx.eval(adapter.model().parameters(), training_state.optimizer.optimizer.state)
-            del loss, grads
+            del loss
+
+            # Gradient accumulation: average grads across accum_steps micro-batches and only step
+            # the optimizer on the window boundary, for an effective batch of batch_size *
+            # accum_steps. num_iterations counts micro-batches, so the boundary is every
+            # accum_steps of them; bookkeeping below still runs each iteration on valid weights.
+            at_step_boundary = training_state.iterator.num_iterations % accum_steps == 0
+            if accum_steps > 1:
+                grads = tree_map(lambda g: g / accum_steps, grads)
+                if accumulated_grads is not None:
+                    grads = tree_map(lambda a, g: a + g, accumulated_grads, grads)
+                accumulated_grads = None if at_step_boundary else grads
+
+            if accum_steps == 1 or at_step_boundary:
+                if max_grad_norm is not None:
+                    grads, _ = clip_grad_norm(grads, max_grad_norm)
+                training_state.optimizer.optimizer.update(model=adapter.model(), gradients=grads)
+                mx.eval(adapter.model().parameters(), training_state.optimizer.optimizer.state)
+            else:
+                # Keep the partial sum materialized so the graph doesn't grow across the window.
+                mx.eval(accumulated_grads)
+            del grads
 
             if training_state.should_plot_loss(training_spec):
                 validation_batch = training_state.iterator.get_validation_batch()
