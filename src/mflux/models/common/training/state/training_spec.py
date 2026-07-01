@@ -44,7 +44,7 @@ class DataSpec:
                 base_path=base_path,
             )
             try:
-                prompt = prompt_path.read_text(encoding="utf-8").strip()
+                prompt = prompt_path.read_text(encoding="utf-8", errors="replace").strip()
             except FileNotFoundError as e:
                 raise ValueError(f"Prompt file not found: {prompt_path}") from e
         else:
@@ -445,7 +445,7 @@ class TrainingSpec:
 
     @staticmethod
     def _load_preview_prompts(prompt_paths: list[Path]) -> list[str]:
-        return [path.read_text(encoding="utf-8").strip() for path in prompt_paths]
+        return [path.read_text(encoding="utf-8", errors="replace").strip() for path in prompt_paths]
 
     @staticmethod
     def _find_preview_images_in_data(root_dir: Path) -> dict[str, Path]:
