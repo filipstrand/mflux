@@ -90,7 +90,7 @@ mflux-generate-qwen-2.1-edit \
 
 - The checkpoint stores its 8 sigma values in `model_index.json` (`sample_sigmas`). mflux uses these values without a resolution shift, as the reference pipeline does. The default `linear` scheduler selects this schedule for the Turbo model.
 - Use 1024 px or larger. At small sizes such as 512×320, Turbo turns fine detail into a pixel grid. The diffusers reference does the same.
-- The defaults are 8 steps and guidance 1. Other values for `--steps` or `--guidance`, and `--scheduler viggle_turbo`, stop with an error before the model loads.
+- The defaults are 8 steps and guidance 1. `--steps` accepts any count: other counts sample the 8-node curve at evenly spaced points. Other values for `--guidance`, and `--scheduler viggle_turbo`, stop with an error before the model loads.
 - ControlNet: `mflux-generate-qwen-2.1-controlnet --model qwen-image-2.1-turbo-controlnet` runs the Fun ControlNet-Union on the Turbo checkpoint in 8 steps. alibaba-pai trained the branch with the base model. In a canny test at 1280×768, the Turbo output followed the edges as closely as the base model at 20 steps.
 - LoRAs for Qwen-Image-2.1 load on the Turbo checkpoint. The ausboss Outpaint LoRA v2 kept the original picture in place (kept-area PSNR 37.8 dB, against 20.7 dB without the LoRA). The ausboss Consistency LoRA kept the framing of a watercolor edit.
 - Weights: about 32 GB bf16 on disk (14.2 GB transformer, 17.5 GB text encoder in one file, 0.7 GB VAE). A q8 save from the edit command is 17 GB (measured with `du`). That command quantizes the text encoder too.

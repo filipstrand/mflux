@@ -82,10 +82,14 @@ def test_euler_step_between_nodes():
 
 
 @pytest.mark.fast
-def test_rejects_other_step_counts():
-    config = Config(model_config=ModelConfig.qwen_image_21_turbo(), num_inference_steps=40, width=1024, height=1024)
-    with pytest.raises(ValueError, match="8 saved sigma nodes"):
-        Qwen21TurboScheduler(config)
+@pytest.mark.parametrize("steps", [1, 4, 40, 100])
+def test_other_step_counts_sample_the_same_curve(steps):
+    config = Config(model_config=ModelConfig.qwen_image_21_turbo(), num_inference_steps=steps, width=1024, height=1024)
+    sigmas = Qwen21TurboScheduler(config).sigmas
+    assert sigmas.shape == (steps + 1,)
+    assert float(sigmas[0]) == pytest.approx(1.0)
+    assert float(sigmas[-1]) == 0.0
+    assert bool((sigmas[1:] <= sigmas[:-1]).all())
 
 
 def _check(monkeypatch, module, *argv):
@@ -109,7 +113,6 @@ def test_cli_defaults_pass(monkeypatch, module):
 @pytest.mark.parametrize(
     "argv,message",
     [
-        (("--steps", "20"), "Use --steps 8"),
         (("--guidance", "4"), "Use --guidance 1"),
         (("--scheduler", "viggle_turbo", "--steps", "8"), "viggle_turbo"),
     ],
@@ -170,7 +173,7 @@ def test_local_checkpoint_with_turbo_base_is_turbo():
 @pytest.mark.fast
 @pytest.mark.parametrize(
     "steps, guidance, scheduler, match",
-    [(20, 1.0, "linear", "8 fixed sigma nodes"), (8, 4.0, "linear", "without CFG"), (6, 1.0, "viggle_turbo", "sigma")],
+    [(8, 4.0, "linear", "without CFG"), (6, 1.0, "viggle_turbo", "own schedule")],
 )
 def test_python_api_rejects_settings_outside_the_turbo_recipe(steps, guidance, scheduler, match):
     turbo = ModelConfig.qwen_image_21_turbo()
@@ -230,9 +233,10 @@ def test_turbo_controlnet_entry_runs_on_the_turbo_schedule():
 def test_controlnet_cli_checks_the_turbo_entry(monkeypatch, capsys):
     args = _check(monkeypatch, qwen21_controlnet_generate, "--model", "qwen-image-2.1-turbo-controlnet")
     assert args.steps == 8
-    with pytest.raises(SystemExit):
-        _check(monkeypatch, qwen21_controlnet_generate, "--model", "qwen-image-2.1-turbo-controlnet", "--steps", "20")
-    assert "Use --steps 8" in capsys.readouterr().err
+    args = _check(
+        monkeypatch, qwen21_controlnet_generate, "--model", "qwen-image-2.1-turbo-controlnet", "--steps", "20"
+    )
+    assert args.steps == 20
 
 
 @pytest.mark.fast

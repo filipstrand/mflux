@@ -1,4 +1,5 @@
 import mlx.core as mx
+import numpy as np
 
 from mflux.models.common.schedulers import register_contrib
 from mflux.models.common.schedulers.base_scheduler import BaseScheduler
@@ -83,9 +84,8 @@ class Qwen21TurboScheduler(BaseScheduler):
 
     The checkpoint saves its sigma nodes as `sample_sigmas` in model_index.json, and its
     scheduler config turns dynamic shifting off (shift 1.0, no shift_terminal). So this
-    scheduler uses the nodes raw, with no resolution shift and no terminal rescale. The reference
-    pipeline uses these nodes whatever num_inference_steps is, so any other step count
-    is an error here. step() is the same first-order Euler update LinearScheduler uses.
+    scheduler uses the nodes raw, with no resolution shift and no terminal rescale. Other step
+    counts sample the same curve at evenly spaced points. step() is the same first-order Euler update LinearScheduler uses.
 
     The Turbo model selects this schedule for the default "linear" scheduler name. See
     for_model().
@@ -96,12 +96,14 @@ class Qwen21TurboScheduler(BaseScheduler):
     def __init__(self, config):
         self.config = config
         steps = config.num_inference_steps
-        if steps != len(self.SIGMA_NODES):
-            raise ValueError(
-                f"Qwen-Image-2.1-Turbo samples on its {len(self.SIGMA_NODES)} saved sigma nodes, "
-                f"but num_inference_steps is {steps}. Use {len(self.SIGMA_NODES)} steps."
-            )
-        self._sigmas = mx.array([*self.SIGMA_NODES, 0.0], dtype=mx.float32)
+        # 8 steps use the saved nodes as they are. Other counts sample the same curve (the nodes
+        # plus the terminal 0) at evenly spaced points.
+        nodes = [*self.SIGMA_NODES, 0.0]
+        if steps == len(self.SIGMA_NODES):
+            sigmas = nodes
+        else:
+            sigmas = np.interp(np.linspace(0.0, 1.0, steps + 1), np.linspace(0.0, 1.0, len(nodes)), nodes)
+        self._sigmas = mx.array(sigmas, dtype=mx.float32)
         self._timesteps = mx.arange(steps, dtype=mx.float32)
 
     @staticmethod
@@ -118,9 +120,6 @@ class Qwen21TurboScheduler(BaseScheduler):
         # The Python API form of check_args: generate_image calls it before it encodes the prompt.
         if not Qwen21TurboScheduler.is_turbo(model_config):
             return
-        nodes = len(Qwen21TurboScheduler.SIGMA_NODES)
-        if num_inference_steps != nodes:
-            raise ValueError(f"Qwen-Image-2.1-Turbo samples on {nodes} fixed sigma nodes. Got num_inference_steps={num_inference_steps}. Use {nodes}.")  # fmt: off
         if guidance != 1:
             raise ValueError(f"Qwen-Image-2.1-Turbo runs without CFG. Got guidance={guidance}. Use guidance=1.")
         if scheduler != "linear":
@@ -154,8 +153,6 @@ class Qwen21TurboScheduler(BaseScheduler):
             # The default came from the checkpoint's name, and a local folder such as
             # Qwen--Qwen-Image-2.1-Turbo-mflux-q8 matches the "qwen" alias (20 steps) first.
             args.steps = nodes
-        if args.steps != nodes:
-            parser.error(f"Qwen-Image-2.1-Turbo samples on {nodes} fixed sigma nodes. Got --steps {args.steps}. Use --steps {nodes}.")  # fmt: off
         if args.guidance is not None and args.guidance != 1:
             parser.error(f"Qwen-Image-2.1-Turbo runs without CFG. Got --guidance {args.guidance}. Use --guidance 1.")
         if args.scheduler == "viggle_turbo":
