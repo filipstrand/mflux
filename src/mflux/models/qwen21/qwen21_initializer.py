@@ -54,6 +54,11 @@ class Qwen21Initializer:
             module = getattr(model, component.model_attr or component.name)
             weights = WeightLoader.load_single_local(component, root)
             supplied = dict(tree_flatten(weights.components[component.name]))
+            if component.precision is not None:
+                # An mflux save skips the cast the HuggingFace load does, and can store a component
+                # narrower than it runs (the Turbo VAE runs in float32 and is saved in bfloat16).
+                supplied = Qwen21Initializer._widen_floats(supplied, component.precision)
+                weights.components[component.name] = tree_unflatten(list(supplied.items()))
             if component.name == "transformer":
                 supplied = Qwen21Initializer._normalize_transformer_weights(supplied)
                 weights.components[component.name] = tree_unflatten(list(supplied.items()))
@@ -119,6 +124,16 @@ class Qwen21Initializer:
         model.vae = Qwen21VAE()
         model.transformer = Qwen21Transformer()
         model.text_encoder = Qwen21TextEncoder()
+
+    @staticmethod
+    def _widen_floats(supplied: dict[str, mx.array], dtype: mx.Dtype) -> dict[str, mx.array]:
+        # Only widens: a save that kept wider weights keeps them. Packed quantized weights are integers.
+        return {
+            key: value.astype(dtype)
+            if mx.issubdtype(value.dtype, mx.floating) and value.dtype.size < dtype.size
+            else value
+            for key, value in supplied.items()
+        }
 
     @staticmethod
     def _normalize_transformer_weights(supplied: dict[str, mx.array]) -> dict[str, mx.array]:

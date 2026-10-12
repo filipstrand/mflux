@@ -296,7 +296,13 @@ class QwenImage21Edit(nn.Module):
         return image
 
     def save_model(self, base_path: str) -> None:
-        ModelSaver.save_model(self, self.bits, base_path, QwenImage21WeightDefinition)
+        ModelSaver.save_model(
+            self,
+            self.bits,
+            base_path,
+            QwenImage21WeightDefinition,
+            dtypes={"vae": getattr(self, "_vae_stored_dtype", None)},
+        )
         destination = Path(base_path)
         for name, config in self._component_configs.items():
             (destination / name / "config.json").write_text(json.dumps(config, indent=2))

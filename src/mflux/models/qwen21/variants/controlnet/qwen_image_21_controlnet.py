@@ -171,7 +171,13 @@ class QwenImage21Controlnet(nn.Module):
 
     def save_model(self, base_path: str) -> None:
         # The base checkpoint as QwenImage21Edit saves it, with the control branch under controlnet/.
-        ModelSaver.save_model(self, self.bits, base_path, QwenImage21ControlnetWeightDefinition)
+        ModelSaver.save_model(
+            self,
+            self.bits,
+            base_path,
+            QwenImage21ControlnetWeightDefinition,
+            dtypes={"vae": getattr(self, "_vae_stored_dtype", None)},
+        )
         destination = Path(base_path)
         for name, config in self._component_configs.items():
             (destination / name / "config.json").write_text(json.dumps(config, indent=2))
