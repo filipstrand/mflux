@@ -78,7 +78,7 @@ class SafetensorsReader:
             found |= {
                 info["dtype"]
                 for name, info in header.items()
-                if name != "__metadata__" and info.get("dtype") in ("BF16", "F16", "F32")
+                if name != "__metadata__" and isinstance(info, dict) and info.get("dtype") in ("BF16", "F16", "F32")
             }
         return SafetensorsReader._DTYPES[found.pop()][1] if len(found) == 1 else None
 

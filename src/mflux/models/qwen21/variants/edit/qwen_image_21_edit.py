@@ -87,6 +87,7 @@ class QwenImage21Edit(nn.Module):
         QwenImage21Edit._check_reference_count(image_paths)
         if scheduler not in EDIT_SCHEDULERS:
             raise ValueError(f"The Qwen-Image-2.1 edit runs the linear or viggle_turbo schedule, got {scheduler!r}.")
+        Qwen21TurboScheduler.check_generate(self.model_config, num_inference_steps, guidance, scheduler)
         QwenImage21LatentCreator.validate_resolution(output_resolution)
         if not 0 < strength <= 1:
             raise ValueError(f"strength must be in (0, 1], got {strength}.")

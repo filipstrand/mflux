@@ -6,6 +6,7 @@ import pytest
 from mflux.cli.defaults.defaults import model_inference_steps
 from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
+from mflux.models.common.resolution.config_resolution import ConfigResolution
 from mflux.models.common.schedulers import SCHEDULER_REGISTRY
 from mflux.models.qwen21.cli import qwen21_controlnet_generate, qwen21_edit_generate, qwen21_generate
 from mflux.models.qwen21.model.qwen21_scheduler import Qwen21TurboScheduler
@@ -146,8 +147,54 @@ def test_cli_local_turbo_folder_defaults_to_eight_steps(monkeypatch, module):
     )
     parser = module.build_parser()
     args = parser.parse_args()
-    Qwen21TurboScheduler.check_args(parser, args, ModelConfig.qwen_image_21_turbo())
+    registry_key = "qwen-image-2.1" if module is qwen21_edit_generate else module.DEFAULT_MODEL
+    model_config = ConfigResolution.resolve_restricted(
+        args.model, registry_key, args.model_path, module.FAMILY_MODELS, args.base_model
+    )
+    assert Qwen21TurboScheduler.is_turbo(model_config)
+    Qwen21TurboScheduler.check_args(parser, args, model_config)
     assert args.steps == 8
+
+
+@pytest.mark.fast
+def test_local_checkpoint_with_turbo_base_is_turbo():
+    custom = ModelConfig.from_name("/models/my-turbo", base_model="qwen-image-2.1-turbo")
+    assert custom is not ModelConfig.qwen_image_21_turbo()
+    assert Qwen21TurboScheduler.is_turbo(custom)
+    assert Qwen21TurboScheduler.default_steps(custom) == 8
+    assert Qwen21TurboScheduler.for_model(custom, "linear") == "qwen21_turbo"
+    assert not Qwen21TurboScheduler.is_turbo(ModelConfig.from_name("/models/my-base", base_model="qwen-image-2.1"))
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize(
+    "steps, guidance, scheduler, match",
+    [(20, 1.0, "linear", "8 fixed sigma nodes"), (8, 4.0, "linear", "without CFG"), (6, 1.0, "viggle_turbo", "sigma")],
+)
+def test_python_api_rejects_settings_outside_the_turbo_recipe(steps, guidance, scheduler, match):
+    turbo = ModelConfig.qwen_image_21_turbo()
+    with pytest.raises(ValueError, match=match):
+        Qwen21TurboScheduler.check_generate(turbo, steps, guidance, scheduler)
+    with pytest.raises(ValueError, match="viggle_turbo|schedule"):
+        Qwen21TurboScheduler.check_generate(turbo, 8, 1.0, "viggle_turbo")
+    Qwen21TurboScheduler.check_generate(turbo, 8, 1.0)
+    Qwen21TurboScheduler.check_generate(ModelConfig.qwen_image_21(), steps, guidance, scheduler)
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize("variant", ["txt2img", "edit", "controlnet"])
+def test_every_generate_image_checks_the_turbo_recipe(monkeypatch, variant):
+    # Each variant stops before it encodes the prompt or opens an image.
+    from types import SimpleNamespace
+
+    from mflux.models.qwen21.variants.controlnet.qwen_image_21_controlnet import QwenImage21Controlnet
+    from mflux.models.qwen21.variants.edit.qwen_image_21_edit import QwenImage21Edit
+    from mflux.models.qwen21.variants.txt2img.qwen_image_21 import QwenImage21
+
+    cls = {"txt2img": QwenImage21, "edit": QwenImage21Edit, "controlnet": QwenImage21Controlnet}[variant]
+    model = SimpleNamespace(model_config=ModelConfig.qwen_image_21_turbo())
+    with pytest.raises(ValueError, match="without CFG"):
+        cls.generate_image(model, seed=1, prompt="test", guidance=4.0, negative_prompt="")
 
 
 @pytest.mark.fast

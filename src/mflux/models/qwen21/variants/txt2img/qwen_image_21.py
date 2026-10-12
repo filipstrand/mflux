@@ -70,6 +70,7 @@ class QwenImage21(nn.Module):
             step_cache_ratio = teacache_ratio
         if num_inference_steps is None:
             num_inference_steps = Qwen21TurboScheduler.default_steps(self.model_config)
+        Qwen21TurboScheduler.check_generate(self.model_config, num_inference_steps, guidance, scheduler)
         config = Config(
             width=width,
             height=height,

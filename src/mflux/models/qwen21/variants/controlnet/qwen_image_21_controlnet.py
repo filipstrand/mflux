@@ -79,6 +79,7 @@ class QwenImage21Controlnet(nn.Module):
     ) -> GeneratedImage:
         if num_inference_steps is None:
             num_inference_steps = Qwen21TurboScheduler.default_steps(self.model_config)
+        Qwen21TurboScheduler.check_generate(self.model_config, num_inference_steps, guidance)
         if controlnet_image_path is None and image_path is None:
             raise ValueError("Give a control image, or a source image and a mask to inpaint.")
         if (image_path is None) != (mask_image is None):

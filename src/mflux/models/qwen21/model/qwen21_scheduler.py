@@ -108,8 +108,23 @@ class Qwen21TurboScheduler(BaseScheduler):
     def is_turbo(model_config) -> bool:
         from mflux.models.common.config.model_config import ModelConfig
 
-        # Every registry entry on the Turbo checkpoint, the ControlNet entry too.
-        return model_config.model_name == ModelConfig.qwen_image_21_turbo().model_name
+        # Every registry entry on the Turbo checkpoint, the ControlNet entry too, and a local
+        # checkpoint resolved with Turbo as its base (model_name is then the path).
+        turbo = ModelConfig.qwen_image_21_turbo().model_name
+        return turbo in (model_config.model_name, model_config.base_model)
+
+    @staticmethod
+    def check_generate(model_config, num_inference_steps: int, guidance: float, scheduler: str = "linear") -> None:
+        # The Python API form of check_args: generate_image calls it before it encodes the prompt.
+        if not Qwen21TurboScheduler.is_turbo(model_config):
+            return
+        nodes = len(Qwen21TurboScheduler.SIGMA_NODES)
+        if num_inference_steps != nodes:
+            raise ValueError(f"Qwen-Image-2.1-Turbo samples on {nodes} fixed sigma nodes. Got num_inference_steps={num_inference_steps}. Use {nodes}.")  # fmt: off
+        if guidance != 1:
+            raise ValueError(f"Qwen-Image-2.1-Turbo runs without CFG. Got guidance={guidance}. Use guidance=1.")
+        if scheduler != "linear":
+            raise ValueError(f"Qwen-Image-2.1-Turbo runs its own schedule. Got scheduler={scheduler!r}. Use 'linear'.")
 
     @staticmethod
     def default_steps(model_config) -> int:
