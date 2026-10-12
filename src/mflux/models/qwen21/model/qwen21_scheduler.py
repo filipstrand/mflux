@@ -170,8 +170,9 @@ class Qwen21TurboScheduler(BaseScheduler):
         return self._timesteps
 
     def step(self, noise: mx.array, timestep: int, latents: mx.array, **kwargs) -> mx.array:
-        dt = (self._sigmas[timestep + 1] - self._sigmas[timestep]).astype(latents.dtype)
-        return latents + noise.astype(latents.dtype) * dt
+        # Like the upstream Euler update and the edit loop: add in float32, then cast back.
+        dt = self._sigmas[timestep + 1] - self._sigmas[timestep]
+        return (latents.astype(mx.float32) + noise.astype(mx.float32) * dt).astype(latents.dtype)
 
 
 register_contrib(Qwen21TurboScheduler, "qwen21_turbo")

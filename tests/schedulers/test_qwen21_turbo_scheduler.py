@@ -1,4 +1,5 @@
 import sys
+from types import SimpleNamespace
 
 import mlx.core as mx
 import pytest
@@ -241,3 +242,15 @@ def test_controlnet_python_api_step_default_is_none():
     from mflux.models.qwen21.variants.controlnet.qwen_image_21_controlnet import QwenImage21Controlnet
 
     assert inspect.signature(QwenImage21Controlnet.generate_image).parameters["num_inference_steps"].default is None
+
+
+@pytest.mark.fast
+def test_turbo_step_adds_in_float32_and_keeps_the_latent_dtype():
+    scheduler = Qwen21TurboScheduler(SimpleNamespace(num_inference_steps=8))
+    latents = mx.full((1, 4), 0.123, dtype=mx.bfloat16)
+    noise = mx.full((1, 4), -0.7, dtype=mx.bfloat16)
+    stepped = scheduler.step(noise=noise, timestep=0, latents=latents)
+    dt = scheduler.sigmas[1] - scheduler.sigmas[0]
+    expected = (latents.astype(mx.float32) + noise.astype(mx.float32) * dt).astype(mx.bfloat16)
+    assert stepped.dtype == mx.bfloat16
+    assert mx.array_equal(stepped, expected).item()
