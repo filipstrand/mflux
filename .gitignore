@@ -51,3 +51,4 @@ tmp-PR-body.md
 .agents/skills/gitnexus-guide/SKILL.md
 .agents/skills/gitnexus-impact-analysis/SKILL.md
 .agents/skills/gitnexus-refactoring/SKILL.md
+scripts/push_qwen21_turbo_vae.sh
