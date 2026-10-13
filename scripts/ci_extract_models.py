@@ -155,15 +155,6 @@ OVERLAY: dict[str, tuple[str, str, str, list[str], list[str], str, list[str] | N
         "active",
         STANDARD_QUANTS,
     ),
-    "krea-2-raw-depth-controlnet": (
-        "image",
-        "krea2",
-        "krea2-raw-depth",
-        ["mflux-generate-krea2-controlnet"],
-        [],
-        "active",
-        STANDARD_QUANTS,
-    ),
     "qwen-image": ("image", "qwen-image", "qwen-image", ["mflux-generate-qwen"], [], "active", STANDARD_QUANTS),
     "qwen-image-2.1": (
         "image",

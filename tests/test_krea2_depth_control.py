@@ -19,8 +19,8 @@ def _inputs():
 
 def test_control_concat_shape_and_effect():
     t = Krea2Transformer(**TINY)
-    # The control variant widens the input projection from c*p*p (64) to 2*c*p*p (128).
-    t.first = nn.Linear(128, TINY["features"], bias=True)
+    # The depth half of the reference's widened input projection.
+    t.control_first = nn.Linear(64, TINY["features"], bias=False)
     hidden, control, context, timestep = _inputs()
 
     out = t(hidden, timestep, context, control=control)
@@ -63,10 +63,11 @@ def test_apply_control_checkpoint_merges_first_and_deltas(tmp_path):
     model.transformer = t
     Krea2Initializer._apply_control_checkpoint(model, str(path), strength=1.0)
 
-    # first is widened and loaded verbatim from the checkpoint.
-    assert tuple(t.first.weight.shape) == (features, wide_in)
-    assert mx.allclose(t.first.weight, control["first.weight"])
+    # first keeps its shape and takes the image columns; control_first takes the depth columns.
+    assert tuple(t.first.weight.shape) == (features, narrow_in)
+    assert mx.allclose(t.first.weight, control["first.weight"][:, :narrow_in])
     assert mx.allclose(t.first.bias, control["first.bias"])
+    assert mx.allclose(t.control_first.weight, control["first.weight"][:, narrow_in:])
 
     # attn.wq weight gained exactly B @ A at strength 1.0.
     expected = base_wq + control["blocks.0.attn.wq.B"] @ control["blocks.0.attn.wq.A"]
@@ -122,3 +123,15 @@ def test_apply_control_checkpoint_rejects_a_file_without_deltas(tmp_path):
     with pytest.raises(ValueError, match="no attention/MLP deltas"):
         Krea2Initializer._apply_control_checkpoint(model, str(path), strength=1.0)
     assert t.first is first
+
+
+def test_split_projection_matches_the_reference_concat():
+    # first(img) + control_first(ctrl) must equal the reference's widened Linear on cat([img, ctrl]).
+    features, image_in = TINY["features"], TINY["channels"] * TINY["patch"] ** 2
+    wide = nn.Linear(2 * image_in, features, bias=True)
+    img, ctrl = mx.random.normal((1, 16, image_in)), mx.random.normal((1, 16, image_in))
+    first = nn.Linear(image_in, features, bias=True)
+    first.weight, first.bias = wide.weight[:, :image_in], wide.bias
+    control_first = nn.Linear(image_in, features, bias=False)
+    control_first.weight = wide.weight[:, image_in:]
+    assert mx.allclose(first(img) + control_first(ctrl), wide(mx.concatenate([img, ctrl], axis=-1)), atol=1e-5)

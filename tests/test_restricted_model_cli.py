@@ -34,7 +34,7 @@ CLI_MODELS = [
         krea2_controlnet_generate,
         "krea-2-depth-controlnet",
         "krea-2",
-        krea2_controlnet_generate.FAMILY_MODELS,
+        (),
         ("--depth-image-path", "depth.png"),
     ),
     (z_image_turbo_generate, "z-image-turbo", "dev", (), ()),

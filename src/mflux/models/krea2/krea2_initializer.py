@@ -54,7 +54,7 @@ class Krea2Initializer:
         lora_scales: list[float] | None = None,
         bake_lora: bool = True,
     ) -> None:
-        # The depth checkpoint holds a full input projection twice as wide plus attention/MLP deltas as
+        # The depth checkpoint holds an input projection twice as wide plus attention/MLP deltas as
         # raw A/B matrices, so it is merged into the dense base weights. Quantization runs after the merge.
         path = model_path if model_path else model_config.model_name
         Krea2Initializer._init_config(model, model_config)
@@ -137,11 +137,14 @@ class Krea2Initializer:
         if not pairs:
             raise ValueError(f"{files[0]} has no attention/MLP deltas for the Krea 2 blocks.")
 
+        # The reference projection is first(cat([img, ctrl])). Its image columns replace first's weight, so first
+        # keeps its shape and a LoRA on it still fits; the depth columns become control_first.
         dtype = transformer.first.weight.dtype
-        widened = nn.Linear(in_features, out_features, bias=True)
-        widened.weight = first_w.astype(dtype)
-        widened.bias = first_b.astype(dtype)
-        transformer.first = widened
+        image_in = transformer.channels * transformer.patch**2
+        transformer.first.weight = first_w[:, :image_in].astype(dtype)
+        transformer.first.bias = first_b.astype(dtype)
+        transformer.control_first = nn.Linear(in_features - image_in, out_features, bias=False)
+        transformer.control_first.weight = first_w[:, image_in:].astype(dtype)
         for (i, target), (a, b) in pairs.items():
             sub, attr = target.split(".")
             layer = getattr(getattr(transformer.blocks[i], sub), attr)

@@ -13,8 +13,6 @@ from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.prompt_util import PromptUtil
 
 DEFAULT_MODEL = "krea-2-depth-controlnet"
-# The same ControlNet on Krea 2 Raw.
-FAMILY_MODELS = ("krea-2-raw-depth-controlnet",)
 DEFAULT_GUIDANCE = 1.0
 
 
@@ -53,7 +51,7 @@ class Krea2ControlnetCommand:
     def validate(args: Namespace) -> ModelConfig:
         # Weight-free: checked before the model loads, so a bad request fails fast.
         model_config = ConfigResolution.resolve_restricted(
-            args.model, DEFAULT_MODEL, model_path=args.model_path, extra_keys=FAMILY_MODELS, base_model=args.base_model
+            args.model, DEFAULT_MODEL, model_path=args.model_path, base_model=args.base_model
         )
         if args.image_path is None and args.depth_image_path is None:
             raise ValueError("Give --depth-image-path, or --image-path to estimate the depth with Depth Pro.")

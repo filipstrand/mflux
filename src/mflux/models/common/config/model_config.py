@@ -149,11 +149,6 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
-    def krea2_raw_depth_controlnet() -> "ModelConfig":
-        return AVAILABLE_MODELS["krea-2-raw-depth-controlnet"]
-
-    @staticmethod
-    @lru_cache
     def qwen_image() -> "ModelConfig":
         return AVAILABLE_MODELS["qwen-image"]
 
@@ -322,21 +317,6 @@ AVAILABLE_MODELS = {
         priority=16,
         aliases=["krea-2-depth-controlnet", "krea-2-depth", "krea2-depth"],
         model_name="krea/Krea-2-Turbo",
-        base_model=None,
-        controlnet_model="Patil/Krea-2-depth-controlnet",
-        custom_transformer_model=None,
-        num_train_steps=None,
-        max_sequence_length=1024,
-        supports_guidance=True,
-        requires_sigma_shift=True,
-        sigma_max_shift=1.15,
-        sigma_max_seq_len=6400,
-    ),
-    "krea-2-raw-depth-controlnet": ModelConfig(
-        # The same depth ControlNet on Krea 2 Raw.
-        priority=16,
-        aliases=["krea-2-raw-depth-controlnet", "krea-2-raw-depth", "krea2-raw-depth"],
-        model_name="krea/Krea-2-Raw",
         base_model=None,
         controlnet_model="Patil/Krea-2-depth-controlnet",
         custom_transformer_model=None,

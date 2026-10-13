@@ -65,13 +65,13 @@ class Krea2Transformer(nn.Module):
         context = self._unpack_context(context)
 
         # Patchify: (b, c, h*ph, w*pw) -> (b, h*w, c*ph*pw)
-        img = Krea2Transformer._patchify(x, patch)
+        img = self.first(Krea2Transformer._patchify(x, patch))
         if control is not None:
-            # Depth ControlNet: the depth latent joins on the channel axis before the input projection,
-            # which the depth variant widens from c*p*p to 2*c*p*p (the reference runs first(cat([img, ctrl]))).
+            # Depth ControlNet. The reference runs first(cat([img, ctrl])) with an input projection twice as
+            # wide; the depth variant splits that projection, so first keeps the image half (and still takes
+            # a LoRA) and control_first holds the depth half.
             ctrl = Krea2Transformer._patchify(Krea2Transformer._pad_to_multiple(control, patch), patch)
-            img = mx.concatenate([img, ctrl], axis=-1)
-        img = self.first(img)
+            img = img + self.control_first(ctrl)
 
         t = self.tmlp(Krea2TimestepMLP.timestep_embedding(timestep, self.tdim)[:, None, :].astype(img.dtype))
         tvec = self.tproj(t)
