@@ -53,6 +53,7 @@ class Krea2Transformer(nn.Module):
         timestep: mx.array,
         context: mx.array,
         attention_mask: mx.array | None = None,
+        control: mx.array | None = None,
     ) -> mx.array:
         bs, c, H_orig, W_orig = hidden_states.shape
         patch = self.patch
@@ -64,7 +65,12 @@ class Krea2Transformer(nn.Module):
         context = self._unpack_context(context)
 
         # Patchify: (b, c, h*ph, w*pw) -> (b, h*w, c*ph*pw)
-        img = x.reshape(bs, c, h_, patch, w_, patch).transpose(0, 2, 4, 1, 3, 5).reshape(bs, h_ * w_, c * patch * patch)
+        img = Krea2Transformer._patchify(x, patch)
+        if control is not None:
+            # Depth ControlNet: the depth latent joins on the channel axis before the input projection,
+            # which the depth variant widens from c*p*p to 2*c*p*p (the reference runs first(cat([img, ctrl]))).
+            ctrl = Krea2Transformer._patchify(Krea2Transformer._pad_to_multiple(control, patch), patch)
+            img = mx.concatenate([img, ctrl], axis=-1)
         img = self.first(img)
 
         t = self.tmlp(Krea2TimestepMLP.timestep_embedding(timestep, self.tdim)[:, None, :].astype(img.dtype))
@@ -108,6 +114,15 @@ class Krea2Transformer(nn.Module):
                 f"{self.txtlayers * self.txtdim} features (a {self.txtlayers}-layer Qwen3-VL stack) but got {fused}."
             )
         return context.reshape(b, seq, self.txtlayers, self.txtdim)
+
+    @staticmethod
+    def _patchify(x: mx.array, patch: int) -> mx.array:
+        # (b, c, h*ph, w*pw) -> (b, h*w, c*ph*pw)
+        bs, c = x.shape[0], x.shape[1]
+        h_, w_ = x.shape[-2] // patch, x.shape[-1] // patch
+        return (
+            x.reshape(bs, c, h_, patch, w_, patch).transpose(0, 2, 4, 1, 3, 5).reshape(bs, h_ * w_, c * patch * patch)
+        )
 
     @staticmethod
     def _pad_to_multiple(x: mx.array, patch: int) -> mx.array:
