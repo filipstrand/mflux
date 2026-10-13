@@ -56,6 +56,10 @@ class Krea2Initializer:
     ) -> None:
         # The depth checkpoint holds an input projection twice as wide plus attention/MLP deltas as
         # raw A/B matrices, so it is merged into the dense base weights. Quantization runs after the merge.
+        control_source = controlnet_path or model_config.controlnet_model
+        if control_source is None:
+            # Checked before the base loads, which takes a while.
+            raise ValueError("No depth ControlNet checkpoint: pass controlnet_path or a model config that names one.")
         path = model_path if model_path else model_config.model_name
         Krea2Initializer._init_config(model, model_config)
         weights = Krea2Initializer._load_weights(path, model_config)
@@ -67,9 +71,7 @@ class Krea2Initializer:
                 "The Krea 2 depth ControlNet merges into the unquantized base weights. "
                 "Load the original checkpoint and pass -q to quantize it after the merge."
             )
-        Krea2Initializer._apply_control_checkpoint(
-            model, controlnet_path or model_config.controlnet_model, controlnet_strength
-        )
+        Krea2Initializer._apply_control_checkpoint(model, control_source, controlnet_strength)
         Krea2Initializer._quantize_after_control(model, quantize)
         # dense_weights=None: the checkpoint's dense tree predates the control merge, so folding a LoRA
         # from it would drop the control deltas. The LoRA is folded into the merged weights instead.
@@ -98,9 +100,7 @@ class Krea2Initializer:
         model.bits = quantize
 
     @staticmethod
-    def _apply_control_checkpoint(model, source: str | None, strength: float) -> None:
-        if source is None:
-            raise ValueError("No depth ControlNet checkpoint: pass controlnet_path or a model config that names one.")
+    def _apply_control_checkpoint(model, source: str, strength: float) -> None:
         root = PathResolution.resolve(source, ["*.safetensors"])
         files = [root] if root.is_file() else sorted(root.glob("*.safetensors"))
         if len(files) != 1:
