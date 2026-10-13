@@ -8,10 +8,12 @@ from mflux.models.common.vae.vae_util import VAEUtil
 from mflux.models.depth_pro.model.depth_pro import DepthPro
 from mflux.models.krea2.latent_creator.krea2_latent_creator import Krea2LatentCreator
 from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
+from mflux.utils.exif_orientation import open_oriented
 from mflux.utils.image_util import ImageUtil
 
 
 class Krea2ControlnetUtil:
+    _HIGH_DEPTH_MODES = ("I;16", "I;16B", "I;16L", "I", "F")
     # The depth ControlNet was trained on Depth-Anything-V2 maps: near is white, far is black. Depth Pro's
     # depth_image follows the same convention, so either source goes to the VAE as it is.
 
@@ -34,12 +36,15 @@ class Krea2ControlnetUtil:
 
     @staticmethod
     def _to_rgb(depth_image: PIL.Image.Image) -> PIL.Image.Image:
-        # A 16-bit or float map ("I;16", "I", "F") saturates to white under a plain convert("RGB"), so it is
-        # stretched to 8 bits first.
-        if depth_image.mode in ("I;16", "I;16B", "I;16L", "I", "F"):
+        # A plain convert("RGB") clips a 16-bit or float map to white. A 16-bit map keeps its values, scaled
+        # from 0..65535 to 0..255; an "I" or "F" map has no fixed range, so its own minimum and maximum are used.
+        if depth_image.mode in Krea2ControlnetUtil._HIGH_DEPTH_MODES:
             values = np.asarray(depth_image, dtype=np.float32)
-            low, high = float(values.min()), float(values.max())
-            scaled = (values - low) / (high - low) if high > low else np.zeros_like(values)
+            if depth_image.mode.startswith("I;16"):
+                scaled = values / 65535.0
+            else:
+                low, high = float(values.min()), float(values.max())
+                scaled = (values - low) / (high - low) if high > low else np.zeros_like(values)
             depth_image = PIL.Image.fromarray((scaled * 255).round().astype(np.uint8))
         return depth_image.convert("RGB")
 
@@ -52,6 +57,10 @@ class Krea2ControlnetUtil:
         if depth_image_path:
             if not Path(depth_image_path).exists():
                 raise FileNotFoundError(f"Depth map file not found: {depth_image_path}")
+            # A 16-bit or float map is kept as it is, for _to_rgb to stretch; load_image would clip it to RGB first.
+            image = open_oriented(depth_image_path)
+            if image.mode in Krea2ControlnetUtil._HIGH_DEPTH_MODES:
+                return image
             return ImageUtil.load_image(depth_image_path)
         if not image_path:
             raise ValueError(

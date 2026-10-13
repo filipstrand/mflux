@@ -142,3 +142,36 @@ def test_a_16_bit_depth_map_keeps_its_range():
     assert rgb.shape == (4, 16, 3)
     assert rgb[0, 0, 0] == 0 and rgb[0, -1, 0] == 255
     assert 100 < rgb[0, 8, 0] < 160
+
+
+def test_a_16_bit_depth_map_file_keeps_its_range(tmp_path):
+    # Through the file path, not only in memory: the loader must not clip the map to RGB first.
+    path = tmp_path / "depth16.png"
+    PIL.Image.fromarray(np.tile(np.linspace(0, 65535, 16, dtype=np.uint16), (4, 1))).save(path)
+    image = Krea2ControlnetUtil.get_depth_image(None, None, path)
+    rgb = np.asarray(Krea2ControlnetUtil._to_rgb(image))
+    assert rgb[0, 0, 0] == 0 and rgb[0, -1, 0] == 255
+    assert 100 < rgb[0, 8, 0] < 160
+
+
+@pytest.mark.parametrize("content", [b"", b"version https://git-lfs.github.com/spec/v1\n", b"\xff" * 8 + b"{}"])
+def test_a_broken_shard_does_not_crash_the_save_check(tmp_path, content):
+    # The loader reports a broken file with its own error; the quick header read must not raise first.
+    from mflux.models.krea2.cli.krea2_controlnet_generate import Krea2ControlnetCommand
+
+    (tmp_path / "a.safetensors").write_bytes(content)
+    assert Krea2ControlnetCommand._saved_bits(str(tmp_path)) is None
+
+
+def test_the_save_check_reads_the_quantization_level(tmp_path):
+    from mflux.models.krea2.cli.krea2_controlnet_generate import Krea2ControlnetCommand
+
+    mx.save_safetensors(str(tmp_path / "0.safetensors"), {"w": mx.zeros((2,))}, metadata={"quantization_level": "8"})
+    assert Krea2ControlnetCommand._saved_bits(str(tmp_path)) == "8"
+
+
+def test_a_16_bit_map_matches_the_8_bit_map_it_was_made_from():
+    # Values are scaled, not stretched: a map that never reaches black or white stays that way.
+    gray = np.array([[30, 100, 220]], dtype=np.uint8)
+    as16 = PIL.Image.fromarray(gray.astype(np.uint16) * 257)
+    assert np.array_equal(np.asarray(Krea2ControlnetUtil._to_rgb(as16))[..., 0], gray)

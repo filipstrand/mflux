@@ -88,8 +88,15 @@ class Krea2ControlnetCommand:
         for shard in sorted(Path(model_path).expanduser().glob("**/*.safetensors")):
             if shard.name.startswith("._"):
                 continue
-            with shard.open("rb") as fh:
-                header = json.loads(fh.read(struct.unpack("<Q", fh.read(8))[0]))
+            try:
+                with shard.open("rb") as fh:
+                    length = struct.unpack("<Q", fh.read(8))[0]
+                    if length > shard.stat().st_size:
+                        return None
+                    header = json.loads(fh.read(length))
+            except (OSError, struct.error, ValueError):
+                # Not a readable safetensors file: the loader reports it with its own error.
+                return None
             return (header.get("__metadata__") or {}).get("quantization_level")
         return None
 
