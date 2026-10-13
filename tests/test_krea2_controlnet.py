@@ -163,11 +163,13 @@ def test_a_broken_shard_does_not_crash_the_save_check(tmp_path, content):
     assert Krea2ControlnetCommand._saved_bits(str(tmp_path)) is None
 
 
-def test_the_save_check_reads_the_quantization_level(tmp_path):
+@pytest.mark.parametrize("level, expected", [("8", "8"), ("None", None)], ids=["quantized", "dense"])
+def test_the_save_check_reads_the_quantization_level(tmp_path, level, expected):
+    # mflux-save writes str(bits), so a dense save records "None" and must pass.
     from mflux.models.krea2.cli.krea2_controlnet_generate import Krea2ControlnetCommand
 
-    mx.save_safetensors(str(tmp_path / "0.safetensors"), {"w": mx.zeros((2,))}, metadata={"quantization_level": "8"})
-    assert Krea2ControlnetCommand._saved_bits(str(tmp_path)) == "8"
+    mx.save_safetensors(str(tmp_path / "0.safetensors"), {"w": mx.zeros((2,))}, metadata={"quantization_level": level})
+    assert Krea2ControlnetCommand._saved_bits(str(tmp_path)) == expected
 
 
 def test_a_16_bit_map_matches_the_8_bit_map_it_was_made_from():

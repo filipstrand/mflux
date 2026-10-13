@@ -18,6 +18,9 @@ from mflux.utils.prompt_util import PromptUtil
 DEFAULT_MODEL = "krea-2-controlnet-depth"
 DEFAULT_GUIDANCE = 1.0
 
+IGNORED_OPTIONS = {
+    "--lora-style": "Named LoRA styles are only supported by the Flux in-context CLI; use --lora.",
+}
 CONDITIONAL_OPTIONS = {
     "--negative-prompt": {
         "condition": "guidance other than 1.0",
@@ -97,7 +100,9 @@ class Krea2ControlnetCommand:
             except (OSError, struct.error, ValueError):
                 # Not a readable safetensors file: the loader reports it with its own error.
                 return None
-            return (header.get("__metadata__") or {}).get("quantization_level")
+            bits = (header.get("__metadata__") or {}).get("quantization_level")
+            # A dense save records "None", as WeightLoader reads it.
+            return None if bits in (None, "None", "null", "") else bits
         return None
 
     @staticmethod
@@ -135,6 +140,7 @@ class Krea2ControlnetCommand:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
+    CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
     try:
         Krea2ControlnetCommand.validate(args)
     except ModelConfigError:
