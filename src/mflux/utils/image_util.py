@@ -266,11 +266,11 @@ class ImageUtil:
         file_path = ImageUtil.resolve_output_path(path=path, overwrite=overwrite)
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        try:
-            # Save image without metadata first
-            image.save(file_path)
-            log.info(f"Image saved successfully at: {file_path}")
+        # A failure to write the image itself is a failed run, so it propagates.
+        image.save(file_path)
+        log.info(f"Image saved successfully at: {file_path}")
 
+        try:
             # Export metadata to a dedicated sidecar path so it never
             # collides with model-specific JSON artifacts like FIBO prompts.
             if export_json_metadata:
@@ -287,7 +287,8 @@ class ImageUtil:
                 MetadataBuilder.embed_metadata(metadata, file_path)
                 log.info(f"Metadata embedded successfully at: {file_path}")
         except Exception as e:  # noqa: BLE001
-            log.error(f"Error saving image: {e}")
+            # The image is already on disk, so a metadata failure stays a warning.
+            log.error(f"Error saving image metadata: {e}")
 
     @staticmethod
     def _embed_metadata(metadata: dict, path: str | Path) -> None:
