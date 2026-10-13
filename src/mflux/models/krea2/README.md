@@ -130,7 +130,8 @@ mflux-generate-krea2-controlnet \
 
 The ControlNet is merged into the weights at load, so the base must be the original checkpoint, not a save
 from `mflux-save`. `-q` quantizes after the merge. On an M5 Max at 1024x1024 and 8 steps, `-q 8` peaks at
-29 GB with a depth map and 38 GB when Depth Pro estimates it.
+29 GB with a depth map and 38 GB when Depth Pro estimates it. The depth map is always encoded in one pass,
+so `--low-ram` tiles only the final decode and doesn't lower that peak.
 
 ## Training
 

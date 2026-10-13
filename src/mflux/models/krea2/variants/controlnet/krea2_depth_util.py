@@ -17,24 +17,18 @@ class Krea2DepthUtil:
     @staticmethod
     def encode_depth_control(
         vae: QwenVAE,
-        depth_pro: DepthPro | None,
+        depth_image: PIL.Image.Image,
         width: int,
         height: int,
-        image_path: str | Path | None = None,
-        depth_image_path: str | Path | None = None,
-        tiling_config=None,
     ) -> tuple[mx.array, PIL.Image.Image]:
-        depth_image = Krea2DepthUtil.get_depth_image(
-            depth_pro=depth_pro,
-            image_path=image_path,
-            depth_image_path=depth_image_path,
-        )
+        # Always one untiled pass, even with --low-ram: a tiled encode changes the control latent enough to move
+        # the image (about 20 dB at 1024x1024), and the ControlNet was trained on whole-image encodes.
         scaled = ImageUtil.scale_to_dimensions(
             image=depth_image.convert("RGB"),
             target_width=width,
             target_height=height,
         )
-        encoded = VAEUtil.encode(vae=vae, image=ImageUtil.to_array(scaled), tiling_config=tiling_config)
+        encoded = VAEUtil.encode(vae=vae, image=ImageUtil.to_array(scaled))
         return Krea2LatentCreator.pack_latents(encoded, height, width), depth_image
 
     @staticmethod

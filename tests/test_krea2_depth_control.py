@@ -135,3 +135,27 @@ def test_split_projection_matches_the_reference_concat():
     control_first = nn.Linear(image_in, features, bias=False)
     control_first.weight = wide.weight[:, image_in:]
     assert mx.allclose(first(img) + control_first(ctrl), wide(mx.concatenate([img, ctrl], axis=-1)), atol=1e-5)
+
+
+def test_depth_pro_runs_once_per_source_image(tmp_path, monkeypatch):
+    # Several seeds on one photo reuse the estimate; a different photo is estimated again.
+    import PIL.Image
+
+    from mflux.models.krea2.variants.controlnet import krea2_depth
+
+    calls = []
+
+    class FakeDepthPro:
+        def create_depth_map(self, image_path):
+            calls.append(image_path)
+            return type("R", (), {"depth_image": PIL.Image.new("L", (8, 8))})()
+
+    monkeypatch.setattr(krea2_depth, "DepthPro", FakeDepthPro)
+    model = krea2_depth.Krea2Depth.__new__(krea2_depth.Krea2Depth)
+    model.depth_pro = None
+    model._estimated_depth = None
+    a, b = tmp_path / "a.png", tmp_path / "b.png"
+    model._depth_image(a, None)
+    model._depth_image(a, None)
+    model._depth_image(b, None)
+    assert calls == [a, b]

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import mlx.core as mx
+import PIL.Image
 from mlx import nn
 
 from mflux.models.common.config import ModelConfig
@@ -55,6 +56,8 @@ class Krea2Depth(nn.Module):
         )
         # Loaded on first use, so a run with a ready-made depth map never loads Depth Pro.
         self.depth_pro: DepthPro | None = None
+        # The last estimate, keyed by its source image, so several seeds on one photo estimate it once.
+        self._estimated_depth: tuple[str, PIL.Image.Image] | None = None
 
     def generate_image(
         self,
@@ -84,12 +87,9 @@ class Krea2Depth(nn.Module):
         latents = Krea2LatentCreator.create_noise(seed, config.height, config.width)
         control, depth_image = Krea2DepthUtil.encode_depth_control(
             vae=self.vae,
-            depth_pro=None if depth_image_path else self._get_depth_pro(),
+            depth_image=self._depth_image(image_path, depth_image_path),
             width=config.width,
             height=config.height,
-            image_path=image_path,
-            depth_image_path=depth_image_path,
-            tiling_config=self.tiling_config,
         )
         embeds, neg_embeds = Krea2PromptEncoder.encode_prompt_pair(
             prompt=prompt,
@@ -140,10 +140,15 @@ class Krea2Depth(nn.Module):
             depth_image_path=depth_image_path,
         )
 
-    def _get_depth_pro(self) -> DepthPro:
-        if self.depth_pro is None:
-            self.depth_pro = DepthPro()
-        return self.depth_pro
+    def _depth_image(self, image_path: Path | str | None, depth_image_path: Path | str | None) -> PIL.Image.Image:
+        if depth_image_path or not image_path:
+            return Krea2DepthUtil.get_depth_image(None, image_path, depth_image_path)
+        key = str(Path(image_path).resolve())
+        if self._estimated_depth is None or self._estimated_depth[0] != key:
+            if self.depth_pro is None:
+                self.depth_pro = DepthPro()
+            self._estimated_depth = (key, Krea2DepthUtil.get_depth_image(self.depth_pro, image_path, None))
+        return self._estimated_depth[1]
 
     @staticmethod
     def _predict(
