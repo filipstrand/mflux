@@ -144,8 +144,8 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
-    def krea2_depth_controlnet() -> "ModelConfig":
-        return AVAILABLE_MODELS["krea-2-depth-controlnet"]
+    def krea2_controlnet_depth() -> "ModelConfig":
+        return AVAILABLE_MODELS["krea-2-controlnet-depth"]
 
     @staticmethod
     @lru_cache
@@ -312,10 +312,10 @@ AVAILABLE_MODELS = {
         sigma_max_shift=1.15,
         sigma_max_seq_len=6400,
     ),
-    "krea-2-depth-controlnet": ModelConfig(
+    "krea-2-controlnet-depth": ModelConfig(
         # Krea 2 Turbo with Tanmay Patil's depth ControlNet merged into it at load.
         priority=16,
-        aliases=["krea-2-depth-controlnet", "krea-2-depth", "krea2-depth"],
+        aliases=["krea-2-controlnet-depth", "krea-2-controlnet", "krea2-controlnet"],
         model_name="krea/Krea-2-Turbo",
         base_model=None,
         controlnet_model="Patil/Krea-2-depth-controlnet",

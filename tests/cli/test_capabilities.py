@@ -284,7 +284,11 @@ def test_flux2_negative_prompt_is_rejected_not_honored():
 @pytest.mark.fast
 def test_dropped_negative_prompts_are_not_honored():
     caps = capabilities.build_capabilities()
-    for name, expected in (("mflux-generate-krea2", "conditional"), ("mflux-generate-ernie-image-turbo", "ignored")):
+    for name, expected in (
+        ("mflux-generate-krea2", "conditional"),
+        ("mflux-generate-krea2-controlnet", "conditional"),
+        ("mflux-generate-ernie-image-turbo", "ignored"),
+    ):
         command = next(c for c in caps["commands"] if c["command"] == name)
         option = next(o for o in command["options"] if o["flag"] == "--negative-prompt")
         assert option["status"] == expected, f"{name} publishes --negative-prompt as {option['status']}"

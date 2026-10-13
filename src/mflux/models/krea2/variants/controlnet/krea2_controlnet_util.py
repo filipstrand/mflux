@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import mlx.core as mx
+import numpy as np
 import PIL.Image
 
 from mflux.models.common.vae.vae_util import VAEUtil
@@ -10,7 +11,7 @@ from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
 from mflux.utils.image_util import ImageUtil
 
 
-class Krea2DepthUtil:
+class Krea2ControlnetUtil:
     # The depth ControlNet was trained on Depth-Anything-V2 maps: near is white, far is black. Depth Pro's
     # depth_image follows the same convention, so either source goes to the VAE as it is.
 
@@ -24,12 +25,23 @@ class Krea2DepthUtil:
         # Always one untiled pass, even with --low-ram: a tiled encode changes the control latent enough to move
         # the image (about 20 dB at 1024x1024), and the ControlNet was trained on whole-image encodes.
         scaled = ImageUtil.scale_to_dimensions(
-            image=depth_image.convert("RGB"),
+            image=Krea2ControlnetUtil._to_rgb(depth_image),
             target_width=width,
             target_height=height,
         )
         encoded = VAEUtil.encode(vae=vae, image=ImageUtil.to_array(scaled))
         return Krea2LatentCreator.pack_latents(encoded, height, width), depth_image
+
+    @staticmethod
+    def _to_rgb(depth_image: PIL.Image.Image) -> PIL.Image.Image:
+        # A 16-bit or float map ("I;16", "I", "F") saturates to white under a plain convert("RGB"), so it is
+        # stretched to 8 bits first.
+        if depth_image.mode in ("I;16", "I;16B", "I;16L", "I", "F"):
+            values = np.asarray(depth_image, dtype=np.float32)
+            low, high = float(values.min()), float(values.max())
+            scaled = (values - low) / (high - low) if high > low else np.zeros_like(values)
+            depth_image = PIL.Image.fromarray((scaled * 255).round().astype(np.uint8))
+        return depth_image.convert("RGB")
 
     @staticmethod
     def get_depth_image(
@@ -42,7 +54,9 @@ class Krea2DepthUtil:
                 raise FileNotFoundError(f"Depth map file not found: {depth_image_path}")
             return ImageUtil.load_image(depth_image_path)
         if not image_path:
-            raise ValueError("Give --depth-image-path, or --image-path to estimate the depth with Depth Pro.")
+            raise ValueError(
+                "Pass a depth map (depth_image_path), or a photo (image_path) for Depth Pro to estimate one."
+            )
         if depth_pro is None:
             raise ValueError("Depth Pro is needed to estimate the depth when no depth map is given.")
         return depth_pro.create_depth_map(image_path=image_path).depth_image

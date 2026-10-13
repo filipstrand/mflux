@@ -146,10 +146,10 @@ OVERLAY: dict[str, tuple[str, str, str, list[str], list[str], str, list[str] | N
     ),
     "krea-2": ("image", "krea2", "krea2-turbo", ["mflux-generate-krea2"], [], "active", STANDARD_QUANTS),
     "krea-2-raw": ("image", "krea2", "krea2-raw", ["mflux-generate-krea2"], [], "active", STANDARD_QUANTS),
-    "krea-2-depth-controlnet": (
+    "krea-2-controlnet-depth": (
         "image",
         "krea2",
-        "krea2-depth",
+        "krea2-controlnet",
         ["mflux-generate-krea2-controlnet"],
         [],
         "active",

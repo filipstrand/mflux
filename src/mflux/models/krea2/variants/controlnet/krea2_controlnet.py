@@ -14,7 +14,7 @@ from mflux.models.krea2.model.krea2_sampler import Krea2Sampler
 from mflux.models.krea2.model.krea2_text_encoder.prompt_encoder import Krea2PromptEncoder
 from mflux.models.krea2.model.krea2_text_encoder.text_encoder import Krea2TextEncoder
 from mflux.models.krea2.model.krea2_transformer.transformer import Krea2Transformer
-from mflux.models.krea2.variants.controlnet.krea2_depth_util import Krea2DepthUtil
+from mflux.models.krea2.variants.controlnet.krea2_controlnet_util import Krea2ControlnetUtil
 from mflux.models.krea2.variants.txt2img.krea2 import Krea2
 from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
 from mflux.utils.apple_silicon import AppleSiliconUtil
@@ -23,7 +23,7 @@ from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
 
 
-class Krea2Depth(nn.Module):
+class Krea2Controlnet(nn.Module):
     # Krea 2 with the depth ControlNet merged in: a wider input projection plus attention/MLP deltas,
     # conditioned on a depth latent that joins the image latent at every step.
 
@@ -43,9 +43,9 @@ class Krea2Depth(nn.Module):
         bake_lora: bool = True,
     ):
         super().__init__()
-        Krea2Initializer.init_depth(
+        Krea2Initializer.init_controlnet(
             model=self,
-            model_config=model_config or ModelConfig.krea2_depth_controlnet(),
+            model_config=model_config or ModelConfig.krea2_controlnet_depth(),
             quantize=quantize,
             controlnet_path=controlnet_path,
             controlnet_strength=controlnet_strength,
@@ -79,13 +79,13 @@ class Krea2Depth(nn.Module):
             height=height,
             width=width,
             guidance=guidance,
-            image_path=image_path,
+            controlnet_strength=self.controlnet_strength,
             scheduler=resolved_scheduler,
         )
 
         sigmas = config.scheduler.sigmas
         latents = Krea2LatentCreator.create_noise(seed, config.height, config.width)
-        control, depth_image = Krea2DepthUtil.encode_depth_control(
+        control, depth_image = Krea2ControlnetUtil.encode_depth_control(
             vae=self.vae,
             depth_image=self._depth_image(image_path, depth_image_path),
             width=config.width,
@@ -106,7 +106,7 @@ class Krea2Depth(nn.Module):
         stepper = Krea2Sampler.make_stepper(resolved_scheduler, sigmas, seed)
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents, depth_image=depth_image)
-        predict = Krea2Depth._predict(self.transformer, embeds, neg_embeds, guidance, control)
+        predict = Krea2Controlnet._predict(self.transformer, embeds, neg_embeds, guidance, control)
 
         for t in config.time_steps:
             try:
@@ -136,18 +136,20 @@ class Krea2Depth(nn.Module):
             lora_paths=self.lora_paths,
             lora_scales=self.lora_scales,
             negative_prompt=negative_prompt,
-            image_path=config.image_path,
+            # The photo is recorded as the control source, not as image_path: a sidecar must not replay this run
+            # as image-to-image.
+            controlnet_image_path=image_path,
             depth_image_path=depth_image_path,
         )
 
     def _depth_image(self, image_path: Path | str | None, depth_image_path: Path | str | None) -> PIL.Image.Image:
         if depth_image_path or not image_path:
-            return Krea2DepthUtil.get_depth_image(None, image_path, depth_image_path)
+            return Krea2ControlnetUtil.get_depth_image(None, image_path, depth_image_path)
         key = str(Path(image_path).resolve())
         if self._estimated_depth is None or self._estimated_depth[0] != key:
             if self.depth_pro is None:
                 self.depth_pro = DepthPro()
-            self._estimated_depth = (key, Krea2DepthUtil.get_depth_image(self.depth_pro, image_path, None))
+            self._estimated_depth = (key, Krea2ControlnetUtil.get_depth_image(self.depth_pro, image_path, None))
         return self._estimated_depth[1]
 
     @staticmethod

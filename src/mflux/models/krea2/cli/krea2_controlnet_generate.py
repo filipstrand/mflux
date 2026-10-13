@@ -1,19 +1,30 @@
+import json
+import struct
 import warnings
 from argparse import Namespace
+from pathlib import Path
 
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_args
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.resolution.config_resolution import ConfigResolution
 from mflux.models.krea2.latent_creator import Krea2LatentCreator
-from mflux.models.krea2.variants.controlnet.krea2_depth import Krea2Depth
+from mflux.models.krea2.variants.controlnet.krea2_controlnet import Krea2Controlnet
 from mflux.utils.dimension_resolver import DimensionResolver
 from mflux.utils.exceptions import ModelConfigError, PromptFileReadError, StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.prompt_util import PromptUtil
 
-DEFAULT_MODEL = "krea-2-depth-controlnet"
+DEFAULT_MODEL = "krea-2-controlnet-depth"
 DEFAULT_GUIDANCE = 1.0
+
+CONDITIONAL_OPTIONS = {
+    "--negative-prompt": {
+        "condition": "guidance other than 1.0",
+        "reason": "the encoder builds the unconditional branch only when guidance != 1.0, so at the "
+        "distilled default of 1.0 the negative prompt is never encoded.",
+    },
+}
 
 
 def build_parser() -> CommandLineParser:
@@ -23,6 +34,7 @@ def build_parser() -> CommandLineParser:
     parser.add_lora_arguments()
     parser.add_image_generator_arguments(supports_metadata_config=False, supports_dimension_scale_factor=True)
     parser.add_depth_arguments()
+    parser.supports_controlnet = True
     parser._option_string_actions["--image-path"].help = "Source image. Depth Pro estimates its depth map."
     parser._option_string_actions[
         "--depth-image-path"
@@ -38,7 +50,8 @@ def build_parser() -> CommandLineParser:
         "--controlnet-strength",
         type=float,
         default=1.0,
-        help="Scale of the control deltas merged into the base weights at load (default 1.0).",
+        help="Scale of the ControlNet's attention and MLP deltas, merged into the weights at load (default 1.0). "
+        "0 drops the deltas but keeps the depth input, so it does not give the plain Krea 2 image.",
     )
     parser.add_output_arguments()
     return parser
@@ -55,11 +68,34 @@ class Krea2ControlnetCommand:
         )
         if args.image_path is None and args.depth_image_path is None:
             raise ValueError("Give --depth-image-path, or --image-path to estimate the depth with Depth Pro.")
+        for flag, path in (("--image-path", args.image_path), ("--depth-image-path", args.depth_image_path)):
+            if path is not None and not Path(path).is_file():
+                raise ValueError(f"{flag} file not found: {path}")
+        bits = Krea2ControlnetCommand._saved_bits(args.model_path)
+        if bits is not None:
+            raise ValueError(
+                f"{args.model_path} is saved at {bits} bits. The depth ControlNet merges into the unquantized "
+                "weights: use the original checkpoint and quantize with -q."
+            )
         return model_config
 
     @staticmethod
-    def load(args: Namespace) -> Krea2Depth:
-        return Krea2Depth(
+    def _saved_bits(model_path: str | None) -> str | None:
+        # An mflux save records its quantization in each shard's header; reading one header costs nothing,
+        # where loading the weights to find out takes seconds.
+        if model_path is None or not Path(model_path).expanduser().is_dir():
+            return None
+        for shard in sorted(Path(model_path).expanduser().glob("**/*.safetensors")):
+            if shard.name.startswith("._"):
+                continue
+            with shard.open("rb") as fh:
+                header = json.loads(fh.read(struct.unpack("<Q", fh.read(8))[0]))
+            return (header.get("__metadata__") or {}).get("quantization_level")
+        return None
+
+    @staticmethod
+    def load(args: Namespace) -> Krea2Controlnet:
+        return Krea2Controlnet(
             model_config=Krea2ControlnetCommand.validate(args),
             quantize=args.quantize,
             model_path=args.model_path,
@@ -69,7 +105,7 @@ class Krea2ControlnetCommand:
         )
 
     @staticmethod
-    def generate(model: Krea2Depth, args: Namespace, seed: int, prompt: str) -> GeneratedImage:
+    def generate(model: Krea2Controlnet, args: Namespace, seed: int, prompt: str) -> GeneratedImage:
         width, height = DimensionResolver.resolve(
             width=args.width,
             height=args.height,
@@ -101,8 +137,7 @@ def main() -> None:
     guidance = args.guidance if args.guidance is not None else DEFAULT_GUIDANCE
     if guidance == 1.0 and CommandLineParser._option_was_provided("--negative-prompt"):
         warnings.warn(
-            "--negative-prompt is ignored at guidance 1.0; the encoder builds the unconditional branch "
-            "only when guidance != 1.0.",
+            "--negative-prompt is ignored at guidance 1.0; " + CONDITIONAL_OPTIONS["--negative-prompt"]["reason"],
             stacklevel=2,
         )
     model = Krea2ControlnetCommand.load(args)

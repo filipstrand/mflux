@@ -41,7 +41,7 @@ _EXTRA_ARGV = {
 CLI_DEFAULTS = [
     (boogu_image_generate, "boogu-image-turbo", 4),
     (krea2_generate, "krea-2", 8),
-    (krea2_controlnet_generate, "krea-2-depth-controlnet", 8),
+    (krea2_controlnet_generate, "krea-2-controlnet-depth", 8),
     (lens_generate, "lens-turbo", 4),
     (z_image_generate, "z-image", 50),
     (z_image_turbo_generate, "z-image-turbo", 9),

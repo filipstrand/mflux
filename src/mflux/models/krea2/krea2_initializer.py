@@ -43,7 +43,7 @@ class Krea2Initializer:
     _CONTROL_TARGETS = ("attn.wq", "attn.wk", "attn.wv", "attn.wo", "attn.gate", "mlp.gate", "mlp.up", "mlp.down")
 
     @staticmethod
-    def init_depth(
+    def init_controlnet(
         model,
         model_config: ModelConfig,
         quantize: int | None,
@@ -63,18 +63,35 @@ class Krea2Initializer:
         path = model_path if model_path else model_config.model_name
         Krea2Initializer._init_config(model, model_config)
         weights = Krea2Initializer._load_weights(path, model_config)
+        if weights.meta_data.quantization_level is not None:
+            # The weights load lazily, so this is known before anything heavy runs.
+            raise ValueError(
+                f"{path} is saved at {weights.meta_data.quantization_level} bits. The Krea 2 depth ControlNet "
+                "merges into the unquantized weights: use the original checkpoint and quantize with -q."
+            )
         Krea2Initializer._init_tokenizers(model, path)
         Krea2Initializer._init_models(model, model_config)
         Krea2Initializer._apply_weights(model, weights, quantize=None)
-        if model.bits is not None:
-            raise ValueError(
-                "The Krea 2 depth ControlNet merges into the unquantized base weights. "
-                "Load the original checkpoint and pass -q to quantize it after the merge."
-            )
+        del weights
         Krea2Initializer._apply_control_checkpoint(model, control_source, controlnet_strength)
-        Krea2Initializer._quantize_after_control(model, quantize)
-        # dense_weights=None: the checkpoint's dense tree predates the control merge, so folding a LoRA
-        # from it would drop the control deltas. The LoRA is folded into the merged weights instead.
+        model.controlnet_strength = controlnet_strength
+        # A baked LoRA is folded into the merged dense weights before -q quantizes them, as mflux-generate-krea2
+        # folds it before quantizing. dense_weights stays None: the checkpoint's own tree predates the control
+        # merge, so folding from it would drop the control deltas. A LoRA that is not baked stays a live adapter
+        # on the quantized layers.
+        if bake_lora:
+            Krea2Initializer._apply_controlnet_lora(model, lora_paths, lora_scales, bake_lora=True)
+            Krea2Initializer._quantize_after_control(model, quantize)
+        else:
+            Krea2Initializer._quantize_after_control(model, quantize)
+            Krea2Initializer._apply_controlnet_lora(model, lora_paths, lora_scales, bake_lora=False)
+        mx.eval(model)
+        mx.clear_cache()
+
+    @staticmethod
+    def _apply_controlnet_lora(
+        model, lora_paths: list[str] | None, lora_scales: list[float] | None, bake_lora: bool
+    ) -> None:
         model.lora_paths, model.lora_scales = LoRALoader.load_and_apply_lora(
             lora_mapping=Krea2LoRAMapping.get_mapping(),
             transformer=model.transformer,
@@ -83,20 +100,20 @@ class Krea2Initializer:
             bake_lora=bake_lora,
             dense_weights=None,
         )
-        del weights
-        mx.eval(model)
-        mx.clear_cache()
 
     @staticmethod
     def _quantize_after_control(model, quantize: int | None) -> None:
         if quantize is None:
             return
-        WeightApplier._quantize(
-            models={"vae": model.vae, "transformer": model.transformer, "text_encoder": model.text_encoder},
-            bits=quantize,
-            components={c.name: c for c in Krea2WeightDefinition.get_components()},
-            weight_definition=Krea2WeightDefinition,
-        )
+        # The same layers the base load quantizes: the definition's predicate, and no text encoder.
+        components = {c.name: c for c in Krea2WeightDefinition.get_components()}
+        for name, module in (
+            ("vae", model.vae),
+            ("transformer", model.transformer),
+            ("text_encoder", model.text_encoder),
+        ):
+            if not components[name].skip_quantization:
+                nn.quantize(module, bits=quantize, class_predicate=Krea2WeightDefinition.quantization_predicate)
         model.bits = quantize
 
     @staticmethod
@@ -120,22 +137,32 @@ class Krea2Initializer:
                 f"Control 'first' is {tuple(first_w.shape)} + {tuple(first_b.shape)}, "
                 f"expected {(out_features, in_features)} + {(out_features,)}."
             )
+        # The file must hold exactly one A/B pair per block and target: a partial or foreign file would otherwise
+        # load without part of the control.
+        expected = {"first.weight", "first.bias"} | {
+            f"blocks.{i}.{target}.{half}"
+            for i in range(len(transformer.blocks))
+            for target in Krea2Initializer._CONTROL_TARGETS
+            for half in ("A", "B")
+        }
+        missing, unknown = sorted(expected - control.keys()), sorted(control.keys() - expected)
+        if missing or unknown:
+            raise ValueError(
+                f"{files[0]} does not match the Krea 2 depth ControlNet: "
+                f"{len(missing)} missing keys {missing[:3]}, {len(unknown)} unknown keys {unknown[:3]}."
+            )
         # Only the A/B pairs are kept here: each B @ A is a full weight-sized matrix, so they are formed one
         # at a time during the merge below (all 224 at once would hold about 48 GB in float32).
         pairs: dict[tuple[int, str], tuple[mx.array, mx.array]] = {}
         for i, block in enumerate(transformer.blocks):
             for target in Krea2Initializer._CONTROL_TARGETS:
-                a = control.get(f"blocks.{i}.{target}.A")
-                b = control.get(f"blocks.{i}.{target}.B")
-                if a is None or b is None:
-                    continue
+                a = control[f"blocks.{i}.{target}.A"]
+                b = control[f"blocks.{i}.{target}.B"]
                 sub, attr = target.split(".")
                 shape = tuple(getattr(getattr(block, sub), attr).weight.shape)
                 if a.shape[0] != b.shape[1] or (b.shape[0], a.shape[1]) != shape:
                     raise ValueError(f"Control delta blocks.{i}.{target} (B{tuple(b.shape)} @ A{tuple(a.shape)}) does not match weight {shape}.")  # fmt: off
                 pairs[(i, target)] = (a, b)
-        if not pairs:
-            raise ValueError(f"{files[0]} has no attention/MLP deltas for the Krea 2 blocks.")
 
         # The reference projection is first(cat([img, ctrl])). Its image columns replace first's weight, so first
         # keeps its shape and a LoRA on it still fits; the depth columns become control_first.

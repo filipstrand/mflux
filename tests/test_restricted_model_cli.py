@@ -32,7 +32,7 @@ CLI_MODELS = [
     (krea2_generate, "krea-2", "dev", (), ()),
     (
         krea2_controlnet_generate,
-        "krea-2-depth-controlnet",
+        "krea-2-controlnet-depth",
         "krea-2",
         (),
         ("--depth-image-path", "depth.png"),
