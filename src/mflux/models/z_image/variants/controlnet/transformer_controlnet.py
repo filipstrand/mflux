@@ -9,6 +9,8 @@ import mlx.core as mx
 from huggingface_hub import snapshot_download
 from mlx import nn
 
+from mflux.models.common.resolution.model_revisions import ModelRevisions
+
 try:
     from httpx import ProxyError as _ProxyError
 except ImportError:  # httpx rides in with huggingface_hub 1.x; degrade gracefully without it
@@ -64,7 +66,11 @@ class ZImageControlNetConfig:
         try:
             local = Path(repo_id)
             # A saved model passes a local directory; read its config.json without touching the hub.
-            root = local if local.is_dir() else Path(snapshot_download(repo_id=repo_id, allow_patterns=["config.json"]))
+            if local.is_dir():
+                root = local
+            else:
+                revision = ModelRevisions.get(repo_id)
+                root = Path(snapshot_download(repo_id=repo_id, allow_patterns=["config.json"], revision=revision))
             cfg_path = root / "config.json"
             if not cfg_path.exists():
                 return ZImageControlNetConfig.defaults_union_2_1()
