@@ -35,7 +35,6 @@ class ImageGeneratorTestHelper:
         # resolve paths
         reference_image_path = ImageGeneratorTestHelper.resolve_path(reference_image_path)
         output_image_path = ImageGeneratorTestHelper.resolve_path(output_image_path)
-        lora_paths = [str(ImageGeneratorTestHelper.resolve_path(p)) for p in lora_paths] if lora_paths else None
 
         model = None
         image = None
