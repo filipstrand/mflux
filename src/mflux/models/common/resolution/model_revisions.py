@@ -1,7 +1,8 @@
 class ModelRevisions:
     # The HuggingFace commit each built-in model repo loads from. Without a pin, a cached snapshot is used
     # as it is and a new download takes main, so two installs of the same mflux version can run different
-    # weights when a repo changes (Qwen-Image-2.1 replaced its transformer three days after it was ported).
+    # weights when a repo changes (Qwen-Image-2.1 replaced its transformer while it was being ported, and its
+    # golden reference kept the old weights).
     # To move a pin, change the hash here and regenerate that model's golden references in the same PR.
     # A local path, a mflux save or a repo that is not listed loads as before.
     PINNED: dict[str, str] = {
