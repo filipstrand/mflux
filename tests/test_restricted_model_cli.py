@@ -19,7 +19,7 @@ from mflux.models.common.resolution.config_resolution import ConfigResolution
 from mflux.models.ernie_image.cli import ernie_image_generate, ernie_image_turbo_generate
 from mflux.models.flux2.cli import flux2_edit_generate, flux2_generate
 from mflux.models.ideogram4.cli import ideogram4_generate
-from mflux.models.krea2.cli import krea2_generate
+from mflux.models.krea2.cli import krea2_controlnet_generate, krea2_generate
 from mflux.models.lens.cli import lens_generate
 from mflux.models.qwen.cli import qwen_image_edit_generate, qwen_image_generate
 from mflux.models.qwen21.cli import qwen21_controlnet_generate, qwen21_edit_generate, qwen21_generate
@@ -30,6 +30,13 @@ from mflux.utils.exceptions import ModelConfigError
 # extra_keys, extra argv its parser requires beyond --prompt).
 CLI_MODELS = [
     (krea2_generate, "krea-2", "dev", (), ()),
+    (
+        krea2_controlnet_generate,
+        "krea-2-controlnet-depth",
+        "krea-2",
+        (),
+        ("--depth-image-path", "depth.png"),
+    ),
     (z_image_turbo_generate, "z-image-turbo", "dev", (), ()),
     (ernie_image_generate, "ernie-image", "ernie-image-turbo", (), ()),
     (ernie_image_turbo_generate, "ernie-image-turbo", "ernie-image", (), ()),

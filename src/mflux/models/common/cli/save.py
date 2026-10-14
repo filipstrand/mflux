@@ -82,6 +82,7 @@ MODEL_CLASSES: dict[str, type] = {
 # "not supported yet" from "someone added a model and forgot this table".
 UNSUPPORTED_MODELS = {
     "lens-turbo": "LensImage has no save_model(); its transformer is a single-file checkpoint",
+    "krea-2-controlnet-depth": "the depth ControlNet is added at load; save krea-2 instead and pass it to mflux-generate-krea2-controlnet with --base-model krea-2-controlnet-depth",
 }
 
 

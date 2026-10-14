@@ -19,7 +19,7 @@ from mflux.models.fibo.cli import fibo_edit, fibo_generate
 from mflux.models.flux.cli import flux_generate
 from mflux.models.flux2.cli import flux2_edit_generate, flux2_generate
 from mflux.models.ideogram4.cli import ideogram4_generate
-from mflux.models.krea2.cli import krea2_generate
+from mflux.models.krea2.cli import krea2_controlnet_generate, krea2_generate
 from mflux.models.lens.cli import lens_generate
 from mflux.models.qwen.cli import qwen_image_edit_generate, qwen_image_generate
 from mflux.models.z_image.cli import (
@@ -34,12 +34,14 @@ _EXTRA_ARGV = {
     "qwen_image_edit_generate": ["--image-paths", "a.png"],
     "fibo_edit": ["--image-path", "a.png"],
     "z_image_turbo_generate_controlnet": ["--control", "a.png"],
+    "krea2_controlnet_generate": ["--depth-image-path", "a.png"],
 }
 
 # (module, the model the CLI runs by default, that model's reference step count)
 CLI_DEFAULTS = [
     (boogu_image_generate, "boogu-image-turbo", 4),
     (krea2_generate, "krea-2", 8),
+    (krea2_controlnet_generate, "krea-2-controlnet-depth", 8),
     (lens_generate, "lens-turbo", 4),
     (z_image_generate, "z-image", 50),
     (z_image_turbo_generate, "z-image-turbo", 9),
