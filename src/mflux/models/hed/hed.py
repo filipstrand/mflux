@@ -59,7 +59,13 @@ class HED:
         import torch  # weights only; no torch forward pass runs
         from huggingface_hub import hf_hub_download
 
-        raw = torch.load(hf_hub_download(repo_id=_HF_REPO, filename=_HF_FILE), map_location="cpu", weights_only=True)
+        from mflux.models.common.resolution.model_revisions import ModelRevisions
+
+        raw = torch.load(
+            hf_hub_download(repo_id=_HF_REPO, filename=_HF_FILE, revision=ModelRevisions.get(_HF_REPO)),
+            map_location="cpu",
+            weights_only=True,
+        )
         state = {k: mx.array(v.float().numpy()) for k, v in raw.items()}
         self._net = _HEDNet(state)
 

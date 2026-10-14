@@ -141,7 +141,13 @@ class OpenPoseBody:
         import torch  # weights only; the forward pass is MLX
         from huggingface_hub import hf_hub_download
 
-        raw = torch.load(hf_hub_download(repo_id=_HF_REPO, filename=_HF_FILE), map_location="cpu", weights_only=True)
+        from mflux.models.common.resolution.model_revisions import ModelRevisions
+
+        raw = torch.load(
+            hf_hub_download(repo_id=_HF_REPO, filename=_HF_FILE, revision=ModelRevisions.get(_HF_REPO)),
+            map_location="cpu",
+            weights_only=True,
+        )
         self._net = _OpenPoseBodyNet({k: mx.array(v.float().numpy()) for k, v in raw.items()})
 
     def pose_map(self, image: PIL.Image.Image, detect_resolution: int = 512) -> PIL.Image.Image:
