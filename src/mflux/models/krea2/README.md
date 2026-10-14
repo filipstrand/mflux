@@ -130,9 +130,10 @@ mflux-generate-krea2-controlnet \
 - `--controlnet-path` takes a local copy of the checkpoint or another repo.
 - LoRAs work as with `mflux-generate-krea2`.
 
-The ControlNet is merged into the weights at load, so it needs the original checkpoint: a quantized save is
-refused. `-q` quantizes after the merge. On an M5 Max at 1024x1024 and 8 steps, `-q 8` peaks at
-29 GB with a depth map and 38 GB when Depth Pro estimates it. The depth map is always encoded in one pass,
+On the original checkpoint the ControlNet is merged into the weights at load, and `-q` quantizes after the
+merge. A quantized save works too: pass it with `--model <path> --base-model krea-2-controlnet-depth`, and
+the ControlNet runs as an adapter beside the quantized weights. On an M5 Max at 1024x1024 and 8 steps, `-q 8`
+peaks at 29 GB with a depth map and 38 GB when Depth Pro estimates it; a `-q 6` save peaks at 27 GB. The depth map is always encoded in one pass,
 so `--low-ram` tiles only the final decode and doesn't lower that peak.
 
 ## Training

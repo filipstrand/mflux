@@ -1,5 +1,3 @@
-import json
-import struct
 import warnings
 from argparse import Namespace
 from pathlib import Path
@@ -53,7 +51,7 @@ def build_parser() -> CommandLineParser:
         "--controlnet-strength",
         type=float,
         default=1.0,
-        help="Scale of the ControlNet's attention and MLP deltas, merged into the weights at load (default 1.0). "
+        help="Scale of the ControlNet's attention and MLP deltas, applied at load (default 1.0). "
         "0 drops the deltas but keeps the depth input, so it does not give the plain Krea 2 image.",
     )
     parser.add_output_arguments()
@@ -74,36 +72,7 @@ class Krea2ControlnetCommand:
         for flag, path in (("--image-path", args.image_path), ("--depth-image-path", args.depth_image_path)):
             if path is not None and not Path(path).is_file():
                 raise ValueError(f"{flag} file not found: {path}")
-        bits = Krea2ControlnetCommand._saved_bits(args.model_path)
-        if bits is not None:
-            raise ValueError(
-                f"{args.model_path} is saved at {bits} bits. The depth ControlNet merges into the unquantized "
-                "weights: use the original checkpoint and quantize with -q."
-            )
         return model_config
-
-    @staticmethod
-    def _saved_bits(model_path: str | None) -> str | None:
-        # An mflux save records its quantization in each shard's header; reading one header costs nothing,
-        # where loading the weights to find out takes seconds.
-        if model_path is None or not Path(model_path).expanduser().is_dir():
-            return None
-        for shard in sorted(Path(model_path).expanduser().glob("**/*.safetensors")):
-            if shard.name.startswith("._"):
-                continue
-            try:
-                with shard.open("rb") as fh:
-                    length = struct.unpack("<Q", fh.read(8))[0]
-                    if length > shard.stat().st_size:
-                        return None
-                    header = json.loads(fh.read(length))
-            except (OSError, struct.error, ValueError):
-                # Not a readable safetensors file: the loader reports it with its own error.
-                return None
-            bits = (header.get("__metadata__") or {}).get("quantization_level")
-            # A dense save records "None", as WeightLoader reads it.
-            return None if bits in (None, "None", "null", "") else bits
-        return None
 
     @staticmethod
     def load(args: Namespace) -> Krea2Controlnet:

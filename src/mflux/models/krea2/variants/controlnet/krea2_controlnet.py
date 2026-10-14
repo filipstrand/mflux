@@ -24,7 +24,7 @@ from mflux.utils.image_util import ImageUtil
 
 
 class Krea2Controlnet(nn.Module):
-    # Krea 2 with the depth ControlNet merged in: a wider input projection plus attention/MLP deltas,
+    # Krea 2 with the depth ControlNet loaded in: a wider input projection plus attention/MLP deltas,
     # conditioned on a depth latent that joins the image latent at every step.
 
     vae: QwenVAE

@@ -4,10 +4,14 @@ import PIL.Image
 import pytest
 from mlx import nn
 
+from mflux.models.common.lora.layer.fused_linear_lora_layer import FusedLoRALinear
+from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
+from mflux.models.common.lora.mapping.lora_loader import LoRALoader
 from mflux.models.krea2.krea2_initializer import Krea2Initializer
 from mflux.models.krea2.model.krea2_transformer.transformer import Krea2Transformer
 from mflux.models.krea2.variants.controlnet import krea2_controlnet
 from mflux.models.krea2.variants.controlnet.krea2_controlnet_util import Krea2ControlnetUtil
+from mflux.models.krea2.weights.krea2_weight_definition import Krea2WeightDefinition
 
 # A small Krea 2 transformer with the real submodule names, so these tests need no download.
 TINY = dict(features=64, heads=4, kvheads=4, layers=2, txtlayers=2, txtdim=16, txtheads=2, txtkvheads=2, patch=2, channels=16)  # fmt: off
@@ -154,26 +158,60 @@ def test_a_16_bit_depth_map_file_keeps_its_range(tmp_path):
     assert 100 < rgb[0, 8, 0] < 160
 
 
-@pytest.mark.parametrize("content", [b"", b"version https://git-lfs.github.com/spec/v1\n", b"\xff" * 8 + b"{}"])
-def test_a_broken_shard_does_not_crash_the_save_check(tmp_path, content):
-    # The loader reports a broken file with its own error; the quick header read must not raise first.
-    from mflux.models.krea2.cli.krea2_controlnet_generate import Krea2ControlnetCommand
-
-    (tmp_path / "a.safetensors").write_bytes(content)
-    assert Krea2ControlnetCommand._saved_bits(str(tmp_path)) is None
-
-
-@pytest.mark.parametrize("level, expected", [("8", "8"), ("None", None)], ids=["quantized", "dense"])
-def test_the_save_check_reads_the_quantization_level(tmp_path, level, expected):
-    # mflux-save writes str(bits), so a dense save records "None" and must pass.
-    from mflux.models.krea2.cli.krea2_controlnet_generate import Krea2ControlnetCommand
-
-    mx.save_safetensors(str(tmp_path / "0.safetensors"), {"w": mx.zeros((2,))}, metadata={"quantization_level": level})
-    assert Krea2ControlnetCommand._saved_bits(str(tmp_path)) == expected
-
-
 def test_a_16_bit_map_matches_the_8_bit_map_it_was_made_from():
     # Values are scaled, not stretched: a map that never reaches black or white stays that way.
     gray = np.array([[30, 100, 220]], dtype=np.uint8)
     as16 = PIL.Image.fromarray(gray.astype(np.uint16) * 257)
     assert np.array_equal(np.asarray(Krea2ControlnetUtil._to_rgb(as16))[..., 0], gray)
+
+
+def _live_control(tmp_path, transformer: Krea2Transformer, control: dict[str, mx.array], strength: float = 1.0) -> None:
+    # The quantized-save route: first is replaced, the deltas stay adapters.
+    path = tmp_path / "control.safetensors"
+    mx.save_safetensors(str(path), control)
+    first_w, first_b, pairs = Krea2Initializer._load_control_checkpoint(transformer, str(path))
+    Krea2Initializer._set_control_first(transformer, first_w, first_b)
+    Krea2Initializer._attach_control_adapters(transformer, pairs, strength)
+
+
+def test_live_adapters_match_the_merge(tmp_path):
+    # On a quantized save the deltas run as adapters; on the same base they must give what the merge gives.
+    merged = Krea2Transformer(**TINY)
+    live = Krea2Transformer(**TINY)
+    live.update(merged.parameters())
+    control = _checkpoint(merged)
+    _apply(tmp_path, merged, control, strength=0.5)
+    _live_control(tmp_path, live, control, strength=0.5)
+    hidden, depth, context, timestep = _inputs()
+    expected = merged(hidden, timestep, context, control=depth)
+    assert mx.allclose(live(hidden, timestep, context, control=depth), expected, atol=1e-3, rtol=1e-3)
+
+
+@pytest.mark.parametrize("bits", [8, 6, 4])
+def test_a_quantized_save_takes_the_control_as_adapters(tmp_path, bits):
+    # 6 bits does not divide 32: the packed width must still give the real input size.
+    t = Krea2Transformer(**TINY)
+    control = _checkpoint(t)
+    nn.quantize(t, bits=bits, class_predicate=Krea2WeightDefinition.quantization_predicate)
+    _live_control(tmp_path, t, control)
+    assert type(t.first) is nn.Linear
+    assert mx.allclose(t.first.weight, control["first.weight"][:, :IMAGE_IN].astype(t.first.weight.dtype))
+    wq = t.blocks[0].attn.wq
+    assert isinstance(wq, LoRALinear) and isinstance(wq.linear, nn.QuantizedLinear)
+    hidden, depth, context, timestep = _inputs()
+    assert t(hidden, timestep, context, control=depth).shape == hidden.shape
+
+
+def test_control_adapters_stack_on_a_live_lora(tmp_path):
+    # The init order on a quantized save: load and check the file, replace first, apply the LoRAs, add the deltas.
+    t = Krea2Transformer(**TINY)
+    path = tmp_path / "control.safetensors"
+    mx.save_safetensors(str(path), _checkpoint(t))
+    first_w, first_b, pairs = Krea2Initializer._load_control_checkpoint(t, str(path))
+    Krea2Initializer._set_control_first(t, first_w, first_b)
+    out_features, in_features = t.blocks[0].attn.wq.weight.shape
+    lora = {"lora_A": mx.random.normal((in_features, RANK)), "lora_B": mx.random.normal((RANK, out_features))}
+    LoRALoader._apply_lora_matrices_to_target(t, "blocks.0.attn.wq", lora, scale=1.0, role=None)
+    Krea2Initializer._attach_control_adapters(t, pairs, strength=1.0)
+    wq = t.blocks[0].attn.wq
+    assert isinstance(wq, FusedLoRALinear) and len(wq.loras) == 2
