@@ -18,6 +18,7 @@ from mflux.models.common.config.model_config import AVAILABLE_MODELS
 from mflux.models.common.resolution.config_resolution import ConfigResolution
 from mflux.models.ernie_image.cli import ernie_image_generate, ernie_image_turbo_generate
 from mflux.models.flux2.cli import flux2_edit_generate, flux2_generate
+from mflux.models.flux3.cli import flux3_edit_generate, flux3_generate
 from mflux.models.ideogram4.cli import ideogram4_generate
 from mflux.models.krea2.cli import krea2_controlnet_generate, krea2_generate
 from mflux.models.lens.cli import lens_generate
@@ -50,6 +51,14 @@ CLI_MODELS = [
         "flux2-klein-4b",
         "qwen-image",
         flux2_edit_generate.FAMILY_MODELS,
+        ("--image-paths", "ref.png"),
+    ),
+    (flux3_generate, "flux3-image-klein", "dev", flux3_generate.FAMILY_MODELS, ()),
+    (
+        flux3_edit_generate,
+        "flux3-image-klein",
+        "flux2-klein-4b",
+        flux3_edit_generate.FAMILY_MODELS,
         ("--image-paths", "ref.png"),
     ),
     (qwen21_generate, "qwen-image-2.1", "dev", qwen21_generate.FAMILY_MODELS, ()),
@@ -134,6 +143,12 @@ class TestRestrictedModelConfig:
         assert set(flux2_generate.FAMILY_MODELS) | {"flux2-klein-4b"} == flux2_keys
         assert set(flux2_edit_generate.FAMILY_MODELS) | {"flux2-klein-4b"} == flux2_keys
 
+    def test_flux3_family_covers_every_flux3_registry_entry(self):
+        flux3_keys = {key for key in AVAILABLE_MODELS if key.startswith("flux3-")}
+        assert set(flux3_generate.FAMILY_MODELS) | {"flux3-image-klein"} == flux3_keys
+        assert set(flux3_edit_generate.FAMILY_MODELS) | {"flux3-image-klein"} == flux3_keys
+        assert flux3_generate.FAMILY_MODELS == ("flux3-image-klein-base",)
+
     def test_z_image_cli_rejects_the_controlnet_sibling(self, monkeypatch):
         # The base CLI runs z-image and z-image-turbo; the ControlNet entry has its own
         # command and needs a control image, so its alias must not slip in here.
@@ -209,6 +224,67 @@ FLUX2_BASE_ARGV = [
     (flux2_generate, ()),
     (flux2_edit_generate, ("--image-paths", "ref.png")),
 ]
+
+
+FLUX3_BASE_ARGV = [
+    (flux3_generate, ()),
+    (flux3_edit_generate, ("--image-paths", "ref.png")),
+]
+
+
+@pytest.mark.fast
+class TestFlux3SavedModelIdentity:
+    # A saved model is identified by its directory name alone: a Base model saved under a name without
+    # "flux3-klein-base" loads as the distilled entry, unless --base-model says otherwise.
+    @pytest.mark.parametrize(
+        "checkpoint,expected_key",
+        [
+            ("/Volumes/models/flux3-klein-q8", "flux3-image-klein"),
+            ("/Volumes/models/flux3-image-klein-q4", "flux3-image-klein"),
+            ("/Volumes/models/flux3-klein-base-q8", "flux3-image-klein-base"),
+            ("/Volumes/models/flux3-image-klein-base-q6", "flux3-image-klein-base"),
+            ("/Volumes/models/flux3-base-q8", "flux3-image-klein-base"),
+            ("/Volumes/models/my-saved-model", "flux3-image-klein"),
+            ("/Volumes/models/my-base-model-q8", "flux3-image-klein"),
+        ],
+    )
+    @pytest.mark.parametrize("module,base_argv", FLUX3_BASE_ARGV, ids=lambda v: getattr(v, "__name__", v))
+    def test_directory_name_selects_the_entry(self, monkeypatch, module, base_argv, checkpoint, expected_key):
+        config = TestRestrictedModelConfig._resolve_via_parser(
+            monkeypatch,
+            module,
+            "flux3-image-klein",
+            extra_argv=["--model", checkpoint],
+            extra_keys=module.FAMILY_MODELS,
+            base_argv=base_argv,
+        )
+        assert config is AVAILABLE_MODELS[expected_key]
+
+    @pytest.mark.parametrize("module,base_argv", FLUX3_BASE_ARGV, ids=lambda v: getattr(v, "__name__", v))
+    def test_base_model_flag_overrides_a_neutral_directory_name(self, monkeypatch, module, base_argv):
+        config = TestRestrictedModelConfig._resolve_via_parser(
+            monkeypatch,
+            module,
+            "flux3-image-klein",
+            extra_argv=["--model", "/Volumes/models/my-saved-model"],
+            extra_keys=module.FAMILY_MODELS,
+            base_model="flux3-klein-base",
+            base_argv=base_argv,
+        )
+        assert config is AVAILABLE_MODELS["flux3-image-klein-base"]
+
+    @pytest.mark.parametrize("module,base_argv", FLUX3_BASE_ARGV, ids=lambda v: getattr(v, "__name__", v))
+    def test_flux2_base_is_not_accepted(self, monkeypatch, module, base_argv):
+        with pytest.raises(ModelConfigError, match="only accepts the aliases"):
+            TestRestrictedModelConfig._resolve_via_parser(
+                monkeypatch,
+                module,
+                "flux3-image-klein",
+                extra_argv=["--model", "/Volumes/models/my-saved-model"],
+                extra_keys=module.FAMILY_MODELS,
+                base_model="flux2-klein-base-4b",
+                base_argv=base_argv,
+            )
 
 
 @pytest.mark.fast

@@ -162,7 +162,7 @@ class Flux3Klein(nn.Module):
         return self.prompt_cache[prompt]
 
     def _decode_latents(self, latents: mx.array, h: int, w: int) -> mx.array:
-        return Flux3LatentCreator.decode_tokens(self.vae, latents, h, w)
+        return Flux3LatentCreator.decode_tokens(self.vae, latents, h, w, tiling_config=self.tiling_config)
 
     def save_model(self, base_path: str) -> None:
         ModelSaver.save_model(

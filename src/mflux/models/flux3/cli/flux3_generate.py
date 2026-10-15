@@ -1,6 +1,7 @@
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.parser.parsers import CommandLineParser
 from mflux.models.common.compute_precision import ComputePrecision
+from mflux.models.common.config.model_config import AVAILABLE_MODELS
 from mflux.models.common.resolution.config_resolution import ConfigResolution
 from mflux.models.flux3.latent_creator.flux3_latent_creator import Flux3LatentCreator
 from mflux.models.flux3.variants import Flux3Klein
@@ -12,15 +13,17 @@ from mflux.utils.prompt_util import PromptUtil
 DEFAULT_MODEL = "flux3-image-klein"
 
 # The entries this CLI equally serves: the undistilled Base checkpoint (50 steps, CFG, --guidance defaults to 3.5).
-FAMILY_MODELS = ("flux3-image-klein-base",)
+FAMILY_MODELS = tuple(key for key in AVAILABLE_MODELS if key.startswith("flux3-") and key != DEFAULT_MODEL)
 
-# Accepted but unused for the distilled checkpoint (no CFG scale to set); Base honours --guidance.
-IGNORED_OPTIONS = {
-    "--guidance": "FLUX 3 Image Klein is guidance-distilled; it has no guidance scale.",
+CONDITIONAL_OPTIONS = {
+    "--guidance": {
+        "condition": "base (non-distilled) FLUX 3 Image Klein checkpoints",
+        "reason": "the distilled checkpoint has no CFG branch, so the value is ignored with a warning.",
+    },
 }
 
 REJECTED_OPTIONS = {
-    "--negative-prompt": "FLUX 3 Image Klein has no negative branch; the CLI exits with an error when this is set.",
+    "--negative-prompt": "FLUX 3 Image Klein takes no negative prompt; the CLI exits with an error when this is set.",
 }
 
 
@@ -38,9 +41,9 @@ def main():
     parser = build_parser()
     args = parser.parse_args()
 
-    for option, reason in REJECTED_OPTIONS.items():
-        if CommandLineParser._option_was_provided(option):
-            parser.error(f"{option}: {reason}")
+    # Keyed on the option, not the value: a metadata sidecar can restore a negative prompt nobody typed.
+    if CommandLineParser._option_was_provided("--negative-prompt"):
+        parser.error("--negative-prompt is not supported for FLUX 3 Image Klein. Focus on describing what you want.")
 
     model_config = ConfigResolution.resolve_restricted(
         args.model,
@@ -51,7 +54,7 @@ def main():
     )
 
     if not model_config.supports_guidance:
-        CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
+        CommandLineParser.warn_ignored_options({"--guidance": CONDITIONAL_OPTIONS["--guidance"]["reason"]})
     model = Flux3Klein(
         model_config=model_config,
         quantize=args.quantize,

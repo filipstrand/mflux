@@ -59,5 +59,8 @@ class Flux3LatentCreator:
         return Flux3LatentCreator.pack_latents((latents - bn_mean) / bn_std)
 
     @staticmethod
-    def decode_tokens(vae: Flux2VAE, tokens: mx.array, h: int, w: int) -> mx.array:
-        return vae.decode_packed_latents(Flux3LatentCreator.unpack_latents(tokens, h * 16, w * 16))
+    def decode_tokens(
+        vae: Flux2VAE, tokens: mx.array, h: int, w: int, tiling_config: TilingConfig | None = None
+    ) -> mx.array:
+        unpacked = Flux3LatentCreator.unpack_latents(tokens, h * 16, w * 16)
+        return vae.decode_packed_latents(unpacked, tiling_config=tiling_config)

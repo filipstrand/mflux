@@ -4,6 +4,7 @@ import pytest
 
 from mflux.models.common.resolution.path_resolution import PathResolution
 from mflux.models.flux2.weights.flux2_weight_definition import Flux2KleinWeightDefinition
+from mflux.models.flux3.weights.flux3_weight_definition import Flux3KleinWeightDefinition
 from mflux.models.krea2.weights.krea2_weight_definition import Krea2WeightDefinition
 
 
@@ -176,3 +177,22 @@ def test_subdir_patterns_alone_still_need_no_root_files(tmp_path):
     patterns = ["transformer/*.safetensors", "vae/*.safetensors", "model_index.json"]
 
     assert PathResolution._is_snapshot_complete(tmp_path, {"transformer", "vae"}, patterns) is True
+
+
+@pytest.mark.fast
+def test_a_flux3_snapshot_needs_all_three_components_and_ignores_the_bfl_files(tmp_path):
+    # The FLUX 3 repos also ship the BFL-format model.safetensors and ae.safetensors at the root (about 20 GB the
+    # pipeline never reads); the download patterns skip them, so a complete mflux snapshot has none of them.
+    patterns = Flux3KleinWeightDefinition.get_download_patterns()
+    subdirs = PathResolution._get_required_subdirs_with_safetensors(patterns)
+    assert subdirs == {"vae", "transformer", "text_encoder"}
+    assert not any(pattern.startswith(("model.", "ae.")) for pattern in patterns)
+
+    for subdir in ("vae", "transformer"):
+        (tmp_path / subdir).mkdir()
+        (tmp_path / subdir / "model.safetensors").write_bytes(b"")
+    assert PathResolution._is_snapshot_complete(tmp_path, subdirs, patterns) is False
+
+    (tmp_path / "text_encoder").mkdir()
+    (tmp_path / "text_encoder" / "model-00001-of-00002.safetensors").write_bytes(b"")
+    assert PathResolution._is_snapshot_complete(tmp_path, subdirs, patterns) is True
