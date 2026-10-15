@@ -15,7 +15,7 @@ class TestFlux3TextEncoder:
         mask = mx.array([[1, 1, 1, 0, 0]])
         assert Flux3PromptEncoder.positions(mask).tolist() == [[0, 1, 2, 1, 1]]
 
-    def test_text_ids_use_arange_not_cumsum_positions(self):
+    def test_text_ids_use_a_plain_range_not_cumsum_positions(self):
         ids = np.array(Flux3PromptEncoder.prepare_text_ids(4))
         assert ids.dtype == np.float32
         assert ids.tolist() == [[0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 0, 2], [0, 0, 0, 3]]
@@ -27,7 +27,7 @@ class TestFlux3TextEncoder:
         assert transform("model.language_model.embed_tokens.weight") == "model.embed_tokens.weight"
         assert transform("model.visual.blocks.0.attn.qkv.weight") is None
 
-    def test_default_positions_match_explicit_arange_and_padding_positions_matter(self):
+    def test_default_positions_match_explicit_range_and_padding_positions_matter(self):
         mx.random.seed(0)
         encoder = Qwen3TextEncoder(
             vocab_size=64,
