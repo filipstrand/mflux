@@ -38,6 +38,8 @@ def main():
     args = parser.parse_args()
     CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
 
+    if any(name and "flux3" in name.lower() for name in (args.model, args.base_model)):
+        parser.error("FLUX 3 Image Klein is not supported by mflux-generate. Use mflux-generate-flux3 instead.")
     if (args.base_model and "klein" in args.base_model.lower()) or (args.model and "flux2-klein" in args.model.lower()):
         parser.error("FLUX.2 Klein is not supported by mflux-generate. Use mflux-generate-flux2 instead.")
 
