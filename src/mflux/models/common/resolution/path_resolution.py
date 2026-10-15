@@ -139,12 +139,15 @@ class PathResolution:
 
     @staticmethod
     def _is_saved_snapshot_complete(snapshot_path: Path, saved_subdirs: list[str]) -> bool:
-        # Shards in every component's save subdir, and every shard an index names on disk.
-        # Only the saver's numbered names count: a cached original keeps other files there
-        # (Lens Turbo's diffusion_models/ can hold the base model's file), and taking those
-        # for a save would stop the download of the file that's missing.
+        # Shards and the saver's index in every component's save subdir, and every shard the
+        # index names on disk. The index is required: a download cut off after 0.safetensors
+        # has no other trace of the shards still missing. Only the saver's numbered names
+        # count: a cached original keeps other files there (Lens Turbo's diffusion_models/ can
+        # hold the base model's file), and taking those for a save would stop the download of
+        # the file that's missing.
         return all(
             any(p.is_file() for p in (snapshot_path / d).glob("[0-9]*.safetensors"))
+            and (snapshot_path / d / "model.safetensors.index.json").is_file()
             and PathResolution._indexed_shards_present(snapshot_path / d)
             for d in saved_subdirs
         )

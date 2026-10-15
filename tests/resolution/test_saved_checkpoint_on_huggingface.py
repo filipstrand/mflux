@@ -96,16 +96,19 @@ def test_a_saved_seedvr2_downloads_its_component_subdirs(tmp_path):
     assert set(filter_repo_objects(saved, allow_patterns=patterns)) == set(saved)
 
 
-def _cached_saved_krea2(tmp_path, shards_on_disk: int) -> object:
+def _cached_saved_krea2(tmp_path, shards_on_disk: int, root_index: bool = True) -> object:
     snapshot = tmp_path / "models--someone--krea-2-mflux-q4" / "snapshots" / "abc123"
     snapshot.mkdir(parents=True)
     for i in range(shards_on_disk):
         (snapshot / f"{i}.safetensors").write_bytes(b"")
-    index = {"weight_map": {f"blocks.{i}.weight": f"{i}.safetensors" for i in range(4)}}
-    (snapshot / "model.safetensors.index.json").write_text(json.dumps(index))
+    if root_index:
+        index = {"weight_map": {f"blocks.{i}.weight": f"{i}.safetensors" for i in range(4)}}
+        (snapshot / "model.safetensors.index.json").write_text(json.dumps(index))
     for subdir in ("vae", "text_encoder"):
         (snapshot / subdir).mkdir()
         (snapshot / subdir / "0.safetensors").write_bytes(b"")
+        index = {"weight_map": {"weight": "0.safetensors"}}
+        (snapshot / subdir / "model.safetensors.index.json").write_text(json.dumps(index))
     (snapshot / "tokenizer").mkdir()
     (snapshot / "tokenizer" / "tokenizer.json").write_text("{}")
     return snapshot
@@ -130,8 +133,13 @@ def test_a_cached_saved_krea2_loads_without_the_network(tmp_path):
 
 
 @pytest.mark.fast
-def test_a_cached_saved_krea2_missing_a_shard_downloads_again(tmp_path):
-    _cached_saved_krea2(tmp_path, shards_on_disk=3)
+@pytest.mark.parametrize(
+    ("shards_on_disk", "root_index"),
+    [(3, True), (1, False)],
+    ids=["missing_a_shard", "cut_off_before_the_index"],
+)
+def test_a_partly_cached_saved_krea2_downloads_again(tmp_path, shards_on_disk, root_index):
+    _cached_saved_krea2(tmp_path, shards_on_disk=shards_on_disk, root_index=root_index)
 
     with (
         patch("mflux.models.common.resolution.path_resolution.HF_HUB_CACHE", str(tmp_path)),
