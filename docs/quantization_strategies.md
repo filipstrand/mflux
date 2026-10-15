@@ -2,13 +2,6 @@
 
 Models that `mflux-save` can save. Source: `MODEL_CLASSES` in `src/mflux/models/common/cli/save.py`.
 
-- ✅ means `-q` quantizes the component.
-- ❌ means the model keeps the component in BF16 (`skip_quantization=True`).
-
-- `GS` is the affine group size that `-q` uses.
-- `HS` is the hidden size of the text encoder.
-- `FP8` and `NVFP4` link to a release of that model by its original authors on Hugging Face. A blank cell means no such release was found. Community conversions are not listed.
-- `Final` means the last hidden state. `Inter` means intermediate hidden states. Numbers are layer indexes. `-2` means the second from last.
 
 | Line | Model name | TE Q | DiT Q | GS | Text encoder | HS | State(s) Used | FP8 | NVFP4 |
 |:---:|---|:---:|:---:|:---:|---|:---:|---|:---:|:---:|
@@ -37,7 +30,17 @@ Models that `mflux-save` can save. Source: `MODEL_CLASSES` in `src/mflux/models/
 | 23 | `z-image-turbo` | ✅ | ✅ | 64 | Qwen3 | 2560 | Inter -2 |  |  |
 | 24 | `z-image-turbo-controlnet-union-2.1` | ✅ | ✅ | 64 | Qwen3 | 2560 | Inter -2 |  |  |
 
-Notes:
+**Legend:**
+- ✅ means `-q` quantizes the component.
+- ❌ means the model keeps the component in BF16 (`skip_quantization=True`).
+
+- `GS` is the affine group size that `-q` uses.
+- `HS` is the hidden size of the text encoder.
+- `FP8` and `NVFP4` link to a release of that model by its original authors on Hugging Face. A blank cell means no such release was found. Community conversions are not listed.
+- `Final` means the last hidden state. `Inter` means intermediate hidden states. Numbers are layer indexes. `-2` means the second from last.
+
+
+**Notes:**
 - `ming-image-design` takes a separate `--text-encoder-quantize` flag for the text encoder. It falls back to `-q`.
 - `lens-turbo` is not in the table. `mflux-save` cannot save it. Its DiT takes `-q`. Its GPT-OSS encoder ships pre-quantized.
 - `qwen-image-2.1` (text-to-image) skips the text encoder. The `qwen-image-2.1-controlnet-union` model does not skip it.
