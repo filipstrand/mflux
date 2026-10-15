@@ -81,6 +81,7 @@ MODEL_CLASSES: dict[str, type] = {
 # there is nothing to dispatch to. Listed rather than left out so the drift test can tell
 # "not supported yet" from "someone added a model and forgot this table".
 UNSUPPORTED_MODELS = {
+    "flux3-image-klein": "the FLUX 3 port has no text encoder yet",
     "lens-turbo": "LensImage has no save_model(); its transformer is a single-file checkpoint",
     "krea-2-controlnet-depth": "the depth ControlNet is added at load; save krea-2 instead and pass it to mflux-generate-krea2-controlnet with --base-model krea-2-controlnet-depth",
 }

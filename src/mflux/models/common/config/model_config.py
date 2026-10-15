@@ -134,6 +134,11 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
+    def flux3_image_klein() -> "ModelConfig":
+        return AVAILABLE_MODELS["flux3-image-klein"]
+
+    @staticmethod
+    @lru_cache
     def krea2() -> "ModelConfig":
         return AVAILABLE_MODELS["krea-2"]
 
@@ -480,6 +485,18 @@ AVAILABLE_MODELS = {
             "hidden_size": 2560,
             "intermediate_size": 9728,
         },
+    ),
+    "flux3-image-klein": ModelConfig(
+        priority=11,
+        aliases=["flux3-image-klein", "flux3-klein", "flux3"],
+        model_name="black-forest-labs/flux-3-image-klein",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=None,
+        max_sequence_length=4096,
+        supports_guidance=False,
+        requires_sigma_shift=False,
     ),
     "flux2-klein-9b": ModelConfig(
         priority=12,
