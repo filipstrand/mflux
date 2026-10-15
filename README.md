@@ -124,6 +124,7 @@ MFLUX supports the following model families. They have different strengths and w
 |[Z-Image](src/mflux/models/z_image/README.md) | Nov 2025 | 6B | Distilled & Base | Yes | Fast, small, very good quality and realism. |
 |[Krea 2](src/mflux/models/krea2/README.md) | Jun 2026 | 12B | Turbo (distilled) | No | Very good quality with a wide range of styles; good for creative exploration. |
 |[FLUX.2](src/mflux/models/flux2/README.md) | Jan 2026 | 4B & 9B | Distilled & Base | Yes | Fastest + smallest with very good quality and edit capabilities. |
+|[FLUX 3 Image Klein](src/mflux/models/flux3/README.md) | 2026 | 5.6B (+4B TE) | Distilled & Base | No | Text-to-image and editing with up to 10 reference images in one model; bounding-box layouts, strong text rendering. 16 steps distilled, 50 steps Base. |
 |[Ideogram 4](src/mflux/models/ideogram4/README.md) | Jun 2026 | 9B | Base | No | JSON-caption-native, typography-focused text-to-image generation. |
 |[ERNIE-Image](src/mflux/models/ernie_image/README.md) | Apr 2026 | 8B | Distilled & Base | No | Single-stream DiT from Baidu. Vivid, high-contrast output. |
 |[Lens](src/mflux/models/lens/README.md) | May 2026 | 3.8B (+20B TE) | Turbo (distilled) | No | Dual-stream MMDiT from Microsoft with a GPT-OSS text encoder. Strong prompt adherence in 4 steps. |
@@ -149,7 +150,7 @@ MFlux supports a small number of schedulers - see;<br>
 - Quantization and local model loading
 - LoRA support (multi-LoRA, scales, library lookup), including LyCORIS LoKr on FLUX.1 and FLUX.2
 - Metadata export + reuse, plus prompt file support
-- Float16 compute for Apple M1-family GPUs on FLUX.2, Z-Image and Qwen-Image 2.1 (`--compute-precision float16`, see the [common README](src/mflux/models/common/README.md#float16-compute-apple-m1-family))
+- Float16 compute for Apple M1-family GPUs on FLUX.2, FLUX 3 Image Klein, Z-Image and Qwen-Image 2.1 (`--compute-precision float16`, see the [common README](src/mflux/models/common/README.md#float16-compute-apple-m1-family))
 
 **Model-specific highlights**
 - Text-to-image and image-to-image generation.
@@ -200,6 +201,7 @@ Where the models and the main features came from, read from the merge history (`
 | Z-Image | [@filipstrand](https://github.com/filipstrand) | [#284](https://github.com/mflux-community/mflux/pull/284) |
 | SeedVR2 | [@filipstrand](https://github.com/filipstrand) | [#297](https://github.com/mflux-community/mflux/pull/297) |
 | FLUX.2 Klein | [@filipstrand](https://github.com/filipstrand) | [#323](https://github.com/mflux-community/mflux/pull/323) |
+| FLUX 3 Image Klein | [@cguldogan](https://github.com/cguldogan) | [#876](https://github.com/mflux-community/mflux/issues/876) |
 | FLUX.2 KV cache (klein-9b-kv) | [@michaeltrefry](https://github.com/michaeltrefry) | [#426](https://github.com/mflux-community/mflux/pull/426) |
 | ERNIE-Image | [@azrahello](https://github.com/azrahello) | [#417](https://github.com/mflux-community/mflux/pull/417) |
 | Ideogram 4 | [@omercelik](https://github.com/omercelik) | [#433](https://github.com/mflux-community/mflux/pull/433) |
