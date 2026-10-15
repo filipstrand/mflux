@@ -17,9 +17,10 @@ class Flux3KleinEdit(Flux3Klein):
         seed: int,
         prompt: str,
         image_paths: list[Path | str],
-        num_inference_steps: int = 16,
+        num_inference_steps: int | None = None,
         height: int | None = None,
         width: int | None = None,
+        guidance: float | None = None,
     ) -> GeneratedImage:
         # width/height None -> the first prepared reference's size; a single reference prepared with neither
         # given is cropped back to its fitted box (as the reference implementation does).
@@ -33,6 +34,7 @@ class Flux3KleinEdit(Flux3Klein):
             num_inference_steps=num_inference_steps,
             height=height or default_height,
             width=width or default_width,
+            guidance=guidance,
             cond_tokens=cond_tokens,
             cond_ids=cond_ids,
             image_paths=image_paths,

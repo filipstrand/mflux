@@ -13,6 +13,10 @@ from mflux.utils.scale_factor import ScaleFactor
 
 DEFAULT_MODEL = "flux3-image-klein"
 
+# The entries this CLI equally serves: the undistilled Base checkpoint (50 steps, CFG, --guidance defaults to 3.5).
+FAMILY_MODELS = ("flux3-image-klein-base",)
+
+# Accepted but unused for the distilled checkpoint (no CFG scale to set); Base honours --guidance.
 IGNORED_OPTIONS = {
     "--guidance": "FLUX 3 Image Klein is guidance-distilled; it has no guidance scale.",
 }
@@ -56,7 +60,6 @@ def main():
     for option, reason in REJECTED_OPTIONS.items():
         if CommandLineParser._option_was_provided(option):
             parser.error(f"{option}: {reason}")
-    CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
 
     image_paths = [Path(p) for p in args.image_paths]
     if not 1 <= len(image_paths) <= MAX_REFERENCES:
@@ -66,9 +69,12 @@ def main():
         args.model,
         DEFAULT_MODEL,
         model_path=args.model_path,
+        extra_keys=FAMILY_MODELS,
         base_model=args.base_model,
     )
 
+    if not model_config.supports_guidance:
+        CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
     model = Flux3KleinEdit(model_config=model_config, model_path=args.model_path)
 
     memory_saver = CallbackManager.register_callbacks(
@@ -87,6 +93,7 @@ def main():
                 width=width,
                 height=height,
                 num_inference_steps=args.steps,
+                guidance=args.guidance,
             )
             image.save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)
     except (StopImageGenerationException, PromptFileReadError) as exc:

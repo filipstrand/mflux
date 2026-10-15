@@ -18,16 +18,16 @@ class Flux3WeightMapping(WeightMapping):
     ]
 
     @staticmethod
-    def get_transformer_mapping() -> List[WeightTarget]:
+    def get_transformer_mapping(flow_map: bool = True) -> List[WeightTarget]:
         names = [
             "context_embedder.weight",
             "timestep_embedder.linear_1.weight",
             "timestep_embedder.linear_2.weight",
-            "target_timestep_embedder.linear_1.weight",
-            "target_timestep_embedder.linear_2.weight",
             "norm_out.linear.weight",
             "proj_out.weight",
         ]
+        if flow_map:  # the undistilled Base checkpoint has no target time embedding
+            names += ["target_timestep_embedder.linear_1.weight", "target_timestep_embedder.linear_2.weight"]
         names += [f"x_embedders.{mode}.weight" for mode in ("image", "image_cond")]
         for mode in ("image", "image_cond", "txt"):
             names += [f"early_stream_modulations.{mode}.linear.weight", f"single_stream_modulations.{mode}.linear.weight"]  # fmt: skip
@@ -38,6 +38,10 @@ class Flux3WeightMapping(WeightMapping):
             targets += Flux3WeightMapping._block_targets(prefix, max_blocks=5)
         targets += Flux3WeightMapping._block_targets("single_transformer_blocks", max_blocks=28)
         return targets
+
+    @staticmethod
+    def get_base_transformer_mapping() -> List[WeightTarget]:
+        return Flux3WeightMapping.get_transformer_mapping(flow_map=False)
 
     @staticmethod
     def get_vae_mapping() -> List[WeightTarget]:

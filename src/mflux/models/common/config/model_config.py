@@ -139,6 +139,11 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
+    def flux3_image_klein_base() -> "ModelConfig":
+        return AVAILABLE_MODELS["flux3-image-klein-base"]
+
+    @staticmethod
+    @lru_cache
     def krea2() -> "ModelConfig":
         return AVAILABLE_MODELS["krea-2"]
 
@@ -497,6 +502,25 @@ AVAILABLE_MODELS = {
         max_sequence_length=4096,
         supports_guidance=False,
         requires_sigma_shift=False,
+        text_encoder_overrides={
+            "hidden_size": 2560,
+            "intermediate_size": 9728,
+            "num_hidden_layers": 32,
+            "rope_theta": 5000000.0,
+        },
+    ),
+    "flux3-image-klein-base": ModelConfig(
+        priority=11,
+        aliases=["flux3-image-klein-base", "flux3-klein-base", "flux3-base"],
+        model_name="black-forest-labs/flux-3-image-klein-base",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=None,
+        max_sequence_length=4096,
+        supports_guidance=True,
+        requires_sigma_shift=False,
+        transformer_overrides={"flow_map": False},
         text_encoder_overrides={
             "hidden_size": 2560,
             "intermediate_size": 9728,

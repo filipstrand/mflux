@@ -26,13 +26,17 @@ class Flux3Transformer(nn.Module):
         mlp_ratio: float = 3.0,
         axes_dims_rope: tuple[int, ...] = (32, 32, 32, 32),
         rope_theta: int = 10000,
+        flow_map: bool = True,
     ):
         super().__init__()
         self.inner_dim = num_attention_heads * attention_head_dim
 
         self.pos_embed = Flux3PosEmbed(theta=rope_theta, axes_dim=axes_dims_rope)
         self.timestep_embedder = Flux3TimestepEmbedder(timestep_channels, self.inner_dim)
-        self.target_timestep_embedder = Flux3TimestepEmbedder(timestep_channels, self.inner_dim)
+        # Only the distilled checkpoint is a flow map (its time embedding is the sum of the current and the target
+        # time); the undistilled Base checkpoint has no target_timestep_embedder.
+        self.flow_map = flow_map
+        self.target_timestep_embedder = Flux3TimestepEmbedder(timestep_channels, self.inner_dim) if flow_map else None
         self.early_stream_modulations = {m: Flux3Modulation(self.inner_dim) for m in self.MOD_MODES}
         self.single_stream_modulations = {m: Flux3Modulation(self.inner_dim) for m in self.MOD_MODES}
 
@@ -62,7 +66,7 @@ class Flux3Transformer(nn.Module):
         encoder_hidden_states: mx.array,
         txt_ids: mx.array,
         timestep: mx.array,
-        target_timestep: mx.array,
+        target_timestep: mx.array | None = None,
         cond_hidden_states: mx.array | None = None,
         cond_ids: mx.array | None = None,
     ) -> mx.array:
@@ -70,12 +74,16 @@ class Flux3Transformer(nn.Module):
         num_image = hidden_states.shape[1]
         has_cond = cond_hidden_states is not None and cond_hidden_states.shape[1] > 0
 
-        # Image tokens see the current time, conditioning and text tokens see t = 0; every mode adds the target time.
-        target = self.target_timestep_embedder(target_timestep)
+        # Image tokens see the current time, conditioning and text tokens see t = 0; a flow map adds the target time to every mode.
+        if self.flow_map != (target_timestep is not None):
+            raise ValueError("target_timestep is required by, and only by, a flow-map transformer")
         vec = {
-            "image": self.timestep_embedder(timestep) + target,
-            "context": self.timestep_embedder(mx.zeros_like(timestep)) + target,
+            "image": self.timestep_embedder(timestep),
+            "context": self.timestep_embedder(mx.zeros_like(timestep)),
         }
+        if self.flow_map:
+            target = self.target_timestep_embedder(target_timestep)
+            vec = {k: v + target for k, v in vec.items()}
         vec_by_mode = {"image": vec["image"], "image_cond": vec["context"], "txt": vec["context"]}
         early = {m: self.early_stream_modulations[m](vec_by_mode[m]) for m in self.MOD_MODES}
         single = {m: self.single_stream_modulations[m](vec_by_mode[m]) for m in self.MOD_MODES}

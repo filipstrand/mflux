@@ -9,7 +9,10 @@ from mflux.models.common.weights.loading.weight_loader import WeightLoader
 from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3TextEncoder
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 from mflux.models.flux3.model.flux3_transformer.flux3_transformer import Flux3Transformer
-from mflux.models.flux3.weights.flux3_weight_definition import Flux3KleinWeightDefinition
+from mflux.models.flux3.weights.flux3_weight_definition import (
+    Flux3KleinBaseWeightDefinition,
+    Flux3KleinWeightDefinition,
+)
 
 
 class Flux3Initializer:
@@ -25,10 +28,11 @@ class Flux3Initializer:
             raise ValueError("compute_precision is not supported for FLUX 3 yet")
         path = model_path if model_path else model_config.model_name
         Flux3Initializer._init_config(model, model_config)
-        weights = Flux3Initializer._load_weights(path)
+        definition = Flux3Initializer._weight_definition(model_config)
+        weights = Flux3Initializer._load_weights(path, definition)
         Flux3Initializer._init_tokenizers(model, path)
         Flux3Initializer._init_models(model)
-        Flux3Initializer._apply_weights(model, weights, quantize)
+        Flux3Initializer._apply_weights(model, weights, quantize, definition)
 
     @staticmethod
     def _init_config(model, model_config: ModelConfig) -> None:
@@ -39,9 +43,14 @@ class Flux3Initializer:
         model._noise_override = None  # parity-test hook: replaces the seeded noise
 
     @staticmethod
-    def _load_weights(model_path: str) -> LoadedWeights:
+    def _weight_definition(model_config: ModelConfig):
+        flow_map = model_config.transformer_overrides.get("flow_map", True)
+        return Flux3KleinWeightDefinition if flow_map else Flux3KleinBaseWeightDefinition
+
+    @staticmethod
+    def _load_weights(model_path: str, definition) -> LoadedWeights:
         return WeightLoader.load(
-            weight_definition=Flux3KleinWeightDefinition,
+            weight_definition=definition,
             model_path=model_path,
         )
 
@@ -59,11 +68,11 @@ class Flux3Initializer:
         model.text_encoder = Qwen3TextEncoder(**model.model_config.text_encoder_overrides)
 
     @staticmethod
-    def _apply_weights(model, weights: LoadedWeights, quantize: int | None) -> None:
+    def _apply_weights(model, weights: LoadedWeights, quantize: int | None, definition) -> None:
         model.bits = WeightApplier.apply_and_quantize(
             weights=weights,
             quantize_arg=quantize,
-            weight_definition=Flux3KleinWeightDefinition,
+            weight_definition=definition,
             models={
                 "vae": model.vae,
                 "transformer": model.transformer,

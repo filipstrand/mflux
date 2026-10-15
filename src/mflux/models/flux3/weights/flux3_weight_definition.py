@@ -1,3 +1,4 @@
+from dataclasses import replace
 from typing import List
 
 from mflux.models.common.config.model_config import ModelConfig
@@ -80,3 +81,15 @@ class Flux3KleinWeightDefinition:
     @staticmethod
     def quantization_predicate(path: str, module) -> bool:
         return hasattr(module, "to_quantized")
+
+
+class Flux3KleinBaseWeightDefinition(Flux3KleinWeightDefinition):
+    # Klein Base is undistilled: same layout as the distilled checkpoint minus target_timestep_embedder.
+    @staticmethod
+    def get_components() -> List[ComponentDefinition]:
+        return [
+            replace(component, mapping_getter=Flux3WeightMapping.get_base_transformer_mapping)
+            if component.name == "transformer"
+            else component
+            for component in Flux3KleinWeightDefinition.get_components()
+        ]
