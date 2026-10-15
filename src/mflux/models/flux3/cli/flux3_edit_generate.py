@@ -2,6 +2,7 @@ from pathlib import Path
 
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.parser.parsers import CommandLineParser
+from mflux.models.common.compute_precision import ComputePrecision
 from mflux.models.common.resolution.config_resolution import ConfigResolution
 from mflux.models.flux3.latent_creator.flux3_latent_creator import Flux3LatentCreator
 from mflux.models.flux3.latent_creator.flux3_reference_images import MAX_REFERENCES
@@ -23,7 +24,6 @@ IGNORED_OPTIONS = {
 
 REJECTED_OPTIONS = {
     "--negative-prompt": "FLUX 3 Image Klein has no negative branch; the CLI exits with an error when this is set.",
-    "--quantize": "Quantization is not supported for FLUX 3 yet.",
 }
 
 
@@ -38,6 +38,7 @@ def build_parser() -> CommandLineParser:
     parser.add_model_arguments(require_model_arg=False, default_model=DEFAULT_MODEL)
     parser.add_image_paths_arguments()
     parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
+    parser.add_compute_precision_arguments()
     parser.add_output_arguments()
     return parser
 
@@ -75,7 +76,12 @@ def main():
 
     if not model_config.supports_guidance:
         CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
-    model = Flux3KleinEdit(model_config=model_config, model_path=args.model_path)
+    model = Flux3KleinEdit(
+        model_config=model_config,
+        quantize=args.quantize,
+        model_path=args.model_path,
+        compute_precision=ComputePrecision.dtype_for(args.compute_precision),
+    )
 
     memory_saver = CallbackManager.register_callbacks(
         args=args,
