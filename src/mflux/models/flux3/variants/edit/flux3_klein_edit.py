@@ -10,8 +10,6 @@ from mflux.utils.generated_image import GeneratedImage
 
 
 class Flux3KleinEdit(Flux3Klein):
-    """FLUX 3 Image Klein conditioned on 1-10 reference images (everything else is shared with Flux3Klein)."""
-
     def generate_image(  # type: ignore[override]
         self,
         seed: int,

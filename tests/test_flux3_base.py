@@ -28,9 +28,9 @@ class TestFlux3Base:
         assert ModelRevisions.get(base.model_name) == "1469d27cfb9bb1bd81d3a93f5a023b39dbf136e4"
 
     def test_weight_definition_selected_by_flow_map(self):
-        assert Flux3Initializer._weight_definition(ModelConfig.flux3_image_klein()) is Flux3KleinWeightDefinition
+        assert Flux3Initializer.weight_definition(ModelConfig.flux3_image_klein()) is Flux3KleinWeightDefinition
         assert (
-            Flux3Initializer._weight_definition(ModelConfig.flux3_image_klein_base()) is Flux3KleinBaseWeightDefinition
+            Flux3Initializer.weight_definition(ModelConfig.flux3_image_klein_base()) is Flux3KleinBaseWeightDefinition
         )
 
     def test_base_mapping_has_no_target_timestep_embedder(self):

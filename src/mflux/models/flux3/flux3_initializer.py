@@ -1,6 +1,7 @@
 import mlx.core as mx
 
 from mflux.callbacks.callback_registry import CallbackRegistry
+from mflux.models.common.compute_precision import ComputePrecision
 from mflux.models.common.config import ModelConfig
 from mflux.models.common.tokenizer import TokenizerLoader
 from mflux.models.common.weights.loading.loaded_weights import LoadedWeights
@@ -24,15 +25,18 @@ class Flux3Initializer:
         model_path: str | None = None,
         compute_precision: mx.Dtype | None = None,
     ) -> None:
-        if compute_precision is not None:
-            raise ValueError("compute_precision is not supported for FLUX 3 yet")
+        precision = ComputePrecision(compute_precision)
         path = model_path if model_path else model_config.model_name
         Flux3Initializer._init_config(model, model_config)
-        definition = Flux3Initializer._weight_definition(model_config)
+        definition = Flux3Initializer.weight_definition(model_config)
         weights = Flux3Initializer._load_weights(path, definition)
         Flux3Initializer._init_tokenizers(model, path)
         Flux3Initializer._init_models(model)
         Flux3Initializer._apply_weights(model, weights, quantize, definition)
+        model.compute_precision = precision
+        if compute_precision is not None:
+            # Last, so it casts the final parameters, whatever quantization produced.
+            model.transformer.apply_compute_precision(precision)
 
     @staticmethod
     def _init_config(model, model_config: ModelConfig) -> None:
@@ -40,10 +44,10 @@ class Flux3Initializer:
         model.model_config = model_config
         model.callbacks = CallbackRegistry()
         model.tiling_config = None
-        model._noise_override = None  # parity-test hook: replaces the seeded noise
+        model._noise_override = None  # test hook: golden-parity scripts replace the seeded noise with a fixed tensor
 
     @staticmethod
-    def _weight_definition(model_config: ModelConfig):
+    def weight_definition(model_config: ModelConfig):
         flow_map = model_config.transformer_overrides.get("flow_map", True)
         return Flux3KleinWeightDefinition if flow_map else Flux3KleinBaseWeightDefinition
 

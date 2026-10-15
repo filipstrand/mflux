@@ -1,9 +1,12 @@
 import mlx.core as mx
 from mlx import nn
 
+from mflux.models.common.compute_precision import ComputePrecision
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.flux.model.flux_transformer.ada_layer_norm_continuous import AdaLayerNormContinuous
+from mflux.models.flux3.model.flux3_transformer.flux3_attention import Flux3Attention
 from mflux.models.flux3.model.flux3_transformer.flux3_block import Flux3Block
+from mflux.models.flux3.model.flux3_transformer.flux3_feed_forward import Flux3FeedForward
 from mflux.models.flux3.model.flux3_transformer.flux3_modulation import Flux3Modulation
 from mflux.models.flux3.model.flux3_transformer.flux3_pos_embed import Flux3PosEmbed
 from mflux.models.flux3.model.flux3_transformer.flux3_timestep_embedder import Flux3TimestepEmbedder
@@ -118,3 +121,6 @@ class Flux3Transformer(nn.Module):
 
         x = self.norm_out(x[:, :num_image], vec["image"])
         return self.proj_out(x)
+
+    def apply_compute_precision(self, precision: ComputePrecision) -> None:
+        precision.apply(self, (Flux3Attention, Flux3FeedForward))
