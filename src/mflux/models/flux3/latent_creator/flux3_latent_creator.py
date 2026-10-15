@@ -1,5 +1,7 @@
 import mlx.core as mx
 
+from mflux.models.common.vae.tiling_config import TilingConfig
+from mflux.models.common.vae.vae_util import VAEUtil
 from mflux.models.flux2.latent_creator.flux2_latent_creator import Flux2LatentCreator
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 
@@ -48,9 +50,10 @@ class Flux3LatentCreator:
         return latents.reshape(batch, h, w, channels).transpose(0, 3, 1, 2)
 
     @staticmethod
-    def encode_tokens(vae: Flux2VAE, image: mx.array) -> mx.array:
+    def encode_tokens(vae: Flux2VAE, image: mx.array, tiling_config: TilingConfig | None = None) -> mx.array:
         # image (B, 3, H, W) in [-1, 1] -> normalized tokens (B, h*w, 128); channel index is c*4 + dy*2 + dx
-        latents = Flux2LatentCreator.patchify_latents(vae.encode(image))
+        # VAEUtil.encode squeezes the 5D (B, C, 1, H, W) output of the tiled path.
+        latents = Flux2LatentCreator.patchify_latents(VAEUtil.encode(vae=vae, image=image, tiling_config=tiling_config))
         bn_mean = vae.bn.running_mean.reshape(1, -1, 1, 1).astype(latents.dtype)
         bn_std = mx.sqrt(vae.bn.running_var.reshape(1, -1, 1, 1) + vae.bn.eps).astype(latents.dtype)
         return Flux3LatentCreator.pack_latents((latents - bn_mean) / bn_std)

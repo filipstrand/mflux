@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import mlx.core as mx
 from mlx import nn
 
@@ -44,6 +46,27 @@ class Flux3Klein(nn.Module):
         height: int = 1024,
         width: int = 1024,
     ) -> GeneratedImage:
+        return self._generate(
+            seed=seed,
+            prompt=prompt,
+            num_inference_steps=num_inference_steps,
+            height=height,
+            width=width,
+        )
+
+    def _generate(
+        self,
+        seed: int,
+        prompt: str,
+        num_inference_steps: int,
+        height: int,
+        width: int,
+        cond_tokens: mx.array | None = None,
+        cond_ids: mx.array | None = None,
+        image_paths: list[Path | str] | None = None,
+        crop_box: tuple[int, int, int, int] | None = None,
+    ) -> GeneratedImage:
+        # Shared by the txt2img and edit variants: cond_* are the encoded reference images (None for txt2img).
         config = Config(
             model_config=self.model_config,
             num_inference_steps=num_inference_steps,
@@ -66,19 +89,26 @@ class Flux3Klein(nn.Module):
             text_tokens=text_tokens,
             text_ids=text_ids,
             config=config,
+            cond_tokens=cond_tokens,
+            cond_ids=cond_ids,
             ctx=ctx,
         )
         ctx.after_loop(latents)
 
         decoded = self.decode_latents(latents, h, w)
-        return ImageUtil.to_image(
+        generated = ImageUtil.to_image(
             decoded_latents=decoded,
             config=config,
             seed=seed,
             prompt=prompt,
             quantization=self.bits,
+            image_paths=image_paths,
             generation_time=config.time_steps.format_dict["elapsed"],
         )
+        if crop_box is not None:
+            generated.image = generated.image.crop(crop_box)
+            generated.width, generated.height = generated.image.size
+        return generated
 
     def denoise(
         self,
