@@ -497,6 +497,12 @@ AVAILABLE_MODELS = {
         max_sequence_length=4096,
         supports_guidance=False,
         requires_sigma_shift=False,
+        text_encoder_overrides={
+            "hidden_size": 2560,
+            "intermediate_size": 9728,
+            "num_hidden_layers": 32,
+            "rope_theta": 5000000.0,
+        },
     ),
     "flux2-klein-9b": ModelConfig(
         priority=12,
