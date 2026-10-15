@@ -10,7 +10,7 @@ from mflux.utils.generated_image import GeneratedImage
 
 
 class Flux3KleinEdit(Flux3Klein):
-    def generate_image(  # type: ignore[override]
+    def generate_image(  # ty: ignore[invalid-method-override]
         self,
         seed: int,
         prompt: str,
