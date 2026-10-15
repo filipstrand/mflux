@@ -37,11 +37,15 @@ class Flux3LatentCreator:
         return Flux2LatentCreator.pack_latents(latents)
 
     @staticmethod
-    def unpack_latents(tokens: mx.array, h: int, w: int) -> mx.array:
-        batch, seq_len, channels = tokens.shape
+    def unpack_latents(latents: mx.array, height: int, width: int) -> mx.array:
+        # (B, h*w, C) tokens -> (B, C, h, w); height and width are pixels (callback convention).
+        if latents.ndim == 4:
+            return latents
+        h, w = Flux3LatentCreator.latent_shape(height, width)
+        batch, seq_len, channels = latents.shape
         if seq_len != h * w:
             raise ValueError(f"Token count {seq_len} does not match a {h}x{w} latent grid")
-        return tokens.reshape(batch, h, w, channels).transpose(0, 3, 1, 2)
+        return latents.reshape(batch, h, w, channels).transpose(0, 3, 1, 2)
 
     @staticmethod
     def encode_tokens(vae: Flux2VAE, image: mx.array) -> mx.array:
@@ -53,4 +57,4 @@ class Flux3LatentCreator:
 
     @staticmethod
     def decode_tokens(vae: Flux2VAE, tokens: mx.array, h: int, w: int) -> mx.array:
-        return vae.decode_packed_latents(Flux3LatentCreator.unpack_latents(tokens, h, w))
+        return vae.decode_packed_latents(Flux3LatentCreator.unpack_latents(tokens, h * 16, w * 16))
