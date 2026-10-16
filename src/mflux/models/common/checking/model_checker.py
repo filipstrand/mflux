@@ -1,4 +1,8 @@
+import hashlib
 import json
+import math
+import os
+import re
 import shutil
 import struct
 from dataclasses import dataclass
@@ -24,6 +28,29 @@ class ModelCheckResult:
 
 
 class ModelChecker:
+    # Bits per element for each safetensors dtype.
+    _DTYPE_BITS = {
+        "BOOL": 8,
+        "U8": 8,
+        "I8": 8,
+        "F8_E5M2": 8,
+        "F8_E4M3": 8,
+        "F8_E8M0": 8,
+        "I16": 16,
+        "U16": 16,
+        "F16": 16,
+        "BF16": 16,
+        "I32": 32,
+        "U32": 32,
+        "F32": 32,
+        "I64": 64,
+        "U64": 64,
+        "F64": 64,
+        "F4": 4,
+        "F6_E2M3": 6,
+        "F6_E3M2": 6,
+    }
+
     @staticmethod
     def check(reference: str) -> ModelCheckResult:
         root, resolution_problem = ModelChecker._resolve(reference)
@@ -46,9 +73,19 @@ class ModelChecker:
             if problem is not None:
                 problems.append(problem)
 
-        format_name = (
-            "mflux" if any(ModelChecker._is_mflux_header(header) for header in headers.values()) else "safetensors"
+        index_metadata = ModelChecker._index_metadata(root)
+        for label, metadata in [
+            *((str(path.relative_to(root)), header.get("__metadata__")) for path, header in headers.items()),
+            *index_metadata,
+        ]:
+            problem = ModelChecker._metadata_problem(metadata, label)
+            if problem is not None:
+                problems.append(problem)
+
+        is_mflux = any(ModelChecker._is_mflux_header(header) for header in headers.values()) or any(
+            ModelChecker._is_mflux_metadata(metadata) for _, metadata in index_metadata
         )
+        format_name = "mflux" if is_mflux else "safetensors"
         key = ModelChecker._resolve_model_key(reference)
         if key is None:
             if format_name == "safetensors":
@@ -92,12 +129,17 @@ class ModelChecker:
 
     @staticmethod
     def repair(reference: str) -> str:
+        # A Hugging Face snapshot links each file to blobs/<sha256>. A dangling link
+        # gives the exact content hash of the missing shard, so repair accepts a
+        # replacement only when its SHA-256 matches. Without that hash, matching tensor
+        # names cannot prove that two revisions hold the same weights.
         root, problem = ModelChecker._resolve(reference)
         if root is None:
             return problem
         snapshots = root.parent
         if snapshots.name != "snapshots":
             return "No local replacement is available. The check did not download files."
+        blobs = (snapshots.parent / "blobs").resolve()
 
         repaired = 0
         for index_path in root.rglob("*.safetensors.index.json"):
@@ -110,23 +152,48 @@ class ModelChecker:
                 target = index_path.parent / name
                 if target.is_file():
                     continue
+                blob = ModelChecker._missing_blob(target, blobs)
+                if blob is None:
+                    continue
                 expected_tensors = {tensor for tensor, shard_name in weight_map.items() if shard_name == name}
                 source = next(
                     (
-                        snapshot / relative_dir / name
+                        candidate
                         for snapshot in snapshots.iterdir()
                         if snapshot != root
-                        and (snapshot / relative_dir / name).is_file()
-                        and ModelChecker._shard_contains_tensors(snapshot / relative_dir / name, expected_tensors)
+                        and (candidate := snapshot / relative_dir / name).is_file()
+                        and ModelChecker._shard_contains_tensors(candidate, expected_tensors)
+                        and ModelChecker._sha256(candidate) == blob.name
                     ),
                     None,
                 )
                 if source is not None:
-                    shutil.copy2(source, target)
+                    partial = blob.with_name(f"{blob.name}.mflux-repair")
+                    shutil.copyfile(source, partial)
+                    os.replace(partial, blob)
                     repaired += 1
         if repaired:
             return f"Restored {repaired} shard(s) from another local cache snapshot."
         return "No local replacement is available. The check did not download files."
+
+    @staticmethod
+    def _missing_blob(target: Path, blobs: Path) -> Path | None:
+        # Accept only a dangling link to blobs/<sha256> in the same cache repository.
+        # Repair never writes through a link to any other location.
+        if not target.is_symlink():
+            return None
+        blob = (target.parent / os.readlink(target)).resolve()
+        if blob.parent != blobs or not re.fullmatch(r"[0-9a-f]{64}", blob.name) or blob.exists():
+            return None
+        return blob
+
+    @staticmethod
+    def _sha256(path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as file:
+            for chunk in iter(lambda: file.read(1 << 24), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
 
     @staticmethod
     def _resolve(reference: str) -> tuple[Path | None, str]:
@@ -240,9 +307,24 @@ class ModelChecker:
         save_subdirs = ComponentDefinition.save_subdirs(components)
         missing_parts = False
         for component in components:
-            relative = save_subdirs[component.name] if format_name == "mflux" else component.hf_subdir
-            directory = root / relative
-            component_files = [path for path in headers if path.parent == directory]
+            save_subdir = save_subdirs[component.name]
+            # Use the on-disk layout that the loader selects. For example, Krea 2 Raw keeps
+            # its transformer under transformer/, not at the repository root.
+            if component.variant_selector is not None:
+                component = component.variant_selector(root)
+            if format_name == "mflux":
+                # The loader reads the save subdir first, then the hf_subdir of the variant.
+                candidates = dict.fromkeys([save_subdir, component.hf_subdir])
+            else:
+                candidates = {component.hf_subdir: None}
+            relative = next(iter(candidates))
+            component_files: list[Path] = []
+            for candidate in candidates:
+                directory = root / candidate
+                component_files = [path for path in headers if path.parent == directory]
+                if component_files:
+                    relative = candidate
+                    break
             if not component_files:
                 problems.append(f"Missing component: {relative or component.name}.")
                 missing_parts = True
@@ -316,6 +398,16 @@ class ModelChecker:
                 or offsets[1] > payload_size
             ):
                 raise ValueError(f"tensor {name!r} has invalid data_offsets")
+            bits = ModelChecker._DTYPE_BITS.get(tensor.get("dtype"))
+            if bits is None:
+                raise ValueError(f"tensor {name!r} has an unknown dtype")
+            shape = tensor.get("shape")
+            if not isinstance(shape, list) or any(
+                not isinstance(size, int) or isinstance(size, bool) or size < 0 for size in shape
+            ):
+                raise ValueError(f"tensor {name!r} has an invalid shape")
+            if math.prod(shape) * bits != (offsets[1] - offsets[0]) * 8:
+                raise ValueError(f"tensor {name!r} has a shape that does not match its data_offsets")
         return header
 
     @staticmethod
@@ -372,8 +464,37 @@ class ModelChecker:
 
     @staticmethod
     def _is_mflux_header(header: dict[str, Any]) -> bool:
-        metadata = header.get("__metadata__")
+        return ModelChecker._is_mflux_metadata(header.get("__metadata__"))
+
+    @staticmethod
+    def _is_mflux_metadata(metadata: object) -> bool:
         return isinstance(metadata, dict) and ("mflux_version" in metadata or "quantization_level" in metadata)
+
+    @staticmethod
+    def _index_metadata(root: Path) -> list[tuple[str, object]]:
+        entries = []
+        for index_path in root.rglob("*.safetensors.index.json"):
+            try:
+                index = json.loads(index_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if isinstance(index, dict):
+                entries.append((str(index_path.relative_to(root)), index.get("metadata")))
+        return entries
+
+    @staticmethod
+    def _metadata_problem(metadata: object, label: str) -> str | None:
+        # Accept the same quantization_level values that WeightLoader accepts.
+        if not isinstance(metadata, dict) or not ModelChecker._is_mflux_metadata(metadata):
+            return None
+        level = metadata.get("quantization_level")
+        if level in (None, "None", "null", ""):
+            return None
+        try:
+            int(level)
+        except (TypeError, ValueError):
+            return f"Invalid quantization_level {level!r} in {label}."
+        return None
 
     @staticmethod
     def _size(files: list[Path]) -> int:

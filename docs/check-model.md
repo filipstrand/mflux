@@ -114,7 +114,13 @@ After an attempted repair, it runs the full check again and reports either
 The source and download policy for missing files is not decided yet:
 
 - The normal check is strictly offline and never downloads.
-- Repair restores a missing cache shard only when another local snapshot of
-  the same Hugging Face repository has that shard.
+- Repair restores a missing cache shard only when the snapshot entry is a link
+  to a missing blob in the same cache repository. The blob name is the SHA-256
+  of the file. Repair copies a shard from another local snapshot only when its
+  SHA-256 is equal to the blob name.
+- Repair does not write through a link that points outside the blobs directory
+  of the cache repository.
+- Repair does not restore a shard that has no expected hash. Matching tensor
+  names do not prove that two revisions contain the same weights.
 - Repair of genuinely absent files needs an explicit source policy before
   implementation. It must not silently download files.
