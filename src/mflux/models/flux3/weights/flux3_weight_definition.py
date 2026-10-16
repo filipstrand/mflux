@@ -62,6 +62,7 @@ class Flux3KleinWeightDefinition:
                     "text_encoder/vocab.json",
                     "text_encoder/merges.txt",
                     "text_encoder/chat_template.json",
+                    "text_encoder/chat_template.jinja",
                 ],  # fmt: skip
             ),
         ]
@@ -76,6 +77,7 @@ class Flux3KleinWeightDefinition:
             "text_encoder/*.safetensors",
             "text_encoder/*.json",
             "text_encoder/merges.txt",
+            "text_encoder/chat_template.jinja",
         ]
 
     @staticmethod
