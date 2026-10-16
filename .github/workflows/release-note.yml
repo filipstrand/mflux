@@ -10,8 +10,8 @@ on:
 permissions: {}
 
 jobs:
-  # Every PR must carry a fenced release-note block (or an explicit `none`) in its body;
-  # the release draft is harvested from those blocks (#673). The body comes from the event
+  # Every PR must carry a fenced release-note block in its body.
+  # The release draft is harvested from those blocks (#673). The body comes from the event
   # payload file, never template-expanded into the script.
   release-note:
     runs-on: ubuntu-latest
@@ -35,7 +35,7 @@ jobs:
           if match is not None and match.group(1).strip():
               print("release-note block found")
               sys.exit(0)
-          want = "The release note goes in a fenced block that opens with exactly ```release-note, like this:%0A%0A```release-note%0AOne or two sentences a user can read.%0A```%0A%0AWrite none inside it for changes users never see."
+          want = "The release note goes in a fenced block that opens with exactly ```release-note, like this:%0A%0A```release-note%0AOne or two sentences a user can read.%0A```%0A%0AEvery PR gets a note. For a change that only contributors see, write the note for contributors."
           if match is not None:
               print(f"::error::The ```release-note block in the description is empty. {want}")
               sys.exit(1)

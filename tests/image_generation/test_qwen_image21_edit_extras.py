@@ -1,6 +1,7 @@
 import json
 import sys
 from argparse import Namespace
+from contextlib import nullcontext
 from types import SimpleNamespace
 
 import mlx.core as mx
@@ -43,6 +44,9 @@ class _FakeTransformer:
     def __call__(self, hidden, text, timestep, layout, cache=None, step_cache=None):
         self.calls.append(float(timestep[0]))
         return mx.ones((1, layout.target_tokens, hidden.shape[-1]))
+
+    def inference_projections(self):
+        return nullcontext()
 
 
 class _FakeVAE:
@@ -563,6 +567,31 @@ def test_step_cache_reuses_the_extract_step_on_an_unchanged_signal():
     second = model(hidden, text, mx.array([0.5]), layout, cache, step_cache=step_cache)
     assert step_cache.hidden is stored  # skipped: blocks 1..N did not run
     np.testing.assert_allclose(np.array(second), np.array(first), rtol=1e-4, atol=1e-4)
+
+
+@pytest.mark.parametrize(("steps", "strength", "skips"), [(6, 1.0, False), (10, 1.0, True), (12, 0.75, False)])
+def test_step_cache_leaves_a_short_run_alone(tmp_path, steps, strength, skips):
+    # Skipping steps out of the six viggle_turbo ones changed the image ~4x more than baking the LoRA (#835).
+    model = _stub_model()
+    caches = []
+
+    def record(hidden, text, timestep, layout, cache=None, step_cache=None):
+        caches.append(step_cache)
+        return mx.ones((1, layout.target_tokens, hidden.shape[-1]))
+
+    model.transformer = type("_Transformer", (_FakeTransformer,), {"__call__": staticmethod(record)})()
+    image = model.generate_image(
+        seed=1,
+        prompt="edit",
+        num_inference_steps=steps,
+        image_paths=[_source(tmp_path)],
+        output_resolution=64,
+        strength=strength,
+        use_step_cache=True,
+    )
+
+    assert all(isinstance(cache, StepCache) == skips for cache in caches)
+    assert ("step_cache_threshold" in image.generation_parameters) == skips
 
 
 def test_step_cache_recomputes_once_the_signal_accumulates():

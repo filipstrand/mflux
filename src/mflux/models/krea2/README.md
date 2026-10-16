@@ -107,6 +107,35 @@ Supported export formats include official Krea (`transformer.*`), diffusers/PEFT
 > plus text encoder and VAE, ~33 GB total on first run). Use `-q 8` at inference or save
 > a quantized copy with `mflux-save`; see [quantization docs](../common/README.md#quantization).
 
+## Depth ControlNet
+
+`mflux-generate-krea2-controlnet` steers a Krea 2 Turbo image with the depth of a reference. It uses the
+community depth ControlNet by Tanmay Patil
+([`Patil/Krea-2-depth-controlnet`](https://huggingface.co/Patil/Krea-2-depth-controlnet)), which downloads
+on first use (822 MB). The checkpoint was trained on Krea 2 Raw. Its model card says it works on Turbo too and
+recommends Turbo, which is what this command runs.
+
+```sh
+mflux-generate-krea2-controlnet \
+  --image-path path/to/photo.jpg \
+  --prompt "a bronze statue of a tiger swimming, museum photo" \
+  --save-depth-map \
+  -q 8
+```
+
+- `--image-path` estimates the depth with Depth Pro. `--depth-image-path` takes a ready-made depth map
+  instead (near is white, as in Depth-Anything-V2, which the ControlNet was trained on) and skips Depth Pro.
+- `--controlnet-strength` scales the ControlNet's attention and MLP deltas (default 1.0). It is applied at
+  load. At 0 the depth input is still used, so the image is not the plain Krea 2 one.
+- `--controlnet-path` takes a local copy of the checkpoint or another repo.
+- LoRAs work as with `mflux-generate-krea2`.
+
+On the original checkpoint the ControlNet is merged into the weights at load, and `-q` quantizes after the
+merge. A quantized save works too: pass it with `--model <path> --base-model krea-2-controlnet-depth`, and
+the ControlNet runs as an adapter beside the quantized weights. On an M5 Max at 1024x1024 and 8 steps, `-q 8`
+peaks at 29 GB with a depth map and 38 GB when Depth Pro estimates it; a `-q 6` save peaks at 27 GB. The depth map is always encoded in one pass,
+so `--low-ram` tiles only the final decode and doesn't lower that peak.
+
 ## Training
 
 Train a LoRA on **Krea 2 Raw** ([`krea/Krea-2-Raw`](https://huggingface.co/krea/Krea-2-Raw)),

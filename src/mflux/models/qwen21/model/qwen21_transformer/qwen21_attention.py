@@ -29,6 +29,7 @@ class Qwen21Attention(nn.Module):
         # the fused kernel hard-codes eps = 1e-6. Other eps values use the composed path.
         self.use_fused_prologue = fused_qk_norm_rope_available(head_dim) and eps == 1e-6
         self.compute_precision = ComputePrecision()
+        self._qkv_weight = None
 
     def __call__(
         self,
@@ -81,8 +82,8 @@ class Qwen21Attention(nn.Module):
         x = self.compute_precision.to_compute(x)
         batch, length, dim = x.shape
         q, k, v = [
-            layer(x).reshape(batch, length, self.num_heads, self.head_dim).transpose(0, 2, 1, 3)
-            for layer in (self.to_q, self.to_k, self.to_v)
+            projection.reshape(batch, length, self.num_heads, self.head_dim).transpose(0, 2, 1, 3)
+            for projection in self._project_qkv(x)
         ]
         q = QwenImage21Layout.rotate(self.norm_q(q).astype(v.dtype), rope)
         k = QwenImage21Layout.rotate(self.norm_k(k).astype(v.dtype), rope)
@@ -120,10 +121,11 @@ class Qwen21Attention(nn.Module):
         rope_sin: mx.array,
     ) -> tuple[mx.array, mx.array, mx.array]:
         """Shared Q/K/V projection: returns [batch, heads, seq, head_dim]."""
-        if self.use_fused_prologue:
+        query, key, value = self._project_qkv(hidden_states)
+        if self.use_fused_prologue and self.norm_q.eps == self.norm_k.eps == 1e-6:
             fused = fused_qk_norm_rope(
-                self.to_q(hidden_states),
-                self.to_k(hidden_states),
+                query,
+                key,
                 self.norm_q.weight,
                 self.norm_k.weight,
                 rope_cos,
@@ -132,19 +134,16 @@ class Qwen21Attention(nn.Module):
                 self.head_dim,
             )
             if fused is not None:
-                out_q, out_k = fused
-                batch, length = out_q.shape[:2]
-                query = mx.transpose(out_q.reshape(batch, length, self.num_heads, self.head_dim), (0, 2, 1, 3))
-                key = mx.transpose(out_k.reshape(batch, length, self.num_heads, self.head_dim), (0, 2, 1, 3))
+                query, key = fused
                 value = mx.transpose(
-                    mx.reshape(self.to_v(hidden_states), (*hidden_states.shape[:-1], self.num_heads, self.head_dim)),
+                    mx.reshape(value, (*hidden_states.shape[:-1], self.num_heads, self.head_dim)),
                     (0, 2, 1, 3),
                 )
                 return query, key, value
 
-        query = mx.reshape(self.to_q(hidden_states), (*hidden_states.shape[:-1], self.num_heads, self.head_dim))
-        key = mx.reshape(self.to_k(hidden_states), (*hidden_states.shape[:-1], self.num_heads, self.head_dim))
-        value = mx.reshape(self.to_v(hidden_states), (*hidden_states.shape[:-1], self.num_heads, self.head_dim))
+        query = mx.reshape(query, (*hidden_states.shape[:-1], self.num_heads, self.head_dim))
+        key = mx.reshape(key, (*hidden_states.shape[:-1], self.num_heads, self.head_dim))
+        value = mx.reshape(value, (*hidden_states.shape[:-1], self.num_heads, self.head_dim))
 
         query = self.norm_q(query)
         key = self.norm_k(key)
@@ -193,6 +192,12 @@ class Qwen21Attention(nn.Module):
         value = mx.concatenate([value_text, value], axis=2)
         hidden_states = scaled_dot_product_attention(query, key, value, scale=self.head_dim**-0.5)
         return self.compute_precision.to_stream(self._unproject(hidden_states), dtype)
+
+    def _project_qkv(self, hidden_states: mx.array) -> tuple[mx.array, mx.array, mx.array]:
+        if self._qkv_weight is not None:
+            query, key, value = mx.split(hidden_states @ self._qkv_weight.T, 3, axis=-1)
+            return query, key, value
+        return self.to_q(hidden_states), self.to_k(hidden_states), self.to_v(hidden_states)
 
     @staticmethod
     def _apply_rope(x: mx.array, cos_vals: mx.array, sin_vals: mx.array) -> mx.array:

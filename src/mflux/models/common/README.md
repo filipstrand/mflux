@@ -216,7 +216,7 @@ image.save("prompt_file.png")
 
 ## LoRA basics
 
-By default, LoRA and LoKr weights are **baked** into the base model after load (one-time merge) so inference uses a single matmul per layer. With `--quantize` on FLUX, FLUX.2, Qwen-Image, Krea 2 and Z-Image, a checkpoint that stores full-precision weights gets the adapter added to those weights, in float32, before they are quantized. Elsewhere, and whenever the checkpoint is already quantized, the adapter is merged into the dequantized weights and the result is re-quantized. On that route, the bake re-quantizes each layer below 8 bits at q8. A LoRA on a saved q4 checkpoint thus gives q8 layers, while `-q 4` on a full-precision checkpoint keeps them at q4. A weak adapter at a low scale loses part of its effect that way: one Z-Image LoRA at scale 0.5 came out at 80% of its strength on q8 ([#814](https://github.com/mflux-community/mflux/issues/814)). Use `--no-bake-lora` to keep runtime adapter layers: they apply the adapter in full on any checkpoint, they cost speed and memory, and they let you change scales programmatically without reloading.
+By default, LoRA and LoKr weights are **baked** into the base model after load (one-time merge) so inference uses a single matmul per layer. With `--quantize` on FLUX, FLUX.2, Qwen-Image, Krea 2 and Z-Image, a checkpoint that stores full-precision weights gets the adapter added to those weights, in float32, before they are quantized. Elsewhere, and whenever the checkpoint is already quantized, the adapter is merged into the dequantized weights and the result is re-quantized. On that route, the bake re-quantizes each layer below 8 bits at q8. A LoRA on a saved q4 checkpoint thus gives q8 layers, while `-q 4` on a full-precision checkpoint keeps them at q4. A weak adapter at a low scale loses part of its effect that way: one Z-Image LoRA at scale 0.5 came out at 80% of its strength on q8 ([#814](https://github.com/mflux-community/mflux/issues/814)). A bfloat16 weight rounds a small update the same way: the Viggle turbo LoRA for Qwen-Image-2.1 keeps 66% of its update baked into bfloat16 and 42% on `-q 8`. The bake prints the share of the update it kept when that is under 90%; layers with a LoKr adapter are left out of that count. Use `--no-bake-lora` to keep runtime adapter layers: they apply the adapter in full on any checkpoint, they cost speed and memory, and they let you change scales programmatically without reloading.
 
 ```sh
 mflux-generate-z-image-turbo \
@@ -464,7 +464,7 @@ mflux-generate-z-image-turbo \
   --prompt "Same composition, warmer light"
 ```
 
-Anything the sidecar recorded is restored — model, prompt and negative prompt, seed, steps, guidance, quantization, dimensions, LoRAs, and the init images of the edit CLIs — and anything named on the command line wins over it, option by option. Since the sidecar can supply the init images, `mflux-generate-qwen-edit` and `mflux-generate-flux2-edit` accept `--config-from-conf` on its own, without `--image-paths`.
+Anything the sidecar recorded is restored — model, prompt and negative prompt, seed, steps, guidance, quantization, dimensions, LoRAs, and the init images of the edit CLIs — and anything named on the command line wins over it, option by option. Since the sidecar can supply the init images, `mflux-generate-qwen-edit`, `mflux-generate-flux2-edit` and `mflux-generate-flux3-edit` accept `--config-from-conf` on its own, without `--image-paths`.
 
 <details>
 <summary>Python API</summary>
@@ -580,7 +580,7 @@ Pass `generation_parameters=StepCache.generation_parameters(step_cache_ratio)` t
 
 ## Float16 compute (Apple M1 family)
 
-`--compute-precision float16` runs the inside of the attention and feed-forward layers in float16. The residual stream, the AdaLN modulation, the norms between those layers, the text encoder and the VAE keep the model's own precision. It is meant for GPUs without native bfloat16, the Apple M1 family, where MLX's matmul and attention kernels are fastest in float16. Without the flag nothing changes. With it the image changes slightly for the same seed, so the image metadata records the flag and `--config-from-conf` replays it. Commands that support it: `mflux-generate-flux2`, `mflux-generate-flux2-edit`, `mflux-generate-z-image`, `mflux-generate-z-image-turbo`, `mflux-generate-qwen-2.1`, `mflux-generate-qwen-2.1-edit` and `mflux-generate-qwen-2.1-controlnet` (`mflux-capabilities` lists them).
+`--compute-precision float16` runs the inside of the attention and feed-forward layers in float16. The residual stream, the AdaLN modulation, the norms between those layers, the text encoder and the VAE keep the model's own precision. It is meant for GPUs without native bfloat16, the Apple M1 family, where MLX's matmul and attention kernels are fastest in float16. Without the flag nothing changes. With it the image changes slightly for the same seed, so the image metadata records the flag and `--config-from-conf` replays it. Commands that support it: `mflux-generate-flux2`, `mflux-generate-flux2-edit`, `mflux-generate-flux3`, `mflux-generate-flux3-edit`, `mflux-generate-z-image`, `mflux-generate-z-image-turbo`, `mflux-generate-qwen-2.1`, `mflux-generate-qwen-2.1-edit` and `mflux-generate-qwen-2.1-controlnet` (`mflux-capabilities` lists them).
 
 ```sh
 mflux-generate-z-image-turbo --prompt "A puffin standing on a cliff" --steps 9 -q 4 --compute-precision float16
@@ -616,7 +616,7 @@ image = model.generate_image(
 image.save("puffin.png")
 ```
 
-`Flux2Klein`, `Flux2KleinEdit`, `QwenImage21` and `QwenImage21Edit` take the same `compute_precision` argument. The weights of those layers are cast in place when the model loads, after quantization and LoRA. For that reason `save_model()` raises an error on a model built with `compute_precision`: build the model without it to save it.
+`Flux2Klein`, `Flux2KleinEdit`, `Flux3Klein`, `Flux3KleinEdit`, `QwenImage21` and `QwenImage21Edit` take the same `compute_precision` argument. The weights of those layers are cast in place when the model loads, after quantization and LoRA. For that reason `save_model()` raises an error on a model built with `compute_precision`: build the model without it to save it.
 </details>
 
 <details>
@@ -756,7 +756,7 @@ Use the model READMEs for exact command names and options. General utilities tha
 - **Training**: `mflux-train`
 - **Utilities**: `mflux-save-depth`
 
-For model-specific generation commands (Flux, Flux2, Qwen, Z-Image, FIBO) and specialized features (ControlNet, depth, fill, Redux, in-context editing, kontext, concept attention, upscaling), see the respective model READMEs and the top-level `README.md`.
+For model-specific generation commands (Flux, Flux2, Flux3, Qwen, Z-Image, FIBO) and specialized features (ControlNet, depth, fill, Redux, in-context editing, kontext, concept attention, upscaling), see the respective model READMEs and the top-level `README.md`.
 
 ---
 

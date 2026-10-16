@@ -10,6 +10,7 @@ from mflux.models.common.compute_precision import ComputePrecision
 from mflux.models.common.config import ModelConfig
 from mflux.models.common.resolution.path_resolution import PathResolution
 from mflux.models.common.tokenizer import TokenizerLoader
+from mflux.models.common.weights.loading.safetensors_reader import SafetensorsReader
 from mflux.models.common.weights.loading.weight_applier import WeightApplier
 from mflux.models.common.weights.loading.weight_loader import WeightLoader
 from mflux.models.qwen21.model.qwen21_text_encoder.processor import QwenImage21Processor
@@ -64,6 +65,9 @@ class QwenImage21Initializer:
         model.tokenizers = TokenizerLoader.load_all(QwenImage21WeightDefinition.get_tokenizers(), str(root))
         model.processor = QwenImage21Processor(root / "processor", model.tokenizers["qwen21"].tokenizer)
         model.vae = QwenImage21VAE(model._component_configs["vae"])
+        # The VAE runs in float32; a save writes it back in the dtype its source stores
+        # (bfloat16 for Qwen-Image-2.1-Turbo, float32 for Qwen-Image-2.1).
+        model._vae_stored_dtype = SafetensorsReader.stored_float_dtype(root / "vae")
         model.transformer = QwenImage21Transformer(model._component_configs["transformer"])
         model.text_encoder = QwenImage21TextEncoder(model._component_configs["text_encoder"])
         Qwen21Initializer.load_components(model, root, QwenImage21WeightDefinition, quantize, validate=True)

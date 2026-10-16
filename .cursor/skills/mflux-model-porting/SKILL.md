@@ -127,6 +127,7 @@ Past [closed PRs](https://github.com/mflux-community/mflux/pulls?q=is%3Apr+is%3A
 |---|---|
 | `pyproject.toml` | Register `mflux-generate-<model>` (and edit/turbo variants if separate) |
 | `ModelConfig` | Entry in `AVAILABLE_MODELS`: aliases, HF repo id, `num_train_steps`, guidance support, sigma shift, `transformer_overrides`, distilled vs base step defaults |
+| `models/common/resolution/model_revisions.py` | Pin every HF repo the model downloads (`model_name`, ControlNet, helper repos) to the full commit hash its golden references were generated with. `tests/resolution/test_model_revisions.py` fails for a registry repo without a pin. |
 | `scripts/ci_extract_models.py` | Add an `OVERLAY` row for every new `AVAILABLE_MODELS` key: taxonomy, CLI/tool commands, status, and quantization support. Use `EXTRA_ENTRIES` only for standalone tools with no `ModelConfig` entry. Run `just ci-extract` and confirm the model is present in `.ci_cache/models_mflux.json`. |
 | `cli/defaults/defaults.py` | `MODEL_INFERENCE_STEPS` (keyed by the canonical `AVAILABLE_MODELS` key — the `--model` choices derive from the registry, nothing to add there) |
 | `models/common/cli/save.py` | Route `mflux-save` to the **correct variant class** (txt2img vs edit vs turbo — wrong class silently drops weights; see [#405](https://github.com/mflux-community/mflux/pull/405)) |

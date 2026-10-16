@@ -14,7 +14,7 @@ source-exclude = [
 
 [project]
 name = "mflux"
-version = "0.23.0"
+version = "0.22.0"
 description = "MLX native implementations of state-of-the-art generative image models."
 readme = "README.md"
 keywords = ["flux", "ai", "ml", "transformers", "mlx", "huggingface", "apple-silicon", "diffusers", "qwen", "qwen-image", "seedvr2", "z-image"]
@@ -97,6 +97,8 @@ homepage = "https://github.com/mflux-community/mflux"
 mflux-generate = "mflux.models.flux.cli.flux_generate:main"
 mflux-generate-flux2 = "mflux.models.flux2.cli.flux2_generate:main"
 mflux-generate-flux2-edit = "mflux.models.flux2.cli.flux2_edit_generate:main"
+mflux-generate-flux3 = "mflux.models.flux3.cli.flux3_generate:main"
+mflux-generate-flux3-edit = "mflux.models.flux3.cli.flux3_edit_generate:main"
 mflux-generate-boogu = "mflux.models.boogu.cli.boogu_image_generate:main"
 mflux-generate-controlnet = "mflux.models.flux.cli.flux_generate_controlnet:main"
 mflux-generate-in-context = "mflux.models.flux.cli.flux_generate_in_context_dev:main"
@@ -120,6 +122,7 @@ mflux-generate-ernie-image-turbo = "mflux.models.ernie_image.cli.ernie_image_tur
 mflux-generate-ernie-image = "mflux.models.ernie_image.cli.ernie_image_generate:main"
 mflux-generate-ideogram4 = "mflux.models.ideogram4.cli.ideogram4_generate:main"
 mflux-generate-krea2 = "mflux.models.krea2.cli.krea2_generate:main"
+mflux-generate-krea2-controlnet = "mflux.models.krea2.cli.krea2_controlnet_generate:main"
 mflux-generate-lens = "mflux.models.lens.cli.lens_generate:main"
 mflux-generate-ming = "mflux.models.ming_image.cli.ming_image_generate:main"
 mflux-refine-fibo = "mflux.models.fibo_vlm.cli.fibo_refine:main"
@@ -143,6 +146,8 @@ line-length = 120
 indent-width = 4
 target-version = "py310"
 respect-gitignore = true
+# Vendored skill. Keep it the same as the upstream skill.
+extend-exclude = [".cursor/skills/asd-ste100"]
 
 [tool.ruff.lint]
 select = ["BLE", "E4", "E7", "E9", "F", "I", "ICN", "LOG", "PERF", "W"]

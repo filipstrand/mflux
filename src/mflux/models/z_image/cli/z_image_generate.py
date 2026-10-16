@@ -1,4 +1,3 @@
-import sys
 import warnings
 from argparse import Namespace
 
@@ -48,6 +47,9 @@ def build_parser() -> CommandLineParser:
     parser.add_pid_decode_arguments()
     parser.add_float32_arguments()
     parser.add_output_arguments()
+    # The command's scheduler. A parser default, so --scheduler=NAME, a --config-from-conf replay
+    # and a script that parses these flags all see it the way the command line does.
+    parser.set_defaults(scheduler="flow_match_euler_discrete")
     return parser
 
 
@@ -100,10 +102,6 @@ class ZImageCommand:
 def main():
     parser = build_parser()
     args = parser.parse_args()
-
-    # The command's scheduler default; it reads sys.argv, so it stays here, not in generate().
-    if "--scheduler" not in sys.argv:
-        args.scheduler = "flow_match_euler_discrete"
 
     model_config = ZImageCommand.validate(args)
 

@@ -24,7 +24,10 @@ class ModelSaver:
         bits: int,
         base_path: str,
         weight_definition: "WeightDefinitionType",
+        dtypes: dict[str, mx.Dtype] | None = None,
     ) -> None:
+        # dtypes names a float dtype to write a component in, when it runs wider than its
+        # source stores it (the Qwen-Image-2.1-Turbo VAE runs in float32 from bfloat16 weights).
         # Refused before anything is baked or written: a model built with compute_precision holds float16
         # casts of its attention and feed-forward parameters, not the weights it loaded.
         for component_def in weight_definition.get_components():
@@ -64,7 +67,8 @@ class ModelSaver:
             component = getattr(model, attr_name, None)
             if component is not None:
                 LoRASaver.bake_and_strip_lora(component)
-                components.append((component, save_subdirs[component_def.name]))
+                dtype = (dtypes or {}).get(component_def.name)
+                components.append((component, save_subdirs[component_def.name], dtype))
 
         # Save tokenizers from model.tokenizers dict
         tokenizer_defs = weight_definition.get_tokenizers()
@@ -75,8 +79,8 @@ class ModelSaver:
                     ModelSaver._save_tokenizer(base_path, tokenizer_wrapper.tokenizer, t.hf_subdir)
 
         # Save model components with progress bar
-        for component, subdir in tqdm(components, desc="Saving components", unit="component"):
-            ModelSaver._save_weights(base_path, bits, component, subdir)
+        for component, subdir, dtype in tqdm(components, desc="Saving components", unit="component"):
+            ModelSaver._save_weights(base_path, bits, component, subdir, dtype)
 
     @staticmethod
     def _save_tokenizer(base_path: str, tokenizer: PreTrainedTokenizer, subdir: str) -> None:
@@ -85,10 +89,13 @@ class ModelSaver:
         tokenizer.save_pretrained(path)
 
     @staticmethod
-    def _save_weights(base_path: str, bits: int, model: nn.Module, subdir: str) -> None:
+    def _save_weights(base_path: str, bits: int, model: nn.Module, subdir: str, dtype: mx.Dtype | None = None) -> None:
         path = Path(base_path) / subdir
         path.mkdir(parents=True, exist_ok=True)
         weights = dict(tree_flatten(model.parameters()))
+        if dtype is not None:
+            # Only float tensors: packed quantized weights are integers.
+            weights = {k: v.astype(dtype) if mx.issubdtype(v.dtype, mx.floating) else v for k, v in weights.items()}
         shards = ModelSaver._split_weights(weights)
 
         # Build weight_map for index.json (maps each weight key to its shard file)

@@ -3,6 +3,8 @@
 # Reference execution adapted from Qwen/Hugging Face's QwenImage21Transformer2DModel.
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 import mlx.core as mx
@@ -69,6 +71,7 @@ class Qwen21Transformer(nn.Module):
         self._text_caches: dict[int, dict] = {}
         self.proj_out = nn.Linear(self.inner_dim, out_channels, bias=False)
         self._geometry_cache: dict[tuple[int, int, int], tuple[mx.array, mx.array, mx.array | None]] = {}
+        self.use_packed_projections = True
 
     def __call__(
         self,
@@ -120,12 +123,54 @@ class Qwen21Transformer(nn.Module):
         """Release the cached text-prefix K/V and the prompt embeddings they reference."""
         self._text_caches.clear()
 
+    @contextmanager
+    def inference_projections(self) -> Iterator[None]:
+        # Inference-only snapshot: enter after prompt encoding/low-RAM callbacks,
+        # and leave before changing parameters, adapters, precision or taking gradients.
+        # Never retain a packed snapshot (or its compiled captures) between generations.
+        self._clear_inference_projections()
+        try:
+            if self.use_packed_projections:
+                for block in self.transformer_blocks:
+                    attention, mlp = block.attn, block.img_mlp
+                    attention._qkv_weight = self._pack_linears((attention.to_q, attention.to_k, attention.to_v))
+                    mlp._gate_proj_weight = self._pack_linears((mlp.gate_layer, mlp.proj))
+            yield
+        finally:
+            self._clear_inference_projections()
+
     def apply_compute_precision(self, precision: ComputePrecision) -> None:
+        self._clear_inference_projections()
         precision.apply(self, (Qwen21Attention, Qwen21SwiGLUFeedForward))
-        # Compiled steps and cached text K/V from an earlier call hold the previous precision.
+
+    def _clear_inference_projections(self) -> None:
+        for block in self.transformer_blocks:
+            block.attn._qkv_weight = None
+            block.img_mlp._gate_proj_weight = None
+        # Unpacked traces capture weights and adapter state too; retaining them would
+        # ignore between-generation updates even when no projection group was packed.
         self._step_fn = None
         self._image_step_fn = None
         self.clear_text_cache()
+
+    @staticmethod
+    def _pack_linears(layers: tuple[nn.Module, ...]) -> mx.array | None:
+        # Wrappers, adapters and quantized layers must keep their own forward path.
+        if any(type(layer) is not nn.Linear or "bias" in layer for layer in layers):
+            return None
+        weights = [layer.weight for layer in layers]
+        first = weights[0]
+        if first.dtype not in (mx.bfloat16, mx.float16, mx.float32) or any(
+            weight.shape != first.shape or weight.dtype != first.dtype for weight in weights[1:]
+        ):
+            return None
+        packed = mx.concatenate(weights, axis=0)
+        # Evaluate only this group, then release its source allocations. The original
+        # checkpoint paths become views into the packed buffer, not duplicate weights.
+        mx.eval(packed)
+        for layer, weight in zip(layers, mx.split(packed, len(layers), axis=0)):
+            layer.weight = weight
+        return packed
 
     def _build_text_cache(
         self,

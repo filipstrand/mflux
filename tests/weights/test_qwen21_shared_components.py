@@ -8,6 +8,7 @@ from mlx.utils import tree_flatten
 
 from mflux.models.common.vae.tiling_config import TilingConfig
 from mflux.models.common.vae.vae_util import VAEUtil
+from mflux.models.common.weights.loading.safetensors_reader import SafetensorsReader
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.qwen21.model.qwen21_text_encoder.language_model import LanguageModel
 from mflux.models.qwen21.model.qwen21_text_encoder.qwen21_text_encoder import Qwen21TextEncoder
@@ -97,6 +98,40 @@ def test_vae_loading_boundary_preserves_old_exports_and_native_weights(tmp_path,
     np.testing.assert_array_equal(
         np.array(restored.vae.decode(latent).astype(mx.float32)), np.array(original.decode(latent).astype(mx.float32))
     )
+
+
+@pytest.mark.parametrize("source", [mx.bfloat16, mx.float32])
+def test_float32_vae_saves_in_the_dtype_its_source_stores(tmp_path, source):
+    # Qwen-Image-2.1-Turbo ships a bfloat16 VAE that runs in float32: a save must not double its size.
+    class VAEOnly:
+        get_components = staticmethod(lambda: [QwenImage21WeightDefinition.get_components()[0]])
+        get_tokenizers = staticmethod(lambda: [])
+        quantization_predicate = QwenImage21WeightDefinition.quantization_predicate
+
+    hf = tmp_path / "hf"
+    (hf / "vae").mkdir(parents=True)
+    tensors = {
+        key: (value.transpose(0, 3, 1, 2) if value.ndim == 4 else value).astype(source)
+        for key, value in tree_flatten(TinyComponents.vae(True).parameters())
+    }
+    mx.save_safetensors(str(hf / "vae" / "diffusion_pytorch_model.safetensors"), tensors)
+    stored = SafetensorsReader.stored_float_dtype(hf / "vae")
+    assert stored == source
+
+    loaded = SimpleNamespace(vae=TinyComponents.vae(True))
+    Qwen21Initializer.load_components(loaded, hf, VAEOnly, None, validate=True)
+    assert {value.dtype for _, value in tree_flatten(loaded.vae.parameters())} == {mx.float32}
+
+    saved = tmp_path / "saved"
+    ModelSaver.save_model(loaded, 8, str(saved), VAEOnly, dtypes={"vae": stored})
+    assert SafetensorsReader.stored_float_dtype(saved / "vae") == source
+
+    restored = SimpleNamespace(vae=TinyComponents.vae(True))
+    Qwen21Initializer.load_components(restored, saved, VAEOnly, None, validate=True)
+    expected = dict(tree_flatten(loaded.vae.parameters()))
+    for key, value in tree_flatten(restored.vae.parameters()):
+        assert value.dtype == mx.float32
+        np.testing.assert_array_equal(np.array(value), np.array(expected[key]))
 
 
 @pytest.mark.parametrize("edit", [False, True])

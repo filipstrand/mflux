@@ -1,10 +1,8 @@
 """Custom Metal kernels for the Qwen-Image-2.1 attention prologue.
 
-`fused_qk_norm_rope` replaces, per Q and K projection: cast-to-fp32 -> RMSNorm
-(with its own cast) -> cast-back -> RoPE (fp32 rotate) -> cast-back — i.e. ~6
-eager kernels (2+ when mx.compiled) — with a single kernel that reads each
-tensor once, keeps fp32 in registers, and writes each tensor once, handling Q
-and K in the same launch.
+`fused_qk_norm_rope` combines native RMSNorm rounding, FP32 RoPE, and the
+sequence-major to head-major layout change in one Q/K kernel. Projection,
+norm-weight, and rotary-table views are read using their original strides.
 
 Set MFLUX_QWEN21_DISABLE_FUSED_PROLOGUE=1 to fall back to the composed-ops path.
 """
@@ -17,72 +15,70 @@ import mlx.core as mx
 
 _FUSED_QK_NORM_ROPE_SOURCE = """
     constexpr float eps = 1e-6;
+    constexpr uint blocks = (D + 127) / 128;
+    constexpr uint pairs_per_lane = 2 * blocks;
+    uint row = thread_position_in_grid.x / 32;
+    if (row >= B * L * H) return;
+    uint lane = thread_index_in_simdgroup;
+    uint h = row % H;
+    uint l = (row / H) % L;
+    uint b = row / (H * L);
+    size_t qb = b * q_strides[0] + l * q_strides[1] + h * D * q_strides[2];
+    size_t kb = b * k_strides[0] + l * k_strides[1] + h * D * k_strides[2];
 
-    uint row = threadgroup_position_in_grid.x;
-    uint i = thread_position_in_threadgroup.x;   // pair index: elements (2i, 2i+1)
-
-    int L = q_shape[1];
-    int H = q_shape[2];
-    int D = q_shape[3];
-    int hd = D / 2;
-
-    int l = (row / H) % L;
-
-    uint base = row * D;
-    uint off = base + 2 * i;
-
-    float aq = static_cast<float>(q[off]);
-    float bq = static_cast<float>(q[off + 1]);
-    float ak = static_cast<float>(k[off]);
-    float bk = static_cast<float>(k[off + 1]);
-
-    float sq = aq * aq + bq * bq;
-    float sk = ak * ak + bk * bk;
-
-    // reduce across this row's threadgroup (D/2 threads, full simdgroups)
-    sq = simd_sum(sq);
-    sk = simd_sum(sk);
-    int nsg = simdgroups_per_threadgroup;
-    threadgroup float shq[8];
-    threadgroup float shk[8];
-    if (thread_index_in_simdgroup == 0) {
-        shq[simdgroup_index_in_threadgroup] = sq;
-        shk[simdgroup_index_in_threadgroup] = sk;
+    float qv[4 * blocks], kv[4 * blocks];
+    float sq = 0.0f, sk = 0.0f;
+    // Match native RMSNorm: four adjacent values per lane, then subgroup totals.
+    for (uint block = 0; block < blocks; ++block) {
+        float bq = 0.0f, bk = 0.0f;
+        for (uint j = 0; j < 4; ++j) {
+            uint c = block * 128 + lane * 4 + j;
+            uint i = block * 4 + j;
+            qv[i] = c < D ? float(TQ(q[qb + c * q_strides[2]])) : 0.0f;
+            kv[i] = c < D ? float(TK(k[kb + c * k_strides[2]])) : 0.0f;
+            bq += qv[i] * qv[i];
+            bk += kv[i] * kv[i];
+        }
+        bq = simd_sum(bq);
+        bk = simd_sum(bk);
+        if (blocks == 1 || lane == block) {
+            sq = bq;
+            sk = bk;
+        }
     }
-    threadgroup_barrier(mem_flags::mem_threadgroup);
-    float totq = 0.0;
-    float totk = 0.0;
-    for (int g = 0; g < nsg; g++) {
-        totq += shq[g];
-        totk += shk[g];
+    float rrq = metal::precise::rsqrt((blocks == 1 ? sq : simd_sum(sq)) / float(D) + eps);
+    float rrk = metal::precise::rsqrt((blocks == 1 ? sk : simd_sum(sk)) / float(D) + eps);
+    size_t out = ((size_t(b) * H + h) * L + l) * D;
+
+    for (uint pair = 0; pair < pairs_per_lane; ++pair) {
+        #pragma STDC FP_CONTRACT OFF
+        // Composed RoPE rounds the products before its separate add/subtract.
+        uint c = (pair / 2) * 128 + lane * 4 + (pair % 2) * 2;
+        if (c >= D) continue;
+        uint p = c / 2;
+        // MLX RMSNorm promotes x/weight together, rounds normalized x, then
+        // rounds the weighted result before the FP32 rotary arithmetic.
+        float nqa = float(TQ(float(TQ(qv[2 * pair] * rrq)) * float(TQ(wq[c * wq_strides[0]]))));
+        float nqb = float(TQ(float(TQ(qv[2 * pair + 1] * rrq)) * float(TQ(wq[(c + 1) * wq_strides[0]]))));
+        float nka = float(TK(float(TK(kv[2 * pair] * rrk)) * float(TK(wk[c * wk_strides[0]]))));
+        float nkb = float(TK(float(TK(kv[2 * pair + 1] * rrk)) * float(TK(wk[(c + 1) * wk_strides[0]]))));
+        float cosine = float(cos_t[l * cos_t_strides[0] + p * cos_t_strides[1]]);
+        float sine = float(sin_t[l * sin_t_strides[0] + p * sin_t_strides[1]]);
+        out_q[out + c] = TQ(nqa * cosine - nqb * sine);
+        out_q[out + c + 1] = TQ(nqa * sine + nqb * cosine);
+        out_k[out + c] = TK(nka * cosine - nkb * sine);
+        out_k[out + c + 1] = TK(nka * sine + nkb * cosine);
     }
-    float rrq = rsqrt(totq / D + eps);
-    float rrk = rsqrt(totk / D + eps);
-
-    float wqa = static_cast<float>(wq[2 * i]);
-    float wqb = static_cast<float>(wq[2 * i + 1]);
-    float wka = static_cast<float>(wk[2 * i]);
-    float wkb = static_cast<float>(wk[2 * i + 1]);
-
-    float nqa = aq * rrq * wqa;
-    float nqb = bq * rrq * wqb;
-    float nka = ak * rrk * wka;
-    float nkb = bk * rrk * wkb;
-
-    float c = static_cast<float>(cos_t[l * hd + i]);
-    float s = static_cast<float>(sin_t[l * hd + i]);
-
-    out_q[off] = T(nqa * c - nqb * s);
-    out_q[off + 1] = T(nqa * s + nqb * c);
-    out_k[off] = T(nka * c - nkb * s);
-    out_k[off + 1] = T(nka * s + nkb * c);
 """
 
 _fused_qk_norm_rope_kernel = None
+_fused_qk_norm_rope_unavailable = False
 
 
 def _get_kernel():
-    global _fused_qk_norm_rope_kernel
+    global _fused_qk_norm_rope_kernel, _fused_qk_norm_rope_unavailable
+    if _fused_qk_norm_rope_unavailable or not mx.metal.is_available() or mx.default_device() != mx.gpu:
+        return None
     if _fused_qk_norm_rope_kernel is None:
         try:
             _fused_qk_norm_rope_kernel = mx.fast.metal_kernel(
@@ -90,19 +86,21 @@ def _get_kernel():
                 input_names=["q", "k", "wq", "wk", "cos_t", "sin_t"],
                 output_names=["out_q", "out_k"],
                 source=_FUSED_QK_NORM_ROPE_SOURCE,
+                ensure_row_contiguous=False,
+                compile_options={"math_mode": "safe"},
             )
-        except Exception:  # noqa: BLE001 — non-Metal hosts fall back silently
-            _fused_qk_norm_rope_kernel = False
-    return _fused_qk_norm_rope_kernel or None
+        except (RuntimeError, ValueError):
+            # Cache unsupported construction, not failures while dispatching the kernel.
+            _fused_qk_norm_rope_unavailable = True
+            return None
+    return _fused_qk_norm_rope_kernel
 
 
 def fused_qk_norm_rope_available(head_dim: int) -> bool:
-    """The kernel needs full simdgroups (D/2 a multiple of threads-per-simdgroup)."""
+    """Supported head widths, with one SIMD group per normalization row."""
     if os.environ.get("MFLUX_QWEN21_DISABLE_FUSED_PROLOGUE"):
         return False
-    if head_dim % 64 != 0:  # D/2 must be a multiple of 32
-        return False
-    if head_dim > 512:  # the shq/shk reduction buffers hold 8 simdgroups (D/2 <= 256 threads)
+    if head_dim <= 0 or head_dim % 64 != 0 or head_dim > 512:
         return False
     return _get_kernel() is not None
 
@@ -119,36 +117,36 @@ def fused_qk_norm_rope(
 ) -> tuple[mx.array, mx.array] | None:
     """RMSNorm + RoPE for Q and K in one pass.
 
-    q_flat/k_flat: [B, L, H*D] contiguous (raw projection outputs); rope tables
-    must cover exactly L positions. Returns the same [B, L, H*D] layout, or
-    None when custom kernels are unavailable.
+    q_flat/k_flat: [B, L, H*D], including strided projection views; rope tables
+    must cover exactly L positions. Returns head-major [B, H, L, D] arrays
+    with each native RMSNorm's promoted dtype. Epsilon is fixed at 1e-6.
+    Returns None for unsupported inputs so callers can use composed ops.
     """
-    kernel = _get_kernel()
-    if kernel is None:
+    if not fused_qk_norm_rope_available(head_dim):
         return None
-    B, L, _ = q_flat.shape
+    if q_flat.ndim != 3 or k_flat.shape != q_flat.shape:
+        return None
+    B, L, width = q_flat.shape
     H, D = num_heads, head_dim
-    # Fail safe on geometry mismatches (e.g. an axes_dims_rope whose per-axis
-    # widths do not sum to head_dim): the composed path then raises the same
-    # loud broadcast error as stock instead of silently reading wrong angles.
-    if rope_cos.shape[-1] != D // 2 or rope_sin.shape[-1] != D // 2:
+    if B == 0 or L == 0 or H <= 0 or width != H * D:
         return None
-    if rope_cos.shape[0] != L or rope_sin.shape[0] != L:
+    if weight_q.shape != (D,) or weight_k.shape != (D,):
         return None
-    if rope_cos.dtype != mx.float32:
-        rope_cos = rope_cos.astype(mx.float32)
-    if rope_sin.dtype != mx.float32:
-        rope_sin = rope_sin.astype(mx.float32)
-    q = q_flat.reshape(B, L, H, D)
-    k = k_flat.reshape(B, L, H, D)
+    if rope_cos.shape != (L, D // 2) or rope_sin.shape != (L, D // 2):
+        return None
+    supported_dtypes = (mx.float16, mx.bfloat16, mx.float32)
+    if any(x.dtype not in supported_dtypes for x in (q_flat, k_flat, weight_q, weight_k, rope_cos, rope_sin)):
+        return None
+    # fast.rms_norm promotes input and weight before normalization (mlx/fast.cpp).
+    dtype_q = mx.result_type(q_flat, weight_q)
+    dtype_k = mx.result_type(k_flat, weight_k)
+    kernel = _get_kernel()
     out_q, out_k = kernel(
-        inputs=[q, k, weight_q, weight_k, rope_cos, rope_sin],
-        template=[("T", q.dtype)],
-        output_shapes=[(B, L, H, D), (B, L, H, D)],
-        output_dtypes=[q.dtype, q.dtype],
-        # NOTE: mx.fast.metal_kernel's `grid` is in THREADS (not threadgroups):
-        # B*L*H rows x D/2 pair-threads per row.
-        grid=(B * L * H * (D // 2), 1, 1),
-        threadgroup=(D // 2, 1, 1),
+        inputs=[q_flat, k_flat, weight_q, weight_k, rope_cos, rope_sin],
+        template=[("TQ", dtype_q), ("TK", dtype_k), ("B", B), ("L", L), ("H", H), ("D", D)],
+        output_shapes=[(B, H, L, D), (B, H, L, D)],
+        output_dtypes=[dtype_q, dtype_k],
+        grid=(B * L * H * 32, 1, 1),
+        threadgroup=(256, 1, 1),
     )
-    return out_q.reshape(B, L, H * D), out_k.reshape(B, L, H * D)
+    return out_q, out_k

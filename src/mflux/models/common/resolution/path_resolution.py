@@ -7,6 +7,7 @@ from huggingface_hub import snapshot_download
 from huggingface_hub.constants import HF_HUB_CACHE
 
 from mflux.models.common.resolution.actions import PathAction, Rule
+from mflux.models.common.resolution.model_revisions import ModelRevisions
 
 logger = logging.getLogger(__name__)
 
@@ -89,10 +90,14 @@ class PathResolution:
             if cached_path:
                 return cached_path
             # Fallback to standard snapshot_download (shouldn't happen if _check passed)
-            return Path(snapshot_download(repo_id=path, allow_patterns=patterns, local_files_only=True))
+            return Path(
+                snapshot_download(
+                    repo_id=path, allow_patterns=patterns, revision=ModelRevisions.get(path), local_files_only=True
+                )
+            )
         if action == PathAction.HUGGINGFACE:
             print(f"Downloading model from HuggingFace: {path}...")
-            return Path(snapshot_download(repo_id=path, allow_patterns=patterns))
+            return Path(snapshot_download(repo_id=path, allow_patterns=patterns, revision=ModelRevisions.get(path)))
         if action == PathAction.ERROR:
             raise FileNotFoundError(
                 f"Model not found: '{path}'. "
@@ -119,6 +124,10 @@ class PathResolution:
 
         # Check each snapshot for completeness, prefer more recent ones
         snapshots = sorted(repo_cache_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True)
+        pinned = ModelRevisions.get(repo_id)
+        if pinned is not None:
+            # Only the pinned commit counts: another snapshot of the repo can hold other weights.
+            snapshots = [repo_cache_dir / pinned]
 
         for snapshot_path in snapshots:
             if not snapshot_path.is_dir():

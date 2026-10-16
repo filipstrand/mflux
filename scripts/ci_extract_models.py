@@ -53,6 +53,8 @@ def _resolve_repo_url() -> str:
 
 
 STANDARD_QUANTS = ["q3", "q4", "q5", "q6", "q8", "bf16"]
+# q4, q6 and q8 are the levels checked on FLUX 3 Image Klein (load-time, mflux-save round trip, images inspected).
+FLUX3_QUANTS = ["q4", "q6", "q8", "bf16"]
 
 # key -> (model_type, model_family, model_sub_family, mflux_cli, mflux_cli_tools, status, quants)
 OVERLAY: dict[str, tuple[str, str, str, list[str], list[str], str, list[str] | None]] = {
@@ -144,14 +146,59 @@ OVERLAY: dict[str, tuple[str, str, str, list[str], list[str], str, list[str] | N
         "active",
         STANDARD_QUANTS,
     ),
+    "flux3-image-klein": (
+        "image",
+        "flux3",
+        "flux3-klein",
+        ["mflux-generate-flux3", "mflux-generate-flux3-edit"],
+        [],
+        "active",
+        FLUX3_QUANTS,
+    ),
+    "flux3-image-klein-base": (
+        "image",
+        "flux3",
+        "flux3-klein-base",
+        ["mflux-generate-flux3", "mflux-generate-flux3-edit"],
+        [],
+        "active",
+        FLUX3_QUANTS,
+    ),
     "krea-2": ("image", "krea2", "krea2-turbo", ["mflux-generate-krea2"], [], "active", STANDARD_QUANTS),
     "krea-2-raw": ("image", "krea2", "krea2-raw", ["mflux-generate-krea2"], [], "active", STANDARD_QUANTS),
+    "krea-2-controlnet-depth": (
+        "image",
+        "krea2",
+        "krea2-controlnet",
+        ["mflux-generate-krea2-controlnet"],
+        [],
+        "active",
+        STANDARD_QUANTS,
+    ),
     "qwen-image": ("image", "qwen-image", "qwen-image", ["mflux-generate-qwen"], [], "active", STANDARD_QUANTS),
     "qwen-image-2.1": (
         "image",
         "qwen-image-2.1",
         "qwen-image-2.1",
         ["mflux-generate-qwen-2.1", "mflux-generate-qwen-2.1-edit"],
+        [],
+        "active",
+        STANDARD_QUANTS,
+    ),
+    "qwen-image-2.1-turbo": (
+        "image",
+        "qwen-image-2.1",
+        "qwen-image-2.1-turbo",
+        ["mflux-generate-qwen-2.1", "mflux-generate-qwen-2.1-edit"],
+        [],
+        "active",
+        STANDARD_QUANTS,
+    ),
+    "qwen-image-2.1-turbo-controlnet-union": (
+        "image",
+        "qwen-image-2.1",
+        "qwen-image-2.1-turbo-controlnet",
+        ["mflux-generate-qwen-2.1-controlnet"],
         [],
         "active",
         STANDARD_QUANTS,

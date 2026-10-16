@@ -1,3 +1,4 @@
+import json
 import sys
 
 import PIL.Image
@@ -121,11 +122,22 @@ def test_main_runs_the_parser_defaults(monkeypatch, tmp_path):
 
 
 @pytest.mark.fast
-def test_main_todays_behavior_runs_linear_for_the_equals_sign_scheduler(monkeypatch):
-    # Today's behavior: the command sets linear whenever the bare token --scheduler is missing
-    # from argv, so the --scheduler=NAME spelling runs linear.
+def test_main_honours_the_equals_spelling_of_scheduler(monkeypatch):
+    # --scheduler=NAME is the same flag as --scheduler NAME.
     model = run_main(monkeypatch, ["--prompt", "x", "--scheduler=flow_match_euler_discrete"])
-    assert model.generate_calls[0]["scheduler"] == "linear"
+    assert model.generate_calls[0]["scheduler"] == "flow_match_euler_discrete"
+
+
+@pytest.mark.fast
+def test_main_replays_the_scheduler_a_sidecar_records(monkeypatch, tmp_path):
+    # parse_args restores a recorded scheduler from --config-from-conf; main() must not replace it.
+    # ERNIE does not write this key; a hand-edited sidecar, or one Qwen-Image-2.1 wrote, does.
+    sidecar = tmp_path / "prior.metadata.json"
+    sidecar.write_text(
+        json.dumps({"model": "ernie-image", "prompt": "x", "seed": 7, "scheduler": "flow_match_euler_discrete"})
+    )
+    model = run_main(monkeypatch, ["--config-from-conf", str(sidecar)])
+    assert model.generate_calls[0]["scheduler"] == "flow_match_euler_discrete"
 
 
 @pytest.mark.fast
@@ -276,8 +288,7 @@ def test_generate_runs_guidance_four_when_the_namespace_holds_none(monkeypatch):
 
 @pytest.mark.fast
 def test_generate_uses_the_scheduler_in_args_as_given(monkeypatch):
-    # argv here has no --scheduler token; generate() must not apply the command line's
-    # sys.argv default, only what the caller put in args.
+    # generate() runs the scheduler the caller put in args.
     args = args_for(monkeypatch, ["--prompt", "x"])
     args.scheduler = "flow_match_euler_discrete"
     model = cli.ErnieImageCommand.load(args)

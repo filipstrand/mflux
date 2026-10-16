@@ -1,6 +1,10 @@
 # this is the config file for typos-cli, part of "pre-commit run"
 # use "typos --dump-config" to disocver other configs to override
 
+[files]
+# Vendored skill. Keep it the same as the upstream skill.
+extend-exclude = [".cursor/skills/asd-ste100/"]
+
 [default]
 extend-ignore-identifiers-re = ["EmbedND", "embed_nd", "alle", "thw", "PNG", "PNGs", "RGBa"]
 

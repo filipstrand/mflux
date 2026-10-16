@@ -9,12 +9,13 @@ import numpy as np
 from mlx import nn
 from PIL import Image
 
-from mflux.cli.defaults.defaults import MODEL_INFERENCE_STEPS
 from mflux.models.common.config import ModelConfig
 from mflux.models.common.config.config import Config
+from mflux.models.common.step_cache.step_cache import StepCache as StepReuse
 from mflux.models.common.vae.vae_util import VAEUtil
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.qwen21.latent_creator.qwen_image21_latent_creator import QwenImage21LatentCreator
+from mflux.models.qwen21.model.qwen21_scheduler import Qwen21TurboScheduler
 from mflux.models.qwen21.model.qwen21_text_encoder.grounding import QwenImage21Grounding
 from mflux.models.qwen21.model.qwen21_text_encoder.prompt_encoder import QwenImage21PromptEncoder
 from mflux.models.qwen21.model.qwen21_transformer.qwen21_layout import QwenImage21Layout
@@ -62,7 +63,7 @@ class QwenImage21Edit(nn.Module):
         self,
         seed: int,
         prompt: str,
-        num_inference_steps: int = MODEL_INFERENCE_STEPS["qwen-image-2.1"],
+        num_inference_steps: int | None = None,
         height: int | None = None,
         width: int | None = None,
         guidance: float = 1.0,
@@ -81,9 +82,12 @@ class QwenImage21Edit(nn.Module):
         scheduler: str = "linear",
     ) -> GeneratedImage:
         image_paths = image_paths or []
+        if num_inference_steps is None:
+            num_inference_steps = Qwen21TurboScheduler.default_steps(self.model_config)
         QwenImage21Edit._check_reference_count(image_paths)
         if scheduler not in EDIT_SCHEDULERS:
             raise ValueError(f"The Qwen-Image-2.1 edit runs the linear or viggle_turbo schedule, got {scheduler!r}.")
+        Qwen21TurboScheduler.check_generate(self.model_config, num_inference_steps, guidance, scheduler)
         QwenImage21LatentCreator.validate_resolution(output_resolution)
         if not 0 < strength <= 1:
             raise ValueError(f"strength must be in (0, 1], got {strength}.")
@@ -115,7 +119,7 @@ class QwenImage21Edit(nn.Module):
             # the source noised to that sigma instead of pure noise
             image_path=QwenImage21Edit._recorded_path(image_paths[0]) if strength < 1 else None,
             image_strength=1 - strength if strength < 1 else None,
-            scheduler=scheduler,
+            scheduler=Qwen21TurboScheduler.for_model(self.model_config, scheduler),
         )
         original_prompt = prompt
         if enhance_prompt:
@@ -171,44 +175,51 @@ class QwenImage21Edit(nn.Module):
         negative_cache = [] if use_kv_cache else None
         if use_step_cache and not use_kv_cache:
             logger.warning("use_step_cache needs use_kv_cache; running without step skipping")
+        # A short run has no steps to spare: on the six viggle_turbo steps, skipping changed the image
+        # about four times as much as baking the turbo LoRA did. The shared step reuse has the same floor.
+        steps_run = config.num_inference_steps - config.init_time_step
+        if use_step_cache and steps_run < StepReuse.MIN_STEPS:
+            logger.warning(f"use_step_cache skips nothing in a run under {StepReuse.MIN_STEPS} steps")
+            use_step_cache = False
         step_cache = StepCache(step_cache_threshold) if use_step_cache and use_kv_cache else None
         negative_step_cache = (
             StepCache(step_cache_threshold) if step_cache is not None and negative is not None else None
         )
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
-        for t in config.time_steps:
-            try:
-                model_input = mx.concatenate([condition_latents, latents], axis=1) if conditions else latents
-                # Match diffusers: cast the 0..1000 timestep before dividing by 1000.
-                timestep = (config.scheduler.sigmas[t : t + 1] * 1000).astype(latents.dtype) / 1000
-                noise = self.transformer(model_input, prompt_embeds, timestep, layout, cache, step_cache=step_cache)
-                if negative is not None:
-                    uncond = self.transformer(
-                        model_input,
-                        negative[0],
-                        timestep,
-                        negative_layout,
-                        negative_cache,
-                        step_cache=negative_step_cache,
-                    )
-                    noise = uncond + guidance * (noise - uncond)
-                # The upstream Euler update accumulates in fp32 and casts back afterward.
-                sigma = config.scheduler.sigmas
-                latents = (latents.astype(mx.float32) + (sigma[t + 1] - sigma[t]) * noise.astype(mx.float32)).astype(
-                    latents.dtype
-                )
-                if blend_mask is not None:
-                    # the state now sits at sigma_{t+1}; pin unmasked tokens to the source there
-                    noised = blend_source + sigma[t + 1] * (noise_init - blend_source)
-                    latents = (blend_mask * latents + (1 - blend_mask) * noised).astype(latents.dtype)
-                mx.eval(latents)
-                ctx.in_loop(t, latents)
-            except KeyboardInterrupt:  # noqa: PERF203
-                ctx.interruption(t, latents)
-                raise StopImageGenerationException(
-                    f"Stopping image generation at step {t + 1}/{num_inference_steps}"
-                ) from None
+        with self.transformer.inference_projections():
+            for t in config.time_steps:
+                try:
+                    model_input = mx.concatenate([condition_latents, latents], axis=1) if conditions else latents
+                    # Match diffusers: cast the 0..1000 timestep before dividing by 1000.
+                    timestep = (config.scheduler.sigmas[t : t + 1] * 1000).astype(latents.dtype) / 1000
+                    noise = self.transformer(model_input, prompt_embeds, timestep, layout, cache, step_cache=step_cache)
+                    if negative is not None:
+                        uncond = self.transformer(
+                            model_input,
+                            negative[0],
+                            timestep,
+                            negative_layout,
+                            negative_cache,
+                            step_cache=negative_step_cache,
+                        )
+                        noise = uncond + guidance * (noise - uncond)
+                    # The upstream Euler update accumulates in fp32 and casts back afterward.
+                    sigma = config.scheduler.sigmas
+                    latents = (
+                        latents.astype(mx.float32) + (sigma[t + 1] - sigma[t]) * noise.astype(mx.float32)
+                    ).astype(latents.dtype)
+                    if blend_mask is not None:
+                        # the state now sits at sigma_{t+1}; pin unmasked tokens to the source there
+                        noised = blend_source + sigma[t + 1] * (noise_init - blend_source)
+                        latents = (blend_mask * latents + (1 - blend_mask) * noised).astype(latents.dtype)
+                    mx.eval(latents)
+                    ctx.in_loop(t, latents)
+                except KeyboardInterrupt:  # noqa: PERF203
+                    ctx.interruption(t, latents)
+                    raise StopImageGenerationException(
+                        f"Stopping image generation at step {t + 1}/{num_inference_steps}"
+                    ) from None
         ctx.after_loop(latents)
         del cache, negative_cache
         unpacked = QwenImage21LatentCreator.unpack_latents(latents, height, width).astype(mx.float32)
@@ -286,7 +297,13 @@ class QwenImage21Edit(nn.Module):
         return image
 
     def save_model(self, base_path: str) -> None:
-        ModelSaver.save_model(self, self.bits, base_path, QwenImage21WeightDefinition)
+        ModelSaver.save_model(
+            self,
+            self.bits,
+            base_path,
+            QwenImage21WeightDefinition,
+            dtypes={"vae": getattr(self, "_vae_stored_dtype", None)},
+        )
         destination = Path(base_path)
         for name, config in self._component_configs.items():
             (destination / name / "config.json").write_text(json.dumps(config, indent=2))

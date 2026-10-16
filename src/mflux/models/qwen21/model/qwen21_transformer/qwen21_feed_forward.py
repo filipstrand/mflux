@@ -11,9 +11,14 @@ class Qwen21SwiGLUFeedForward(nn.Module):
         self.out = nn.Linear(mlp_hidden_size, hidden_size, bias=False)
         self.gate_layer = nn.Linear(hidden_size, mlp_hidden_size, bias=False)
         self.compute_precision = ComputePrecision()
+        self._gate_proj_weight = None
 
     def __call__(self, hidden_states: mx.array) -> mx.array:
         dtype = hidden_states.dtype
         hidden_states = self.compute_precision.to_compute(hidden_states)
-        hidden_states = self.out(nn.silu(self.gate_layer(hidden_states)) * self.proj(hidden_states))
+        if self._gate_proj_weight is None:
+            gate, proj = self.gate_layer(hidden_states), self.proj(hidden_states)
+        else:
+            gate, proj = mx.split(hidden_states @ self._gate_proj_weight.T, 2, axis=-1)
+        hidden_states = self.out(nn.silu(gate) * proj)
         return self.compute_precision.to_stream(hidden_states, dtype)

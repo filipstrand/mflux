@@ -33,8 +33,17 @@ build/
 .fls
 .aux
 .log
-.claude
+
+# AI Agent wrangling: git committing MFlux project stuff...  while excluding developer personal/custom stuff
+.claude/*
+!.claude/skills/
+!.claude/settings.json
+.claude/settings.local.json
+.claude/skills/gitnexus-*/
 CLAUDE.md
+CLAUDE.local.md
+tmp-PR-content.md
+tmp-PR-body.md
 .gitnexus
 .agents/skills/gitnexus-cli/SKILL.md
 .agents/skills/gitnexus-debugging/SKILL.md
@@ -42,3 +51,4 @@ CLAUDE.md
 .agents/skills/gitnexus-guide/SKILL.md
 .agents/skills/gitnexus-impact-analysis/SKILL.md
 .agents/skills/gitnexus-refactoring/SKILL.md
+scripts/push_qwen21_turbo_vae.sh

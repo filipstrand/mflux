@@ -124,6 +124,7 @@ MFLUX supports the following model families. They have different strengths and w
 |[Z-Image](src/mflux/models/z_image/README.md) | Nov 2025 | 6B | Distilled & Base | Yes | Fast, small, very good quality and realism. |
 |[Krea 2](src/mflux/models/krea2/README.md) | Jun 2026 | 12B | Turbo (distilled) | No | Very good quality with a wide range of styles; good for creative exploration. |
 |[FLUX.2](src/mflux/models/flux2/README.md) | Jan 2026 | 4B & 9B | Distilled & Base | Yes | Fastest + smallest with very good quality and edit capabilities. |
+|[FLUX 3 Image Klein](src/mflux/models/flux3/README.md) | Oct 2026 | 5.6B (+4B TE) | Distilled & Base | No | Text-to-image and editing with up to 10 reference images in one model; bounding-box layouts, strong text rendering. 16 steps distilled, 50 steps Base. |
 |[Ideogram 4](src/mflux/models/ideogram4/README.md) | Jun 2026 | 9B | Base | No | JSON-caption-native, typography-focused text-to-image generation. |
 |[ERNIE-Image](src/mflux/models/ernie_image/README.md) | Apr 2026 | 8B | Distilled & Base | No | Single-stream DiT from Baidu. Vivid, high-contrast output. |
 |[Lens](src/mflux/models/lens/README.md) | May 2026 | 3.8B (+20B TE) | Turbo (distilled) | No | Dual-stream MMDiT from Microsoft with a GPT-OSS text encoder. Strong prompt adherence in 4 steps. |
@@ -132,7 +133,7 @@ MFLUX supports the following model families. They have different strengths and w
 |[FIBO](src/mflux/models/fibo/README.md) | Oct 2025+ | 8B | Distilled & Base | No | Very good JSON-based prompt understanding. Has edit capabilities. |
 |[SeedVR2](src/mflux/models/seedvr2/README.md) | Jun 2025 | 3B & 7B | — | No | Best upscaling model. |
 |[Qwen Image](src/mflux/models/qwen/README.md) | Aug 2025+ | 20B | Base | No | Large model (slower); strong prompt understanding and world knowledge. Has edit capabilities |
-|[Qwen Image 2.1](src/mflux/models/qwen21/README.md) | Sep 2026 | 7.1B (+8B TE) | Base | No | Single-stream block-causal DiT with a Qwen3-VL text encoder; 40-step guidance-free sampling. [Multi-reference editing, LoRA, and RGBA](src/mflux/models/qwen21/reference/README.md). |
+|[Qwen Image 2.1](src/mflux/models/qwen21/README.md) | Sep 2026+ | 7.1B (+8B TE) | Distilled & Base | No | Single-stream block-causal DiT with a Qwen3-VL text encoder. Base: 40 steps without guidance. Turbo: 8 steps. [Multi-reference editing, LoRA, and RGBA](src/mflux/models/qwen21/reference/README.md). |
 |[Depth Pro](src/mflux/models/depth_pro/README.md) | Oct 2024 | — | — | No | Very fast and accurate depth estimation model from Apple. |
 |[FLUX.1](src/mflux/models/flux/README.md) | Aug 2024 | 12B | Distilled & Base | No (legacy) | Legacy option with decent quality. Has edit capabilities with 'Kontext' model and upscaling support via ControlNet |
 
@@ -149,13 +150,13 @@ MFlux supports a small number of schedulers - see;<br>
 - Quantization and local model loading
 - LoRA support (multi-LoRA, scales, library lookup), including LyCORIS LoKr on FLUX.1 and FLUX.2
 - Metadata export + reuse, plus prompt file support
-- Float16 compute for Apple M1-family GPUs on FLUX.2, Z-Image and Qwen-Image 2.1 (`--compute-precision float16`, see the [common README](src/mflux/models/common/README.md#float16-compute-apple-m1-family))
+- Float16 compute for Apple M1-family GPUs on FLUX.2, FLUX 3 Image Klein, Z-Image and Qwen-Image 2.1 (`--compute-precision float16`, see the [common README](src/mflux/models/common/README.md#float16-compute-apple-m1-family))
 
 **Model-specific highlights**
 - Text-to-image and image-to-image generation.
 - LoRA finetuning
 - In-context editing, multi-image editing, and virtual try-on
-- ControlNet (Canny for FLUX.1, Union for Z-Image and Qwen-Image-2.1), depth conditioning, fill/inpainting, and Redux
+- ControlNet (Canny for FLUX.1, Union for Z-Image and Qwen-Image-2.1, depth for Krea 2), depth conditioning, fill/inpainting, and Redux
 - Upscaling (SeedVR2 and Flux ControlNet)
 - Depth map extraction and FIBO prompt tooling (VLM inspire/refine)
 
@@ -200,6 +201,7 @@ Where the models and the main features came from, read from the merge history (`
 | Z-Image | [@filipstrand](https://github.com/filipstrand) | [#284](https://github.com/mflux-community/mflux/pull/284) |
 | SeedVR2 | [@filipstrand](https://github.com/filipstrand) | [#297](https://github.com/mflux-community/mflux/pull/297) |
 | FLUX.2 Klein | [@filipstrand](https://github.com/filipstrand) | [#323](https://github.com/mflux-community/mflux/pull/323) |
+| FLUX 3 Image Klein | [@cguldogan](https://github.com/cguldogan) | [#876](https://github.com/mflux-community/mflux/issues/876) |
 | FLUX.2 KV cache (klein-9b-kv) | [@michaeltrefry](https://github.com/michaeltrefry) | [#426](https://github.com/mflux-community/mflux/pull/426) |
 | ERNIE-Image | [@azrahello](https://github.com/azrahello) | [#417](https://github.com/mflux-community/mflux/pull/417) |
 | Ideogram 4 | [@omercelik](https://github.com/omercelik) | [#433](https://github.com/mflux-community/mflux/pull/433) |
@@ -267,6 +269,14 @@ After installation in the same environment, consumers can use
 discover applications, or mount routes. UI framework dependencies belong to the
 individual UI distributions; this namespace support adds none to `mflux`.
 
+#### Extras under `mflux.extras`
+
+Plugins are optional packages that install next to mflux, put their code under
+`mflux.extras` and add their own commands. mflux's own commands do not change.
+The mflux-community plugins live in
+[mflux-plugins](https://github.com/mflux-community/mflux-plugins). To find,
+install or write one, see [Plugins - User Manual](docs/plugins.md).
+
 #### Community applications
 
 - [MindCraft Studio](https://themindstudio.cc/mindcraft#models) — macOS app built on mflux by [@shaoju](https://github.com/shaoju)
@@ -276,7 +286,7 @@ individual UI distributions; this namespace support adds none to `mflux`.
 - [mflux-fasthtml](https://github.com/anthonywu/mflux-fasthtml) by [@anthonywu](https://github.com/anthonywu)
 - [mflux-streamlit](https://github.com/elitexp/mflux-streamlit) by [@elitexp](https://github.com/elitexp)
 - [mlx-taef](https://github.com/IonDen/mlx-taef) — TAESD/TAEF tiny-autoencoder live previews and low-memory FLUX decode for mflux, by [@IonDen](https://github.com/IonDen)
-- [mlx-teacache](https://github.com/IonDen/mlx-teacache) — TeaCache step-skipping to speed up FLUX generation in mflux, by [@IonDen](https://github.com/IonDen)
+- [mlx-teacache](https://github.com/IonDen/mlx-teacache) — TeaCache step skipping for FLUX.1 dev and Krea, FLUX.2 Klein base, Z-Image base and Qwen-Image (original checkpoint) in mflux, by [@IonDen](https://github.com/IonDen)
 - [MLXBits Image Studio](https://github.com/MLXBits/image-studio) - A native macOS Swift app for FLUX, Krea 2, Z-Image and more!
 ---
 

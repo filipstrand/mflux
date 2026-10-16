@@ -132,7 +132,7 @@ If you keep the model loaded, as a UI or a server does:
 
 The other two Z-Image commands have the same steps. `mflux-generate-z-image` is `ZImageCommand` in `mflux.models.z_image.cli.z_image_generate`, and `mflux-generate-z-image-controlnet` is `ZImageTurboControlnetCommand` in `mflux.models.z_image.cli.z_image_turbo_generate_controlnet`. The rules above apply to both, with three differences:
 
-- The base command runs `flow_match_euler_discrete` unless you pass `--scheduler`. Only the command line applies that default, so a script that calls `generate()` sets `args.scheduler` itself.
+- The base command runs `flow_match_euler_discrete` unless you pass `--scheduler`.
 - The controlnet command's `validate()` also checks the `--control` specs. It raises `ValueError` for a bad spec or for a `--model` without a ControlNet, and `ModelConfigError` (a `ValueError` too) for a `--model` it cannot place.
 - The controlnet command keeps the depth, HED and pose detectors loaded for the rest of the process once a control of that type has run. Dropping the model does not free them.
 </details>

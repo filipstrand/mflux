@@ -1,4 +1,3 @@
-import sys
 from argparse import Namespace
 
 from mflux.callbacks.callback_manager import CallbackManager
@@ -75,10 +74,6 @@ class ErnieImageCommand:
 def main():
     parser = build_parser()
     args = parser.parse_args()
-
-    # The command's scheduler default; it reads sys.argv, so it stays here, not in generate().
-    if "--scheduler" not in sys.argv:
-        args.scheduler = "linear"
 
     # 1. Load the model
     model = ErnieImageCommand.load(args)
