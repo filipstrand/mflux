@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   extract:
-    runs-on: macos-14  # Apple Silicon runner (M1) — model_config.py imports mlx.core
+    runs-on: macos-15  # Apple Silicon runner (M1) — model_config.py imports mlx.core
 
     steps:
       - name: Checkout code
@@ -36,7 +36,7 @@ jobs:
         run: |
           uv sync --locked --no-dev
 
-      # Calls the script directly rather than `just ci-extract`: macos-14 runners
+      # Calls the script directly rather than `just ci-extract`: macos-15 runners
       # don't ship just, and installing it for one call isn't worth the dependency.
       - name: Extract model registry
         run: uv run --no-sync python scripts/ci_extract_models.py
