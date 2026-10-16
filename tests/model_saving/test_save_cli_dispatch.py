@@ -223,6 +223,8 @@ def test_lora_kwargs_match_the_constructor():
     # Boogu and FIBO apply no LoRA at all, so they take no LoRA kwargs to filter.
     assert "lora_paths" not in run_save("boogu")["kwargs"]
     assert "lora_paths" not in run_save("fibo")["kwargs"]
+    # FLUX 3 bakes LoRAs like FLUX.2.
+    assert {"lora_paths", "lora_scales", "bake_lora"} <= run_save("flux3")["kwargs"].keys()
 
 
 @pytest.mark.fast

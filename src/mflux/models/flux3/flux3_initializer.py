@@ -3,6 +3,7 @@ import mlx.core as mx
 from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.models.common.compute_precision import ComputePrecision
 from mflux.models.common.config import ModelConfig
+from mflux.models.common.lora.mapping.lora_loader import LoRALoader
 from mflux.models.common.tokenizer import TokenizerLoader
 from mflux.models.common.weights.loading.loaded_weights import LoadedWeights
 from mflux.models.common.weights.loading.weight_applier import WeightApplier
@@ -10,6 +11,7 @@ from mflux.models.common.weights.loading.weight_loader import WeightLoader
 from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3TextEncoder
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 from mflux.models.flux3.model.flux3_transformer.flux3_transformer import Flux3Transformer
+from mflux.models.flux3.weights.flux3_lora_mapping import Flux3LoRAMapping
 from mflux.models.flux3.weights.flux3_weight_definition import (
     Flux3KleinBaseWeightDefinition,
     Flux3KleinWeightDefinition,
@@ -24,6 +26,9 @@ class Flux3Initializer:
         model_config: ModelConfig,
         quantize: int | None,
         model_path: str | None = None,
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
+        bake_lora: bool = True,
         compute_precision: mx.Dtype | None = None,
     ) -> None:
         precision = ComputePrecision(compute_precision)
@@ -35,9 +40,10 @@ class Flux3Initializer:
         Flux3Initializer._init_tokenizers(model, path)
         Flux3Initializer._init_models(model)
         Flux3Initializer._apply_weights(model, weights, quantize, definition)
+        Flux3Initializer._apply_lora(model, lora_paths, lora_scales, bake_lora, weights)
         model.compute_precision = precision
         if compute_precision is not None:
-            # Last, so it casts the final parameters, whatever quantization produced.
+            # Last, so it casts the final parameters, whatever quantization and LoRA produced.
             model.transformer.apply_compute_precision(precision)
 
     @staticmethod
@@ -103,4 +109,21 @@ class Flux3Initializer:
                 "transformer": model.transformer,
                 "text_encoder": model.text_encoder,
             },
+        )
+
+    @staticmethod
+    def _apply_lora(
+        model,
+        lora_paths: list[str] | None,
+        lora_scales: list[float] | None,
+        bake_lora: bool,
+        weights: LoadedWeights,
+    ) -> None:
+        model.lora_paths, model.lora_scales = LoRALoader.load_and_apply_lora(
+            lora_mapping=Flux3LoRAMapping.get_mapping(),
+            transformer=model.transformer,
+            lora_paths=lora_paths,
+            lora_scales=lora_scales,
+            bake_lora=bake_lora,
+            dense_weights=weights.dense_component("transformer"),
         )
