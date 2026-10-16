@@ -28,11 +28,11 @@ class _Flux3KleinCore(nn.Module):
         self,
         quantize: int | None = None,
         model_path: str | None = None,
+        model_config: ModelConfig | None = None,
+        compute_precision: mx.Dtype | None = None,
         lora_paths: list[str] | None = None,
         lora_scales: list[float] | None = None,
         bake_lora: bool = True,
-        model_config: ModelConfig | None = None,
-        compute_precision: mx.Dtype | None = None,
     ):
         super().__init__()
         Flux3Initializer.init(

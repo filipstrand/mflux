@@ -1,3 +1,5 @@
+import inspect
+
 import mlx.core as mx
 import numpy as np
 import pytest
@@ -8,6 +10,7 @@ from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
 from mflux.models.common.lora.mapping.lora_loader import LoRALoader
 from mflux.models.flux3.cli import flux3_edit_generate, flux3_generate
 from mflux.models.flux3.model.flux3_transformer.flux3_transformer import Flux3Transformer
+from mflux.models.flux3.variants import Flux3Klein, Flux3KleinEdit
 from mflux.models.flux3.weights.flux3_lora_mapping import Flux3LoRAMapping
 
 pytestmark = pytest.mark.fast
@@ -194,3 +197,10 @@ def test_flux3_capabilities_report_lora_as_honored(name, cli):
     assert command["traits"]["lora"] is True
     assert options["--lora"]["status"] == "honored"
     assert options["--lora-style"]["status"] == "ignored"
+
+
+@pytest.mark.parametrize("model_class", [Flux3Klein, Flux3KleinEdit])
+def test_lora_arguments_come_after_the_existing_positional_ones(model_class):
+    # Flux3Klein(quantize, model_path, model_config, compute_precision) was the signature before LoRA support.
+    names = list(inspect.signature(model_class.__init__).parameters)[1:]
+    assert names == ["quantize", "model_path", "model_config", "compute_precision", "lora_paths", "lora_scales", "bake_lora"]  # fmt: skip
