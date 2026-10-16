@@ -13,8 +13,9 @@ from mflux.models.flux.cli import flux_generate
         ["--model", "flux3-base"],
         ["--model", "black-forest-labs/flux-3-image-klein"],
         ["--model", "black-forest-labs/flux-3-image-klein-base"],
-        ["--model", "/models/flux-3-klein-q4", "--base-model", "dev"],
+        ["--model", "/models/flux-3-klein-q4"],
         ["--model", "/models/flux3-klein-q4", "--base-model", "flux3-klein-base"],
+        ["--model", "flux3", "--base-model", "dev"],
     ],
 )
 def test_mflux_generate_rejects_flux3(monkeypatch, capsys, argv):
@@ -32,6 +33,7 @@ def test_mflux_generate_rejects_flux3(monkeypatch, capsys, argv):
         ["--model", "schnell"],
         ["--model", "/models/flux-1-dev-q4", "--base-model", "dev"],
         ["--model", "/models/flux3-experiments/flux-1-dev-q4", "--base-model", "dev"],
+        ["--model", "/models/my-flux3-style-finetune", "--base-model", "dev"],
     ],
 )
 def test_mflux_generate_still_accepts_flux1_names(monkeypatch, argv):
