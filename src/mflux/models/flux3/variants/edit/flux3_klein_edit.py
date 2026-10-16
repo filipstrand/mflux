@@ -5,12 +5,12 @@ import PIL.Image
 
 from mflux.models.flux3.latent_creator.flux3_latent_creator import Flux3LatentCreator
 from mflux.models.flux3.latent_creator.flux3_reference_images import Flux3ReferenceImages
-from mflux.models.flux3.variants.txt2img.flux3_klein import Flux3Klein
+from mflux.models.flux3.variants.flux3_klein_core import _Flux3KleinCore
 from mflux.utils.generated_image import GeneratedImage
 
 
-class Flux3KleinEdit(Flux3Klein):
-    def generate_image(  # ty: ignore[invalid-method-override]
+class Flux3KleinEdit(_Flux3KleinCore):
+    def generate_image(
         self,
         seed: int,
         prompt: str,
