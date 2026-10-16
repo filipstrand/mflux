@@ -129,6 +129,8 @@ def test_flux3_generate_image_releases_transformer_before_after_loop_callbacks()
     model.transformer = _FakeFlux3Transformer()
     model.vae = _FakePackedVAE()
     model.bits = None
+    model.lora_paths = None
+    model.lora_scales = None
     model.compute_precision = ComputePrecision()
     model.tiling_config = None
     model._noise_override = None

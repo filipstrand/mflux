@@ -304,6 +304,11 @@ class SimulatedLoRA:
         SimulatedLoRA._adapt(model, (block.attn, "to_q"), (block.ff, "linear_out"))
 
     @staticmethod
+    def flux3(model, *args) -> None:
+        block = model.transformer.single_transformer_blocks[0]
+        SimulatedLoRA._adapt(model, (block.attn, "to_q"), (block.ff, "linear_out"))
+
+    @staticmethod
     def z_image(model, *args) -> None:
         layer = model.transformer.layers[0]
         SimulatedLoRA._adapt(model, (layer.attention, "to_q"), (layer.feed_forward, "w2"))
@@ -342,6 +347,7 @@ class TinyInit:
         monkeypatch.setattr(Flux3Initializer, "_init_tokenizers", lambda model, path: None)
         monkeypatch.setattr(Flux3Initializer, "_init_models", lambda model: TinyInit._attach(model, Tiny.flux3()))
         monkeypatch.setattr(Flux3Initializer, "_apply_weights", lambda model, weights, quantize, definition: TinyInit._load(model, weights, quantize))  # fmt: skip
+        monkeypatch.setattr(Flux3Initializer, "_apply_lora", SimulatedLoRA.flux3)
 
     @staticmethod
     def z_image(monkeypatch, tmp_path) -> None:

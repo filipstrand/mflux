@@ -113,6 +113,19 @@ mflux-generate-flux3 \
 
 For edits by box, refer to the n-th reference as `<ref_image_n>` and give each element `from`, `src_bbox` and `tgt_bbox` (a `null` target removes the element). Boxes set placement and scale, not a hard mask. See the [BFL documentation](https://docs.bfl.ai/flux_3/flux3_image_bounding_boxes) for the full format.
 
+## LoRA
+Both commands take `--lora PATH [SCALE]` (repeatable) and `--no-bake-lora`, as described in the [common README](../common/README.md#lora-basics). mflux reads FLUX 3 LoRAs in the BFL key names that ComfyUI and ai-toolkit write (`diffusion_model.content_mode_blocks.image.0.q_proj.lora_A.weight`, `single_blocks.N.mlp_in`, ...), in diffusers/PEFT names (`transformer.mode_blocks.image.0.attn.to_q.lora_A.weight`), and in kohya `lora_unet_` names, on every linear layer of the transformer. For example, [ausboss/FLUX-3-Image-Klein-Outpaint-LoRA](https://huggingface.co/ausboss/FLUX-3-Image-Klein-Outpaint-LoRA) extends a picture padded with flat gray `#808080`:
+
+```sh
+mflux-generate-flux3-edit \
+  --image-paths padded.png \
+  --lora ausboss/FLUX-3-Image-Klein-Outpaint-LoRA 1.5 \
+  --prompt "Outpaint the image: replace the solid gray areas with a seamless continuation of the scene, keeping the existing picture unchanged. Scene: A tiger swimming in a calm jungle river, lush green ferns and trees on both banks, warm sunlight through the canopy" \
+  --seed 42 -q 8
+```
+
+On a picture padded on the left and the top (distilled model, `-q 8`, seed 42), the original part moved by 86 px without the LoRA (the model zoomed in by 7%) and by 0 px with it. A LoRA trained on the distilled model that also adapts `ref_time_in` (the target time embedding) cannot load on the Base model, which has no such layer, and stops with an error.
+
 ## Quantization
 `-q 4`, `-q 6` and `-q 8` quantize the model when it loads. Measured on an M4 Pro (64 GB), distilled model, 1024×1024, 16 steps, seed fixed. The PSNR compares each image with the unquantized one (the quantized images look clean; the difference is in fine detail):
 
@@ -146,5 +159,5 @@ mflux-generate-flux3 --model ~/models/flux3-klein-q4 --prompt "..."
 - `--guidance` only matters for the Base checkpoint. The distilled checkpoint ignores it with a warning.
 - Both commands accept `--model flux3-image-klein` (default, aliases `flux3-klein`, `flux3`) and `--model flux3-image-klein-base` (aliases `flux3-klein-base`, `flux3-base`).
 - The VAE is the FLUX.2 VAE (identical weights).
-- Not ported from the reference implementation: the prompt upsampler (a separate 18.8 GB model), the NSFW safety classifier, the FP8 and NVFP4 transformer variants, and LoRA support and training. `--lora-paths` and `mflux-train` are not available for this model.
+- Not ported from the reference implementation: the prompt upsampler (a separate 18.8 GB model), the NSFW safety classifier, the FP8 and NVFP4 transformer variants, and LoRA training. `mflux-train` is not available for this model.
 - Slow golden tests run at 512×512 or smaller: `tests/image_generation/test_generate_image_flux3_klein.py` and `..._flux3_klein_edit.py`.
