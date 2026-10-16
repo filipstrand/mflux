@@ -91,10 +91,40 @@ mflux-generate-qwen-2.1-edit \
 - The checkpoint stores its 8 sigma values in `model_index.json` (`sample_sigmas`). mflux uses these values without a resolution shift, as the reference pipeline does. The default `linear` scheduler selects this schedule for the Turbo model.
 - Use 1024 px or larger. At small sizes such as 512×320, Turbo turns fine detail into a pixel grid. The diffusers reference does the same.
 - The defaults are 8 steps and guidance 1. `--steps` accepts any count: other counts sample the 8-node curve at evenly spaced points. Other values for `--guidance`, and `--scheduler viggle_turbo`, stop with an error before the model loads.
-- ControlNet: `mflux-generate-qwen-2.1-controlnet --model qwen-image-2.1-turbo-controlnet` runs the Fun ControlNet-Union on the Turbo checkpoint in 8 steps. alibaba-pai trained the branch with the base model. In a canny test at 1280×768, the Turbo output followed the edges as closely as the base model at 20 steps.
+- ControlNet: `mflux-generate-qwen-2.1-controlnet --model qwen-image-2.1-turbo-controlnet` runs the Fun ControlNet-Union on the Turbo checkpoint in 8 steps. alibaba-pai trained the branch with the base model. In a canny test at 1280×768, the Turbo output followed the edges as closely as the base model at 20 steps. See [ControlNet](#controlnet).
 - LoRAs for Qwen-Image-2.1 load on the Turbo checkpoint. The ausboss Outpaint LoRA v2 kept the original picture in place (kept-area PSNR 37.8 dB, against 20.7 dB without the LoRA). The ausboss Consistency LoRA kept the framing of a watercolor edit.
 - Weights: about 32 GB bf16 on disk (14.2 GB transformer, 17.5 GB text encoder in one file, 0.7 GB VAE). A q8 save from the edit command is 17 GB (measured with `du`). That command quantizes the text encoder too.
 - Validation: the diffusers reference made a bf16 image at 1024², seed 42. The q8 edit command started from the same initial noise and got PSNR 29.5 dB against that image.
+
+### ControlNet
+
+`mflux-generate-qwen-2.1-controlnet` runs alibaba-pai's [Qwen-Image-2.1-Fun-Controlnet-Union](https://huggingface.co/alibaba-pai/Qwen-Image-2.1-Fun-Controlnet-Union) next to the base model. One checkpoint reads canny, depth, grayscale, HED, lineart, MLSD, pose and scribble images, so there is no flag for the control type.
+
+```sh
+mflux-generate-qwen-2.1-controlnet \
+  --prompt "A snowy bakery storefront at dusk, warm light in the windows" \
+  --controlnet-image-path canny.png \
+  --seed 42 \
+  -q 8
+```
+
+- The defaults are 40 steps and guidance 1. `--controlnet-strength` scales the control: 1.0 (the default) is the strongest, 0 turns it off.
+- Add `--model qwen-image-2.1-turbo-controlnet` to run the same ControlNet on the Turbo checkpoint in 8 steps.
+- Without `--width` and `--height`, the output size comes from `--output-resolution` (default 1024) and the aspect ratio of the control image (of the inpaint source when there is no control image). Give a control image at the output size, or pass `--width` and `--height` that match it. A 768×768 canny map gave a sharp image that followed the prompt at 768×768. The same map scaled up to 1024×1024 gave a washed-out image that lost the snow, with both the base and the Turbo checkpoint.
+- `--image-path` with `--mask-image` inpaints: white areas of the mask are generated from the prompt, black areas are kept. It works with or without a control image:
+
+```sh
+mflux-generate-qwen-2.1-controlnet \
+  --model qwen-image-2.1-turbo-controlnet \
+  --prompt "A coffee shop entrance with a neon sign reading OPEN" \
+  --image-path photo.png \
+  --mask-image mask.png \
+  --seed 42 \
+  -q 8
+```
+
+- The output is RGBA, so `--output` must be a PNG, WebP or TIFF file.
+- Measured on M5 Max with `-q 8` at 1024×1024: peak memory 27 GB, about 45 s for Turbo and 170 s for the base model, model load included.
 
 ### img2img
 
