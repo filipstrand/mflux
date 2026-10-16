@@ -1,9 +1,12 @@
 import re
+from types import SimpleNamespace
 
+import mlx.core as mx
 import pytest
 
 from mflux.models.common.config import ModelConfig
 from mflux.models.common.weights.loading.weight_loader import WeightLoader
+from mflux.models.common.weights.mapping.weight_mapper import WeightMapper
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3TextEncoder
 from mflux.models.flux3.flux3_initializer import Flux3Initializer
@@ -106,3 +109,29 @@ class TestTinyFlux3KleinModelSaving:
         model_config = ModelConfig.from_name(config_name)
         definition = Flux3Initializer.weight_definition(model_config)
         return WeightLoader.load(weight_definition=definition, model_path=str(base_path)), model_config
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize(
+    ("hf_keys", "raises"),
+    [
+        (
+            ["proj_out.weight", "target_timestep_embedder.linear_1.weight", "target_timestep_embedder.linear_2.weight"],
+            True,
+        ),
+        (["proj_out.weight"], False),
+    ],
+    ids=["distilled_hub_layout_read_as_base", "base_hub_layout"],
+)
+def test_base_mapping_keeps_the_target_time_embedding_for_the_kind_check(hf_keys, raises):
+    # The diffusers-layout repos go through the mapping before the check: the Base mapping must keep the embedder.
+    hf_weights = {key: mx.zeros((4, 4)) for key in hf_keys}
+    transformer = next(c for c in Flux3KleinBaseWeightDefinition.get_components() if c.name == "transformer")
+    mapped = WeightMapper.apply_mapping(hf_weights, transformer.mapping_getter())
+    weights = SimpleNamespace(transformer=mapped)
+    model_config = ModelConfig.from_name("flux3-image-klein-base")
+    if raises:
+        with pytest.raises(ModelConfigError, match=re.escape("--base-model flux3-image-klein") + r"\."):
+            Flux3Initializer._check_checkpoint_kind(weights, model_config, "black-forest-labs/flux-3-image-klein")
+    else:
+        Flux3Initializer._check_checkpoint_kind(weights, model_config, "black-forest-labs/flux-3-image-klein-base")

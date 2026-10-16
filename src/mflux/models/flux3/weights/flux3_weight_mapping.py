@@ -26,12 +26,17 @@ class Flux3WeightMapping(WeightMapping):
             "norm_out.linear.weight",
             "proj_out.weight",
         ]
-        if flow_map:  # the undistilled Base checkpoint has no target time embedding
-            names += ["target_timestep_embedder.linear_1.weight", "target_timestep_embedder.linear_2.weight"]
+        target_time = ["target_timestep_embedder.linear_1.weight", "target_timestep_embedder.linear_2.weight"]
+        if flow_map:
+            names += target_time
         names += [f"x_embedders.{mode}.weight" for mode in ("image", "image_cond")]
         for mode in ("image", "image_cond", "txt"):
             names += [f"early_stream_modulations.{mode}.linear.weight", f"single_stream_modulations.{mode}.linear.weight"]  # fmt: skip
         targets = [WeightTarget(to_pattern=name, from_pattern=[name]) for name in names]
+        if not flow_map:
+            # The undistilled Base checkpoint has no target time embedding. Map it when present anyway, so that
+            # Flux3Initializer can tell a Distilled checkpoint loaded as Base and stop with an error.
+            targets += [WeightTarget(to_pattern=name, from_pattern=[name], required=False) for name in target_time]
 
         block_prefixes = ["mode_blocks.image", "mode_blocks.image_cond", "txt_mode_blocks"]
         for prefix in block_prefixes:

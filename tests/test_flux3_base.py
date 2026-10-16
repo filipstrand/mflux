@@ -33,15 +33,18 @@ class TestFlux3Base:
             Flux3Initializer.weight_definition(ModelConfig.flux3_image_klein_base()) is Flux3KleinBaseWeightDefinition
         )
 
-    def test_base_mapping_has_no_target_timestep_embedder(self):
-        names = lambda targets: {t.to_pattern for t in targets}  # noqa: E731
-        distilled = names(Flux3WeightMapping.get_transformer_mapping())
-        base = names(Flux3WeightMapping.get_base_transformer_mapping())
-        assert distilled - base == {
+    def test_base_mapping_maps_the_target_timestep_embedder_only_optionally(self):
+        # Base has no target_timestep_embedder; mapping it optionally lets the initializer detect a Distilled
+        # checkpoint loaded as Base.
+        required = lambda targets: {t.to_pattern for t in targets if t.required}  # noqa: E731
+        distilled = required(Flux3WeightMapping.get_transformer_mapping())
+        base_targets = Flux3WeightMapping.get_base_transformer_mapping()
+        assert distilled - required(base_targets) == {
             "target_timestep_embedder.linear_1.weight",
             "target_timestep_embedder.linear_2.weight",
         }
-        assert base < distilled
+        optional = {t.to_pattern for t in base_targets if not t.required}
+        assert optional == {"target_timestep_embedder.linear_1.weight", "target_timestep_embedder.linear_2.weight"}
         components = {c.name: c for c in Flux3KleinBaseWeightDefinition.get_components()}
         assert components["transformer"].mapping_getter is Flux3WeightMapping.get_base_transformer_mapping
         assert components["vae"].mapping_getter is Flux3KleinWeightDefinition.get_components()[0].mapping_getter
