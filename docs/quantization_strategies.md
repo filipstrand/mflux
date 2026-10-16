@@ -47,4 +47,4 @@ Models that `mflux-save` can save. Source: `MODEL_CLASSES` in `src/mflux/models/
 - Each ✅ means the component can be quantized. Some layers inside it stay in full precision.
 - Black Forest Labs also publishes `FLUX.2-dev-NVFP4`. It is not a saveable model here, so it has no row.
 - Third-party FP8 and NVFP4 builds of Z-Image-Turbo, ERNIE-Image, Qwen-Image and Ideogram 4 exist. They are not listed.
-- The FP8 and NVFP4 data comes from a web search that you supplied. I did not open the links.
+- The FP8 and NVFP4 links come from a web search. Nobody checked the linked pages.
