@@ -36,6 +36,17 @@ class Flux3ReferenceImages:
         return references[0].size
 
     @staticmethod
+    def resolve_canvas(
+        references: list[PIL.Image.Image], box: Box | None, width: int | None, height: int | None
+    ) -> tuple[int, int, Box | None]:
+        # Generate on the reference canvas and crop back to the fitted box when no size was given, or when the
+        # size equals the box (what replaying the cropped size from a metadata sidecar provides).
+        canvas_width, canvas_height = Flux3ReferenceImages.default_size(references)
+        if box is not None and (not (width or height) or (width, height) == (box[2] - box[0], box[3] - box[1])):
+            return canvas_width, canvas_height, box
+        return width or canvas_width, height or canvas_height, None
+
+    @staticmethod
     def to_array(image: PIL.Image.Image) -> np.ndarray:
         # (1, 3, H, W) float32 in [-1, 1]
         return (np.asarray(image, dtype=np.float32).transpose(2, 0, 1) / 127.5 - 1.0)[None]

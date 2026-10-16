@@ -21,17 +21,17 @@ class Flux3KleinEdit(_Flux3KleinCore):
         guidance: float | None = None,
     ) -> GeneratedImage:
         # width/height None -> the first prepared reference's size; a single reference prepared with neither
-        # given is cropped back to its fitted box (as the reference implementation does).
+        # given (or with exactly its fitted size) is cropped back to its fitted box (as the reference does).
         images = [PIL.Image.open(path) for path in image_paths]
-        references, crop_box = Flux3ReferenceImages.prepare(images, crop_to_fit=not (width or height))
-        default_width, default_height = Flux3ReferenceImages.default_size(references)
+        references, box = Flux3ReferenceImages.prepare(images)
+        width, height, crop_box = Flux3ReferenceImages.resolve_canvas(references, box, width, height)
         cond_tokens, cond_ids = self.encode_references(references)
         return self._generate(
             seed=seed,
             prompt=prompt,
             num_inference_steps=num_inference_steps,
-            height=height or default_height,
-            width=width or default_width,
+            height=height,
+            width=width,
             guidance=guidance,
             cond_tokens=cond_tokens,
             cond_ids=cond_ids,

@@ -57,3 +57,28 @@ class TestFlux3ReferenceImages:
         assert (ids[:, 3] == -2).all()
         assert ids[:, 1].max() == 0.5 and ids[:, 2].max() == 1.0
         assert isinstance(mx.array(ids), mx.array)
+
+
+def _canvas(size, width=None, height=None):
+    references, box = Refs.prepare([_image(*size)])
+    return Refs.resolve_canvas(references, box, width, height)
+
+
+@pytest.mark.fast
+class TestFlux3ResolveCanvas:
+    def test_no_size_generates_on_the_canvas_and_crops_back(self):
+        assert _canvas((700, 500)) == (704, 512, (2, 6, 702, 506))
+
+    def test_the_fitted_size_replayed_from_metadata_crops_back_too(self):
+        assert _canvas((700, 500), 700, 500) == (704, 512, (2, 6, 702, 506))
+
+    @pytest.mark.parametrize(("width", "height"), [(512, 512), (700, None), (None, 500), (704, 512)])
+    def test_any_other_explicit_size_is_used_as_given_without_a_crop(self, width, height):
+        assert _canvas((700, 500), width, height) == (width or 704, height or 512, None)
+
+    def test_an_unpadded_reference_has_nothing_to_crop(self):
+        assert _canvas((704, 512), 704, 512) == (704, 512, None)
+
+    def test_multiple_references_never_crop(self):
+        references, box = Refs.prepare([_image(700, 500), _image(300, 1200)])
+        assert Refs.resolve_canvas(references, box, 688, 496) == (688, 496, None)

@@ -6,12 +6,14 @@
 import json
 import sys
 
+import PIL.Image
 import pytest
 
 from mflux.models.common.resolution.config_resolution import ConfigResolution
 from mflux.models.flux.cli import flux_generate_redux
 from mflux.models.flux2.cli import flux2_edit_generate, flux2_generate
 from mflux.models.flux3.cli import flux3_edit_generate, flux3_generate
+from mflux.models.flux3.latent_creator.flux3_reference_images import Flux3ReferenceImages
 from mflux.models.krea2.cli import krea2_generate
 from mflux.models.qwen.cli import qwen_image_edit_generate
 from mflux.models.z_image.cli import z_image_generate
@@ -349,3 +351,25 @@ def test_a_flux3_base_replay_resolves_to_the_base_entry(parse, sidecar):
         extra_keys=flux3_generate.FAMILY_MODELS,
     )
     assert resolved.model_name == "black-forest-labs/flux-3-image-klein-base"
+
+
+@pytest.mark.fast
+def test_a_flux3_edit_replay_resolves_to_the_same_canvas_and_crop(parse, sidecar, tmp_path):
+    # A 700x500 reference generates on a 704x512 canvas and is cropped to 700x500, so the sidecar records
+    # 700x500. Replaying that explicit size must hit the same canvas and crop, not round to 688x496.
+    reference = tmp_path / "ref.png"
+    PIL.Image.new("RGB", (700, 500)).save(reference)
+    args = parse(flux3_edit_generate, "--image-paths", str(reference), "--prompt", "x")
+    first = _flux3_edit_canvas(flux3_edit_generate._explicit_size(args.width, args.height, reference), reference)
+
+    replayed = parse(flux3_edit_generate, "--config-from-metadata", str(sidecar(width=700, height=500, image_paths=[str(reference)])))  # fmt: skip
+    replay = _flux3_edit_canvas(
+        flux3_edit_generate._explicit_size(replayed.width, replayed.height, reference), reference
+    )
+
+    assert first == replay == (704, 512, (2, 6, 702, 506))
+
+
+def _flux3_edit_canvas(size, reference):
+    references, box = Flux3ReferenceImages.prepare([PIL.Image.open(reference)])
+    return Flux3ReferenceImages.resolve_canvas(references, box, *size)
