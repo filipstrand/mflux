@@ -41,7 +41,9 @@ def main():
     CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
 
     # Matches the aliases (flux3-...) and the official repo ids (black-forest-labs/flux-3-image-klein[-base]).
-    if any(name and re.search(r"flux[-_]?3(?!\d)", name.lower()) for name in (args.model, args.base_model)):
+    # Only the last path component counts, so a FLUX.1 checkpoint under a flux3-named folder still loads.
+    names = (args.model and args.model.rstrip("/").rsplit("/", 1)[-1], args.base_model)
+    if any(name and re.search(r"flux[-_]?3(?!\d)", name.lower()) for name in names):
         parser.error("FLUX 3 Image Klein is not supported by mflux-generate. Use mflux-generate-flux3 instead.")
     if (args.base_model and "klein" in args.base_model.lower()) or (args.model and "flux2-klein" in args.model.lower()):
         parser.error("FLUX.2 Klein is not supported by mflux-generate. Use mflux-generate-flux2 instead.")

@@ -26,7 +26,13 @@ def test_mflux_generate_rejects_flux3(monkeypatch, capsys, argv):
 
 
 @pytest.mark.parametrize(
-    "argv", [["--model", "dev"], ["--model", "schnell"], ["--model", "/models/flux-1-dev-q4", "--base-model", "dev"]]
+    "argv",
+    [
+        ["--model", "dev"],
+        ["--model", "schnell"],
+        ["--model", "/models/flux-1-dev-q4", "--base-model", "dev"],
+        ["--model", "/models/flux3-experiments/flux-1-dev-q4", "--base-model", "dev"],
+    ],
 )
 def test_mflux_generate_still_accepts_flux1_names(monkeypatch, argv):
     monkeypatch.setattr(sys, "argv", ["mflux-generate", "--prompt", "a fox", *argv])
