@@ -28,6 +28,9 @@ class _Flux3KleinCore(nn.Module):
         self,
         quantize: int | None = None,
         model_path: str | None = None,
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
+        bake_lora: bool = True,
         model_config: ModelConfig | None = None,
         compute_precision: mx.Dtype | None = None,
     ):
@@ -36,6 +39,9 @@ class _Flux3KleinCore(nn.Module):
             model=self,
             quantize=quantize,
             model_path=model_path,
+            lora_paths=lora_paths,
+            lora_scales=lora_scales,
+            bake_lora=bake_lora,
             model_config=model_config or ModelConfig.flux3_image_klein(),
             compute_precision=compute_precision,
         )
@@ -125,6 +131,8 @@ class _Flux3KleinCore(nn.Module):
             seed=seed,
             prompt=prompt,
             quantization=self.bits,
+            lora_paths=self.lora_paths,
+            lora_scales=self.lora_scales,
             image_paths=image_paths,
             generation_time=config.time_steps.format_dict["elapsed"],
             generation_parameters=self.compute_precision.generation_parameters(),
