@@ -7,16 +7,17 @@ from mflux.models.common.checking.model_checker import ModelChecker
 from mflux.models.common.weights.loading.weight_definition import ComponentDefinition
 
 
-def write_safetensors(path, metadata=None, names=None):
+def write_safetensors(path, metadata=None, names=None, data_offsets=None):
     header = {"__metadata__": metadata or {}}
     for name in names or ["weight"]:
-        header[name] = {"dtype": "F32", "shape": [1], "data_offsets": [0, 4]}
+        header[name] = {"dtype": "F32", "shape": [1], "data_offsets": data_offsets or [0, 4]}
     encoded = json.dumps(header).encode()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(struct.pack("<Q", len(encoded)) + encoded + b"\0\0\0\0")
 
 
 def write_index(path, shard_names):
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"weight_map": {f"weight_{index}": name for index, name in enumerate(shard_names)}}))
 
 
@@ -34,7 +35,11 @@ def qwen_definition(monkeypatch):
 @pytest.mark.fast
 def test_mflux_package_passes_when_all_parts_are_present(tmp_path, qwen_definition):
     root = tmp_path / "qwen-image-mflux-q6"
-    write_safetensors(root / "transformer" / "0.safetensors", {"mflux_version": "0.21.0", "quantization_level": "6"})
+    write_safetensors(
+        root / "transformer" / "0.safetensors",
+        {"mflux_version": "0.21.0", "quantization_level": "6"},
+        names=["weight_0"],
+    )
     write_index(root / "transformer" / "model.safetensors.index.json", ["0.safetensors"])
 
     result = ModelChecker.check(str(root))
@@ -58,7 +63,7 @@ def test_supported_hugging_face_safetensors_package_passes(tmp_path, qwen_defini
 @pytest.mark.fast
 def test_incomplete_mflux_package_warns_and_prints_the_fix_command(tmp_path, qwen_definition):
     root = tmp_path / "qwen-image-mflux-q6"
-    write_safetensors(root / "transformer" / "0.safetensors", {"mflux_version": "0.21.0"})
+    write_safetensors(root / "transformer" / "0.safetensors", {"mflux_version": "0.21.0"}, names=["weight_0"])
     write_index(root / "transformer" / "model.safetensors.index.json", ["0.safetensors", "1.safetensors"])
 
     result = ModelChecker.check(str(root))
@@ -85,14 +90,85 @@ def test_repair_restores_a_missing_cached_shard_from_another_snapshot(tmp_path, 
     cache = tmp_path / "models--mflux-community--qwen-image-mflux-q6" / "snapshots"
     old_snapshot = cache / "abc123"
     current_snapshot = cache / "def456"
-    write_safetensors(old_snapshot / "transformer" / "1.safetensors", {"mflux_version": "0.21.0"})
-    write_safetensors(current_snapshot / "transformer" / "0.safetensors", {"mflux_version": "0.21.0"})
+    write_safetensors(old_snapshot / "transformer" / "1.safetensors", {"mflux_version": "0.21.0"}, names=["weight_1"])
+    write_safetensors(
+        current_snapshot / "transformer" / "0.safetensors", {"mflux_version": "0.21.0"}, names=["weight_0"]
+    )
     write_index(current_snapshot / "transformer" / "model.safetensors.index.json", ["0.safetensors", "1.safetensors"])
     monkeypatch.setattr("mflux.models.common.checking.model_checker.HF_HUB_CACHE", str(tmp_path))
 
     assert ModelChecker.check("mflux-community/qwen-image-mflux-q6").check == "warn"
     assert "Restored 1 shard" in ModelChecker.repair("mflux-community/qwen-image-mflux-q6")
     assert ModelChecker.check("mflux-community/qwen-image-mflux-q6").check == "pass"
+
+
+@pytest.mark.fast
+def test_empty_package_with_missing_index_shards_warns(tmp_path, qwen_definition):
+    root = tmp_path / "qwen-image-mflux-q6"
+    write_index(root / "transformer" / "model.safetensors.index.json", ["0.safetensors"])
+
+    result = ModelChecker.check(str(root))
+
+    assert result.check == "warn"
+    assert result.format == "mflux"
+    assert "misses shards: 0.safetensors" in " ".join(result.problems)
+
+
+@pytest.mark.fast
+def test_index_rejects_tensor_absent_from_its_shard(tmp_path, qwen_definition):
+    root = tmp_path / "qwen-image-mflux-q6"
+    write_safetensors(root / "transformer" / "0.safetensors", {"mflux_version": "0.21.0"}, names=["other"])
+    write_index(root / "transformer" / "model.safetensors.index.json", ["0.safetensors"])
+
+    result = ModelChecker.check(str(root))
+
+    assert result.check == "fail"
+    assert "assigns tensors absent from shards: weight_0 in 0.safetensors" in " ".join(result.problems)
+
+
+@pytest.mark.fast
+def test_repair_skips_shard_with_unexpected_tensors(tmp_path, qwen_definition, monkeypatch):
+    cache = tmp_path / "models--mflux-community--qwen-image-mflux-q6" / "snapshots"
+    old_snapshot = cache / "abc123"
+    current_snapshot = cache / "def456"
+    write_safetensors(old_snapshot / "transformer" / "1.safetensors", {"mflux_version": "0.21.0"}, names=["other"])
+    write_safetensors(
+        current_snapshot / "transformer" / "0.safetensors", {"mflux_version": "0.21.0"}, names=["weight_0"]
+    )
+    write_index(current_snapshot / "transformer" / "model.safetensors.index.json", ["0.safetensors", "1.safetensors"])
+    monkeypatch.setattr("mflux.models.common.checking.model_checker.HF_HUB_CACHE", str(tmp_path))
+
+    assert ModelChecker.repair("mflux-community/qwen-image-mflux-q6") == (
+        "No local replacement is available. The check did not download files."
+    )
+    assert not (current_snapshot / "transformer" / "1.safetensors").exists()
+
+
+@pytest.mark.fast
+def test_repair_rejects_non_local_shard_names(tmp_path, qwen_definition, monkeypatch):
+    cache = tmp_path / "models--mflux-community--qwen-image-mflux-q6" / "snapshots"
+    snapshot = cache / "abc123"
+    write_safetensors(snapshot / "transformer" / "0.safetensors", {"mflux_version": "0.21.0"}, names=["weight_0"])
+    (snapshot / "transformer" / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {"weight_1": "../1.safetensors"}})
+    )
+    monkeypatch.setattr("mflux.models.common.checking.model_checker.HF_HUB_CACHE", str(tmp_path))
+
+    assert ModelChecker.repair("mflux-community/qwen-image-mflux-q6") == (
+        "No local replacement is available. The check did not download files."
+    )
+    assert not (snapshot / "1.safetensors").exists()
+
+
+@pytest.mark.fast
+def test_safetensors_rejects_offsets_beyond_the_payload(tmp_path, qwen_definition):
+    root = tmp_path / "qwen-image"
+    write_safetensors(root / "transformer" / "model.safetensors", data_offsets=[0, 5])
+
+    result = ModelChecker.check(str(root))
+
+    assert result.check == "fail"
+    assert "has invalid data_offsets" in " ".join(result.problems)
 
 
 @pytest.mark.fast

@@ -32,6 +32,9 @@ class ModelChecker:
 
         files = sorted(path for path in root.rglob("*.safetensors") if path.is_file())
         if not files:
+            problems: list[str] = []
+            if ModelChecker._validate_indexes(root, problems):
+                return ModelCheckResult("warn", "mflux", 0, ModelChecker._resolve_model_key(reference), tuple(problems))
             return ModelCheckResult("fail", None, 0, None, (f"No safetensors files exist under {root}.",))
 
         headers: dict[Path, dict[str, Any]] = {}
@@ -99,21 +102,22 @@ class ModelChecker:
         repaired = 0
         for index_path in root.rglob("*.safetensors.index.json"):
             try:
-                index = json.loads(index_path.read_text(encoding="utf-8"))
-                weight_map = index.get("weight_map") if isinstance(index, dict) else None
-                names = set(weight_map.values()) if isinstance(weight_map, dict) else set()
+                weight_map = ModelChecker._read_weight_map(index_path)
             except (OSError, TypeError, ValueError, json.JSONDecodeError):
                 continue
             relative_dir = index_path.parent.relative_to(root)
-            for name in names:
+            for name in set(weight_map.values()):
                 target = index_path.parent / name
-                if not isinstance(name, str) or target.is_file():
+                if target.is_file():
                     continue
+                expected_tensors = {tensor for tensor, shard_name in weight_map.items() if shard_name == name}
                 source = next(
                     (
                         snapshot / relative_dir / name
                         for snapshot in snapshots.iterdir()
-                        if snapshot != root and (snapshot / relative_dir / name).is_file()
+                        if snapshot != root
+                        and (snapshot / relative_dir / name).is_file()
+                        and ModelChecker._shard_contains_tensors(snapshot / relative_dir / name, expected_tensors)
                     ),
                     None,
                 )
@@ -292,11 +296,26 @@ class ModelChecker:
             if len(raw_length) != 8:
                 raise ValueError("file has no safetensors header")
             length = struct.unpack("<Q", raw_length)[0]
-            if length > path.stat().st_size - 8:
+            file_size = path.stat().st_size
+            if length > file_size - 8:
                 raise ValueError("header length exceeds file size")
             header = json.loads(file.read(length))
         if not isinstance(header, dict):
             raise ValueError("header is not an object")
+        payload_size = file_size - 8 - length
+        for name, tensor in header.items():
+            if name == "__metadata__":
+                continue
+            offsets = tensor.get("data_offsets") if isinstance(tensor, dict) else None
+            if (
+                not isinstance(offsets, list)
+                or len(offsets) != 2
+                or any(not isinstance(offset, int) for offset in offsets)
+                or offsets[0] < 0
+                or offsets[0] > offsets[1]
+                or offsets[1] > payload_size
+            ):
+                raise ValueError(f"tensor {name!r} has invalid data_offsets")
         return header
 
     @staticmethod
@@ -309,19 +328,47 @@ class ModelChecker:
     @staticmethod
     def _index_missing_parts(index_path: Path, root: Path) -> tuple[bool, str | None]:
         try:
-            index = json.loads(index_path.read_text(encoding="utf-8"))
-            weight_map = index.get("weight_map") if isinstance(index, dict) else None
-            if not isinstance(weight_map, dict) or not weight_map:
-                raise ValueError("weight_map is missing")
+            weight_map = ModelChecker._read_weight_map(index_path)
             names = set(weight_map.values())
-            if not all(isinstance(name, str) and name and Path(name).name == name for name in names):
-                raise ValueError("weight_map names a non-local shard")
             missing = [name for name in sorted(names) if not (index_path.parent / name).is_file()]
             if missing:
                 return True, f"Index {index_path.relative_to(root)} misses shards: {', '.join(missing)}."
+            invalid = [
+                f"{tensor} in {name}"
+                for tensor, name in weight_map.items()
+                if not ModelChecker._shard_contains_tensors(index_path.parent / name, {tensor})
+            ]
+            if invalid:
+                return (
+                    False,
+                    f"Index {index_path.relative_to(root)} assigns tensors absent from shards: {', '.join(invalid)}.",
+                )
             return False, None
         except (OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
             return False, f"Cannot read index {index_path.relative_to(root)} ({exc})."
+
+    @staticmethod
+    def _read_weight_map(index_path: Path) -> dict[str, str]:
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+        weight_map = index.get("weight_map") if isinstance(index, dict) else None
+        if not isinstance(weight_map, dict) or not weight_map:
+            raise ValueError("weight_map is missing")
+        if not all(isinstance(tensor, str) and tensor for tensor in weight_map):
+            raise ValueError("weight_map has an invalid tensor name")
+        if not all(ModelChecker._is_local_shard_name(name) for name in weight_map.values()):
+            raise ValueError("weight_map names a non-local shard")
+        return weight_map
+
+    @staticmethod
+    def _is_local_shard_name(name: object) -> bool:
+        return isinstance(name, str) and bool(name) and "/" not in name and "\\" not in name and Path(name).name == name
+
+    @staticmethod
+    def _shard_contains_tensors(path: Path, tensors: set[str]) -> bool:
+        try:
+            return tensors.issubset(ModelChecker._read_header(path))
+        except (OSError, ValueError, json.JSONDecodeError):
+            return False
 
     @staticmethod
     def _is_mflux_header(header: dict[str, Any]) -> bool:

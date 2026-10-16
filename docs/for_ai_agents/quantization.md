@@ -8,7 +8,7 @@ Verified against: MLX 0.32.0 (`pyproject.toml` pins `mlx>=0.32.0,<0.33.0` on mac
 
 | Question | Answer |
 |---|---|
-| Are all weights quantized equally? | No. Only `nn.Linear` and `nn.Embedding` modules can be quantized. Each model family has a predicate that excludes more layers. A predicate can also return a per-layer override (Qwen-Image keeps `img_mod_linear` at 8-bit when the request is 4-bit). |
+| Are all weights quantized equally? | No. A module must expose `to_quantized` and pass the model-family predicate. `nn.Linear` and `nn.Embedding` are examples. A predicate can return a per-layer override (Qwen-Image keeps `img_mod_linear` at 8-bit when the request is 4-bit). |
 | Is there activation quantization (W4A8 style)? | No. MFlux does weight-only quantization. `quantize_input` stays `False` in every call. `Fp8Linear.to_quantized` raises `ValueError` if `quantize_input=True`. |
 | Which text encoders stay in BF16? | Qwen-Image 1.x, Qwen-Image-2.1 txt2img, Krea 2. These set `skip_quantization=True` on the component. Section 6 has the full table. Section 11 has the per-model matrix. |
 | Why do they stay in BF16? | Code comments only: "Quantization causes significant semantic degradation" (Qwen) and "quantizing the TE degrades conditioning" (Krea 2). No measurement or issue number is in the repo for these flags. |
@@ -22,8 +22,8 @@ Verified against: MLX 0.32.0 (`pyproject.toml` pins `mlx>=0.32.0,<0.33.0` on mac
 All quantization goes through `nn.quantize(model, class_predicate=..., bits=..., group_size=...)` from MLX. The wrapper is `WeightApplier` in `models/common/weights/loading/weight_applier.py`.
 
 - `WeightApplier.apply_and_quantize(weights, models, quantize_arg, weight_definition)` handles multi-component models.
-- `WeightApplier.apply_and_quantize_single(...)` handles one component. Lens and the ControlNets use it.
-- `nn.quantize` replaces a module with `nn.QuantizedLinear` or `nn.QuantizedEmbedding` only if the module has `to_quantized` and the predicate accepts it.
+- `WeightApplier.apply_and_quantize_single(...)` handles one component. Lens and the Z-Image ControlNet use it. The Qwen-Image-2.1 ControlNet calls `nn.quantize` directly.
+- `nn.quantize` quantizes a module only if it exposes `to_quantized` and the predicate accepts it. `nn.Linear` and `nn.Embedding` are examples.
 - `nn.Linear` and `nn.Embedding` have `to_quantized`. `nn.Conv2d`, `LayerNorm` and `RMSNorm` do not (checked in the project venv).
 - A quantized layer stores `weight` (packed `uint32`), `scales`, and `biases` (affine). A linear layer's own `bias` stays in the model dtype.
 - `group_size` defaults to 64. Only `BooguWeightDefinition` overrides it (`quantization_group_size = 32`, because its 3360-wide linears do not divide by 64).
@@ -91,7 +91,7 @@ The inference assumes the affine layout. It does not read or pass `mode`. An MXF
 
 ## 5. Which layers inside a component are quantized
 
-A layer is quantized only if both are true: it has `to_quantized` (Linear or Embedding) and the family predicate accepts it. Default predicate: `hasattr(module, "to_quantized")`.
+A layer is quantized only if it has `to_quantized` and the family predicate accepts it. `nn.Linear` and `nn.Embedding` are examples. Default predicate: `hasattr(module, "to_quantized")`.
 
 Always unquantized: convolutions, norms, positional or rotary buffers, scalar parameters, and the `bias` vector of a linear layer. Embeddings are quantized (`embed_tokens` in a text encoder) unless the predicate or the component skip blocks them.
 

@@ -2,8 +2,9 @@
 
 ## Purpose
 
-`mflux-check model` verifies that a model package can run with an MFlux CLI.
-It is not a generic safetensors file validator.
+`mflux-check model` verifies safetensors package structure. For a known MFlux
+model layout, it also verifies the required parts for the supported MFlux CLI.
+For an unrecognized safetensors layout, `pass` reports only a structural check.
 
 The command supports both Hugging Face safetensors packages and MFlux-saved
 packages. A package passes only when MFlux can identify a supported model
@@ -93,9 +94,10 @@ An incomplete MFlux package reports a warning and gives the repair command:
 MFlux Check Model:
  check: warn
  format: mflux
- model: flux-3-image-klein
  size: 9.21 GB
- missing: transformer/3.safetensors, vae/0.safetensors
+ model: flux-3-image-klein
+ problem: Missing component: transformer.
+ problem: Missing component: vae.
  fix: mflux-check model --fix ./models/flux-3-image-klein
 ```
 
