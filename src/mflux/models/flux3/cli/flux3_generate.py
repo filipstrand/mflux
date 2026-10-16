@@ -15,6 +15,10 @@ DEFAULT_MODEL = "flux3-image-klein"
 # The entries this CLI equally serves: the undistilled Base checkpoint (50 steps, CFG, --guidance defaults to 3.5).
 FAMILY_MODELS = tuple(key for key in AVAILABLE_MODELS if key.startswith("flux3-") and key != DEFAULT_MODEL)
 
+IGNORED_OPTIONS = {
+    "--scheduler": "FLUX 3 Image Klein always runs the flow-map schedule its checkpoints were trained with (Base uses the same schedule with CFG).",
+}
+
 CONDITIONAL_OPTIONS = {
     "--guidance": {
         "condition": "base (non-distilled) FLUX 3 Image Klein checkpoints",
@@ -53,6 +57,7 @@ def main():
         base_model=args.base_model,
     )
 
+    CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
     if not model_config.supports_guidance:
         CommandLineParser.warn_ignored_options({"--guidance": CONDITIONAL_OPTIONS["--guidance"]["reason"]})
     model = Flux3Klein(
