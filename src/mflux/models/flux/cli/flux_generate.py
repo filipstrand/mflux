@@ -1,3 +1,5 @@
+import re
+
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.defaults import defaults as ui_defaults
 from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_args
@@ -38,7 +40,8 @@ def main():
     args = parser.parse_args()
     CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
 
-    if any(name and "flux3" in name.lower() for name in (args.model, args.base_model)):
+    # Matches the aliases (flux3-...) and the official repo ids (black-forest-labs/flux-3-image-klein[-base]).
+    if any(name and re.search(r"flux[-_]?3(?!\d)", name.lower()) for name in (args.model, args.base_model)):
         parser.error("FLUX 3 Image Klein is not supported by mflux-generate. Use mflux-generate-flux3 instead.")
     if (args.base_model and "klein" in args.base_model.lower()) or (args.model and "flux2-klein" in args.model.lower()):
         parser.error("FLUX.2 Klein is not supported by mflux-generate. Use mflux-generate-flux2 instead.")
