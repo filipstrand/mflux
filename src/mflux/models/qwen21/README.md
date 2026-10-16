@@ -110,7 +110,7 @@ mflux-generate-qwen-2.1-controlnet \
 
 - The defaults are 40 steps and guidance 1. `--controlnet-strength` scales the control: 1.0 (the default) is the strongest, 0 turns it off.
 - Add `--model qwen-image-2.1-turbo-controlnet` to run the same ControlNet on the Turbo checkpoint in 8 steps.
-- Without `--width` and `--height`, the output size comes from `--output-resolution` (default 1024) and the aspect ratio of the control image. Give a control image at the output size, or pass `--width` and `--height` that match it. A 768×768 canny map gave a sharp image that followed the prompt at 768×768. The same map scaled up to 1024×1024 gave a washed-out image that lost the snow, with both the base and the Turbo checkpoint.
+- Without `--width` and `--height`, the output size comes from `--output-resolution` (default 1024) and the aspect ratio of the control image (of the inpaint source when there is no control image). Give a control image at the output size, or pass `--width` and `--height` that match it. A 768×768 canny map gave a sharp image that followed the prompt at 768×768. The same map scaled up to 1024×1024 gave a washed-out image that lost the snow, with both the base and the Turbo checkpoint.
 - `--image-path` with `--mask-image` inpaints: white areas of the mask are generated from the prompt, black areas are kept. It works with or without a control image:
 
 ```sh
