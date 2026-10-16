@@ -14,6 +14,7 @@ from mflux.models.flux3.weights.flux3_weight_definition import (
     Flux3KleinBaseWeightDefinition,
     Flux3KleinWeightDefinition,
 )
+from mflux.utils.exceptions import ModelConfigError
 
 
 class Flux3Initializer:
@@ -30,6 +31,7 @@ class Flux3Initializer:
         Flux3Initializer._init_config(model, model_config)
         definition = Flux3Initializer.weight_definition(model_config)
         weights = Flux3Initializer._load_weights(path, definition)
+        Flux3Initializer._check_checkpoint_kind(weights, model_config, path)
         Flux3Initializer._init_tokenizers(model, path)
         Flux3Initializer._init_models(model)
         Flux3Initializer._apply_weights(model, weights, quantize, definition)
@@ -56,6 +58,25 @@ class Flux3Initializer:
         return WeightLoader.load(
             weight_definition=definition,
             model_path=model_path,
+        )
+
+    @staticmethod
+    def _check_checkpoint_kind(weights: LoadedWeights, model_config: ModelConfig, model_path: str) -> None:
+        # Only the distilled checkpoint has target_timestep_embedder. A mismatch would otherwise load with
+        # strict=False and leave that embedder random (Base read as distilled) or drop it (the reverse).
+        flow_map = model_config.transformer_overrides.get("flow_map", True)
+        has_embedder = "target_timestep_embedder" in (weights.transformer or {})
+        if has_embedder == flow_map:
+            return
+        kind, fix = (
+            ("Distilled", ModelConfig.flux3_image_klein())
+            if has_embedder
+            else ("Base", ModelConfig.flux3_image_klein_base())
+        )
+        raise ModelConfigError(
+            f"The checkpoint at {model_path} {'has' if has_embedder else 'has no'} target_timestep_embedder, "
+            f"so it is a FLUX 3 Image Klein {kind} checkpoint, but it was loaded as "
+            f"{'Base' if has_embedder else 'Distilled'}. Pass --base-model {fix.aliases[0]}."
         )
 
     @staticmethod

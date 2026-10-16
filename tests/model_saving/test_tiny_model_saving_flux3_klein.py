@@ -1,11 +1,18 @@
+import re
+
 import pytest
 
+from mflux.models.common.config import ModelConfig
+from mflux.models.common.weights.loading.weight_loader import WeightLoader
+from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3TextEncoder
+from mflux.models.flux3.flux3_initializer import Flux3Initializer
 from mflux.models.flux3.model.flux3_transformer.flux3_transformer import Flux3Transformer
 from mflux.models.flux3.weights.flux3_weight_definition import (
     Flux3KleinBaseWeightDefinition,
     Flux3KleinWeightDefinition,
 )
+from mflux.utils.exceptions import ModelConfigError
 from tests.model_saving.tiny_checkpoint_helper import TinyCheckpointRoundtrip, TinyVAEStandIn
 
 
@@ -56,3 +63,46 @@ class TestTinyFlux3KleinModelSaving:
                 intermediate_size=128,
             ),
         }
+
+    # A saved MFlux model is guessed as Distilled unless --base-model says otherwise. Loading a checkpoint with the
+    # other kind's definition must fail before the models are built, naming the --base-model that fits.
+    @pytest.mark.fast
+    @pytest.mark.parametrize(
+        ("saved_flow_map", "config_name", "expected"),
+        [
+            (False, "flux3-image-klein", "--base-model flux3-image-klein-base"),
+            (True, "flux3-image-klein-base", "--base-model flux3-image-klein"),
+        ],
+        ids=["base_read_as_distilled", "distilled_read_as_base"],
+    )
+    def test_checkpoint_kind_mismatch_names_the_right_base_model(self, tmp_path, saved_flow_map, config_name, expected):
+        weights, model_config = TestTinyFlux3KleinModelSaving._save_and_load(tmp_path, saved_flow_map, config_name)
+
+        with pytest.raises(ModelConfigError, match=re.escape(expected) + r"\."):
+            Flux3Initializer._check_checkpoint_kind(weights, model_config, str(tmp_path))
+
+    @pytest.mark.fast
+    @pytest.mark.parametrize(
+        ("saved_flow_map", "config_name"),
+        [(True, "flux3-image-klein"), (False, "flux3-image-klein-base")],
+        ids=["distilled", "base"],
+    )
+    def test_checkpoint_kind_match_passes(self, tmp_path, saved_flow_map, config_name):
+        weights, model_config = TestTinyFlux3KleinModelSaving._save_and_load(tmp_path, saved_flow_map, config_name)
+
+        Flux3Initializer._check_checkpoint_kind(weights, model_config, str(tmp_path))
+
+    @staticmethod
+    def _save_and_load(base_path, saved_flow_map: bool, config_name: str):
+        saved_definition = Flux3KleinWeightDefinition if saved_flow_map else Flux3KleinBaseWeightDefinition
+        components = TestTinyFlux3KleinModelSaving._tiny_components(saved_flow_map)
+        TinyCheckpointRoundtrip._quantize(components, saved_definition, 8)
+        ModelSaver.save_model(
+            model=TinyCheckpointRoundtrip._as_model(components, saved_definition),
+            bits=8,
+            base_path=str(base_path),
+            weight_definition=saved_definition,
+        )
+        model_config = ModelConfig.from_name(config_name)
+        definition = Flux3Initializer.weight_definition(model_config)
+        return WeightLoader.load(weight_definition=definition, model_path=str(base_path)), model_config

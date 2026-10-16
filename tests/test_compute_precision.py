@@ -338,6 +338,7 @@ class TinyInit:
     @staticmethod
     def flux3(monkeypatch, tmp_path) -> None:
         monkeypatch.setattr(Flux3Initializer, "_load_weights", lambda path, definition: None)
+        monkeypatch.setattr(Flux3Initializer, "_check_checkpoint_kind", lambda weights, model_config, path: None)
         monkeypatch.setattr(Flux3Initializer, "_init_tokenizers", lambda model, path: None)
         monkeypatch.setattr(Flux3Initializer, "_init_models", lambda model: TinyInit._attach(model, Tiny.flux3()))
         monkeypatch.setattr(Flux3Initializer, "_apply_weights", lambda model, weights, quantize, definition: TinyInit._load(model, weights, quantize))  # fmt: skip
