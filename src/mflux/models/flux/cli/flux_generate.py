@@ -1,3 +1,5 @@
+import re
+
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.defaults import defaults as ui_defaults
 from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_args
@@ -38,6 +40,13 @@ def main():
     args = parser.parse_args()
     CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
 
+    # Matches the aliases (flux3-...) and the official repo ids (black-forest-labs/flux-3-image-klein[-base]).
+    # Only the last path component counts, so a FLUX.1 checkpoint under a flux3-named folder still loads. For a
+    # path or repo id an explicit --base-model names the family, so only that base is checked then.
+    model_name = None if args.model_path and args.base_model else args.model
+    names = (model_name and model_name.rstrip("/").rsplit("/", 1)[-1], args.base_model)
+    if any(name and re.search(r"flux[-_]?3(?!\d)", name.lower()) for name in names):
+        parser.error("FLUX 3 Image Klein is not supported by mflux-generate. Use mflux-generate-flux3 instead.")
     if (args.base_model and "klein" in args.base_model.lower()) or (args.model and "flux2-klein" in args.model.lower()):
         parser.error("FLUX.2 Klein is not supported by mflux-generate. Use mflux-generate-flux2 instead.")
 

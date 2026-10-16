@@ -43,6 +43,8 @@ MODEL_INFERENCE_STEPS = {
     "flux2-klein-9b-kv": 4,
     "flux2-klein-base-4b": 50,
     "flux2-klein-base-9b": 50,
+    "flux3-image-klein": 16,
+    "flux3-image-klein-base": 50,
     "ideogram-4-fp8": 20,
     "krea-2": 8,
     "krea-2-controlnet-depth": 8,

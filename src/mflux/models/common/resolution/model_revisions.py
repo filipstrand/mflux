@@ -17,6 +17,8 @@ class ModelRevisions:
         "black-forest-labs/FLUX.1-Krea-dev": "8162a9c7b05a641be098422bf2fcf335615c2f28",
         "black-forest-labs/FLUX.1-Redux-dev": "c95859fbf7703ca4d6824b4da4407d7cd0434f81",
         "black-forest-labs/FLUX.1-schnell": "741f7c3ce8b383c54771c7003378a50191e9efe9",
+        "black-forest-labs/flux-3-image-klein": "8454017f9ebaada30c998fccd9f67a80c7580f68",
+        "black-forest-labs/flux-3-image-klein-base": "1469d27cfb9bb1bd81d3a93f5a023b39dbf136e4",
         "black-forest-labs/FLUX.2-klein-4B": "e7b7dc27f91deacad38e78976d1f2b499d76a294",
         "black-forest-labs/FLUX.2-klein-9B": "92196c8e11f7b6cf2b7493e037d8c5345c559216",
         "black-forest-labs/FLUX.2-klein-9b-kv": "a6dfb36eca3a3906eb2fd460795adfb844e5fcce",
