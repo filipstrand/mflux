@@ -26,7 +26,7 @@ This fixture tests transformer maths. It does not test trained-model image quali
 Run the existing fixture:
 
 ```sh
-MFLUX_PRESERVE_TEST_OUTPUT=1 uv run python -m pytest tests/image_generation/test_flux3_transformer_parity.py
+uv run python -m pytest tests/image_generation/test_flux3_transformer_parity.py
 ```
 
 Regenerate on an Apple Silicon Mac with MPS, using an isolated reference environment:
