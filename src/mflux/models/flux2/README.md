@@ -125,7 +125,8 @@ mflux-generate-flux2 \
 - Prompts are capped at 256 tokens (the native encoder takes 512). Fine details can drift from the native encoder.
 - `-q` quantizes the 0.6B encoder like the rest of the model; the adapter always stays float32.
 - A model built with the flag cannot be saved (`save_model()` raises), and the flag is recorded in the image metadata so `--config-from-metadata` replays it.
-- Measured memory and time: TODO.
+- Measured on FLUX.2-klein-4B (Apple M4 Pro, 64 GB, 1024x1024, 4 steps): model weights drop from 14.9 GB to 9.3 GB in bf16, 8.0 GB to 5.4 GB with `-q 8`, and 4.3 GB to 3.3 GB with `-q 4` (the float32 adapter is 0.8 GB of that). An image takes about 21 s instead of 27 s in bf16, since the transformer sees 251 text tokens instead of 512 and the 4B encoder no longer runs.
+- Danbooru-style tag prompts that give an anime image with the native encoder can come out photographic with the adapter (the diffusers reference does the same).
 - Attribution: adapter by AiArtLab ([AiArtLab/qwen3-0.6b-4b-adapter](https://huggingface.co/AiArtLab/qwen3-0.6b-4b-adapter), Apache-2.0); [Qwen/Qwen3-0.6B](https://huggingface.co/Qwen/Qwen3-0.6B) is Apache-2.0.
 
 ## Notes

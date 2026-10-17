@@ -106,7 +106,7 @@ class Flux2Initializer:
         model.bits = WeightApplier.apply_and_quantize(
             weights=weights,
             quantize_arg=quantize,
-            weight_definition=Flux2KleinWeightDefinition,
+            weight_definition=Flux2KleinNoTextEncoderWeightDefinition if model.small_text_encoder else Flux2KleinWeightDefinition,
             models=Flux2Initializer._weighted_models(model),
         )
 
