@@ -28,9 +28,9 @@ The current CLI releases the text encoder after encoding in both modes. For a si
 - `process_peak_rss_bytes` is the separate macOS lifetime RSS counter, in bytes. Do not add it to MLX allocation or treat it as a replacement for the Metal memory metric.
 - `python_wall_s` excludes interpreter and uv startup. `/usr/bin/time -l` supplies external process wall time.
 - System swap and memory pressure include every process. They do not isolate the benchmark. Filesystem cache is not flushed; repeated processes are not proven cold-cache runs.
-- `versions` comes from installed distribution metadata. If you select a checkout with `PYTHONPATH`, record its `source_sha` and the generated image's MFLUX version too: the installed distribution can be older than the imported source.
+- `versions` comes from installed distribution metadata. `source_path` identifies the imported generation CLI, and `source_sha` records its checkout revision (null for an installed package outside Git). `benchmark_source_sha` separately records the wrapper's checkout revision. The installed distribution can be older than the imported source selected with `PYTHONPATH`.
 
-Reports include local paths and prompts. Review them before sharing. The wrapper restores its instrumentation on exit, writes a failure report for CLI errors, and refuses to replace an existing report. An interrupted CLI that returns without saving an image is a failed run.
+Reports include local paths and prompts. Review them before sharing. The wrapper restores its instrumentation on exit, writes a failure report for CLI errors, and refuses to replace an existing report. Success requires `saved_images` to equal `expected_images`, the number of seeds resolved by the CLI (including automatic seeds and metadata). An interrupted run fails even if earlier images were saved.
 
 ## Follow-up scope
 
@@ -53,4 +53,4 @@ GB in the table means decimal gigabytes. All four 512×512 images have identical
 
 Other applications were active. System-wide swap changed substantially across the run sequence; see the report for each value. These timings are observations under shared load, not a speed ranking. The q4 case demonstrates that the existing low-RAM path reduces allocation. It does not establish a need for another loading policy.
 
-The four recorder tests pass. Three isolated counterexamples (losing a pre-reset peak, skipping lazy evaluation, and leaking instrumentation) each fail a relevant test. The restored recorder passes again.
+The ten recorder tests pass, including interrupted multi-seed runs and imports from a separate checkout or an installed package. Three initial counterexamples (losing a pre-reset peak, skipping lazy evaluation, and leaking instrumentation) each failed a relevant test. Restoring the two reporting bugs also fails the new regression tests; the restored recorder passes again.

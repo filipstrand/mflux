@@ -21,6 +21,20 @@ class MemoryBenchmark:
         self.phases = []
         self.peaks = []
         self.saved_images = 0
+        self.expected_images = None
+
+    def parse_wrapper(self, original):
+        @functools.wraps(original)
+        def parse(*args, **kwargs):
+            parsed = original(*args, **kwargs)
+            self.expected_images = len(parsed.seed)
+            return parsed
+
+        return parse
+
+    def check_complete(self) -> None:
+        if not self.expected_images or self.saved_images != self.expected_images:
+            raise RuntimeError(f"CLI saved {self.saved_images} of {self.expected_images} expected images")
 
     def snapshot(self, label: str) -> None:
         self.mx.synchronize()
@@ -96,10 +110,14 @@ class MemoryBenchmark:
         from mflux.utils.generated_image import GeneratedImage
 
         benchmark = MemoryBenchmark(mx)
-        root = Path(__file__).resolve().parents[2]
+        source_path = Path(flux3_generate.__file__).resolve()
         result = {
             "schema_version": 1,
-            "source_sha": benchmark.command_output(["git", "-C", str(root), "rev-parse", "HEAD"]),
+            "source_path": str(source_path),
+            "source_sha": benchmark.command_output(["git", "-C", str(source_path.parent), "rev-parse", "HEAD"]),
+            "benchmark_source_sha": benchmark.command_output(
+                ["git", "-C", str(Path(__file__).resolve().parent), "rev-parse", "HEAD"]
+            ),
             "platform": platform.platform(),
             "device": mx.device_info(),
             "versions": {name: importlib.metadata.version(name) for name in ("mlx", "mlx-metal", "mflux")},
@@ -120,6 +138,13 @@ class MemoryBenchmark:
             with ExitStack() as stack:
                 stack.enter_context(patch.object(sys, "argv", ["mflux-generate-flux3", *cli_args]))
                 stack.enter_context(
+                    patch.object(
+                        flux3_generate.CommandLineParser,
+                        "parse_args",
+                        benchmark.parse_wrapper(flux3_generate.CommandLineParser.parse_args),
+                    )
+                )
+                stack.enter_context(
                     patch.object(mx, "reset_peak_memory", benchmark.reset_wrapper(mx.reset_peak_memory))
                 )
                 benchmark.instrument(stack, Flux3Initializer, "init", "construct", static=True)
@@ -130,8 +155,7 @@ class MemoryBenchmark:
                 benchmark.instrument(stack, GeneratedImage, "save", "save")
                 benchmark.snapshot("ready")
                 flux3_generate.main()
-                if not benchmark.saved_images:
-                    raise RuntimeError("CLI returned without saving an image")
+                benchmark.check_complete()
                 result["success"] = True
         except BaseException as exc:
             result["error"] = repr(exc)
@@ -143,6 +167,7 @@ class MemoryBenchmark:
                 phases=benchmark.phases,
                 events=benchmark.events,
                 saved_images=benchmark.saved_images,
+                expected_images=benchmark.expected_images,
                 mlx_lifetime_peak_bytes=max(benchmark.peaks),
                 process_peak_rss_bytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
                 swap_after=benchmark.command_output(["sysctl", "vm.swapusage"]),
