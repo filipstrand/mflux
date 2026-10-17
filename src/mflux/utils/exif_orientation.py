@@ -6,9 +6,13 @@ is working on: a mask that no longer lines up, a target aspect that is inverted,
 describing a sideways scene.
 """
 
+import os
+
 import PIL.Image
 import PIL.ImageOps
-from PIL._typing import StrOrBytesPath
+
+# Pillow's alias of the same name lives in its private PIL._typing, which is not safe to import.
+StrOrBytesPath = str | bytes | os.PathLike[str] | os.PathLike[bytes]
 
 # Orientation values whose transform swaps the axes; the rest keep width and height.
 _ROTATING_ORIENTATIONS = frozenset({5, 6, 7, 8})
