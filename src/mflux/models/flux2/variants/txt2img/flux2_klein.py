@@ -12,6 +12,7 @@ from mflux.models.flux2.flux2_initializer import Flux2Initializer
 from mflux.models.flux2.latent_creator.flux2_latent_creator import Flux2LatentCreator
 from mflux.models.flux2.model.flux2_text_encoder.prompt_encoder import Flux2PromptEncoder
 from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3TextEncoder
+from mflux.models.flux2.model.flux2_text_encoder.small_text_encoder import Flux2SmallTextEncoder
 from mflux.models.flux2.model.flux2_transformer.transformer import Flux2Transformer
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 from mflux.models.flux2.variants.edit.flux2_klein_edit_helpers import _Flux2KleinEditHelpers
@@ -25,7 +26,8 @@ from mflux.utils.image_util import ImageUtil
 class Flux2Klein(nn.Module):
     vae: Flux2VAE
     transformer: Flux2Transformer
-    text_encoder: Qwen3TextEncoder
+    text_encoder: Qwen3TextEncoder | Flux2SmallTextEncoder | None
+    small_text_encoder: bool = False
 
     def __init__(
         self,
@@ -36,6 +38,7 @@ class Flux2Klein(nn.Module):
         bake_lora: bool = True,
         model_config: ModelConfig | None = None,
         compute_precision: mx.Dtype | None = None,
+        small_text_encoder: bool = False,
     ):
         super().__init__()
         Flux2Initializer.init(
@@ -47,6 +50,7 @@ class Flux2Klein(nn.Module):
             bake_lora=bake_lora,
             model_config=model_config or ModelConfig.flux2_klein_4b(),
             compute_precision=compute_precision,
+            small_text_encoder=small_text_encoder,
         )
 
     def generate_image(
@@ -145,7 +149,7 @@ class Flux2Klein(nn.Module):
             generation_time=config.time_steps.format_dict["elapsed"],
             pid_decode=pid_decode,
             pid_degrade_sigma=pid_degrade_sigma,
-            generation_parameters=self.compute_precision.generation_parameters(),
+            generation_parameters=self._generation_parameters(),
         )
 
     def _encode_prompt_pair(
@@ -255,6 +259,11 @@ class Flux2Klein(nn.Module):
         return encoded
 
     def save_model(self, base_path: str) -> None:
+        if self.small_text_encoder:
+            raise ValueError(
+                "save_model() is not supported with small_text_encoder: it would write Qwen3-0.6B weights "
+                "where FLUX.2-klein's Qwen3-4B text encoder belongs. Build the model without it to save it."
+            )
         ModelSaver.save_model(
             model=self,
             bits=self.bits,
@@ -297,3 +306,9 @@ class Flux2Klein(nn.Module):
         if AppleSiliconUtil.is_m1_or_m2():
             return predict
         return mx.compile(predict)
+
+    def _generation_parameters(self) -> dict:
+        parameters = self.compute_precision.generation_parameters()
+        if self.small_text_encoder:
+            parameters = {**parameters, "small_text_encoder": True}
+        return parameters

@@ -109,6 +109,25 @@ KV caching speeds up later denoising steps by reusing reference-image attention 
 > [!WARNING]
 > Note: FLUX.2-klein-4B requires downloading the `black-forest-labs/FLUX.2-klein-4B` model weights (~15GB), FLUX.2-klein-9B requires `black-forest-labs/FLUX.2-klein-9B` model weights (~32GB), and FLUX.2-klein-9b-kv requires `black-forest-labs/FLUX.2-klein-9b-kv` model weights. Use quantization for smaller sizes.
 
+## Small text encoder (experimental)
+`--small-text-encoder` replaces klein-4B's Qwen3-4B text encoder with `Qwen/Qwen3-0.6B` plus a 220M adapter (`AiArtLab/qwen3-0.6b-4b-adapter`) that maps its hidden states into klein's 7680-dim conditioning space. The transformer, VAE and tokenizer stay klein's, so the klein `text_encoder` weights are never downloaded.
+
+```sh
+mflux-generate-flux2 \
+  --model flux2-klein-4b \
+  --small-text-encoder \
+  --prompt "A red fox walks through a snowy forest at dusk." \
+  --steps 4 \
+  -q 8
+```
+
+- Works with `flux2-klein-4b` and `flux2-klein-base-4b` (`mflux-generate-flux2` and `mflux-generate-flux2-edit`). Other models exit with an error.
+- Prompts are capped at 256 tokens (the native encoder takes 512). Fine details can drift from the native encoder.
+- `-q` quantizes the 0.6B encoder like the rest of the model; the adapter always stays float32.
+- A model built with the flag cannot be saved (`save_model()` raises), and the flag is recorded in the image metadata so `--config-from-metadata` replays it.
+- Measured memory and time: TODO.
+- Attribution: adapter by AiArtLab ([AiArtLab/qwen3-0.6b-4b-adapter](https://huggingface.co/AiArtLab/qwen3-0.6b-4b-adapter), Apache-2.0); [Qwen/Qwen3-0.6B](https://huggingface.co/Qwen/Qwen3-0.6B) is Apache-2.0.
+
 ## Notes
 - FLUX.2 does not support `--negative-prompt`.
 - Distilled FLUX.2 variants use `--guidance 1.0`. Base variants support guidance values above `1.0`.
