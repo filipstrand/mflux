@@ -8,12 +8,11 @@ import piexif
 import PIL.Image
 import PIL.ImageDraw
 import PIL.ImageOps
-from PIL._typing import StrOrBytesPath
 
 from mflux.models.common.config.config import Config
 from mflux.models.flux.variants.concept_attention.attention_data import ConceptHeatmap
 from mflux.utils.box_values import AbsoluteBoxValues, BoxValues
-from mflux.utils.exif_orientation import open_oriented
+from mflux.utils.exif_orientation import StrOrBytesPath, open_oriented
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.metadata_builder import MetadataBuilder
 
