@@ -166,8 +166,8 @@ OVERLAY: dict[str, tuple[str, str, str, list[str], list[str], str, list[str] | N
         "active",
         FLUX3_QUANTS,
     ),
-    "iris-3b-turbo": ("image", "iris", "iris-turbo", ["mflux-generate-iris"], [], "active", IRIS_QUANTS),
-    "iris-3b": ("image", "iris", "iris-base", ["mflux-generate-iris"], [], "active", IRIS_QUANTS),
+    "iris-3b": ("image", "iris", "iris-turbo", ["mflux-generate-iris"], [], "active", IRIS_QUANTS),
+    "iris-3b-base": ("image", "iris", "iris-base", ["mflux-generate-iris"], [], "active", IRIS_QUANTS),
     "krea-2": ("image", "krea2", "krea2-turbo", ["mflux-generate-krea2"], [], "active", STANDARD_QUANTS),
     "krea-2-raw": ("image", "krea2", "krea2-raw", ["mflux-generate-krea2"], [], "active", STANDARD_QUANTS),
     "krea-2-controlnet-depth": (

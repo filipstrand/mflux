@@ -147,13 +147,13 @@ class TestIrisWeightDefinition:
         assert component.key_transform("lm_head.weight") is None
 
     def test_the_variant_comes_from_the_model_config(self):
-        assert IrisInitializer.weight_definition(ModelConfig.iris_3b_turbo()) is IrisTurboWeightDefinition
-        assert IrisInitializer.weight_definition(ModelConfig.iris_3b()) is IrisWeightDefinition
+        assert IrisInitializer.weight_definition(ModelConfig.iris_3b()) is IrisTurboWeightDefinition
+        assert IrisInitializer.weight_definition(ModelConfig.iris_3b_base()) is IrisWeightDefinition
 
     def test_both_entries_share_the_pinned_repo(self):
         from mflux.models.common.resolution.model_revisions import ModelRevisions
 
-        assert ModelConfig.iris_3b().model_name == ModelConfig.iris_3b_turbo().model_name == "speridlabs/iris-3b"
+        assert ModelConfig.iris_3b_base().model_name == ModelConfig.iris_3b().model_name == "speridlabs/iris-3b"
         assert ModelRevisions.get("speridlabs/iris-3b")
         assert ModelRevisions.get(IrisWeightDefinition.TEXT_ENCODER_REPO)
 
@@ -178,7 +178,7 @@ class TestIrisWeightSources:
 
     @pytest.mark.parametrize("model_path", [None, "speridlabs/iris-3b"], ids=["no_path", "repo_id_from_a_sidecar"])
     def test_without_a_saved_model_the_two_upstream_repos_are_read(self, loader_calls, model_path):
-        config = ModelConfig.iris_3b_turbo()
+        config = ModelConfig.iris_3b()
         saved_path = None if model_path in (None, config.model_name) else model_path
         IrisInitializer._load_weights(IrisTurboWeightDefinition, config, saved_path)
 
@@ -189,7 +189,7 @@ class TestIrisWeightSources:
         ]
 
     def test_a_saved_model_is_read_from_its_own_directory_only(self, loader_calls):
-        IrisInitializer._load_weights(IrisTurboWeightDefinition, ModelConfig.iris_3b_turbo(), "/models/iris-q8")
+        IrisInitializer._load_weights(IrisTurboWeightDefinition, ModelConfig.iris_3b(), "/models/iris-q8")
 
         assert loader_calls["single"] == []
         assert loader_calls["load"] == [(IrisTurboWeightDefinition, "/models/iris-q8")]
@@ -205,7 +205,7 @@ class TestIrisWeightSources:
 
         IrisInitializer.init(
             model=type("M", (), {})(),
-            model_config=ModelConfig.iris_3b(),
+            model_config=ModelConfig.iris_3b_base(),
             quantize=None,
             model_path="speridlabs/iris-3b",
         )

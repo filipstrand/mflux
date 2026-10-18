@@ -144,13 +144,13 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
-    def iris_3b_turbo() -> "ModelConfig":
-        return AVAILABLE_MODELS["iris-3b-turbo"]
+    def iris_3b() -> "ModelConfig":
+        return AVAILABLE_MODELS["iris-3b"]
 
     @staticmethod
     @lru_cache
-    def iris_3b() -> "ModelConfig":
-        return AVAILABLE_MODELS["iris-3b"]
+    def iris_3b_base() -> "ModelConfig":
+        return AVAILABLE_MODELS["iris-3b-base"]
 
     @staticmethod
     @lru_cache
@@ -538,9 +538,9 @@ AVAILABLE_MODELS = {
             "rope_theta": 5000000.0,
         },
     ),
-    "iris-3b-turbo": ModelConfig(
+    "iris-3b": ModelConfig(
         priority=35,
-        aliases=["iris-3b-turbo", "iris-turbo", "iris"],
+        aliases=["iris-3b", "iris-3b-turbo", "iris-turbo", "iris"],
         model_name="speridlabs/iris-3b",
         base_model=None,
         controlnet_model=None,
@@ -556,9 +556,9 @@ AVAILABLE_MODELS = {
             "rope_theta": 5000000.0,
         },
     ),
-    "iris-3b": ModelConfig(
+    "iris-3b-base": ModelConfig(
         priority=36,
-        aliases=["iris-3b", "iris-base"],
+        aliases=["iris-3b-base", "iris-base"],
         model_name="speridlabs/iris-3b",
         base_model=None,
         controlnet_model=None,

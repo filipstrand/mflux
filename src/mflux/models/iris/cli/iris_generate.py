@@ -9,7 +9,7 @@ from mflux.utils.exceptions import PromptFileReadError, StopImageGenerationExcep
 from mflux.utils.prompt_util import PromptUtil
 
 # The model this CLI runs when --model is omitted; the parser keys the --steps default (4) off it.
-DEFAULT_MODEL = "iris-3b-turbo"
+DEFAULT_MODEL = "iris-3b"
 
 # The entries this CLI equally serves: the undistilled base model (100 steps, CFG 3.0).
 FAMILY_MODELS = tuple(key for key in AVAILABLE_MODELS if key.startswith("iris-") and key != DEFAULT_MODEL)
@@ -22,15 +22,15 @@ IGNORED_OPTIONS = {
 
 CONDITIONAL_OPTIONS = {
     "--steps": {
-        "condition": "the base model (iris-3b)",
+        "condition": "the base model (iris-3b-base)",
         "reason": "Turbo runs its fixed 4-step distilled schedule.",
     },
     "--guidance": {
-        "condition": "the base model (iris-3b)",
+        "condition": "the base model (iris-3b-base)",
         "reason": "Turbo has guidance distilled into its weights and no CFG branch.",
     },
     "--negative-prompt": {
-        "condition": "the base model (iris-3b)",
+        "condition": "the base model (iris-3b-base)",
         "reason": "Turbo runs without CFG, so the negative prompt is never encoded.",
     },
 }

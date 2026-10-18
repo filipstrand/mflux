@@ -27,7 +27,7 @@ The default size is 1024×1024. Width and height must be multiples of 16.
 from mflux.models.common.config import ModelConfig
 from mflux.models.iris.variants import Iris
 
-model = Iris(model_config=ModelConfig.iris_3b_turbo())
+model = Iris(model_config=ModelConfig.iris_3b())
 image = model.generate_image(
     seed=42,
     prompt="a red fox sleeping in fresh snow, golden hour",
@@ -43,7 +43,7 @@ The base model is undistilled. It runs 100 steps (a second-order DPM-Solver on t
 
 ```sh
 mflux-generate-iris \
-  --model iris-3b \
+  --model iris-3b-base \
   --prompt "a red fox sleeping in fresh snow, golden hour" \
   --seed 42
 ```
@@ -57,7 +57,7 @@ For Turbo `--steps`, `--guidance` and `--negative-prompt` have no effect and mfl
 from mflux.models.common.config import ModelConfig
 from mflux.models.iris.variants import Iris
 
-model = Iris(model_config=ModelConfig.iris_3b())
+model = Iris(model_config=ModelConfig.iris_3b_base())
 image = model.generate_image(
     seed=42,
     prompt="a red fox sleeping in fresh snow, golden hour",
@@ -70,25 +70,25 @@ image.save("fox_base.png")
 </details>
 
 ## Quantization
-`-q 4` and `-q 8` quantize the model when it loads, the transformer and the text encoder. Small layers (the pixel-stage embedder, MLPs and head, the 12-to-1 layer pooling) and the feed-forward output projections, whose input width of 6826 is not a multiple of the quantization group size, stay in bf16. At `-q 4` and below the per-pixel adaLN projections of the pixel stage (2560 to 16384, they set individual pixel values) stay in bf16 too: quantized to 4 bits they print a faint screen-door grain over flat areas and fur. Measured on an M4 Pro (64 GB), Turbo, 1024×1024, seed 42. The memory is the peak MLX memory the CLI reports (the text encoder is released after the prompt is encoded). The PSNR compares each image with the unquantized one: the composition is the same, the fine detail differs, and `-q 4` is visibly softer.
+`-q 4` and `-q 8` quantize the model when it loads, the transformer and the text encoder. Small layers (the pixel-stage embedder, MLPs and head, the 12-to-1 layer pooling) and the feed-forward output projections, whose input width of 6826 is not a multiple of the quantization group size, stay in bf16. At `-q 4` and below the per-pixel adaLN projections of the pixel stage (2560 to 16384, they set individual pixel values) stay in bf16 too: quantized to 4 bits they print a faint screen-door grain over flat areas and fur. Measured on an M4 Pro (64 GB), Turbo, 1024×1024, seed 42. The transformer and the text encoder are both in memory while the weights load and the prompt is encoded; mflux then releases the text encoder, which is why the peak while generating is lower. The PSNR compares each image with the unquantized one: the composition is the same, the fine detail differs, and `-q 4` is visibly softer.
 
-| | On disk (`mflux-save`) | Peak memory | Time (4 steps, incl. text encoding) | PSNR vs bf16 |
-|---|---|---|---|---|
-| bf16 | – | 7.6 GB | 17.6 s | – |
-| `-q 8` | 7.5 GB (transformer 3.5 GB, text encoder 4.0 GB) | 5.3 GB | 19.2 s | 34.6 dB |
-| `-q 4` | 4.7 GB (transformer 2.6 GB, text encoder 2.1 GB) | 4.4 GB | 18.6 s | 20.7 dB |
+| | On disk (`mflux-save`) | Peak while loading + encoding | Peak while generating | Time (4 steps) | PSNR vs bf16 |
+|---|---|---|---|---|---|
+| bf16 | – | 14.5 GB | 7.6 GB | 17.2 s | – |
+| `-q 8` | 7.5 GB (transformer 3.5 GB, text encoder 4.0 GB) | 8.8 GB | 5.3 GB | 18.4 s | 34.6 dB |
+| `-q 4` | 4.7 GB (transformer 2.6 GB, text encoder 2.1 GB) | 5.9 GB | 4.4 GB | 18.2 s | 20.7 dB |
 
-Loading a saved model takes about 1.5 s. Quantization saves memory, not time. Save a quantized model once and load it from disk:
+MLX reads weights lazily, so the first image also pays for loading them from disk. Quantization saves memory, not time. Save a quantized model once and load it from disk:
 
 ```sh
-mflux-save --model iris-3b-turbo --quantize 8 --path ~/models/iris-3b-turbo-q8
-mflux-generate-iris --model ~/models/iris-3b-turbo-q8 --prompt "..."
+mflux-save --model iris-3b --quantize 8 --path ~/models/iris-3b-q8
+mflux-generate-iris --model ~/models/iris-3b-q8 --prompt "..."
 ```
 
 The saved directory holds the transformer, the text encoder and the tokenizer, so it loads without the Hugging Face repositories. An image from the saved model is identical to the image of the same `-q` flag loaded from Hugging Face.
 
 > [!IMPORTANT]
-> A saved model is identified by its directory name. A saved **base** model loads as Turbo unless its directory name contains `iris-3b` or `iris-base`, or you pass `--base-model iris-3b`. For example, save the base model to `~/models/iris-3b-base-q8`; a Turbo directory `~/models/iris-3b-turbo-q8` stays Turbo because the longer alias `iris-3b-turbo` wins.
+> A saved model is identified by its directory name, as for FLUX.2 and FLUX 3: the bare name is Turbo (`iris-3b-q8`, `iris-q8`, `my-iris`) and a **base** model needs `iris-3b-base` or `iris-base` in the name, or `--base-model iris-3b-base`. For example, save the base model to `~/models/iris-3b-base-q8`.
 
 ## Speed and size
 - Turbo, 1024×1024, bf16: about 4.4 s per step on an M4 Pro, 18 s per image after the model is loaded.
@@ -102,7 +102,7 @@ The saved directory holds the transformer, the text encoder and the tokenizer, s
 - The prompt is wrapped in the chat template the model was trained with and limited to 300 tokens in total. The template takes 5 of them, so a caption is cut after 295 tokens.
 - Sizes must be multiples of 16. Turbo was trained at about one megapixel: much smaller sizes show 16×16 patch artifacts, in the reference implementation too.
 - `mflux-generate-iris` has no `--scheduler`, LoRA, `--compute-precision` or `--vae-tiling` options: the model has no VAE and the samplers are part of the checkpoints. The transformer runs the attention queries and keys in float32; with bf16 queries and keys, single patches of flat regions came out visibly off.
-- Both entries share one Hugging Face repository. `--model iris-3b-turbo` (default, aliases `iris-turbo`, `iris`) selects Turbo, `--model iris-3b` (alias `iris-base`) the base model.
+- Both entries share one Hugging Face repository. `--model iris-3b` (default, aliases `iris-3b-turbo`, `iris-turbo`, `iris`) selects Turbo, `--model iris-3b-base` (alias `iris-base`) the base model.
 - Not ported from the reference implementation: depth estimation and the upscaler fine-tunes, the community Turbo LoRA, and training. `mflux-train` is not available for this model.
 - Slow golden tests are not part of this port; `tests/` holds fast tests for the weight mapping, quantization, prompt encoding, samplers, CLI and saving.
 

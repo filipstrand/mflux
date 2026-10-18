@@ -54,15 +54,15 @@ class TestIrisGenerateCli:
     def test_default_model_is_turbo_at_1024_with_four_steps(self, run_cli):
         model, warned = run_cli()
 
-        assert model.kwargs["model_config"] is AVAILABLE_MODELS["iris-3b-turbo"]
+        assert model.kwargs["model_config"] is AVAILABLE_MODELS["iris-3b"]
         assert model.generated[0]["width"] == model.generated[0]["height"] == 1024
         assert model.generated[0]["num_inference_steps"] == 4
         assert warned == []
 
-    def test_the_base_model_is_selected_with_model_iris_3b_and_defaults_to_100_steps(self, run_cli):
-        model, warned = run_cli("--model", "iris-3b")
+    def test_the_base_model_is_selected_with_model_iris_3b_base_and_defaults_to_100_steps(self, run_cli):
+        model, warned = run_cli("--model", "iris-3b-base")
 
-        assert model.kwargs["model_config"] is AVAILABLE_MODELS["iris-3b"]
+        assert model.kwargs["model_config"] is AVAILABLE_MODELS["iris-3b-base"]
         assert model.generated[0]["num_inference_steps"] == 100
         assert model.generated[0]["guidance"] is None
         assert warned == []
@@ -74,7 +74,9 @@ class TestIrisGenerateCli:
             assert any(message.startswith(f"{option} is ignored") for message in warned), option
 
     def test_base_honours_steps_guidance_and_negative_prompt(self, run_cli):
-        model, warned = run_cli("--model", "iris-3b", "--steps", "9", "--guidance", "5", "--negative-prompt", "blur")
+        model, warned = run_cli(
+            "--model", "iris-3b-base", "--steps", "9", "--guidance", "5", "--negative-prompt", "blur"
+        )
 
         assert model.generated[0]["num_inference_steps"] == 9
         assert model.generated[0]["guidance"] == 5.0
@@ -106,21 +108,21 @@ class TestIrisGenerateCli:
 
         assert model.kwargs["model_path"] == "/models/iris-3b-turbo-q8"
         assert model.kwargs["quantize"] == 8
-        assert model.kwargs["model_config"] is AVAILABLE_MODELS["iris-3b-turbo"]
+        assert model.kwargs["model_config"] is AVAILABLE_MODELS["iris-3b"]
 
     def test_a_saved_base_model_loads_as_base_by_name_or_by_base_model_flag(self, run_cli):
-        by_name, _ = run_cli("--model", "/models/iris-3b-q4")
-        by_flag, _ = run_cli("--model", "/models/my-q4", "--base-model", "iris-3b")
+        by_name, _ = run_cli("--model", "/models/iris-3b-base-q4")
+        by_flag, _ = run_cli("--model", "/models/my-q4", "--base-model", "iris-3b-base")
 
-        assert by_name.kwargs["model_config"] is AVAILABLE_MODELS["iris-3b"]
-        assert by_flag.kwargs["model_config"] is AVAILABLE_MODELS["iris-3b"]
+        assert by_name.kwargs["model_config"] is AVAILABLE_MODELS["iris-3b-base"]
+        assert by_flag.kwargs["model_config"] is AVAILABLE_MODELS["iris-3b-base"]
 
     def test_a_foreign_model_is_rejected(self, run_cli):
         with pytest.raises(Exception, match="only accepts the aliases"):
             run_cli("--model", "dev")
 
     def test_every_alias_resolves_to_its_own_entry(self):
-        for key, aliases in {"iris-3b-turbo": ["iris-turbo", "iris"], "iris-3b": ["iris-base"]}.items():
+        for key, aliases in {"iris-3b": ["iris-3b-turbo", "iris-turbo", "iris"], "iris-3b-base": ["iris-base"]}.items():
             for alias in [key, *aliases]:
                 assert ConfigResolution.resolve(alias) is AVAILABLE_MODELS[key], alias
 
@@ -135,25 +137,53 @@ class TestIrisGenerateCli:
 
 
 @pytest.mark.fast
+class TestIrisPathInference:
+    # A saved model is told apart by its directory name, resolved by the same call the CLI makes: the bare name is
+    # the fast default (as for FLUX.2 and FLUX 3) and only a "base" in the name selects the undistilled model.
+    @pytest.mark.parametrize(
+        ("directory", "expected"),
+        [
+            ("~/models/iris-3b-q8", "iris-3b"),
+            ("~/models/iris-q8", "iris-3b"),
+            ("~/models/my-iris", "iris-3b"),
+            ("~/models/iris-3b-turbo-q8", "iris-3b"),
+            ("~/models/my-finetune", "iris-3b"),
+            ("~/models/iris-3b-base-q8", "iris-3b-base"),
+            ("~/models/iris-base-q8", "iris-3b-base"),
+        ],
+    )
+    def test_a_saved_directory_resolves_to_the_entry_its_name_selects(self, directory, expected):
+        config = ConfigResolution.resolve_restricted(
+            None,
+            iris_generate.DEFAULT_MODEL,
+            model_path=directory,
+            extra_keys=iris_generate.FAMILY_MODELS,
+        )
+
+        assert config is AVAILABLE_MODELS[expected]
+
+
+@pytest.mark.fast
 class TestIrisDefaults:
     def test_default_steps(self):
-        assert ui_defaults.MODEL_INFERENCE_STEPS["iris-3b-turbo"] == 4
-        assert ui_defaults.MODEL_INFERENCE_STEPS["iris-3b"] == 100
+        assert ui_defaults.MODEL_INFERENCE_STEPS["iris-3b"] == 4
+        assert ui_defaults.MODEL_INFERENCE_STEPS["iris-3b-base"] == 100
 
     @pytest.mark.parametrize(
         ("name", "expected"),
         [
-            ("/models/iris-3b-turbo-q8", "iris-3b-turbo"),
+            ("/models/iris-3b-turbo-q8", "iris-3b"),
             ("/models/iris-3b-q8", "iris-3b"),
-            ("/models/iris-base-q4", "iris-3b"),
-            ("/models/iris-q4", "iris-3b-turbo"),
+            ("/models/iris-3b-base-q8", "iris-3b-base"),
+            ("/models/iris-base-q4", "iris-3b-base"),
+            ("/models/iris-q4", "iris-3b"),
         ],
     )
     def test_a_saved_model_steps_like_the_entry_its_name_selects(self, name, expected):
         assert ui_defaults.model_inference_steps(name) == ui_defaults.MODEL_INFERENCE_STEPS[expected]
 
     def test_the_registry_entries(self):
-        turbo, base = ModelConfig.iris_3b_turbo(), ModelConfig.iris_3b()
+        turbo, base = ModelConfig.iris_3b(), ModelConfig.iris_3b_base()
 
         assert (turbo.supports_guidance, base.supports_guidance) == (False, True)
         assert turbo.max_sequence_length == base.max_sequence_length == 300
@@ -172,19 +202,19 @@ class TestIrisSidecarReplay:
         return model
 
     def test_turbo_records_its_own_entry(self):
-        model_config = TestIrisSidecarReplay._model("iris-3b-turbo")._metadata_model_config()
+        model_config = TestIrisSidecarReplay._model("iris-3b")._metadata_model_config()
 
         assert model_config.base_model is None
 
     def test_base_records_itself_as_the_base_model_because_both_entries_share_one_repo(self):
-        base = TestIrisSidecarReplay._model("iris-3b")
+        base = TestIrisSidecarReplay._model("iris-3b-base")
         model_config = base._metadata_model_config()
 
         assert model_config.model_name == "speridlabs/iris-3b"
-        assert model_config.base_model == "iris-3b"
-        assert AVAILABLE_MODELS["iris-3b"].base_model is None
+        assert model_config.base_model == "iris-3b-base"
+        assert AVAILABLE_MODELS["iris-3b-base"].base_model is None
 
-    @pytest.mark.parametrize(("base_model", "expected"), [(None, "iris-3b-turbo"), ("iris-3b", "iris-3b")])
+    @pytest.mark.parametrize(("base_model", "expected"), [(None, "iris-3b"), ("iris-3b-base", "iris-3b-base")])
     def test_a_sidecar_replays_on_the_entry_that_wrote_it(self, monkeypatch, tmp_path, base_model, expected):
         sidecar = tmp_path / "image.metadata.json"
         sidecar.write_text(
@@ -211,11 +241,11 @@ class TestIrisSaveDispatch:
     @pytest.mark.parametrize(
         ("name", "key"),
         [
-            ("iris-3b-turbo", "iris-3b-turbo"),
-            ("iris-turbo", "iris-3b-turbo"),
-            ("iris", "iris-3b-turbo"),
             ("iris-3b", "iris-3b"),
-            ("iris-base", "iris-3b"),
+            ("iris-turbo", "iris-3b"),
+            ("iris", "iris-3b"),
+            ("iris-3b-base", "iris-3b-base"),
+            ("iris-base", "iris-3b-base"),
         ],
     )
     def test_every_name_routes_to_the_iris_class(self, name, key):
@@ -279,14 +309,14 @@ class TestIrisLowRam:
 class TestIrisModel:
     def test_sizes_must_be_multiples_of_16(self):
         model = Iris.__new__(Iris)
-        model.model_config = AVAILABLE_MODELS["iris-3b-turbo"]
+        model.model_config = AVAILABLE_MODELS["iris-3b"]
 
         with pytest.raises(ValueError, match="multiples of 16"):
             model.generate_image(seed=1, prompt="x", width=1000, height=1024)
 
     def test_turbo_is_a_property_of_the_config(self):
         turbo, base = Iris.__new__(Iris), Iris.__new__(Iris)
-        turbo.model_config, base.model_config = AVAILABLE_MODELS["iris-3b-turbo"], AVAILABLE_MODELS["iris-3b"]
+        turbo.model_config, base.model_config = AVAILABLE_MODELS["iris-3b"], AVAILABLE_MODELS["iris-3b-base"]
 
         assert (turbo.is_turbo, base.is_turbo) == (True, False)
 

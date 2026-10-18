@@ -35,7 +35,7 @@ class Iris(nn.Module):
         super().__init__()
         IrisInitializer.init(
             model=self,
-            model_config=model_config or ModelConfig.iris_3b_turbo(),
+            model_config=model_config or ModelConfig.iris_3b(),
             quantize=quantize,
             model_path=model_path,
         )

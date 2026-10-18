@@ -62,7 +62,7 @@ CLI_MODELS = [
         flux3_edit_generate.FAMILY_MODELS,
         ("--image-paths", "ref.png"),
     ),
-    (iris_generate, "iris-3b-turbo", "dev", iris_generate.FAMILY_MODELS, ()),
+    (iris_generate, "iris-3b", "dev", iris_generate.FAMILY_MODELS, ()),
     (qwen21_generate, "qwen-image-2.1", "dev", qwen21_generate.FAMILY_MODELS, ()),
     (qwen21_edit_generate, "qwen-image-2.1", "dev", qwen21_edit_generate.FAMILY_MODELS, ()),
     (
@@ -153,8 +153,8 @@ class TestRestrictedModelConfig:
 
     def test_iris_family_covers_every_iris_registry_entry(self):
         iris_keys = {key for key in AVAILABLE_MODELS if key.startswith("iris-")}
-        assert set(iris_generate.FAMILY_MODELS) | {"iris-3b-turbo"} == iris_keys
-        assert iris_generate.FAMILY_MODELS == ("iris-3b",)
+        assert set(iris_generate.FAMILY_MODELS) | {"iris-3b"} == iris_keys
+        assert iris_generate.FAMILY_MODELS == ("iris-3b-base",)
 
     def test_z_image_cli_rejects_the_controlnet_sibling(self, monkeypatch):
         # The base CLI runs z-image and z-image-turbo; the ControlNet entry has its own
