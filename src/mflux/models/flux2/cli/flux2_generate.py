@@ -38,6 +38,7 @@ def build_parser() -> CommandLineParser:
     parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
     parser.add_image_to_image_arguments(required=False)
     parser.add_pid_decode_arguments()
+    parser.add_small_decoder_arguments()
     parser.add_output_arguments()
     return parser
 
@@ -51,6 +52,9 @@ def main():
     # it would blame them for an argument that is not on the command line.
     if CommandLineParser._option_was_provided("--negative-prompt"):
         parser.error("--negative-prompt is not supported for FLUX.2. Focus on describing what you want.")
+
+    if args.small_decoder and args.pid_decode:
+        parser.error("--small-decoder cannot be used with --pid-decode: PiD replaces the VAE decoder.")
 
     # One command serves the whole klein family; anything outside it (a FLUX.1 name, a
     # qwen alias) errors instead of silently loading a foreign config into this pipeline.
@@ -81,6 +85,7 @@ def main():
         quantize=args.quantize,
         model_path=args.model_path,
         compute_precision=ComputePrecision.dtype_for(args.compute_precision),
+        small_decoder=args.small_decoder,
         **lora_init_kwargs_from_args(args),
     )
 

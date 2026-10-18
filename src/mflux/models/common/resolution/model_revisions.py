@@ -24,6 +24,7 @@ class ModelRevisions:
         "black-forest-labs/FLUX.2-klein-9b-kv": "a6dfb36eca3a3906eb2fd460795adfb844e5fcce",
         "black-forest-labs/FLUX.2-klein-base-4B": "a3b4f4849157f664bdbc776fd7453c2783562f4d",
         "black-forest-labs/FLUX.2-klein-base-9B": "32773329fbe7e81a90ef971740e8ba4b0364ecf3",
+        "black-forest-labs/FLUX.2-small-decoder": "a3efc24f613ef42d9428af62fdbd6f5fd8856c4a",
         "Boogu/Boogu-Image-0.1-Turbo": "53ad54522023f64d049f7f38e4d679359ef3fb92",
         "briaai/FIBO": "7c7e00ca081f6cd24bbbd745d13cc214484c9199",
         "briaai/Fibo-Edit": "1bee4ae9b119d2634ec9f378370f2a1ae49d89cc",
