@@ -15,6 +15,7 @@ from mflux.models.common.cli import save
 from mflux.models.common.config.model_config import AVAILABLE_MODELS, ModelConfig
 from mflux.models.common.resolution.config_resolution import ConfigResolution
 from mflux.models.iris.cli import iris_generate
+from mflux.models.iris.iris_initializer import IrisInitializer
 from mflux.models.iris.latent_creator.iris_latent_creator import IrisLatentCreator
 from mflux.models.iris.variants import Iris
 
@@ -255,6 +256,21 @@ class TestIrisSaveDispatch:
 
         assert resolved == key
         assert save.MODEL_CLASSES[resolved] is Iris
+
+    @pytest.mark.parametrize("path", ["/models/iris-3b-q8", "/models/iris-3b-base-q4", "/models/my-iris"])
+    def test_a_saved_directory_loads_from_itself_when_mflux_save_resolves_it(self, path):
+        # mflux-save builds a config whose model_name is the path itself; that path is still a saved model.
+        config = ConfigResolution.resolve(path, base_model="iris-3b")
+
+        assert config.model_name == path
+        assert IrisInitializer.saved_path(config, path) == path
+
+    @pytest.mark.parametrize("key", ["iris-3b", "iris-3b-base"])
+    def test_the_upstream_repo_id_is_not_a_saved_model(self, key):
+        config = AVAILABLE_MODELS[key]
+
+        assert IrisInitializer.saved_path(config, None) is None
+        assert IrisInitializer.saved_path(config, config.model_name) is None
 
 
 @pytest.mark.fast

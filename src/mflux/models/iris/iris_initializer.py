@@ -18,13 +18,19 @@ class IrisInitializer:
         model_path: str | None = None,
     ) -> None:
         definition = IrisInitializer.weight_definition(model_config)
-        # The Iris repo id itself (what a metadata sidecar records as the model) means the upstream checkpoints.
-        saved_path = None if model_path in (None, model_config.model_name) else model_path
+        saved_path = IrisInitializer.saved_path(model_config, model_path)
         IrisInitializer._init_config(model, model_config)
         weights = IrisInitializer._load_weights(definition, model_config, saved_path)
         IrisInitializer._init_tokenizers(model, definition, saved_path)
         IrisInitializer._init_models(model)
         IrisInitializer._apply_weights(model, weights, quantize, definition)
+
+    @staticmethod
+    def saved_path(model_config: ModelConfig, model_path: str | None) -> str | None:
+        # The Iris repo id (what a metadata sidecar records as the model) means the upstream checkpoints. Any other
+        # path is a saved model, even when it is the model_name of a config that mflux-save built for that path.
+        upstream_repo = model_config.base_model or model_config.model_name
+        return None if model_path in (None, upstream_repo) else model_path
 
     @staticmethod
     def weight_definition(model_config: ModelConfig):
