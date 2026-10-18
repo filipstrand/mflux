@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import mlx.core as mx
+import mlx.nn as nn
 from mlx.utils import tree_unflatten
 
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
@@ -29,8 +30,11 @@ class MOSSImageInitializer:
 
         # 1. Initialize Transformer
         t_config_file = path / "transformer" / "config.json"
+        stored_quant = None
         if t_config_file.exists():
             t_config = json.loads(t_config_file.read_text())
+            if "quantization" in t_config and "bits" in t_config["quantization"]:
+                stored_quant = t_config["quantization"]["bits"]
             model.transformer = MOSSImageTransformer(
                 dim=t_config.get("dim", 3072),
                 ffn_dim=t_config.get("ffn_dim", 8192),
@@ -44,8 +48,10 @@ class MOSSImageInitializer:
         else:
             model.transformer = MOSSImageTransformer()
 
-        # 2. Load Transformer weights using WeightLoader
-        MOSSImageInitializer.load_transformer_weights(model.transformer, path)
+        # 2. Load Transformer weights (handling offline quantized and dynamic quantization)
+        MOSSImageInitializer.load_transformer_weights(
+            model.transformer, path, stored_quant=stored_quant, dynamic_quant=quantize
+        )
 
         # 3. Initialize & Load FLUX.2 VAE (small decoder configuration)
         from mflux.models.flux2.model.flux2_vae.decoder.decoder import Flux2Decoder
@@ -61,17 +67,26 @@ class MOSSImageInitializer:
         print("✨ All MOSS-Image components initialized successfully!")
 
     @staticmethod
-    def load_transformer_weights(transformer: MOSSImageTransformer, root: Path) -> None:
+    def load_transformer_weights(
+        transformer: MOSSImageTransformer,
+        root: Path,
+        stored_quant: int | None = None,
+        dynamic_quant: int | None = None,
+    ) -> None:
         t_dir = root / "transformer" if (root / "transformer").exists() else root
         print(f"📦 Loading Transformer weights from {t_dir} ...")
 
-        # Check if safetensors exist
         safetensors_files = sorted(list(t_dir.glob("*.safetensors")))
         if not safetensors_files:
             raise FileNotFoundError(f"No safetensors found in {t_dir}")
 
         mapping = MOSSImageWeightDefinition.get_components()[0].mapping_getter()
         target_map = {src: target.to_pattern for target in mapping for src in target.from_pattern}
+
+        # If stored weights are already quantized, pre-quantize the transformer layers to receive them
+        if stored_quant is not None:
+            print(f"⚡ [量化加载] 磁盘模型已量化为 {stored_quant}-bit，正在准备量化线性层 ...")
+            nn.quantize(transformer, bits=stored_quant)
 
         weights = {}
         for sf in safetensors_files:
@@ -80,12 +95,17 @@ class MOSSImageInitializer:
                 if k in target_map:
                     mapped_key = target_map[k]
                     weights[mapped_key] = v
-                elif k.endswith(".weight") or k.endswith(".bias"):
-                    # direct match fallback
+                elif k.endswith(".weight") or k.endswith(".bias") or k.endswith(".scales") or k.endswith(".biases"):
                     weights[k] = v
 
         print(f"   Mapped {len(weights)} transformer parameters.")
         transformer.update(tree_unflatten(list(weights.items())))
+
+        # If dynamic quantization requested on full precision weights
+        if stored_quant is None and dynamic_quant is not None:
+            print(f"⚡ [动态量化] 正在将 Transformer 动态量化为 {dynamic_quant}-bit ...")
+            nn.quantize(transformer, bits=dynamic_quant)
+            mx.eval(transformer.parameters())
 
     @staticmethod
     def load_vae_weights(vae: Flux2VAE, root: Path) -> None:
