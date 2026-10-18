@@ -117,7 +117,7 @@ def test_a_missing_or_unexpected_key_stops_the_load():
 
 @pytest.mark.fast
 @pytest.mark.parametrize("small", [False, True])
-def test_the_initializer_swaps_the_whole_vae(monkeypatch, small):
+def test_the_initializer_swaps_only_the_decoder(monkeypatch, small):
     full_vae = Flux2VAE()
     small_vae = Flux2VAE(decoder_block_out_channels=SMALL_DECODER_BLOCK_OUT_CHANNELS)
     calls = []
@@ -147,6 +147,11 @@ def test_the_initializer_swaps_the_whole_vae(monkeypatch, small):
     assert model.small_decoder is small
     assert model.vae is (small_vae if small else full_vae)
     assert calls == ([4] if small else [])
+    # Edit references are encoded, and latents normalized, by the model's own VAE.
+    assert model.vae.encoder is full_vae.encoder
+    assert model.vae.quant_conv is full_vae.quant_conv
+    assert model.vae.bn is full_vae.bn
+    assert model.vae.decoder is (small_vae.decoder if small else full_vae.decoder)
 
 
 @pytest.mark.fast

@@ -38,7 +38,7 @@ class Flux2Initializer:
         Flux2Initializer._apply_weights(model, weights, quantize)
         model.small_decoder = small_decoder
         if small_decoder:
-            model.vae = Flux2SmallDecoder.load_vae(bits=model.bits)
+            model.vae = Flux2SmallDecoder.with_small_decoder(model.vae, bits=model.bits)
         Flux2Initializer._apply_lora(model, lora_paths, lora_scales, bake_lora, weights)
         model.compute_precision = precision
         if compute_precision is not None:

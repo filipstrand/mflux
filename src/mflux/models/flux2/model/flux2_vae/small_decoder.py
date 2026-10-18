@@ -24,9 +24,16 @@ class Flux2SmallDecoder:
         return dataclasses.replace(vae, hf_subdir="", weight_files=[SMALL_DECODER_FILE])
 
     @staticmethod
+    def with_small_decoder(vae: Flux2VAE, bits: int | None = None) -> Flux2VAE:
+        # Only decoding changes. post_quant_conv was trained with the small decoder and differs from the one in klein,
+        # so it comes from the checkpoint. Edit references keep being encoded, and latents normalized, by the model's
+        # own encoder, quant_conv and bn (those of a saved or quantized model too).
+        small_vae = Flux2SmallDecoder.load_vae(bits=bits)
+        small_vae.encoder, small_vae.quant_conv, small_vae.bn = vae.encoder, vae.quant_conv, vae.bn
+        return small_vae
+
+    @staticmethod
     def load_vae(bits: int | None = None) -> Flux2VAE:
-        # The whole VAE is replaced, as in diffusers (`vae=AutoencoderKLFlux2.from_pretrained(...)`):
-        # post_quant_conv was trained with the small decoder and differs from the one in klein.
         component = Flux2SmallDecoder.component()
         weights = WeightLoader.load_single(component, SMALL_DECODER_REPO, file_pattern=SMALL_DECODER_FILE)
         vae = Flux2VAE(decoder_block_out_channels=SMALL_DECODER_BLOCK_OUT_CHANNELS)
