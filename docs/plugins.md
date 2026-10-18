@@ -18,11 +18,13 @@ uv tool install mflux --with-executables-from mflux-teacache
 
 This gives you the mflux commands and the plugin commands side by side. If you install only the plugin with `uv tool install`, uv gives it its own environment with its own mflux. Then only the plugin commands go on your path.
 
-In a Python environment that already has mflux, use pip:
+In a Python environment that already has mflux, use pip. The example below installs `mflux-teacache`:
 
 ```sh
-pip install mflux-<name>
+pip install mflux-teacache
 ```
+
+For a different plugin, use its package name from the Plugins table linked above.
 
 ## How to see the plugin commands
 

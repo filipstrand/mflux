@@ -45,7 +45,7 @@ jobs:
         run: just lint-justfile
 
   tests:
-    runs-on: macos-14  # Apple Silicon runner (M1)
+    runs-on: macos-15  # Apple Silicon runner (M1)
 
     steps:
       - name: Checkout code

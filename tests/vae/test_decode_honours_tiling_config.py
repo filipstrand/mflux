@@ -100,6 +100,8 @@ class _PackedModelFixtures:
         model.transformer = _FakeHiddenStatesTransformer()
         model.vae = vae
         model.bits = None
+        model.lora_paths = None
+        model.lora_scales = None
         model.compute_precision = ComputePrecision()
         model.tiling_config = tiling_config
         model._noise_override = None
