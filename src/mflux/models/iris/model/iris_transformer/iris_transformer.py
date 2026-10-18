@@ -26,6 +26,9 @@ class IrisTransformer(nn.Module):
         patch_size: int = 16,
         in_channels: int = 3,
         text_len: int = 300,
+        text_dim: int = 2560,
+        text_num_layers: int = 12,
+        text_layer_num_heads: int = 32,
         pixel_depth: int = 4,
         pixel_hidden_size: int = 16,
         pixel_attn_hidden_size: int = 1280,
@@ -46,7 +49,14 @@ class IrisTransformer(nn.Module):
 
         self.s_embedder = IrisPatchEmbedder(patch_size * patch_size * in_channels, hidden_size)
         self.t_embedder = IrisTimestepEmbedder(hidden_size)
-        self.y_embedder = IrisTextEmbedder(hidden_size=hidden_size, refiner_num_heads=num_heads, eps=eps)
+        self.y_embedder = IrisTextEmbedder(
+            text_dim=text_dim,
+            hidden_size=hidden_size,
+            num_layers=text_num_layers,
+            layer_num_heads=text_layer_num_heads,
+            refiner_num_heads=num_heads,
+            eps=eps,
+        )
         self.y_pos_embedding = mx.zeros((1, text_len, hidden_size))
         self.modulation_cores = {
             "adaln_img": nn.Linear(hidden_size, 6 * hidden_size, bias=True),

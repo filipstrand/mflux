@@ -46,6 +46,8 @@ MODEL_INFERENCE_STEPS = {
     "flux3-image-klein": 16,
     "flux3-image-klein-base": 50,
     "ideogram-4-fp8": 20,
+    "iris-3b": 100,
+    "iris-3b-turbo": 4,
     "krea-2": 8,
     "krea-2-controlnet-depth": 8,
     "krea-dev": 25,
