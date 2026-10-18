@@ -15,6 +15,7 @@ layout and all required model parts are available.
 ```text
 mflux-check model <model-reference>
 mflux-check model --fix <model-reference>
+mflux-check model --base-model <model-name> <model-reference>
 ```
 
 Examples:
@@ -24,10 +25,16 @@ mflux-check model black-forest-labs/flux-3-image-klein
 mflux-check model ./models/flux-3-image-klein
 mflux-check model mflux-community/qwen-image-edit-2511-mflux-q6
 mflux-check model --fix ./models/qwen-image-edit-2511-mflux-q6
+mflux-check model --base-model schnell ~/models/my-finetune
 ```
 
 There is no `--format` option. The command determines the format from the
 resolved model package.
+
+Use `--base-model` when the path of a saved package does not identify its
+model. `mflux-save` does not write the model name into the files, so the
+checker gets the model from the path. The value is the same as the
+`--base-model` value of the generate commands.
 
 ## Model reference resolution
 
@@ -40,6 +47,12 @@ Resolution follows the existing model path rules:
 For a Hugging Face reference, the normal check reads only the default Hugging
 Face cache. It does not download files, contact Hugging Face, or repair the
 cache. A missing or incomplete cache is a check failure.
+
+The cache can contain more than one snapshot of a repository. When MFlux pins
+the repository to a commit, the checker checks only the snapshot of that
+commit, because MFlux loads only that snapshot. When the pinned snapshot is not
+in the cache, the check fails. For a repository without a pin, the checker
+checks the newest snapshot.
 
 ## Format and model identification
 

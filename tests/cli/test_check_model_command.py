@@ -12,7 +12,9 @@ def test_main_prints_a_pass_result(monkeypatch, capsys):
     monkeypatch.setattr(
         ModelChecker,
         "check",
-        staticmethod(lambda reference: ModelCheckResult("pass", "safetensors", 13_350_000_000, "qwen-image", ())),
+        staticmethod(
+            lambda reference, base_model=None: ModelCheckResult("pass", "safetensors", 13_350_000_000, "qwen-image", ())
+        ),
     )
 
     assert check_model.main() == 0
@@ -27,7 +29,11 @@ def test_main_returns_failure_for_a_warning(monkeypatch, capsys):
     monkeypatch.setattr(
         ModelChecker,
         "check",
-        staticmethod(lambda reference: ModelCheckResult("warn", "mflux", 1, "qwen-image", ("Missing component.",))),
+        staticmethod(
+            lambda reference, base_model=None: ModelCheckResult(
+                "warn", "mflux", 1, "qwen-image", ("Missing component.",)
+            )
+        ),
     )
     monkeypatch.setattr(
         ModelChecker,

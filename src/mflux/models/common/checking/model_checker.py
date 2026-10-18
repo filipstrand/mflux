@@ -12,6 +12,7 @@ from typing import Any
 from huggingface_hub.constants import HF_HUB_CACHE
 
 from mflux.models.common.resolution.config_resolution import ConfigResolution
+from mflux.models.common.resolution.model_revisions import ModelRevisions
 from mflux.models.common.resolution.path_resolution import PathResolution
 from mflux.models.common.weights.loading.weight_definition import ComponentDefinition
 from mflux.models.common.weights.mapping.weight_mapper import WeightMapper
@@ -52,7 +53,7 @@ class ModelChecker:
     }
 
     @staticmethod
-    def check(reference: str) -> ModelCheckResult:
+    def check(reference: str, base_model: str | None = None) -> ModelCheckResult:
         root, resolution_problem = ModelChecker._resolve(reference)
         if root is None:
             return ModelCheckResult("fail", None, 0, None, (resolution_problem,))
@@ -61,7 +62,9 @@ class ModelChecker:
         if not files:
             problems: list[str] = []
             if ModelChecker._validate_indexes(root, problems):
-                return ModelCheckResult("warn", "mflux", 0, ModelChecker._resolve_model_key(reference), tuple(problems))
+                return ModelCheckResult(
+                    "warn", "mflux", 0, ModelChecker._resolve_model_key(reference, base_model), tuple(problems)
+                )
             return ModelCheckResult("fail", None, 0, None, (f"No safetensors files exist under {root}.",))
 
         headers: dict[Path, dict[str, Any]] = {}
@@ -86,7 +89,7 @@ class ModelChecker:
             ModelChecker._is_mflux_metadata(metadata) for _, metadata in index_metadata
         )
         format_name = "mflux" if is_mflux else "safetensors"
-        key = ModelChecker._resolve_model_key(reference)
+        key = ModelChecker._resolve_model_key(reference, base_model)
         if key is None:
             if format_name == "safetensors":
                 ModelChecker._validate_indexes(root, problems)
@@ -206,6 +209,12 @@ class ModelChecker:
         snapshots = Path(HF_HUB_CACHE) / f"models--{reference.replace('/', '--')}" / "snapshots"
         if not snapshots.is_dir():
             return None, f"Model is not in the Hugging Face cache: {reference}."
+        pinned = ModelRevisions.get(reference)
+        if pinned is not None:
+            # MFlux loads only the pinned commit of this repo, so check that snapshot.
+            if not (snapshots / pinned).is_dir():
+                return None, f"Model is not in the Hugging Face cache at the pinned revision {pinned}: {reference}."
+            return snapshots / pinned, ""
         candidates = sorted(
             (path for path in snapshots.iterdir() if path.is_dir()), key=lambda path: path.stat().st_mtime
         )
@@ -214,9 +223,9 @@ class ModelChecker:
         return candidates[-1], ""
 
     @staticmethod
-    def _resolve_model_key(reference: str) -> str | None:
+    def _resolve_model_key(reference: str, base_model: str | None = None) -> str | None:
         try:
-            return ConfigResolution.resolve_key(reference)
+            return ConfigResolution.resolve_key(reference, base_model=base_model)
         except ModelConfigError:
             return None
 
@@ -242,7 +251,7 @@ class ModelChecker:
             from mflux.models.qwen.weights.qwen_weight_definition import QwenWeightDefinition
 
             return QwenWeightDefinition
-        if key == "qwen-image-2.1-controlnet-union":
+        if key in {"qwen-image-2.1-controlnet-union", "qwen-image-2.1-turbo-controlnet-union"}:
             from mflux.models.qwen21.weights.qwen_image21_controlnet_weight_definition import (
                 QwenImage21ControlnetWeightDefinition,
             )
@@ -285,7 +294,23 @@ class ModelChecker:
             from mflux.models.ideogram4.weights.ideogram4_weight_definition import Ideogram4WeightDefinition
 
             return Ideogram4WeightDefinition
-        if key in {"krea-2", "krea-2-raw"}:
+        if key in {"flux3-image-klein", "flux3-image-klein-base"}:
+            from mflux.models.flux3.weights.flux3_weight_definition import (
+                Flux3KleinBaseWeightDefinition,
+                Flux3KleinWeightDefinition,
+            )
+
+            return Flux3KleinWeightDefinition if key == "flux3-image-klein" else Flux3KleinBaseWeightDefinition
+        if key == "lens-turbo":
+            # The DiT repo only. The VAE and the text encoder load from other repos.
+            from mflux.models.lens.weights.lens_weight_definition import LensWeightDefinition
+
+            return LensWeightDefinition
+        if key == "qwen-image-2.1-turbo":
+            from mflux.models.qwen21.weights.qwen_image21_weight_definition import QwenImage21WeightDefinition
+
+            return QwenImage21WeightDefinition
+        if key in {"krea-2", "krea-2-raw", "krea-2-controlnet-depth"}:
             from mflux.models.krea2.weights.krea2_weight_definition import Krea2WeightDefinition
 
             return Krea2WeightDefinition

@@ -6,6 +6,8 @@ import struct
 import pytest
 
 from mflux.models.common.checking.model_checker import ModelChecker
+from mflux.models.common.config.model_config import AVAILABLE_MODELS
+from mflux.models.common.resolution.model_revisions import ModelRevisions
 from mflux.models.common.weights.loading.weight_definition import ComponentDefinition
 
 
@@ -43,7 +45,9 @@ def qwen_definition(monkeypatch):
             return [ComponentDefinition(name="transformer", hf_subdir="transformer")]
 
     monkeypatch.setattr(ModelChecker, "_definition_for", staticmethod(lambda key: Definition))
-    monkeypatch.setattr(ModelChecker, "_resolve_model_key", staticmethod(lambda reference: "qwen-image"))
+    monkeypatch.setattr(
+        ModelChecker, "_resolve_model_key", staticmethod(lambda reference, base_model=None: "qwen-image")
+    )
 
 
 @pytest.mark.fast
@@ -205,7 +209,9 @@ def test_variant_selector_chooses_the_component_directory(tmp_path, monkeypatch)
             ]
 
     monkeypatch.setattr(ModelChecker, "_definition_for", staticmethod(lambda key: Definition))
-    monkeypatch.setattr(ModelChecker, "_resolve_model_key", staticmethod(lambda reference: "krea-2-raw"))
+    monkeypatch.setattr(
+        ModelChecker, "_resolve_model_key", staticmethod(lambda reference, base_model=None: "krea-2-raw")
+    )
     root = tmp_path / "Krea-2-Raw"
     write_safetensors(root / "transformer" / "model.safetensors")
 
@@ -308,13 +314,59 @@ def test_safetensors_rejects_an_unknown_dtype(tmp_path):
 def test_unrecognized_hugging_face_safetensors_package_passes_structural_check(tmp_path, monkeypatch):
     root = tmp_path / "flux-3-image-klein"
     write_safetensors(root / "transformer" / "model.safetensors")
-    monkeypatch.setattr(ModelChecker, "_resolve_model_key", staticmethod(lambda reference: None))
+    monkeypatch.setattr(ModelChecker, "_resolve_model_key", staticmethod(lambda reference, base_model=None: None))
 
     result = ModelChecker.check(str(root))
 
     assert result.check == "pass"
     assert result.format == "safetensors"
     assert result.problems == ()
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize("key", list(AVAILABLE_MODELS))
+def test_every_available_model_has_a_checker_definition(key):
+    assert ModelChecker._definition_for(key) is not None
+
+
+@pytest.mark.fast
+def test_base_model_identifies_a_saved_package_in_a_plain_named_folder(tmp_path):
+    root = tmp_path / "my-finetune"
+    write_safetensors(root / "transformer" / "0.safetensors", {"mflux_version": "0.21.0"})
+
+    without = ModelChecker.check(str(root))
+    with_base = ModelChecker.check(str(root), base_model="schnell")
+
+    assert "Cannot identify a model that an MFlux CLI supports." in without.problems
+    assert with_base.model == "schnell"
+    assert "Cannot identify a model that an MFlux CLI supports." not in with_base.problems
+
+
+@pytest.mark.fast
+def test_pinned_repository_checks_the_pinned_snapshot(tmp_path, monkeypatch):
+    reference = "mflux-community/pinned-model"
+    snapshots = tmp_path / "models--mflux-community--pinned-model" / "snapshots"
+    (snapshots / "pinned").mkdir(parents=True)
+    newer = snapshots / "newer"
+    newer.mkdir()
+    os.utime(newer, (os.path.getmtime(snapshots / "pinned") + 100,) * 2)
+    monkeypatch.setattr("mflux.models.common.checking.model_checker.HF_HUB_CACHE", str(tmp_path))
+    monkeypatch.setitem(ModelRevisions.PINNED, reference, "pinned")
+
+    assert ModelChecker._resolve(reference) == (snapshots / "pinned", "")
+
+
+@pytest.mark.fast
+def test_pinned_repository_fails_when_the_pinned_snapshot_is_absent(tmp_path, monkeypatch):
+    reference = "mflux-community/pinned-model"
+    (tmp_path / "models--mflux-community--pinned-model" / "snapshots" / "newer").mkdir(parents=True)
+    monkeypatch.setattr("mflux.models.common.checking.model_checker.HF_HUB_CACHE", str(tmp_path))
+    monkeypatch.setitem(ModelRevisions.PINNED, reference, "pinned")
+
+    root, problem = ModelChecker._resolve(reference)
+
+    assert root is None
+    assert "pinned revision pinned" in problem
 
 
 # Set these variables to run the known-model cases on a host that has the packages:
