@@ -203,7 +203,7 @@ Where the models and the main features came from, read from the merge history (`
 | SeedVR2 | [@filipstrand](https://github.com/filipstrand) | [#297](https://github.com/mflux-community/mflux/pull/297) |
 | FLUX.2 Klein | [@filipstrand](https://github.com/filipstrand) | [#323](https://github.com/mflux-community/mflux/pull/323) |
 | FLUX 3 Image Klein | [@cguldogan](https://github.com/cguldogan) | [#876](https://github.com/mflux-community/mflux/issues/876) |
-| Iris-3B | [@cguldogan](https://github.com/cguldogan) | this PR |
+| Iris-3B | [@cguldogan](https://github.com/cguldogan) | [#898](https://github.com/mflux-community/mflux/issues/898) |
 | FLUX.2 KV cache (klein-9b-kv) | [@michaeltrefry](https://github.com/michaeltrefry) | [#426](https://github.com/mflux-community/mflux/pull/426) |
 | ERNIE-Image | [@azrahello](https://github.com/azrahello) | [#417](https://github.com/mflux-community/mflux/pull/417) |
 | Ideogram 4 | [@omercelik](https://github.com/omercelik) | [#433](https://github.com/mflux-community/mflux/pull/433) |
