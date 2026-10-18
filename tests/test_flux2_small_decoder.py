@@ -178,12 +178,29 @@ def _sidecar(tmp_path, **values) -> str:
 @pytest.mark.fast
 @pytest.mark.parametrize(
     "recorded, extra, expected",
-    [(True, [], True), (True, ["--no-small-decoder"], False), (False, ["--small-decoder"], True), (None, [], False)],
+    [
+        (True, [], True),
+        (True, ["--no-small-decoder"], False),
+        (False, ["--small-decoder"], True),
+        (None, [], False),
+        ("null", [], False),
+    ],
 )
 def test_config_from_metadata_replays_the_flag(monkeypatch, tmp_path, recorded, extra, expected):
-    values = {} if recorded is None else {"small_decoder": recorded}
+    values = {} if recorded is None else {"small_decoder": None if recorded == "null" else recorded}
     monkeypatch.setattr(sys, "argv", ["prog", "--config-from-metadata", _sidecar(tmp_path, **values)] + extra)
     assert flux2_generate.build_parser().parse_args().small_decoder is expected
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize("recorded", ["false", "true", 1])
+def test_a_recorded_value_that_is_not_a_boolean_stops_the_replay(monkeypatch, tmp_path, capsys, recorded):
+    # bool("false") is True: a hand-edited sidecar must not switch the decoder.
+    monkeypatch.setattr(sys, "argv", ["prog", "--config-from-metadata", _sidecar(tmp_path, small_decoder=recorded)])
+    with pytest.raises(SystemExit) as exit_info:
+        flux2_generate.build_parser().parse_args()
+    assert exit_info.value.code == 2
+    assert "small_decoder in --config-from-metadata must be true or false" in capsys.readouterr().err
 
 
 @pytest.mark.fast

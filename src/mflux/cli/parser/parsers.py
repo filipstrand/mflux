@@ -611,7 +611,12 @@ class CommandLineParser(argparse.ArgumentParser):
 
 
             if hasattr(namespace, "small_decoder") and not self._option_was_provided("--small-decoder", "--no-small-decoder"):
-                namespace.small_decoder = bool(prior_gen_metadata.get("small_decoder", False))
+                # A JSON boolean only: bool("false") is True, and a wrong decoder changes the image.
+                recorded_small_decoder = prior_gen_metadata.get("small_decoder")
+                recorded_small_decoder = False if recorded_small_decoder is None else recorded_small_decoder
+                if not isinstance(recorded_small_decoder, bool):
+                    self.error(f"small_decoder in --config-from-metadata must be true or false, not {recorded_small_decoder!r}.")  # fmt: off
+                namespace.small_decoder = recorded_small_decoder
 
             if hasattr(namespace, "pid_degrade_sigma") and not self._option_was_provided("--pid-degrade-sigma"):
                 # Non-PiD sidecars omit the key entirely, but a hand-edited one can carry an
