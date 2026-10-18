@@ -110,7 +110,7 @@ KV caching speeds up later denoising steps by reusing reference-image attention 
 > Note: FLUX.2-klein-4B requires downloading the `black-forest-labs/FLUX.2-klein-4B` model weights (~15GB), FLUX.2-klein-9B requires `black-forest-labs/FLUX.2-klein-9B` model weights (~32GB), and FLUX.2-klein-9b-kv requires `black-forest-labs/FLUX.2-klein-9b-kv` model weights. Use quantization for smaller sizes.
 
 ## Small decoder
-[FLUX.2-small-decoder](https://huggingface.co/black-forest-labs/FLUX.2-small-decoder) (Apache-2.0) is a distilled VAE decoder from Black Forest Labs. It has 28M parameters instead of 50M. Add `--small-decoder` to `mflux-generate-flux2` or `mflux-generate-flux2-edit` to use it with any FLUX.2 klein model:
+[FLUX.2-small-decoder](https://huggingface.co/black-forest-labs/FLUX.2-small-decoder) (Apache-2.0) is a distilled VAE decoder from Black Forest Labs. It has 28M parameters instead of 50M. Add `--small-decoder` to `mflux-generate-flux2` or `mflux-generate-flux2-edit` to use it. Black Forest Labs lists it for all FLUX.2 klein models:
 
 ```sh
 mflux-generate-flux2 \
@@ -121,6 +121,7 @@ mflux-generate-flux2 \
 
 - The first run downloads about 250 MB. The transformer, the text encoder and the VAE encoder do not change.
 - On an M4 Pro (bf16), decoding a 1024x1024 image takes 1.1 s instead of 1.3 s and needs 7.0 GB of working memory instead of 9.4 GB. At 2048x2048 it takes 5.2 s instead of 6.4 s and needs 28 GB instead of 38 GB.
+- The peak memory of a whole `-q 4 --low-ram` run at 2048x2048 decreases from 40.4 GB to 30.4 GB, because the decode sets that peak. At 1024x1024 with `-q 4`, it decreases from 10.2 GB to 9.5 GB.
 - The images are almost the same: 35-42 dB PSNR against the standard decoder on our test prompts.
 - `--pid-decode` replaces the VAE decoder, so the two flags cannot be used together.
 - The image metadata records the flag, and `--config-from-metadata` uses it again.

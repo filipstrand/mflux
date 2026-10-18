@@ -26,6 +26,10 @@ CONDITIONAL_OPTIONS = {
         "condition": "base (non-distilled) FLUX.2 checkpoints",
         "reason": "distilled checkpoints require guidance 1.0; any other value exits with an error.",
     },
+    "--small-decoder": {
+        "condition": "runs without --pid-decode",
+        "reason": "PiD replaces the VAE decoder; setting both flags exits with an error.",
+    },
 }
 
 
