@@ -90,6 +90,15 @@ class TestIrisGenerateCli:
         assert any(message.startswith("--vae-tiling is ignored") for message in warned)
         assert any(message.startswith("--vae-tile-size is ignored") for message in warned)
 
+    @pytest.mark.parametrize("size", [["--width", "1000"], ["--height", "1030"], ["--width", "500", "--height", "500"]])
+    def test_sizes_that_are_not_multiples_of_16_exit_before_the_model_loads(self, run_cli, capsys, size):
+        with pytest.raises(SystemExit) as exit_info:
+            run_cli(*size)
+
+        assert exit_info.value.code == 2
+        assert "multiples of 16" in capsys.readouterr().err
+        assert _StubIris.instances == []
+
     def test_multiples_of_16_pass_through(self, run_cli):
         model, _ = run_cli("--width", "512", "--height", "768")
 

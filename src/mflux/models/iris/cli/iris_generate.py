@@ -62,6 +62,9 @@ def main():
         CommandLineParser.warn_ignored_options({name: option["reason"] for name, option in CONDITIONAL_OPTIONS.items()})
 
     width, height = DimensionResolver.resolve(width=args.width, height=args.height, reference_image_path=None)
+    # Check the size before the model loads, so that a bad size gives a usage error and not a traceback.
+    if width % IrisLatentCreator.PATCH_SIZE or height % IrisLatentCreator.PATCH_SIZE:
+        parser.error(f"--width and --height must be multiples of {IrisLatentCreator.PATCH_SIZE}, got {width}x{height}.")
 
     model = Iris(
         model_config=model_config,
