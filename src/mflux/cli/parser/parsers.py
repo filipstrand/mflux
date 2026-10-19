@@ -147,7 +147,8 @@ class CommandLineParser(argparse.ArgumentParser):
         self.default_model = default_model
         self.add_argument("--model", "-m", type=str, required=require_model_arg, action=ModelSpecAction, help=f"The model to use: a built-in model name ({', '.join(ui_defaults.canonical_model_choices())}) or any of its aliases, a HuggingFace repo org/model, or a local path.")
         if path_type == "save":
-            self.add_argument("--path", type=str, required=True, help="Local path for saving a model to disk.")
+            # Not required here: mflux-save picks a folder in $MFLUX_MODELS_DIR when --path is missing.
+            self.add_argument("--path", type=str, default=None, help="Local folder to save the model to. If you do not give it, mflux saves to $MFLUX_MODELS_DIR/<name>-mflux-<qN|bf16|fp8>[-loraNN].")
         # No argparse choices= here: the accepted values are whatever ConfigResolution's
         # explicit-base rule accepts, and they are validated post-parse (see parse_args) so
         # the two can never drift apart again, and so values restored from a metadata
