@@ -59,6 +59,7 @@ class CompletionGenerator:
 
         elif command == "mflux-save":
             parser.add_model_arguments(path_type="save", require_model_arg=True)
+            parser.add_hf_symlink_argument()
 
         elif command == "mflux-save-depth":
             parser.add_save_depth_arguments()

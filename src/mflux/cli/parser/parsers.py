@@ -252,6 +252,10 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--image-path", type=Path, required=True, help="Local path to the source image")
         self.add_argument("--quantize",  "-q", type=int, choices=ui_defaults.QUANTIZE_CHOICES, default=None, required=False, help=f"Quantize the model ({' or '.join(map(str, ui_defaults.QUANTIZE_CHOICES))}, Default is None)")
 
+    def add_hf_symlink_argument(self) -> None:
+        # const="" marks "flag given without a name", so the name comes from the environment or the OS.
+        self.add_argument("--hf-symlink", type=str, nargs="?", const="", default=None, metavar="USERNAME", help="After the save, add a Hugging Face cache entry <USERNAME>/<folder name> that links to the saved files, so --model can load it by repo id. mflux copies no data. USERNAME order: this flag, then $MFLUX_HF_USERNAME, $HF_NAMESPACE, $HF_NAME, then the OS user name.")
+
     def add_redux_arguments(self) -> None:
         # Same post-parse requirement as --image-paths: argparse required= is checked
         # before the metadata block, so a redux sidecar could not be replayed with -C.

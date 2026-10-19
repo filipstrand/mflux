@@ -1,11 +1,13 @@
 import inspect
 import textwrap
+from pathlib import Path
 
 from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_args
 from mflux.models.boogu.variants.txt2img.boogu_image import BooguImage
 from mflux.models.common.config import ModelConfig
 from mflux.models.common.config.model_config import AVAILABLE_MODELS
 from mflux.models.common.resolution.config_resolution import ConfigResolution
+from mflux.models.common.weights.saving.hf_cache_alias import HfCacheAlias
 from mflux.models.ernie_image.variants.txt2img.ernie_image import ErnieImage
 from mflux.models.fibo.variants.edit.fibo_edit import FIBOEdit
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
@@ -135,11 +137,20 @@ def main():
     parser = CommandLineParser(description="Save a quantized version of a model to disk.")  # fmt: off
     parser.add_model_arguments(path_type="save", require_model_arg=True)
     parser.add_lora_arguments()
+    parser.add_hf_symlink_argument()
     args = parser.parse_args()
 
     # 1. Determine model class based on the registry entry the model name resolves to
     key = SaveDispatch.resolve_registry_key(parser, args.model, args.base_model)
     model_class = MODEL_CLASSES[key]
+
+    # Check the alias name before the load, so a bad name fails in seconds, not after the quantize.
+    if args.hf_symlink is not None:
+        hf_username, hf_username_source = HfCacheAlias.resolve_username(args.hf_symlink)
+        try:
+            HfCacheAlias.check(Path(args.path).expanduser().resolve(), hf_username)
+        except ValueError as error:
+            parser.error(f"argument --hf-symlink: {error} (name from {hf_username_source})")
 
     if key == "ideogram-4-fp8":
         model_config = Ideogram4WeightDefinition.resolve_inference_config(
@@ -169,6 +180,12 @@ def main():
         model_config=model_config,
     )
     model.save_model(args.path)
+
+    # 3. Optionally link the saved folder into the Hugging Face cache
+    if args.hf_symlink is not None:
+        alias = HfCacheAlias.create(Path(args.path), hf_username)
+        print(f"Hugging Face alias: {alias.repo_id} (name from {hf_username_source})")
+        print(f"  {alias.file_count} files linked in {alias.repo_cache}")
 
 
 if __name__ == "__main__":

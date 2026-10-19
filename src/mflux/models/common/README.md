@@ -107,6 +107,20 @@ model.save_model("/Users/me/models/z-image-turbo_8bit")
 ```
 </details>
 
+To load the saved model by a Hugging Face repo id, add `--hf-symlink`:
+
+```sh
+mflux-save \
+  --path "/Users/me/models/z-image-turbo_8bit" \
+  --model z-image-turbo \
+  --quantize 8 \
+  --hf-symlink me
+
+mflux-generate-z-image-turbo --model me/z-image-turbo_8bit --base-model z-image-turbo --prompt "a dog"
+```
+
+After the save, mflux adds the entry `<USERNAME>/<folder name>` to the Hugging Face cache (`$HF_HUB_CACHE`). The entry holds one symlink for each saved file. mflux copies no model data. If you do not give a name, mflux uses the first value it finds: `$MFLUX_HF_USERNAME`, `$HF_NAMESPACE`, `$HF_NAME`, then your OS user name. The name does not have to be a real Hugging Face account. If you move or delete the saved folder, the links break.
+
 > [!WARNING]
 > Quantized models saved with mflux < v0.6.0 are incompatible with newer versions. Re-save using `mflux-save`.
 
