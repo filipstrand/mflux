@@ -1,6 +1,9 @@
 {
+  "kind": "summary",
+  "summary_note": "Hand-curated summary of four benchmark_memory.py reports (schema_version 1). The raw reports, with their per-phase memory events, were not retained.",
   "date": "2026-10-17",
   "source_sha": "ec705857d20846f5636fdc4acaa7507fa9855782",
+  "benchmark_script_commit": "11e7ed0e3a2eb1657d4263d9bcd0fb373bde3c4c",
   "benchmark_script_sha256": "f65d6f471ba99c70823123cecf0d40a9afcd8c8edb7d03d886dab9ee9450b9a3",
   "hardware": "Apple M1 Max, 32 GiB unified memory",
   "platform": "macOS-14.6-arm64-arm-64bit-Mach-O",
@@ -11,53 +14,18 @@
     "mflux": "0.22.0"
   },
   "runtime_note": "Existing environment reused with PYTHONPATH selecting pinned source; installed mflux distribution metadata is older than imported source.",
-  "checkpoint": "Locally saved 4-bit distilled FLUX 3 Image Klein, converted with our earlier local MFLUX port; external SSD.",
+  "checkpoint": "Locally saved 4-bit distilled FLUX 3 Image Klein on an external SSD. Not published, so these hashes cannot be checked against a public file.",
+  "checkpoint_source": {
+    "repo": "black-forest-labs/flux-3-image-klein",
+    "revision": "1755314e2216b2a2c5cc0dd899d4e49ee3404d2c",
+    "note": "Original BF16 weights, verified against the published SHA256 hashes before conversion."
+  },
+  "checkpoint_conversion": {
+    "tool": "mflux-save with 4-bit quantisation",
+    "mflux_revision": "7999f72c674c1cfd143a53d8e3220cbdce5d7dc1",
+    "note": "Unpublished local FLUX 3 port that predates #878; the exact command line was not recorded."
+  },
   "checkpoint_manifest": [
-    {
-      "path": "._text_encoder",
-      "bytes": 4096,
-      "sha256": "459ae676f39b46400eb617a9a6d3539e54780202dda00d5f5f2e65c159b5857c"
-    },
-    {
-      "path": "._transformer",
-      "bytes": 4096,
-      "sha256": "e3afca33166b0ce4b8781eb5d0cbc81780eb29f3713bd5cc9700b795532f4bfd"
-    },
-    {
-      "path": "._vae",
-      "bytes": 4096,
-      "sha256": "55bc64c5a468afede3f7957305649e9a81196322dc7fede6f904b871ad0158aa"
-    },
-    {
-      "path": "text_encoder/._0.safetensors",
-      "bytes": 4096,
-      "sha256": "58c92beaf13734bd6b9ad05a87f9bd919797ce74c25965919b36758762a41cc2"
-    },
-    {
-      "path": "text_encoder/._1.safetensors",
-      "bytes": 4096,
-      "sha256": "0529ece6a8ca2d82556b4f73479861a41e81e803cb02da6db144f8acc48a79c5"
-    },
-    {
-      "path": "text_encoder/._chat_template.jinja",
-      "bytes": 4096,
-      "sha256": "50796c9978f099477ab4aa7dbe50d2d90c77a7464597e7faa867a3adc89b5891"
-    },
-    {
-      "path": "text_encoder/._model.safetensors.index.json",
-      "bytes": 4096,
-      "sha256": "e2c8fa79ada37381f3072d4c818a6630daf24f0b5b75d653e5f8c9f46f8dcd9c"
-    },
-    {
-      "path": "text_encoder/._tokenizer.json",
-      "bytes": 4096,
-      "sha256": "8ca3ca540dca6cfad4e36d3777733d6ad51e126464d6db49500dd532c3bd909c"
-    },
-    {
-      "path": "text_encoder/._tokenizer_config.json",
-      "bytes": 4096,
-      "sha256": "d40291449cd9ac7a9ab2adad6e49258243dfb85065e65d41a5fc4ddb5c2d7be9"
-    },
     {
       "path": "text_encoder/0.safetensors",
       "bytes": 2135435091,
@@ -89,21 +57,6 @@
       "sha256": "e1125421b81c2eedb6bf0e40a4aea9558d788018fd5bd19a21f2233839edf164"
     },
     {
-      "path": "transformer/._0.safetensors",
-      "bytes": 4096,
-      "sha256": "79c5709245dc88860f07ccc96b3d60552a9f46f7dee9d94c327c4b1d3f06a213"
-    },
-    {
-      "path": "transformer/._1.safetensors",
-      "bytes": 4096,
-      "sha256": "3e4cfae1cb853b26c2616a7d38393ec6d4fc0156e77343829f356f457726105c"
-    },
-    {
-      "path": "transformer/._model.safetensors.index.json",
-      "bytes": 4096,
-      "sha256": "93263d79c925c30d6a8ed4bbad4c65278345a1b100bd6cf44b9268b5ac952173"
-    },
-    {
       "path": "transformer/0.safetensors",
       "bytes": 2144245479,
       "sha256": "b93d45f79688cf95ea16653873f609df3fd13c6fb382b9c4a36a2ee4b2f80fe4"
@@ -117,16 +70,6 @@
       "path": "transformer/model.safetensors.index.json",
       "bytes": 61760,
       "sha256": "1c06cdb0665dbaf9e255df5580c6431e0323ee0ad52480bb70382ea8182a995d"
-    },
-    {
-      "path": "vae/._0.safetensors",
-      "bytes": 4096,
-      "sha256": "6110f98d049fb90d413c9cf0a87b71fee000e6946a8d7fae2f97a4fa152b74c6"
-    },
-    {
-      "path": "vae/._model.safetensors.index.json",
-      "bytes": 4096,
-      "sha256": "0be38ab2719e431a5742bed772e8e579c8bb39e3d42363541082cf0f96c0b4f2"
     },
     {
       "path": "vae/0.safetensors",

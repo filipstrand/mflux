@@ -40,7 +40,11 @@ Start with these baselines before proposing additional staged loading. Test BF16
 
 Production source: `ec705857d20846f5636fdc4acaa7507fa9855782` (MFLUX 0.23.0), macOS 14.6, MLX 0.32.0. The existing Python environment had MFLUX 0.22.0 distribution metadata; `PYTHONPATH` selected the pinned source.
 
-The checkpoint was a local q4 conversion from our earlier MFLUX port, stored on an external SSD. The [machine-readable report](benchmarks/m1-max-32gb-q4-20261017.json) includes file hashes, settings, phase timings and memory samples.
+The runs used `benchmark_memory.py` as committed in `11e7ed0e3a2eb1657d4263d9bcd0fb373bde3c4c`. Its SHA256 is `f65d6f471ba99c70823123cecf0d40a9afcd8c8edb7d03d886dab9ee9450b9a3`; check it with `git show 11e7ed0e:scripts/flux3/benchmark_memory.py | shasum -a 256`. The later commit `dae820dd` added the completion check and the source fields. It did not change the phase instrumentation or the memory sampling.
+
+The checkpoint is not public. It is a 4-bit conversion of [`black-forest-labs/flux-3-image-klein`](https://huggingface.co/black-forest-labs/flux-3-image-klein) at revision `1755314e2216b2a2c5cc0dd899d4e49ee3404d2c`, saved with `mflux-save` from an unpublished local FLUX 3 port (`7999f72c`) that predates #878. The exact command line was not recorded. Its file hashes identify the checkpoint used here, but nobody else can check them against a public file.
+
+The [results summary](benchmarks/m1-max-32gb-q4-20261017.json) records the checkpoint files, settings, phase timings, peaks and selected active-memory readings for each run. It is a hand-curated summary, not script output. The four raw reports, with their per-phase memory events, were not retained.
 
 | Run order | External wall, s | Python wall, s | Denoise interval, s | Peak MLX, GB | Peak RSS, GB |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -51,6 +55,6 @@ The checkpoint was a local q4 conversion from our earlier MFLUX port, stored on 
 
 GB in the table means decimal gigabytes. All four 512×512 images have identical RGB pixels. The low-RAM runs use about 40% less peak MLX allocation than the default runs for this case.
 
-Other applications were active. System-wide swap changed substantially across the run sequence; see the report for each value. These timings are observations under shared load, not a speed ranking. The q4 case demonstrates that the existing low-RAM path reduces allocation. It does not establish a need for another loading policy.
+Other applications were active. System-wide swap changed substantially across the run sequence; see the summary for each value. These timings are observations under shared load, not a speed ranking. The q4 case demonstrates that the existing low-RAM path reduces allocation. It does not establish a need for another loading policy.
 
-The ten recorder tests pass, including interrupted multi-seed runs and imports from a separate checkout or an installed package. Three initial counterexamples (losing a pre-reset peak, skipping lazy evaluation, and leaking instrumentation) each failed a relevant test. Restoring the two reporting bugs also fails the new regression tests; the restored recorder passes again.
+The recorder tests pass, including interrupted multi-seed runs and imports from a separate checkout or an installed package. Three initial counterexamples (losing a pre-reset peak, skipping lazy evaluation, and leaking instrumentation) each failed a relevant test. Restoring the two reporting bugs also fails the new regression tests; the restored recorder passes again.

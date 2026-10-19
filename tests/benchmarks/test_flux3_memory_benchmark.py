@@ -86,36 +86,17 @@ class TestMemoryBenchmark:
     @pytest.mark.parametrize("saved,success", [(0, False), (1, False), (2, True)])
     @pytest.mark.parametrize("checkout", [False, True])
     def test_main_reports_completion_and_imported_source(self, monkeypatch, tmp_path, saved, success, checkout):
-        report = tmp_path / "report.json"
         source = tmp_path / "installed" / "flux3_generate.py"
-        source.parent.mkdir()
-        source.touch()
         expected_sha = None
         if checkout:
-            for arguments in (
-                ["init", "--quiet"],
-                [
-                    "-c",
-                    "user.name=Test",
-                    "-c",
-                    "user.email=test@example.invalid",
-                    "commit",
-                    "--quiet",
-                    "--allow-empty",
-                    "-m",
-                    "fixture",
-                ],
-            ):
-                subprocess.run(["git", "-C", str(source.parent), *arguments], check=True)
-            expected_sha = subprocess.check_output(
-                ["git", "-C", str(source.parent), "rev-parse", "HEAD"], text=True
-            ).strip()
-
-        class Parser:
-            def parse_args(self):
-                return SimpleNamespace(seed=[42, 43])
-
-        original_parse = Parser.parse_args
+            source.parent.mkdir()
+            self.git(source.parent, "init", "--quiet")
+            self.git(
+                source.parent,
+                *("-c", "user.name=Test", "-c", "user.email=test@example.invalid"),
+                *("commit", "--quiet", "--no-verify", "--allow-empty", "-m", "fixture"),
+            )
+            expected_sha = self.git(source.parent, "rev-parse", "HEAD")
         image = SimpleNamespace(save=Mock())
 
         def generate():
@@ -124,29 +105,7 @@ class TestMemoryBenchmark:
                 image.save()
             # The real CLI catches an interrupted generation and returns normally.
 
-        cli = SimpleNamespace(__file__=str(source), CommandLineParser=Parser, main=generate)
-        mx = self.backend()
-        mx.device_info.return_value = {"device_name": "test"}
-        mlx = ModuleType("mlx")
-        mlx.core = mx
-        replacements = {
-            "mlx": mlx,
-            "mlx.core": mx,
-            "mflux.callbacks.instances.memory_saver": SimpleNamespace(
-                MemorySaver=SimpleNamespace(call_before_loop=Mock(), call_after_loop=Mock())
-            ),
-            "mflux.models.flux3.cli": SimpleNamespace(flux3_generate=cli),
-            "mflux.models.flux3.flux3_initializer": SimpleNamespace(Flux3Initializer=SimpleNamespace(init=Mock())),
-            "mflux.models.flux3.variants.flux3_klein_core": SimpleNamespace(
-                _Flux3KleinCore=SimpleNamespace(_encode_prompt=Mock(), _decode_latents=Mock())
-            ),
-            "mflux.utils.generated_image": SimpleNamespace(GeneratedImage=image),
-        }
-        for name, replacement in replacements.items():
-            monkeypatch.setitem(sys.modules, name, replacement)
-        monkeypatch.setattr(sys, "argv", ["benchmark", "--report", str(report), "--", "--auto-seeds", "2"])
-        monkeypatch.setattr(module.platform, "system", lambda: "Darwin")
-        monkeypatch.setattr(module.importlib.metadata, "version", lambda name: "test")
+        report = self.install_cli(monkeypatch, tmp_path, source, generate, self.backend(), image)
         if success:
             MemoryBenchmark.main()
         else:
@@ -158,10 +117,99 @@ class TestMemoryBenchmark:
         assert result["expected_images"] == 2
         assert result["source_path"] == str(source)
         assert result["source_sha"] == expected_sha
-        assert result["source_sha"] != result["benchmark_source_sha"]
-        assert (
-            result["benchmark_source_sha"]
-            == subprocess.check_output(["git", "-C", str(path.parent), "rev-parse", "HEAD"], text=True).strip()
+        # None when the tests run from an sdist or another tree without Git metadata.
+        assert result["benchmark_source_sha"] == MemoryBenchmark.command_output(
+            ["git", "-C", str(path.parent), "rev-parse", "HEAD"]
         )
+        if checkout:
+            assert result["source_sha"] != result["benchmark_source_sha"]
         assert ("error" in result) is not success
-        assert Parser.parse_args is original_parse
+        assert Parser.parse_args is ORIGINAL_PARSE
+
+    def test_failed_final_sample_keeps_original_error_and_report(self, monkeypatch, tmp_path):
+        mx = self.backend()
+
+        def generate():
+            mx.synchronize.side_effect = RuntimeError("Metal device lost")
+            raise ValueError("generation failed")
+
+        report = self.install_cli(monkeypatch, tmp_path, tmp_path / "flux3_generate.py", generate, mx)
+        with pytest.raises(ValueError, match="generation failed"):
+            MemoryBenchmark.main()
+        result = json.loads(report.read_text())
+        assert result["success"] is False
+        assert result["error"] == repr(ValueError("generation failed"))
+        assert "Metal device lost" in result["finished_snapshot_error"]
+        assert result["mlx_lifetime_peak_bytes"] == 120
+
+    def test_failed_final_sample_fails_complete_run(self, monkeypatch, tmp_path):
+        mx = self.backend()
+        image = SimpleNamespace(save=Mock())
+
+        def generate():
+            Parser().parse_args()
+            image.save()
+            image.save()
+            mx.synchronize.side_effect = RuntimeError("Metal device lost")
+
+        report = self.install_cli(monkeypatch, tmp_path, tmp_path / "flux3_generate.py", generate, mx, image)
+        with pytest.raises(RuntimeError, match="Metal device lost"):
+            MemoryBenchmark.main()
+        result = json.loads(report.read_text())
+        assert result["success"] is False
+        assert result["saved_images"] == 2
+        assert "error" not in result
+
+    @pytest.mark.parametrize("system,machine", [("Linux", "x86_64"), ("Darwin", "x86_64")])
+    def test_main_rejects_other_platforms(self, monkeypatch, tmp_path, system, machine):
+        report = tmp_path / "report.json"
+        monkeypatch.setattr(sys, "argv", ["benchmark", "--report", str(report), "--", "--auto-seeds", "2"])
+        monkeypatch.setattr(module.platform, "system", lambda: system)
+        monkeypatch.setattr(module.platform, "machine", lambda: machine)
+        with pytest.raises(SystemExit):
+            MemoryBenchmark.main()
+        assert not report.exists()
+
+    @staticmethod
+    def git(directory: Path, *arguments: str) -> str:
+        # Keep the contributor's commit signing and hooks out of the fixture repository.
+        command = ["git", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "-C", str(directory)]
+        return subprocess.run([*command, *arguments], check=True, capture_output=True, text=True).stdout.strip()
+
+    @staticmethod
+    def install_cli(monkeypatch, tmp_path, source, generate, mx, image=None) -> Path:
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.touch()
+        mx.device_info.return_value = {"device_name": "test"}
+        mlx = ModuleType("mlx")
+        mlx.core = mx
+        cli = SimpleNamespace(__file__=str(source), CommandLineParser=Parser, main=generate)
+        replacements = {
+            "mlx": mlx,
+            "mlx.core": mx,
+            "mflux.callbacks.instances.memory_saver": SimpleNamespace(
+                MemorySaver=SimpleNamespace(call_before_loop=Mock(), call_after_loop=Mock())
+            ),
+            "mflux.models.flux3.cli": SimpleNamespace(flux3_generate=cli),
+            "mflux.models.flux3.flux3_initializer": SimpleNamespace(Flux3Initializer=SimpleNamespace(init=Mock())),
+            "mflux.models.flux3.variants.flux3_klein_core": SimpleNamespace(
+                _Flux3KleinCore=SimpleNamespace(_encode_prompt=Mock(), _decode_latents=Mock())
+            ),
+            "mflux.utils.generated_image": SimpleNamespace(GeneratedImage=image or SimpleNamespace(save=Mock())),
+        }
+        for name, replacement in replacements.items():
+            monkeypatch.setitem(sys.modules, name, replacement)
+        report = tmp_path / "report.json"
+        monkeypatch.setattr(sys, "argv", ["benchmark", "--report", str(report), "--", "--auto-seeds", "2"])
+        monkeypatch.setattr(module.platform, "system", lambda: "Darwin")
+        monkeypatch.setattr(module.platform, "machine", lambda: "arm64")
+        monkeypatch.setattr(module.importlib.metadata, "version", lambda name: "test")
+        return report
+
+
+class Parser:
+    def parse_args(self):
+        return SimpleNamespace(seed=[42, 43])
+
+
+ORIGINAL_PARSE = Parser.parse_args

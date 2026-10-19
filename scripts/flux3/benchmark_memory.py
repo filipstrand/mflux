@@ -95,8 +95,8 @@ class MemoryBenchmark:
         cli_args = args.cli_args[1:] if args.cli_args[:1] == ["--"] else args.cli_args
         if not cli_args:
             parser.error("Pass FLUX 3 generation arguments after --")
-        if platform.system() != "Darwin":
-            parser.error("This benchmark reports macOS RSS in bytes and requires Apple Silicon")
+        if platform.system() != "Darwin" or platform.machine() != "arm64":
+            parser.error("This benchmark reports macOS RSS in bytes and requires macOS on Apple Silicon")
         if args.report.exists():
             parser.error("Report already exists; choose a new path for each process")
         args.report.parent.mkdir(parents=True, exist_ok=True)
@@ -161,20 +161,28 @@ class MemoryBenchmark:
             result["error"] = repr(exc)
             raise
         finally:
-            benchmark.snapshot("finished")
+            snapshot_error = None
+            try:
+                benchmark.snapshot("finished")
+            except RuntimeError as exc:
+                # After a Metal failure the final sample can fail too; keep the report and the original error.
+                snapshot_error = exc
+                result.update(success=False, finished_snapshot_error=repr(exc))
             result.update(
                 python_wall_s=time.perf_counter() - START,
                 phases=benchmark.phases,
                 events=benchmark.events,
                 saved_images=benchmark.saved_images,
                 expected_images=benchmark.expected_images,
-                mlx_lifetime_peak_bytes=max(benchmark.peaks),
+                mlx_lifetime_peak_bytes=max(benchmark.peaks, default=None),
                 process_peak_rss_bytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
                 swap_after=benchmark.command_output(["sysctl", "vm.swapusage"]),
                 pressure_after=benchmark.command_output(["sysctl", "kern.memorystatus_vm_pressure_level"]),
             )
             args.report.write_text(json.dumps(result, indent=2) + "\n")
             print(f"Benchmark report: {args.report}")
+            if snapshot_error is not None and "error" not in result:
+                raise snapshot_error
 
 
 if __name__ == "__main__":
