@@ -3,6 +3,7 @@
 
 import contextlib
 import json
+import os
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -286,3 +287,15 @@ def test_next_run_restores_a_snapshot_left_between_the_renames(hf_cache, tmp_pat
 
     assert result.file_count == 2
     assert not list(repo_cache.glob(".mflux_*-*"))
+
+
+@pytest.mark.fast
+def test_snapshot_folder_has_the_umask_mode(hf_cache, tmp_path):
+    previous = os.umask(0o022)
+    try:
+        result = HfCacheAlias.create(make_saved_model(tmp_path), "alice")
+    finally:
+        os.umask(previous)
+
+    snapshot = result.repo_cache / "snapshots" / result.revision
+    assert snapshot.stat().st_mode & 0o777 == 0o755

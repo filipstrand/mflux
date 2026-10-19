@@ -65,12 +65,17 @@ class HfCacheAlias:
         # An earlier run stopped between the two renames below: put its old snapshot back first.
         for leftover in sorted(repo_cache.glob(f".mflux_replaced-{revision}-*")):
             if snapshot.exists():
-                shutil.rmtree(leftover)
+                shutil.rmtree(leftover, ignore_errors=True)
             else:
                 leftover.rename(snapshot)
         # Build outside snapshots/, because the loader examines each folder in it. The folder name is
-        # unique, so two runs at the same time do not delete the build of the other run.
+        # unique, so a run does not delete the build of another run. Runs at the same time are not
+        # locked: the swap of one run can still fail if another run swaps at the same moment.
         building = Path(tempfile.mkdtemp(prefix=f".mflux_building-{revision}-", dir=repo_cache))
+        # mkdtemp makes the folder 0700. A shared cache needs the mode that mkdir gives.
+        umask = os.umask(0)
+        os.umask(umask)
+        building.chmod(0o777 & ~umask)
         try:
             file_count = 0
             for source in HfCacheAlias._model_files(model_dir):
@@ -93,7 +98,7 @@ class HfCacheAlias:
             shutil.rmtree(building, ignore_errors=True)
             raise
         if replaced.exists():
-            shutil.rmtree(replaced)
+            shutil.rmtree(replaced, ignore_errors=True)
         (repo_cache / "refs").mkdir(exist_ok=True)
         ref = repo_cache / "refs" / ".main.tmp"
         ref.write_text(revision)
