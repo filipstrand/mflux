@@ -332,17 +332,17 @@ class TestIrisModel:
         with pytest.raises(ValueError, match="multiples of 16"):
             model.generate_image(seed=1, prompt="x", width=1000, height=1024)
 
-    def test_turbo_step_callbacks_get_the_clean_prediction(self, monkeypatch):
+    def test_turbo_step_callbacks_get_the_state_as_latents_and_the_prediction_as_denoised(self, monkeypatch):
         # A model that always predicts the same image: every clean prediction is that image, while Turbo's next
-        # state is noised again. Stepwise images must show the prediction, not that noise.
+        # state is noised again. Callbacks get that state as latents and the prediction as denoised.
         image = mx.full((1, 3, 32, 32), 0.25)
         monkeypatch.setattr(IrisLatentCreator, "create_noise", staticmethod(lambda seed, h, w: mx.ones((1, 3, h, w))))
         monkeypatch.setattr(Iris, "_predict", lambda self, x, model_time, cond, mask: (x - image) / (model_time / 1000))
         seen = []
 
         class Recorder:
-            def call_in_loop(self, t, seed, prompt, latents, config, time_steps):
-                seen.append(latents)
+            def call_in_loop(self, t, seed, prompt, latents, config, time_steps, denoised=None):
+                seen.append((latents, denoised))
 
         model = Iris.__new__(Iris)
         model.model_config = AVAILABLE_MODELS["iris-3b"]
@@ -354,7 +354,10 @@ class TestIrisModel:
         model.generate_image(seed=1, prompt="x", width=32, height=32)
 
         assert len(seen) == 4
-        assert all(mx.allclose(latents, image, atol=1e-5).item() for latents in seen)
+        assert all(mx.allclose(denoised, image, atol=1e-5).item() for _, denoised in seen)
+        # The steps before the last pass the noised state. The state after the last step is the image.
+        assert not any(mx.allclose(latents, image, atol=1e-5).item() for latents, _ in seen[:-1])
+        assert mx.allclose(seen[-1][0], image, atol=1e-5).item()
 
     def test_turbo_is_a_property_of_the_config(self):
         turbo, base = Iris.__new__(Iris), Iris.__new__(Iris)

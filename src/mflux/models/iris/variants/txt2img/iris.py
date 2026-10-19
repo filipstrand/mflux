@@ -103,12 +103,12 @@ class Iris(nn.Module):
                     latents, clean = scheduler.step(latents, output, t)
                 else:
                     latents = clean = scheduler.step(latents, output, t)
-                # Turbo's next state is noised again, so callbacks (stepwise images) get its clean prediction.
-                # Base passes its solver state, as the other models do.
-                ctx.in_loop(t, clean)
+                # Callbacks get the solver state as latents, as with the other models. Turbo noises its next state
+                # again, so its clean prediction goes to the callbacks that declare `denoised`.
+                ctx.in_loop(t, latents, denoised=clean)
                 mx.eval(latents, clean)
             except KeyboardInterrupt:  # noqa: PERF203
-                ctx.interruption(t, clean)
+                ctx.interruption(t, latents)
                 raise StopImageGenerationException(
                     f"Stopping image generation at step {t + 1}/{config.num_inference_steps}"
                 )
