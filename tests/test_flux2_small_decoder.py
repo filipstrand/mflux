@@ -18,7 +18,7 @@ from mflux.models.flux2.model.flux2_vae.small_decoder import (
     SMALL_DECODER_BLOCK_OUT_CHANNELS,
     SMALL_DECODER_FILE,
     SMALL_DECODER_REPO,
-    Flux2SmallDecoder,
+    Flux2SmallDecoderLoader,
 )
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 from mflux.models.flux2.variants import Flux2Klein, Flux2KleinEdit
@@ -67,7 +67,7 @@ def test_the_small_decoder_has_the_parameter_count_of_the_reference():
 def test_the_loader_reads_only_the_diffusers_file():
     # The repo root also holds small_decoder.safetensors (BFL key names) and
     # full_encoder_small_decoder.safetensors. Reading every *.safetensors would mix them in.
-    component = Flux2SmallDecoder.component()
+    component = Flux2SmallDecoderLoader.component()
     assert component.name == "vae"
     assert component.hf_subdir == ""
     assert component.weight_files == [SMALL_DECODER_FILE]
@@ -75,8 +75,9 @@ def test_the_loader_reads_only_the_diffusers_file():
 
 @pytest.mark.fast
 @pytest.mark.parametrize("bits", [None, 8])
-def test_load_vae_applies_the_checkpoint(monkeypatch, bits):
-    supplied = _weights_of(Flux2VAE(decoder_block_out_channels=SMALL_DECODER_BLOCK_OUT_CHANNELS))
+def test_only_the_decoding_parts_of_the_checkpoint_are_applied(monkeypatch, bits):
+    # The checkpoint holds a whole VAE; its encoder, quant_conv and bn must not replace the model's own.
+    supplied = _weights_of(Flux2VAE(decoder_block_out_channels=SMALL_DECODER_BLOCK_OUT_CHANNELS), seed=1)
     calls = []
 
     def load_single(component, repo_id, file_pattern):
@@ -84,12 +85,18 @@ def test_load_vae_applies_the_checkpoint(monkeypatch, bits):
         return _loaded(supplied)
 
     monkeypatch.setattr(WeightLoader, "load_single", staticmethod(load_single))
-    vae = Flux2SmallDecoder.load_vae(bits=bits)
+    model_vae = Flux2VAE()
+    model_vae.update(_weights_of(model_vae, seed=2))
+    vae = Flux2SmallDecoderLoader.with_small_decoder(model_vae, bits=bits)
 
     assert calls == [("vae", SMALL_DECODER_REPO, SMALL_DECODER_FILE)]
     assert np.array_equal(np.array(vae.post_quant_conv.weight), np.array(supplied["post_quant_conv"]["weight"]))
     assert np.array_equal(np.array(vae.decoder.conv_out.weight), np.array(supplied["decoder"]["conv_out"]["weight"]))
-    # -q quantizes the attention of the small VAE as it does for the full one.
+    # Edit references are encoded, and latents normalized, by the model's own VAE.
+    assert vae.encoder is model_vae.encoder
+    assert vae.quant_conv is model_vae.quant_conv
+    assert vae.bn is model_vae.bn
+    # -q quantizes the attention of the small decoder as it does for the full one.
     to_q = vae.decoder.mid_block.attentions[0].to_q
     assert isinstance(to_q, nn.QuantizedLinear) == (bits is not None)
 
@@ -99,20 +106,22 @@ def test_full_width_weights_do_not_load_into_the_small_decoder(monkeypatch):
     # Module.update(strict=False) would take them without a word.
     monkeypatch.setattr(WeightLoader, "load_single", staticmethod(lambda *a, **k: _loaded(_weights_of(Flux2VAE()))))
     with pytest.raises(ValueError, match="Wrong shape"):
-        Flux2SmallDecoder.load_vae()
+        Flux2SmallDecoderLoader.with_small_decoder(Flux2VAE())
 
 
 @pytest.mark.fast
 def test_a_missing_or_unexpected_key_stops_the_load():
-    vae = Flux2VAE(decoder_block_out_channels=SMALL_DECODER_BLOCK_OUT_CHANNELS)
-    flat = tree_flatten(_weights_of(vae))
+    parameters = Flux2SmallDecoderLoader._decoding_parameters(
+        Flux2VAE(decoder_block_out_channels=SMALL_DECODER_BLOCK_OUT_CHANNELS)
+    )
+    flat = [(p, mx.zeros(v.shape)) for p, v in tree_flatten(parameters)]
     without = tree_unflatten([(p, v) for p, v in flat if p != "post_quant_conv.weight"])
     with pytest.raises(ValueError, match=r"Missing: \['post_quant_conv.weight'\]"):
-        Flux2SmallDecoder.check_weights(vae, without)
+        Flux2SmallDecoderLoader.check_weights(parameters, without)
     extra = tree_unflatten(flat + [("decoder.extra.weight", mx.zeros((1,)))])
     with pytest.raises(ValueError, match=r"Unexpected: \['decoder.extra.weight'\]"):
-        Flux2SmallDecoder.check_weights(vae, extra)
-    Flux2SmallDecoder.check_weights(vae, _weights_of(vae))
+        Flux2SmallDecoderLoader.check_weights(parameters, extra)
+    Flux2SmallDecoderLoader.check_weights(parameters, tree_unflatten(flat))
 
 
 @pytest.mark.fast
@@ -130,8 +139,8 @@ def test_the_initializer_swaps_only_the_decoder(monkeypatch, small):
     def apply_weights(model, weights, quantize):
         model.bits = 4
 
-    def load_vae(bits=None):
-        calls.append(bits)
+    def with_small_decoder(vae, bits=None):
+        calls.append((vae, bits))
         return small_vae
 
     monkeypatch.setattr(Flux2Initializer, "_load_weights", staticmethod(lambda path: None))
@@ -139,19 +148,14 @@ def test_the_initializer_swaps_only_the_decoder(monkeypatch, small):
     monkeypatch.setattr(Flux2Initializer, "_init_models", staticmethod(init_models))
     monkeypatch.setattr(Flux2Initializer, "_apply_weights", staticmethod(apply_weights))
     monkeypatch.setattr(Flux2Initializer, "_apply_lora", staticmethod(lambda *a: None))
-    monkeypatch.setattr(small_decoder.Flux2SmallDecoder, "load_vae", staticmethod(load_vae))
+    monkeypatch.setattr(small_decoder.Flux2SmallDecoderLoader, "with_small_decoder", staticmethod(with_small_decoder))
 
     model = _bare(Flux2Klein, False)
     Flux2Initializer.init(model=model, model_config=ModelConfig.flux2_klein_4b(), quantize=4, small_decoder=small)
 
     assert model.small_decoder is small
     assert model.vae is (small_vae if small else full_vae)
-    assert calls == ([4] if small else [])
-    # Edit references are encoded, and latents normalized, by the model's own VAE.
-    assert model.vae.encoder is full_vae.encoder
-    assert model.vae.quant_conv is full_vae.quant_conv
-    assert model.vae.bn is full_vae.bn
-    assert model.vae.decoder is (small_vae.decoder if small else full_vae.decoder)
+    assert calls == ([(full_vae, 4)] if small else [])
 
 
 @pytest.mark.fast
