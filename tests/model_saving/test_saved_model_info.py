@@ -424,3 +424,30 @@ def test_cli_lora_save_gets_a_numbered_folder_and_records_the_lora(hf_cache, mod
     assert info["loras"] == [
         {"source": "style.safetensors", "scale": 0.7, "sha256": hashlib.sha256(b"lora").hexdigest()}
     ]
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize(("requested", "expected"), [(None, "q8"), (4, "q8")])
+def test_resave_of_a_quantized_save_keeps_its_stored_width(hf_cache, models_dir, tmp_path, requested, expected):
+    # The loader keeps the stored width and ignores -q, so the name must not say bf16 or q4.
+    earlier = make_saved(tmp_path / "Z-Image-Turbo-mflux-q8")
+    (earlier / "transformer" / "model.safetensors.index.json").write_text(
+        json.dumps({"metadata": {"quantization_level": "8"}})
+    )
+    quantize = save.QuantizationResolution.resolve(
+        stored=SaveTarget.stored_quantization(str(earlier)), requested=requested
+    )[0]
+
+    target = SaveTarget.resolve(None, "z-image-turbo", str(earlier), quantize, True)
+
+    assert target.name == f"Z-Image-Turbo-mflux-{expected}-lora01"
+
+
+@pytest.mark.fast
+def test_unquantized_save_has_no_stored_width(hf_cache, tmp_path):
+    earlier = make_saved(tmp_path / "Z-Image-Turbo-mflux-bf16")
+    (earlier / "transformer" / "model.safetensors.index.json").write_text(
+        json.dumps({"metadata": {"quantization_level": "None"}})
+    )
+    assert SaveTarget.stored_quantization(str(earlier)) is None
+    assert SaveTarget.stored_quantization("Tongyi-MAI/Z-Image-Turbo") is None

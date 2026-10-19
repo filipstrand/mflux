@@ -68,6 +68,22 @@ class SaveTarget:
         return SaveTarget.OLD_SUFFIX.sub("", name)
 
     @staticmethod
+    def stored_quantization(model_path: str | None) -> int | None:
+        # The bit width of an earlier mflux save, from its index files. The loader keeps the stored
+        # width and ignores -q (QuantizationResolution), so the name and the metadata must use it too.
+        if model_path is None or not Path(model_path).expanduser().is_dir():
+            return None
+        root = Path(model_path).expanduser()
+        for index in sorted([*root.glob("model.safetensors.index.json"), *root.glob("*/model.safetensors.index.json")]):
+            try:
+                level = json.loads(index.read_text()).get("metadata", {}).get("quantization_level")
+            except (OSError, ValueError, AttributeError):
+                continue
+            if level not in (None, "None", "null", ""):
+                return int(level)
+        return None
+
+    @staticmethod
     def precision_label(key: str, quantize: int | None) -> str:
         if quantize is not None:
             return f"q{quantize}"

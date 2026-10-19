@@ -7,6 +7,7 @@ from mflux.models.common.config import ModelConfig
 from mflux.models.common.config.model_config import AVAILABLE_MODELS
 from mflux.models.common.resolution.config_resolution import ConfigResolution
 from mflux.models.common.resolution.lora_resolution import LoraResolution
+from mflux.models.common.resolution.quantization_resolution import QuantizationResolution
 from mflux.models.common.weights.saving.hf_cache_alias import HfCacheAlias
 from mflux.models.common.weights.saving.saved_model_info import SavedModelInfo, SaveTarget
 from mflux.models.ernie_image.variants.txt2img.ernie_image import ErnieImage
@@ -158,8 +159,12 @@ def main():
 
     # Find and check the target folder and the alias name before the load, so a problem
     # stops the command in seconds, not after the quantize.
+    # The bit width the save writes: a pre-quantized local model keeps its stored width.
+    quantize, _ = QuantizationResolution.resolve(
+        stored=SaveTarget.stored_quantization(model_path), requested=args.quantize
+    )
     try:
-        target = SaveTarget.resolve(args.path, key, model_path, args.quantize, bool(args.lora_paths))
+        target = SaveTarget.resolve(args.path, key, model_path, quantize, bool(args.lora_paths))
     except ValueError as error:
         parser.error(f"argument --path: {error}")
     if args.hf_symlink is not None:
@@ -194,7 +199,7 @@ def main():
         key=key,
         model_path=model_path,
         model_config_repo_id=model_config.model_name,
-        quantize=args.quantize,
+        quantize=quantize,
         lora_sources=list(args.lora_paths or []),
         lora_files=lora_files,
         lora_scales=LoraResolution.resolve_scales(args.lora_scales, len(lora_files)),
