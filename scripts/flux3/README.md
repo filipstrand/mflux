@@ -29,10 +29,10 @@ Run the existing fixture:
 uv run python -m pytest tests/image_generation/test_flux3_transformer_parity.py
 ```
 
-Regenerate on an Apple Silicon Mac with MPS, using an isolated reference environment:
+Regenerate on an Apple Silicon Mac with MPS, using an isolated reference environment. `--managed-python` keeps packages from a system Python out of the environment:
 
 ```sh
-uv run --no-project --python 3.11 --with 'torch==2.14.1' --with 'numpy==2.4.6' --with 'transformers==5.20.0' --with 'diffusers @ https://github.com/huggingface/diffusers/archive/7ecb1e1b4fe500be7fb7381a7bb79a24d7fa3941.zip' python scripts/flux3/export_parity_reference.py tests/resources/flux3_transformer_parity.npz
+uv run --no-project --managed-python --python 3.11.13 --with 'torch==2.14.1' --with 'numpy==2.4.6' --with 'transformers==5.20.0' --with 'diffusers @ https://github.com/huggingface/diffusers/archive/7ecb1e1b4fe500be7fb7381a7bb79a24d7fa3941.zip' python scripts/flux3/export_parity_reference.py tests/resources/flux3_transformer_parity.npz
 ```
 
 The exporter verifies the Diffusers revision in its installation metadata. It records the reference source hash, package versions, device and seeds inside the NPZ. Synthetic weights and inputs are generated on CPU with fixed seeds, then every reference forward pass runs on MPS. Arrays use numeric or string dtypes, so tests load them with `allow_pickle=False`.
