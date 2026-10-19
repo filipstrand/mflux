@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from mflux.models.common.config.model_config import ModelConfig
+from mflux.models.flux3.model.flux3_transformer.flux3_attention import Flux3Attention
 from mflux.models.flux3.model.flux3_transformer.flux3_timestep_embedder import Flux3TimestepEmbedder
 from mflux.models.flux3.model.flux3_transformer.flux3_transformer import Flux3Transformer
 
@@ -85,3 +86,21 @@ def test_target_timestep_contract(reference_data, monkeypatch, kind):
         args["target_timestep"] = mx.zeros((1,))
     with pytest.raises(ValueError, match="target_timestep"):
         model(**args)
+
+
+@pytest.mark.parametrize("kind", ["distilled", "base"])
+def test_bf16_qk_norms_apply_their_weights(reference_data, monkeypatch, kind):
+    # Random weights give near-uniform attention, so the transformer tolerance cannot see ignored Q/K scales.
+    model = Flux3Parity.model(reference_data, kind, "bf16", monkeypatch)
+    attentions = [(name, module) for name, module in model.named_modules() if isinstance(module, Flux3Attention)]
+    assert attentions
+    for name, attention in attentions:
+        x = mx.random.normal((1, attention.heads, 16, attention.dim_head), key=mx.random.key(0)).astype(mx.bfloat16)
+        identity = mx.ones((16, attention.dim_head // 2)), mx.zeros((16, attention.dim_head // 2))
+        x64 = np.array(x.astype(mx.float32)).astype(np.float64)
+        for norm_name in ("norm_q", "norm_k"):
+            weight = mx.array(reference_data[f"weight/{kind}/{name}.{norm_name}.weight"]).astype(mx.bfloat16)
+            expected = x64 / np.sqrt((x64**2).mean(-1, keepdims=True) + 1e-6) * np.array(weight.astype(mx.float32))
+            actual = Flux3Attention._norm_rope(x, getattr(attention, norm_name), *identity)
+            assert actual.dtype == mx.bfloat16
+            np.testing.assert_allclose(np.array(actual.astype(mx.float32)), expected, rtol=1e-2, atol=1e-6)

@@ -19,6 +19,8 @@ The fast tests cover:
 
 The test timestep `0.7137` and target `0.3713` expose BF16 rounding. The FP32 profiles use `rtol=2e-5`, `atol=2e-6`, and relative L2 error below `1e-5`. BF16 uses `rtol=0.02`, `atol=0.02`, and relative L2 error below `0.02` to allow differences between Metal kernels. The tests also reject non-finite output.
 
+The BF16 tolerance is too loose to catch Q/K norm weights that are ignored or wrongly rounded: with random weights, attention is close to uniform and the scales barely change the output. A separate test therefore runs each BF16 Q/K norm of the loaded model on a fixed input and compares it with exact RMSNorm using the BF16-rounded weights.
+
 This fixture tests transformer maths. It does not test trained-model image quality, quantised weights, prompt encoding, VAE decoding, or a full denoising schedule. Base guidance combines transformer calls outside this scope.
 
 ## Reproduce
