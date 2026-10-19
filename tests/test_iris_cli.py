@@ -264,6 +264,8 @@ class TestIrisSaveDispatch:
 
         assert config.model_name == path
         assert IrisInitializer.saved_path(config, path) == path
+        # Iris(model_config=config) without model_path loads the same saved directory.
+        assert IrisInitializer.saved_path(config, None) == path
 
     @pytest.mark.parametrize("key", ["iris-3b", "iris-3b-base"])
     def test_the_upstream_repo_id_is_not_a_saved_model(self, key):

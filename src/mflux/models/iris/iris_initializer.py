@@ -28,9 +28,11 @@ class IrisInitializer:
     @staticmethod
     def saved_path(model_config: ModelConfig, model_path: str | None) -> str | None:
         # The Iris repo id (what a metadata sidecar records as the model) means the upstream checkpoints. Any other
-        # path is a saved model, even when it is the model_name of a config that mflux-save built for that path.
+        # path is a saved model, even when it is the model_name of a config that mflux-save built for that path, or
+        # when it only arrives as that model_name (Iris(model_config=...) without model_path).
         upstream_repo = model_config.base_model or model_config.model_name
-        return None if model_path in (None, upstream_repo) else model_path
+        candidate = model_path or model_config.model_name
+        return None if candidate == upstream_repo else candidate
 
     @staticmethod
     def weight_definition(model_config: ModelConfig):
