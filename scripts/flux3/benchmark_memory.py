@@ -13,8 +13,27 @@ from pathlib import Path
 from unittest.mock import patch
 
 START = time.perf_counter()
-# An inherited GIT_DIR (set inside a Git hook, for example) overrides git -C and would record another repository.
-GIT_LOCATION_VARIABLES = frozenset({"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY"})
+# Inherited repository variables (set inside a Git hook, for example) override git -C and would record another
+# repository. These are Git's own repository-local variables, from `git rev-parse --local-env-vars`.
+GIT_LOCATION_VARIABLES = frozenset(
+    {
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        "GIT_COMMON_DIR",
+        "GIT_CONFIG",
+        "GIT_CONFIG_COUNT",
+        "GIT_CONFIG_PARAMETERS",
+        "GIT_DIR",
+        "GIT_GRAFT_FILE",
+        "GIT_IMPLICIT_WORK_TREE",
+        "GIT_INDEX_FILE",
+        "GIT_NO_REPLACE_OBJECTS",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_PREFIX",
+        "GIT_REPLACE_REF_BASE",
+        "GIT_SHALLOW_FILE",
+        "GIT_WORK_TREE",
+    }
+)
 
 
 class MemoryBenchmark:
