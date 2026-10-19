@@ -48,6 +48,8 @@ class ModelRevisions:
         "Qwen/Qwen-Image-2512": "25468b98e3276ca6700de15c6628e51b7de54a26",
         "Qwen/Qwen-Image-Edit-2509": "d3968ef930e841f4c73640fb8afa3b306a78167e",
         "Qwen/Qwen-Image-Edit-2511": "6f3ccc0b56e431dc6a0c2b2039706d7d26f22cb9",
+        "Qwen/Qwen3-VL-4B-Instruct": "ebb281ec70b05090aa6165b016eac8ec08e71b17",
+        "speridlabs/iris-3b": "adc05b909fb05d4276d26aae5a52b36406b2ef26",
         "Tongyi-MAI/Z-Image": "04cc4abb7c5069926f75c9bfde9ef43d49423021",
         "Tongyi-MAI/Z-Image-Turbo": "f332072aa78be7aecdf3ee76d5c247082da564a6",
         "xiaozaa/catvton-flux-beta": "4088ab884c686e07396d1eb12cf10bf0facb65e0",
