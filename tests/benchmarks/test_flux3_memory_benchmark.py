@@ -118,12 +118,13 @@ class TestMemoryBenchmark:
         assert Parser.parse_args is ORIGINAL_PARSE
 
     def test_inherited_git_dir_does_not_redirect_source_shas(self, monkeypatch, tmp_path):
-        source = tmp_path / "installed" / "flux3_generate.py"
-        expected_sha = self.commit_fixture(source.parent)
         decoy = tmp_path / "decoy"
         decoy_sha = self.commit_fixture(decoy, "decoy")
-        benchmark_sha = MemoryBenchmark.command_output(["git", "-C", str(path.parent), "rev-parse", "HEAD"])
+        # Set before the fixture commit so the fixture's own Git commands must ignore it too.
         monkeypatch.setenv("GIT_DIR", str(decoy / ".git"))
+        source = tmp_path / "installed" / "flux3_generate.py"
+        expected_sha = self.commit_fixture(source.parent)
+        benchmark_sha = MemoryBenchmark.command_output(["git", "-C", str(path.parent), "rev-parse", "HEAD"])
         image = SimpleNamespace(save=Mock())
 
         def generate():
@@ -137,6 +138,7 @@ class TestMemoryBenchmark:
         assert result["source_sha"] == expected_sha
         assert result["benchmark_source_sha"] == benchmark_sha
         assert decoy_sha not in (result["source_sha"], result["benchmark_source_sha"])
+        assert self.git(decoy, "rev-parse", "HEAD") == decoy_sha
 
     def test_failed_final_sample_keeps_original_error_and_report(self, monkeypatch, tmp_path):
         mx = self.backend()
