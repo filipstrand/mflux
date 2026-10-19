@@ -7,7 +7,6 @@ class IrisLatentCreator:
 
     @staticmethod
     def create_noise(seed: int, height: int, width: int) -> mx.array:
-        IrisLatentCreator.check_size(height, width)
         shape = (1, IrisLatentCreator.CHANNELS, height, width)
         return mx.random.normal(shape=shape, dtype=mx.float32, key=mx.random.key(seed))
 

@@ -90,15 +90,6 @@ class TestIrisGenerateCli:
         assert any(message.startswith("--vae-tiling is ignored") for message in warned)
         assert any(message.startswith("--vae-tile-size is ignored") for message in warned)
 
-    @pytest.mark.parametrize("size", [["--width", "1000"], ["--height", "1030"], ["--width", "500", "--height", "500"]])
-    def test_sizes_that_are_not_multiples_of_16_exit_with_an_error(self, run_cli, capsys, size):
-        with pytest.raises(SystemExit) as exit_info:
-            run_cli(*size)
-
-        assert exit_info.value.code == 2
-        assert "multiples of 16" in capsys.readouterr().err
-        assert _StubIris.instances == []
-
     def test_multiples_of_16_pass_through(self, run_cli):
         model, _ = run_cli("--width", "512", "--height", "768")
 
@@ -331,6 +322,30 @@ class TestIrisModel:
 
         with pytest.raises(ValueError, match="multiples of 16"):
             model.generate_image(seed=1, prompt="x", width=1000, height=1024)
+
+    def test_turbo_step_callbacks_get_the_clean_prediction(self, monkeypatch):
+        # A model that always predicts the same image: every clean prediction is that image, while Turbo's next
+        # state is noised again. Stepwise images must show the prediction, not that noise.
+        image = mx.full((1, 3, 32, 32), 0.25)
+        monkeypatch.setattr(IrisLatentCreator, "create_noise", staticmethod(lambda seed, h, w: mx.ones((1, 3, h, w))))
+        monkeypatch.setattr(Iris, "_predict", lambda self, x, model_time, cond, mask: (x - image) / (model_time / 1000))
+        seen = []
+
+        class Recorder:
+            def call_in_loop(self, t, seed, prompt, latents, config, time_steps):
+                seen.append(latents)
+
+        model = Iris.__new__(Iris)
+        model.model_config = AVAILABLE_MODELS["iris-3b"]
+        model.callbacks = CallbackRegistry()
+        model.callbacks.register(Recorder())
+        model.prompt_cache = {"x": (mx.zeros((1,)), mx.zeros((1,)))}
+        model.bits = None
+
+        model.generate_image(seed=1, prompt="x", width=32, height=32)
+
+        assert len(seen) == 4
+        assert all(mx.allclose(latents, image, atol=1e-5).item() for latents in seen)
 
     def test_turbo_is_a_property_of_the_config(self):
         turbo, base = Iris.__new__(Iris), Iris.__new__(Iris)

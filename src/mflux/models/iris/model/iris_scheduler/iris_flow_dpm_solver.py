@@ -5,6 +5,8 @@ import numpy as np
 
 
 class IrisFlowDPMSolver:
+    # Keeps the previous clean predictions for the second-order step, so it serves one run only: make a new one for
+    # every image.
     NUM_TRAIN_TIMESTEPS = 1000
 
     def __init__(self, num_inference_steps: int, shift: float = 4.0, order: int = 2):

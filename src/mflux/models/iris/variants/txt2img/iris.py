@@ -84,9 +84,7 @@ class Iris(nn.Module):
         uncond, uncond_mask = self._encode_prompt(negative_prompt) if use_cfg else (None, None)
 
         # 2. Noise
-        latents = self._noise_override
-        if latents is None:
-            latents = IrisLatentCreator.create_noise(seed, config.height, config.width)
+        latents = IrisLatentCreator.create_noise(seed, config.height, config.width)
 
         # 3. Denoising loop; the integrator state stays float32, the network runs in the model precision.
         scheduler = IrisTurboScheduler() if self.is_turbo else IrisFlowDPMSolver(num_inference_steps, Iris.SHIFT)
@@ -105,10 +103,12 @@ class Iris(nn.Module):
                     latents, clean = scheduler.step(latents, output, t)
                 else:
                     latents = clean = scheduler.step(latents, output, t)
-                ctx.in_loop(t, latents)
-                mx.eval(latents)
+                # Turbo's next state is noised again, so callbacks (stepwise images) get its clean prediction.
+                # Base passes its solver state, as the other models do.
+                ctx.in_loop(t, clean)
+                mx.eval(latents, clean)
             except KeyboardInterrupt:  # noqa: PERF203
-                ctx.interruption(t, latents)
+                ctx.interruption(t, clean)
                 raise StopImageGenerationException(
                     f"Stopping image generation at step {t + 1}/{config.num_inference_steps}"
                 )

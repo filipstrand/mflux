@@ -44,7 +44,6 @@ class IrisInitializer:
         model.model_config = model_config
         model.callbacks = CallbackRegistry()
         model.tiling_config = None
-        model._noise_override = None  # test hook: golden-parity scripts replace the seeded noise with a fixed tensor
 
     @staticmethod
     def _load_weights(definition, model_config: ModelConfig, model_path: str | None) -> LoadedWeights:
