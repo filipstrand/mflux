@@ -2,6 +2,7 @@
 # username from the documented sources in priority order, and refuse a bad name before any load.
 
 import contextlib
+import json
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -9,8 +10,13 @@ from unittest.mock import patch
 import pytest
 
 from mflux.models.common.cli import save
+from mflux.models.common.resolution import path_resolution
+from mflux.models.common.resolution.path_resolution import PathResolution
+from mflux.models.common.weights.loading.weight_definition import ComponentDefinition
 from mflux.models.common.weights.saving import hf_cache_alias
 from mflux.models.common.weights.saving.hf_cache_alias import HfCacheAlias
+from mflux.models.krea2.weights.krea2_weight_definition import Krea2WeightDefinition
+from mflux.models.seedvr2.weights.seedvr2_weight_definition import SeedVR2WeightDefinition
 
 ENV_VARS = HfCacheAlias.USERNAME_ENV_VARS
 
@@ -149,3 +155,99 @@ def test_cli_bad_name_exits_before_the_save(hf_cache, tmp_path):
     assert exit_info.value.code == 2
     # The stubbed save writes this folder, so its absence shows the save never ran.
     assert not (tmp_path / "my-model_8bit").exists()
+
+
+@pytest.mark.fast
+def test_failed_rebuild_keeps_the_old_snapshot(hf_cache, tmp_path, monkeypatch):
+    model_dir = make_saved_model(tmp_path)
+    first = HfCacheAlias.create(model_dir, "alice")
+    snapshot = hf_cache / "models--alice--my-model_8bit" / "snapshots" / first.revision
+
+    def fail(self, source):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(Path, "symlink_to", fail)
+    with pytest.raises(OSError):
+        HfCacheAlias.create(model_dir, "alice")
+
+    assert (snapshot / "model_index.json").is_symlink()
+    assert sorted(p.name for p in snapshot.parent.iterdir()) == [first.revision]
+
+
+@pytest.mark.fast
+def test_interrupted_first_create_can_be_repaired(hf_cache, tmp_path, monkeypatch):
+    model_dir = make_saved_model(tmp_path)
+    with monkeypatch.context() as patched:
+        patched.setattr(Path, "symlink_to", lambda self, source: (_ for _ in ()).throw(OSError("stop")))
+        with pytest.raises(OSError):
+            HfCacheAlias.create(model_dir, "alice")
+
+    result = HfCacheAlias.create(model_dir, "alice")
+
+    assert result.file_count == 2
+    assert not list((hf_cache / "models--alice--my-model_8bit").glob(".mflux_building-*"))
+
+
+@pytest.mark.fast
+def test_cli_expands_home_once_for_the_save_and_the_alias(hf_cache, tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+
+    calls = run_save(["--hf-symlink", "bob"], Path("~/my-model_8bit"))
+
+    assert calls == [str((home / "my-model_8bit").resolve())]
+    assert (hf_cache / "models--bob--my-model_8bit" / HfCacheAlias.MARKER).read_text().strip() == str(
+        (home / "my-model_8bit").resolve()
+    )
+
+
+def make_component_save(root: Path, subdirs: list[str]) -> Path:
+    # The layout ModelSaver writes: shards plus model.safetensors.index.json in each component folder.
+    for subdir in subdirs:
+        folder = root / subdir
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "0.safetensors").write_bytes(b"w")
+        (folder / "model.safetensors.index.json").write_text(json.dumps({"weight_map": {"w": "0.safetensors"}}))
+    return root
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize(
+    ("definition", "folder"),
+    [
+        (SeedVR2WeightDefinition, "SeedVR2_comfyUI-3b-mflux-q8"),
+        (Krea2WeightDefinition, "Krea-2-Turbo-mflux-q8"),
+    ],
+    ids=["seedvr2", "krea2"],
+)
+def test_alias_of_a_saved_layout_loads_from_the_cache(hf_cache, tmp_path, monkeypatch, definition, folder):
+    # These saves keep the saved layout, not the file names in the download patterns.
+    # Without the saved-layout check, the alias missed the cache and went to the download path.
+    monkeypatch.setattr(path_resolution, "HF_HUB_CACHE", str(hf_cache))
+    # Online, a download of this made-up repo id fails with a 404. The cache rule must answer first.
+    monkeypatch.setattr(path_resolution, "snapshot_download", lambda **kwargs: pytest.fail("went to the download path"))
+    saved_subdirs = list(ComponentDefinition.save_subdirs(definition.get_components()).values())
+    model_dir = make_component_save(tmp_path / folder, saved_subdirs)
+    alias = HfCacheAlias.create(model_dir, "alice")
+
+    resolved = PathResolution.resolve(alias.repo_id, definition.get_download_patterns(), saved_subdirs)
+
+    assert resolved == alias.repo_cache / "snapshots" / alias.revision
+
+
+@pytest.mark.fast
+def test_hf_layout_without_saved_index_is_not_taken_for_a_save(hf_cache, monkeypatch):
+    # A download that misses the pattern files must not pass as complete only because its folders hold shards.
+    monkeypatch.setattr(path_resolution, "HF_HUB_CACHE", str(hf_cache))
+    snapshot = hf_cache / "models--org--repo" / "snapshots" / "abc"
+    for subdir in ("transformer", "vae"):
+        (snapshot / subdir).mkdir(parents=True)
+        (snapshot / subdir / "x.safetensors").write_bytes(b"w")
+
+    assert (
+        PathResolution._find_complete_cached_snapshot(
+            "org/repo", ["seedvr2_ema_3b_fp16.safetensors"], ["transformer", "vae"]
+        )
+        is None
+    )

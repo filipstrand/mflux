@@ -35,7 +35,7 @@ class PathResolution:
         for rule in sorted(PathResolution.RULES, key=lambda r: r.priority):
             if PathResolution._check(rule.check, path, patterns, saved_subdirs):
                 logger.debug(f"Path resolution: '{path}' → rule '{rule.name}' ({rule.action.value})")
-                return PathResolution._execute(rule.action, path, patterns)
+                return PathResolution._execute(rule.action, path, patterns, saved_subdirs)
 
         raise ValueError(f"No rule matched for path: {path}")
 
@@ -73,7 +73,7 @@ class PathResolution:
             if not PathResolution._is_hf_format(path):
                 return False
             # Check if we have a complete cached snapshot
-            return PathResolution._find_complete_cached_snapshot(path, patterns) is not None
+            return PathResolution._find_complete_cached_snapshot(path, patterns, saved_subdirs) is not None
         if check == "is_hf_format":
             return PathResolution._is_hf_format(path)
         if check == "always":
@@ -81,12 +81,14 @@ class PathResolution:
         return False
 
     @staticmethod
-    def _execute(action: PathAction, path: str | None, patterns: list[str]) -> Path | None:
+    def _execute(
+        action: PathAction, path: str | None, patterns: list[str], saved_subdirs: list[str] | None = None
+    ) -> Path | None:
         if action == PathAction.LOCAL:
             return Path(path).expanduser() if path else None
         if action == PathAction.HUGGINGFACE_CACHED:
             # Find the best complete cached snapshot
-            cached_path = PathResolution._find_complete_cached_snapshot(path, patterns)
+            cached_path = PathResolution._find_complete_cached_snapshot(path, patterns, saved_subdirs)
             if cached_path:
                 return cached_path
             # Fallback to standard snapshot_download (shouldn't happen if _check passed)
@@ -107,7 +109,9 @@ class PathResolution:
         return None
 
     @staticmethod
-    def _find_complete_cached_snapshot(repo_id: str | None, patterns: list[str]) -> Path | None:
+    def _find_complete_cached_snapshot(
+        repo_id: str | None, patterns: list[str], saved_subdirs: list[str] | None = None
+    ) -> Path | None:
         if repo_id is None:
             return None
 
@@ -132,7 +136,11 @@ class PathResolution:
         for snapshot_path in snapshots:
             if not snapshot_path.is_dir():
                 continue
-            if PathResolution._is_snapshot_complete(snapshot_path, required_subdirs, patterns):
+            # mflux-save --hf-symlink links an mflux save into the cache. The save keeps its own
+            # layout, not the file names in the download patterns (SeedVR2, Krea 2 Turbo).
+            if PathResolution._is_snapshot_complete(
+                snapshot_path, required_subdirs, patterns
+            ) or PathResolution._is_complete_saved_checkpoint(snapshot_path, saved_subdirs):
                 logger.debug(f"Found complete cached snapshot: {snapshot_path}")
                 return snapshot_path
 
@@ -202,6 +210,22 @@ class PathResolution:
             if not PathResolution._indexed_shards_present(subdir_path):
                 return False
 
+        return True
+
+    @staticmethod
+    def _is_complete_saved_checkpoint(snapshot_path: Path, saved_subdirs: list[str] | None) -> bool:
+        # Each component folder has the index file that ModelSaver always writes, and every shard
+        # that the index names. A HuggingFace download has no such index in these folders.
+        if not saved_subdirs:
+            return False
+        for subdir in saved_subdirs:
+            directory = snapshot_path / subdir
+            if not (directory / "model.safetensors.index.json").is_file():
+                return False
+            if not any(p.is_file() for p in directory.glob("*.safetensors")):
+                return False
+            if not PathResolution._indexed_shards_present(directory):
+                return False
         return True
 
     @staticmethod

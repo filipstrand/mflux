@@ -56,19 +56,34 @@ class HfCacheAlias:
         HfCacheAlias.check(model_dir, username)
         repo_cache = HfCacheAlias._repo_cache(model_dir, username)
         revision = HfCacheAlias._revision(model_dir)
-        snapshot = repo_cache / "snapshots" / revision
-        if snapshot.exists():
-            shutil.rmtree(snapshot)
-        snapshot.mkdir(parents=True)
+        # The marker goes first: if the command stops before the end, the next run can repair the entry.
+        repo_cache.mkdir(parents=True, exist_ok=True)
+        (repo_cache / HfCacheAlias.MARKER).write_text(f"{model_dir}\n")
+        # Build outside snapshots/, because the loader examines each folder in it. Then swap the new
+        # snapshot in, so a reader never sees a half-built snapshot and the old one stays until the end.
+        building = repo_cache / f".mflux_building-{revision}"
+        replaced = repo_cache / f".mflux_replaced-{revision}"
+        for leftover in (building, replaced):
+            if leftover.exists():
+                shutil.rmtree(leftover)
+        building.mkdir()
         file_count = 0
         for source in HfCacheAlias._model_files(model_dir):
-            target = snapshot / source.relative_to(model_dir)
+            target = building / source.relative_to(model_dir)
             target.parent.mkdir(parents=True, exist_ok=True)
             target.symlink_to(source)
             file_count += 1
+        snapshot = repo_cache / "snapshots" / revision
+        snapshot.parent.mkdir(exist_ok=True)
+        if snapshot.exists():
+            snapshot.rename(replaced)
+        building.rename(snapshot)
+        if replaced.exists():
+            shutil.rmtree(replaced)
         (repo_cache / "refs").mkdir(exist_ok=True)
-        (repo_cache / "refs" / "main").write_text(revision)
-        (repo_cache / HfCacheAlias.MARKER).write_text(f"{model_dir}\n")
+        ref = repo_cache / "refs" / ".main.tmp"
+        ref.write_text(revision)
+        ref.replace(repo_cache / "refs" / "main")
         return HfCacheAliasResult(
             repo_id=f"{username}/{model_dir.name}",
             revision=revision,
