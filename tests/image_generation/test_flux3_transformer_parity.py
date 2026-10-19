@@ -38,15 +38,12 @@ class Flux3Parity:
         # Other profiles exercise the production BF16 timestep default without overriding it.
         model = Flux3Transformer(**json.loads(str(data[f"config/{kind}"])))
         prefix = f"weight/{kind}/"
+        # Like WeightLoader._convert_precision, BF16 casts every weight, Q/K norms included.
+        dtype = mx.bfloat16 if profile == "bf16" else mx.float32
         weights = []
         for key, value in data.items():
             if key.startswith(prefix):
                 name = key.removeprefix(prefix).replace(".attn.to_out.0.", ".attn.to_out.")
-                dtype = (
-                    mx.bfloat16
-                    if profile == "bf16" and ".norm_q." not in name and ".norm_k." not in name
-                    else mx.float32
-                )
                 weights.append((name, mx.array(value).astype(dtype)))
         model.load_weights(weights, strict=True)
         return model

@@ -4,7 +4,7 @@
 
 ## Coverage
 
-The 23 fast tests cover:
+The fast tests cover:
 
 - Distilled and Base transformers, with their target-timestep contracts.
 - Text-to-image, one reference, and two references with distinct negative layer IDs.
@@ -15,7 +15,7 @@ The 23 fast tests cover:
 
 `bf16_timestep` keeps model weights and streams in FP32, but rounds the timestep and sinusoidal embedding to BF16. This matches the timestep convention described by the author of [#878](https://github.com/mflux-community/mflux/pull/878#issuecomment-6207137899). Diffusers receives an explicit adapter around `time_proj`: recover `t` from `t * 1000`, round to BF16 before multiplying, then round the sinusoidal output to BF16 and return it in FP32. This is a Diffusers reference with a documented numerical adapter, not a run of the BFL implementation. The MLX test uses the production timestep default.
 
-`bf16` compares BF16 weights and streams with unmodified Diffusers BF16 execution. Both sides keep Q/K normalisation weights in FP32. The MLX timestep default stays active.
+`bf16` compares BF16 weights and streams with unmodified Diffusers BF16 execution. Both sides cast every weight to BF16, including the Q/K normalisation weights, as `WeightLoader` does for production checkpoints. The fixture gives those normalisation weights random scales near one, so BF16 rounding of them affects the reference. The MLX timestep default stays active.
 
 The test timestep `0.7137` and target `0.3713` expose BF16 rounding. The FP32 profiles use `rtol=2e-5`, `atol=2e-6`, and relative L2 error below `1e-5`. BF16 uses `rtol=0.02`, `atol=0.02`, and relative L2 error below `0.02` to allow differences between Metal kernels. The tests also reject non-finite output.
 
