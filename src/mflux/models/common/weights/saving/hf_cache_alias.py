@@ -2,6 +2,7 @@ import getpass
 import hashlib
 import os
 import shutil
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -59,25 +60,38 @@ class HfCacheAlias:
         # The marker goes first: if the command stops before the end, the next run can repair the entry.
         repo_cache.mkdir(parents=True, exist_ok=True)
         (repo_cache / HfCacheAlias.MARKER).write_text(f"{model_dir}\n")
-        # Build outside snapshots/, because the loader examines each folder in it. Then swap the new
-        # snapshot in, so a reader never sees a half-built snapshot and the old one stays until the end.
-        building = repo_cache / f".mflux_building-{revision}"
-        replaced = repo_cache / f".mflux_replaced-{revision}"
-        for leftover in (building, replaced):
-            if leftover.exists():
-                shutil.rmtree(leftover)
-        building.mkdir()
-        file_count = 0
-        for source in HfCacheAlias._model_files(model_dir):
-            target = building / source.relative_to(model_dir)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.symlink_to(source)
-            file_count += 1
         snapshot = repo_cache / "snapshots" / revision
         snapshot.parent.mkdir(exist_ok=True)
+        # An earlier run stopped between the two renames below: put its old snapshot back first.
+        for leftover in sorted(repo_cache.glob(f".mflux_replaced-{revision}-*")):
+            if snapshot.exists():
+                shutil.rmtree(leftover)
+            else:
+                leftover.rename(snapshot)
+        # Build outside snapshots/, because the loader examines each folder in it. The folder name is
+        # unique, so two runs at the same time do not delete the build of the other run.
+        building = Path(tempfile.mkdtemp(prefix=f".mflux_building-{revision}-", dir=repo_cache))
+        try:
+            file_count = 0
+            for source in HfCacheAlias._model_files(model_dir):
+                target = building / source.relative_to(model_dir)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.symlink_to(source)
+                file_count += 1
+        except BaseException:
+            shutil.rmtree(building, ignore_errors=True)
+            raise
+        # Swap the new snapshot in. The old snapshot stays until the new one is in place.
+        replaced = Path(f"{building}".replace(".mflux_building-", ".mflux_replaced-", 1))
         if snapshot.exists():
             snapshot.rename(replaced)
-        building.rename(snapshot)
+        try:
+            building.rename(snapshot)
+        except BaseException:
+            if replaced.exists():
+                replaced.rename(snapshot)
+            shutil.rmtree(building, ignore_errors=True)
+            raise
         if replaced.exists():
             shutil.rmtree(replaced)
         (repo_cache / "refs").mkdir(exist_ok=True)

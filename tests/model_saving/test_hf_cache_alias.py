@@ -185,7 +185,7 @@ def test_interrupted_first_create_can_be_repaired(hf_cache, tmp_path, monkeypatc
     result = HfCacheAlias.create(model_dir, "alice")
 
     assert result.file_count == 2
-    assert not list((hf_cache / "models--alice--my-model_8bit").glob(".mflux_building-*"))
+    assert not list((hf_cache / "models--alice--my-model_8bit").glob(".mflux_*-*"))
 
 
 @pytest.mark.fast
@@ -251,3 +251,38 @@ def test_hf_layout_without_saved_index_is_not_taken_for_a_save(hf_cache, monkeyp
         )
         is None
     )
+
+
+@pytest.mark.fast
+def test_failed_swap_restores_the_old_snapshot(hf_cache, tmp_path, monkeypatch):
+    model_dir = make_saved_model(tmp_path)
+    first = HfCacheAlias.create(model_dir, "alice")
+    snapshot = hf_cache / "models--alice--my-model_8bit" / "snapshots" / first.revision
+    real_rename = Path.rename
+
+    def fail_on_install(self, target):
+        if self.name.startswith(".mflux_building-"):
+            raise OSError("rename failed")
+        return real_rename(self, target)
+
+    with monkeypatch.context() as patched:
+        patched.setattr(Path, "rename", fail_on_install)
+        with pytest.raises(OSError):
+            HfCacheAlias.create(model_dir, "alice")
+
+    assert (snapshot / "model_index.json").is_symlink()
+    assert not list(snapshot.parent.parent.glob(".mflux_*-*"))
+
+
+@pytest.mark.fast
+def test_next_run_restores_a_snapshot_left_between_the_renames(hf_cache, tmp_path):
+    model_dir = make_saved_model(tmp_path)
+    first = HfCacheAlias.create(model_dir, "alice")
+    repo_cache = hf_cache / "models--alice--my-model_8bit"
+    # A crash after the first rename leaves the old snapshot under its temporary name.
+    (repo_cache / "snapshots" / first.revision).rename(repo_cache / f".mflux_replaced-{first.revision}-x")
+
+    result = HfCacheAlias.create(model_dir, "alice")
+
+    assert result.file_count == 2
+    assert not list(repo_cache.glob(".mflux_*-*"))
