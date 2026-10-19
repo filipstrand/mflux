@@ -11,7 +11,7 @@ from mflux.utils.prompt_util import PromptUtil
 # The model this CLI runs when --model is omitted; the parser keys the --steps default (4) off it.
 DEFAULT_MODEL = "iris-3b"
 
-# The entries this CLI equally serves: the undistilled base model (100 steps, CFG 3.0).
+# The other entries this CLI serves: the undistilled base model (100 steps, CFG 3.0).
 FAMILY_MODELS = tuple(key for key in AVAILABLE_MODELS if key.startswith("iris-") and key != DEFAULT_MODEL)
 
 IGNORED_OPTIONS = {
