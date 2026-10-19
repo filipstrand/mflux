@@ -2,6 +2,7 @@ import argparse
 import functools
 import importlib.metadata
 import json
+import os
 import platform
 import resource
 import subprocess
@@ -12,6 +13,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 START = time.perf_counter()
+# An inherited GIT_DIR (set inside a Git hook, for example) overrides git -C and would record another repository.
+GIT_LOCATION_VARIABLES = frozenset({"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY"})
 
 
 class MemoryBenchmark:
@@ -78,9 +81,15 @@ class MemoryBenchmark:
         stack.enter_context(patch.object(cls, name, staticmethod(wrapped) if static else wrapped))
 
     @staticmethod
+    def command_environment() -> dict[str, str]:
+        return {key: value for key, value in os.environ.items() if key not in GIT_LOCATION_VARIABLES}
+
+    @staticmethod
     def command_output(command: list[str]) -> str | None:
         try:
-            return subprocess.check_output(command, text=True, stderr=subprocess.DEVNULL, timeout=10).strip()
+            return subprocess.check_output(
+                command, text=True, stderr=subprocess.DEVNULL, timeout=10, env=MemoryBenchmark.command_environment()
+            ).strip()
         except (OSError, subprocess.SubprocessError):
             return None
 

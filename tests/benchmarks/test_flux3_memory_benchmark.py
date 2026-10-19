@@ -87,16 +87,7 @@ class TestMemoryBenchmark:
     @pytest.mark.parametrize("checkout", [False, True])
     def test_main_reports_completion_and_imported_source(self, monkeypatch, tmp_path, saved, success, checkout):
         source = tmp_path / "installed" / "flux3_generate.py"
-        expected_sha = None
-        if checkout:
-            source.parent.mkdir()
-            self.git(source.parent, "init", "--quiet")
-            self.git(
-                source.parent,
-                *("-c", "user.name=Test", "-c", "user.email=test@example.invalid"),
-                *("commit", "--quiet", "--no-verify", "--allow-empty", "-m", "fixture"),
-            )
-            expected_sha = self.git(source.parent, "rev-parse", "HEAD")
+        expected_sha = self.commit_fixture(source.parent) if checkout else None
         image = SimpleNamespace(save=Mock())
 
         def generate():
@@ -125,6 +116,27 @@ class TestMemoryBenchmark:
             assert result["source_sha"] != result["benchmark_source_sha"]
         assert ("error" in result) is not success
         assert Parser.parse_args is ORIGINAL_PARSE
+
+    def test_inherited_git_dir_does_not_redirect_source_shas(self, monkeypatch, tmp_path):
+        source = tmp_path / "installed" / "flux3_generate.py"
+        expected_sha = self.commit_fixture(source.parent)
+        decoy = tmp_path / "decoy"
+        decoy_sha = self.commit_fixture(decoy, "decoy")
+        benchmark_sha = MemoryBenchmark.command_output(["git", "-C", str(path.parent), "rev-parse", "HEAD"])
+        monkeypatch.setenv("GIT_DIR", str(decoy / ".git"))
+        image = SimpleNamespace(save=Mock())
+
+        def generate():
+            Parser().parse_args()
+            image.save()
+            image.save()
+
+        report = self.install_cli(monkeypatch, tmp_path, source, generate, self.backend(), image)
+        MemoryBenchmark.main()
+        result = json.loads(report.read_text())
+        assert result["source_sha"] == expected_sha
+        assert result["benchmark_source_sha"] == benchmark_sha
+        assert decoy_sha not in (result["source_sha"], result["benchmark_source_sha"])
 
     def test_failed_final_sample_keeps_original_error_and_report(self, monkeypatch, tmp_path):
         mx = self.backend()
@@ -174,7 +186,24 @@ class TestMemoryBenchmark:
     def git(directory: Path, *arguments: str) -> str:
         # Keep the contributor's commit signing and hooks out of the fixture repository.
         command = ["git", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "-C", str(directory)]
-        return subprocess.run([*command, *arguments], check=True, capture_output=True, text=True).stdout.strip()
+        return subprocess.run(
+            [*command, *arguments],
+            check=True,
+            capture_output=True,
+            text=True,
+            env=MemoryBenchmark.command_environment(),
+        ).stdout.strip()
+
+    @classmethod
+    def commit_fixture(cls, directory: Path, message: str = "fixture") -> str:
+        directory.mkdir(parents=True, exist_ok=True)
+        cls.git(directory, "init", "--quiet")
+        cls.git(
+            directory,
+            *("-c", "user.name=Test", "-c", "user.email=test@example.invalid"),
+            *("commit", "--quiet", "--no-verify", "--allow-empty", "-m", message),
+        )
+        return cls.git(directory, "rev-parse", "HEAD")
 
     @staticmethod
     def install_cli(monkeypatch, tmp_path, source, generate, mx, image=None) -> Path:
