@@ -28,6 +28,7 @@ class Flux2Klein(nn.Module):
     transformer: Flux2Transformer
     text_encoder: Qwen3TextEncoder | Flux2SmallTextEncoder | None
     small_text_encoder: bool = False
+    small_decoder: bool = False
 
     def __init__(
         self,
@@ -39,6 +40,7 @@ class Flux2Klein(nn.Module):
         model_config: ModelConfig | None = None,
         compute_precision: mx.Dtype | None = None,
         small_text_encoder: bool = False,
+        small_decoder: bool = False,
     ):
         super().__init__()
         Flux2Initializer.init(
@@ -51,6 +53,7 @@ class Flux2Klein(nn.Module):
             model_config=model_config or ModelConfig.flux2_klein_4b(),
             compute_precision=compute_precision,
             small_text_encoder=small_text_encoder,
+            small_decoder=small_decoder,
         )
 
     def generate_image(
@@ -67,6 +70,8 @@ class Flux2Klein(nn.Module):
         pid_decode: bool = False,
         pid_degrade_sigma: float = 0.0,
     ) -> GeneratedImage:
+        if pid_decode and self.small_decoder:
+            raise ValueError("pid_decode replaces the VAE decoder, so it cannot be used with small_decoder.")
         # 0. Create a new config based on the model type and input parameters
         config = Config(
             model_config=self.model_config,
@@ -264,6 +269,9 @@ class Flux2Klein(nn.Module):
                 "save_model() is not supported with small_text_encoder: it would write Qwen3-0.6B weights "
                 "where FLUX.2-klein's Qwen3-4B text encoder belongs. Build the model without it to save it."
             )
+        if self.small_decoder:
+            # The saved vae/ folder must hold the full decoder: a load without the flag builds the full VAE.
+            raise ValueError("Cannot save a model loaded with small_decoder. Save it without the option.")
         ModelSaver.save_model(
             model=self,
             bits=self.bits,
@@ -311,4 +319,6 @@ class Flux2Klein(nn.Module):
         parameters = self.compute_precision.generation_parameters()
         if self.small_text_encoder:
             parameters = {**parameters, "small_text_encoder": True}
+        if self.small_decoder:
+            parameters = {**parameters, "small_decoder": True}
         return parameters

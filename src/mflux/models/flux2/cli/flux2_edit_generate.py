@@ -45,6 +45,7 @@ def build_parser() -> CommandLineParser:
     parser.add_lora_arguments()
     parser.add_image_paths_arguments()
     parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
+    parser.add_small_decoder_arguments()
     parser.add_output_arguments()
     return parser
 
@@ -95,6 +96,7 @@ def main():
         model_path=args.model_path,
         compute_precision=ComputePrecision.dtype_for(args.compute_precision),
         small_text_encoder=args.small_text_encoder,
+        small_decoder=args.small_decoder,
         **lora_init_kwargs_from_args(args),
     )
 

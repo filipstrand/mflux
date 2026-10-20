@@ -130,6 +130,24 @@ mflux-generate-flux2 \
 - Danbooru-style tag prompts that give an anime image with the native encoder can come out photographic with the adapter (the diffusers reference does the same).
 - Attribution: adapter by AiArtLab ([AiArtLab/qwen3-0.6b-4b-adapter](https://huggingface.co/AiArtLab/qwen3-0.6b-4b-adapter), Apache-2.0); [Qwen/Qwen3-0.6B](https://huggingface.co/Qwen/Qwen3-0.6B) is Apache-2.0.
 
+## Small decoder
+[FLUX.2-small-decoder](https://huggingface.co/black-forest-labs/FLUX.2-small-decoder) (Apache-2.0) is a distilled VAE decoder from Black Forest Labs. It has 28M parameters instead of 50M. Add `--small-decoder` to `mflux-generate-flux2` or `mflux-generate-flux2-edit` to use it. Black Forest Labs lists it for all FLUX.2 klein models:
+
+```sh
+mflux-generate-flux2 \
+  --prompt "A red fox walks through a snowy forest at dusk." \
+  --small-decoder \
+  --seed 42
+```
+
+- The first run downloads about 250 MB. The transformer, the text encoder and the VAE encoder do not change.
+- On an M4 Pro (bf16), decoding a 1024x1024 image takes 1.1 s instead of 1.3 s and needs 7.0 GB of working memory instead of 9.4 GB. At 2048x2048 it takes 5.2 s instead of 6.4 s and needs 28 GB instead of 38 GB.
+- The peak memory of a whole `-q 4 --low-ram` run at 2048x2048 decreases from 40.4 GB to 30.4 GB, because the decode sets that peak. At 1024x1024 with `-q 4`, it decreases from 10.2 GB to 9.5 GB.
+- The images are almost the same: 35-42 dB PSNR against the standard decoder on our test prompts.
+- `--pid-decode` replaces the VAE decoder, so the two flags cannot be used together.
+- The image metadata records the flag, and `--config-from-metadata` uses it again.
+- `save_model()` refuses a model loaded with `small_decoder=True`. Save the model without the flag.
+
 ## Notes
 - FLUX.2 does not support `--negative-prompt`.
 - Distilled FLUX.2 variants use `--guidance 1.0`. Base variants support guidance values above `1.0`.

@@ -14,6 +14,7 @@ from mflux.models.flux2.model.flux2_text_encoder.small_text_encoder import (
     Flux2SmallTextEncoder,
 )
 from mflux.models.flux2.model.flux2_transformer.transformer import Flux2Transformer
+from mflux.models.flux2.model.flux2_vae.small_decoder import Flux2SmallDecoderLoader
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 from mflux.models.flux2.weights.flux2_lora_mapping import Flux2LoRAMapping
 from mflux.models.flux2.weights.flux2_weight_definition import (
@@ -34,6 +35,7 @@ class Flux2Initializer:
         bake_lora: bool = True,
         compute_precision: mx.Dtype | None = None,
         small_text_encoder: bool = False,
+        small_decoder: bool = False,
     ) -> None:
         if small_text_encoder:
             Flux2Initializer.validate_small_text_encoder(model_config)
@@ -50,6 +52,9 @@ class Flux2Initializer:
         Flux2Initializer._apply_weights(model, weights, quantize)
         if small_text_encoder:
             model.text_encoder = Flux2SmallTextEncoder.load(bits=model.bits)
+        model.small_decoder = small_decoder
+        if small_decoder:
+            model.vae = Flux2SmallDecoderLoader.with_small_decoder(model.vae, bits=model.bits)
         Flux2Initializer._apply_lora(model, lora_paths, lora_scales, bake_lora, weights)
         model.compute_precision = precision
         if compute_precision is not None:

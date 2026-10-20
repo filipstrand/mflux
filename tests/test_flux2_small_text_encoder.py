@@ -299,9 +299,9 @@ class TestInitializer:
         monkeypatch.setattr(Flux2Initializer, "_load_weights_without_text_encoder", fail)
         for config in (ModelConfig.flux2_klein_9b(), ModelConfig.flux2_klein_9b_kv()):
             with pytest.raises(ValueError, match="only works with FLUX.2-klein-4B"):
-                Flux2Klein(model_config=config, small_text_encoder=True)
+                Flux2Klein(model_config=config, small_text_encoder=True, small_decoder=False)
             with pytest.raises(ValueError, match="only works with FLUX.2-klein-4B"):
-                Flux2KleinEdit(model_config=config, small_text_encoder=True)
+                Flux2KleinEdit(model_config=config, small_text_encoder=True, small_decoder=False)
 
     def test_4b_configs_are_supported(self):
         assert Flux2Initializer.supports_small_text_encoder(ModelConfig.flux2_klein_4b())
@@ -337,11 +337,13 @@ class TestMetadataAndSaving:
     @pytest.mark.parametrize("cls", [Flux2Klein, Flux2KleinEdit])
     @pytest.mark.parametrize(("flag", "expected"), [(True, {"small_text_encoder": True}), (False, {})])
     def test_generation_parameters_record_the_flag_only_when_on(self, cls, flag, expected):
-        model = SimpleNamespace(compute_precision=ComputePrecision(None), small_text_encoder=flag)
+        model = SimpleNamespace(compute_precision=ComputePrecision(None), small_text_encoder=flag, small_decoder=False)
         assert cls._generation_parameters(model) == expected
 
     def test_it_merges_with_compute_precision(self):
-        model = SimpleNamespace(compute_precision=ComputePrecision(mx.float16), small_text_encoder=True)
+        model = SimpleNamespace(
+            compute_precision=ComputePrecision(mx.float16), small_text_encoder=True, small_decoder=False
+        )
         assert Flux2Klein._generation_parameters(model) == {"compute_precision": "float16", "small_text_encoder": True}
 
     def test_save_model_refuses(self, tmp_path):

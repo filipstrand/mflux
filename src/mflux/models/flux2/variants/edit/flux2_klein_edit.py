@@ -23,6 +23,7 @@ class Flux2KleinEdit(nn.Module):
     transformer: Flux2Transformer
     text_encoder: Qwen3TextEncoder | Flux2SmallTextEncoder | None
     small_text_encoder: bool = False
+    small_decoder: bool = False
 
     def __init__(
         self,
@@ -34,6 +35,7 @@ class Flux2KleinEdit(nn.Module):
         model_config: ModelConfig | None = None,
         compute_precision: mx.Dtype | None = None,
         small_text_encoder: bool = False,
+        small_decoder: bool = False,
     ):
         super().__init__()
         Flux2Initializer.init(
@@ -46,6 +48,7 @@ class Flux2KleinEdit(nn.Module):
             model_config=model_config or ModelConfig.flux2_klein_4b(),
             compute_precision=compute_precision,
             small_text_encoder=small_text_encoder,
+            small_decoder=small_decoder,
         )
 
     def generate_image(
@@ -348,4 +351,6 @@ class Flux2KleinEdit(nn.Module):
         parameters = self.compute_precision.generation_parameters()
         if self.small_text_encoder:
             parameters = {**parameters, "small_text_encoder": True}
+        if self.small_decoder:
+            parameters = {**parameters, "small_decoder": True}
         return parameters
