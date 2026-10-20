@@ -109,6 +109,27 @@ KV caching speeds up later denoising steps by reusing reference-image attention 
 > [!WARNING]
 > Note: FLUX.2-klein-4B requires downloading the `black-forest-labs/FLUX.2-klein-4B` model weights (~15GB), FLUX.2-klein-9B requires `black-forest-labs/FLUX.2-klein-9B` model weights (~32GB), and FLUX.2-klein-9b-kv requires `black-forest-labs/FLUX.2-klein-9b-kv` model weights. Use quantization for smaller sizes.
 
+## Small text encoder (experimental)
+`--small-text-encoder` replaces klein-4B's Qwen3-4B text encoder with `Qwen/Qwen3-0.6B` plus a 220M adapter (`AiArtLab/qwen3-0.6b-4b-adapter`) that maps its hidden states into klein's 7680-dim conditioning space. The transformer, VAE and tokenizer stay klein's, so the klein `text_encoder` weights are never downloaded.
+
+```sh
+mflux-generate-flux2 \
+  --model flux2-klein-4b \
+  --small-text-encoder \
+  --prompt "A red fox walks through a snowy forest at dusk." \
+  --steps 4 \
+  -q 8
+```
+
+- Works with `flux2-klein-4b` and `flux2-klein-base-4b` (`mflux-generate-flux2` and `mflux-generate-flux2-edit`). Other models exit with an error.
+- Prompts are capped at 256 tokens (the native encoder takes 512). Fine details can drift from the native encoder.
+- `-q` quantizes the 0.6B encoder like the rest of the model; the adapter always stays float32.
+- A model built with the flag cannot be saved (`save_model()` raises), and the flag is recorded in the image metadata so `--config-from-metadata` replays it.
+- Measured on FLUX.2-klein-4B (Apple M4 Pro, 64 GB): the loaded weights drop from 14.9 GB to 9.3 GB in bf16, from 8.0 GB to 5.4 GB with `-q 8` and from 4.3 GB to 3.3 GB with `-q 4` (the float32 adapter is 0.8 GB of that). With a saved 4-bit model at 512x512, peak memory drops from 4.3 GB to 3.7 GB. With `--low-ram` at 1024x1024 the peak is the same, because the denoising and VAE decode set it. A 1024x1024 image in bf16 (4 steps, prompt encoding included) takes about 20 s instead of 27 s.
+- The first run downloads about 2.3 GB (`Qwen/Qwen3-0.6B` and the adapter) instead of the 7.5 GB klein `text_encoder`.
+- Danbooru-style tag prompts that give an anime image with the native encoder can come out photographic with the adapter (the diffusers reference does the same).
+- Attribution: adapter by AiArtLab ([AiArtLab/qwen3-0.6b-4b-adapter](https://huggingface.co/AiArtLab/qwen3-0.6b-4b-adapter), Apache-2.0); [Qwen/Qwen3-0.6B](https://huggingface.co/Qwen/Qwen3-0.6B) is Apache-2.0.
+
 ## Small decoder
 [FLUX.2-small-decoder](https://huggingface.co/black-forest-labs/FLUX.2-small-decoder) (Apache-2.0) is a distilled VAE decoder from Black Forest Labs. It has 28M parameters instead of 50M. Add `--small-decoder` to `mflux-generate-flux2` or `mflux-generate-flux2-edit` to use it. Black Forest Labs lists it for all FLUX.2 klein models:
 
