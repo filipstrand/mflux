@@ -318,6 +318,13 @@ class ModelChecker:
             from mflux.models.ming_image.weights.ming_image_weight_definition import MingImageWeightDefinition
 
             return MingImageWeightDefinition
+        if key in {"iris-3b", "iris-3b-base"}:
+            from mflux.models.iris.weights.iris_weight_definition import (
+                IrisTurboWeightDefinition,
+                IrisWeightDefinition,
+            )
+
+            return IrisTurboWeightDefinition if key == "iris-3b" else IrisWeightDefinition
         return None
 
     @staticmethod
