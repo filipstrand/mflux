@@ -1,5 +1,7 @@
 import json
+import os
 import struct
+import tempfile
 from pathlib import Path
 
 import mlx.core as mx
@@ -72,21 +74,27 @@ class ZenImageEditWeights:
         encoded = json.dumps(new_header, separators=(",", ":")).encode()
         encoded += b" " * (-len(encoded) % 8)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        partial = destination.with_suffix(".partial")
+        # A file unique to this process, so two concurrent downloads never write into the same partial file.
+        handle, name = tempfile.mkstemp(dir=destination.parent, prefix=f"{destination.name}.", suffix=".partial")
+        partial = Path(name)
         block = ZenImageEditWeights._CHUNK_BYTES
-        with filesystem.open(path, "rb", block_size=block) as remote, partial.open("wb") as local:
-            local.write(struct.pack("<Q", len(encoded)) + encoded)
-            remote.seek(8 + header_size + start)
-            with tqdm(total=end - start, unit="B", unit_scale=True, desc="zen-image-edit text_fusion") as bar:
-                remaining = end - start
-                while remaining:
-                    chunk = remote.read(min(remaining, block))
-                    if not chunk:
-                        raise OSError("The text_fusion download ended early.")
-                    local.write(chunk)
-                    remaining -= len(chunk)
-                    bar.update(len(chunk))
-        partial.replace(destination)
+        try:
+            with filesystem.open(path, "rb", block_size=block) as remote, os.fdopen(handle, "wb") as local:
+                local.write(struct.pack("<Q", len(encoded)) + encoded)
+                remote.seek(8 + header_size + start)
+                with tqdm(total=end - start, unit="B", unit_scale=True, desc="zen-image-edit text_fusion") as bar:
+                    remaining = end - start
+                    while remaining:
+                        chunk = remote.read(min(remaining, block))
+                        if not chunk:
+                            raise OSError("The text_fusion download ended early.")
+                        local.write(chunk)
+                        remaining -= len(chunk)
+                        bar.update(len(chunk))
+            partial.replace(destination)
+        except BaseException:
+            partial.unlink(missing_ok=True)
+            raise
 
     @staticmethod
     def _friendly(fn):

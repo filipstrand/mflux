@@ -395,6 +395,11 @@ def test_only_the_text_fusion_byte_range_is_extracted_and_then_reused(tmp_path, 
     for key in weights:
         np.testing.assert_array_equal(np.array(weights[key]), tensors[f"text_fusion.{key}"].astype(np.float16))
     assert all(path.endswith("transformer/shard.safetensors") for path in opened)
+    assert sorted(p.name for p in (tmp_path / "cache").rglob("*")) == [
+        ZenImageEditWeights.revision(),
+        "text_fusion.safetensors",
+        "zen-image-edit",
+    ]
     opened.clear()
     ZenImageEditWeights.text_fusion_weights(snapshot)
     assert opened == []
@@ -530,3 +535,25 @@ def test_the_vision_tower_runs_in_float32_when_the_language_model_runs_in_bfloat
     slices = encoder.hidden_slices(ids, pixels, mx.array([[1, 4, 6]]))
     assert seen == {"input": mx.float32, "output": mx.float32}
     assert slices.dtype == mx.bfloat16
+
+
+@pytest.mark.fast
+def test_a_download_that_ends_early_leaves_no_partial_file(tmp_path, monkeypatch):
+    tensors = {"text_fusion.mlp.1.weight": np.ones((64, 64))}
+    shard = tmp_path / "shard.safetensors"
+    _safetensors(shard, tensors)
+    shard.write_bytes(shard.read_bytes()[:-100])  # the remote file stops before the last tensor ends
+    snapshot = tmp_path / "snapshot"
+    (snapshot / "transformer").mkdir(parents=True)
+    index = {"weight_map": {key: "shard.safetensors" for key in tensors}}
+    (snapshot / "transformer/diffusion_pytorch_model.safetensors.index.json").write_text(json.dumps(index))
+
+    class LocalFileSystem:
+        def open(self, path, mode, block_size=None):
+            return shard.open(mode)
+
+    monkeypatch.setattr(zen_image_edit_weights, "HfFileSystem", LocalFileSystem)
+    monkeypatch.setattr(zen_image_edit_weights, "MFLUX_CACHE_DIR", tmp_path / "cache")
+    with pytest.raises(RuntimeError, match="ended early"):
+        ZenImageEditWeights.text_fusion_weights(snapshot)
+    assert [p for p in (tmp_path / "cache").rglob("*") if p.is_file()] == []
