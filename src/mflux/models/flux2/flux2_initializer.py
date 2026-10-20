@@ -10,6 +10,7 @@ from mflux.models.common.weights.loading.weight_applier import WeightApplier
 from mflux.models.common.weights.loading.weight_loader import WeightLoader
 from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3TextEncoder
 from mflux.models.flux2.model.flux2_transformer.transformer import Flux2Transformer
+from mflux.models.flux2.model.flux2_vae.small_decoder import Flux2SmallDecoderLoader
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 from mflux.models.flux2.weights.flux2_lora_mapping import Flux2LoRAMapping
 from mflux.models.flux2.weights.flux2_weight_definition import Flux2KleinWeightDefinition
@@ -26,6 +27,7 @@ class Flux2Initializer:
         lora_scales: list[float] | None = None,
         bake_lora: bool = True,
         compute_precision: mx.Dtype | None = None,
+        small_decoder: bool = False,
     ) -> None:
         precision = ComputePrecision(compute_precision)
         path = model_path if model_path else model_config.model_name
@@ -34,6 +36,9 @@ class Flux2Initializer:
         Flux2Initializer._init_tokenizers(model, path)
         Flux2Initializer._init_models(model)
         Flux2Initializer._apply_weights(model, weights, quantize)
+        model.small_decoder = small_decoder
+        if small_decoder:
+            model.vae = Flux2SmallDecoderLoader.with_small_decoder(model.vae, bits=model.bits)
         Flux2Initializer._apply_lora(model, lora_paths, lora_scales, bake_lora, weights)
         model.compute_precision = precision
         if compute_precision is not None:

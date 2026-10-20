@@ -26,6 +26,7 @@ class Flux2Klein(nn.Module):
     vae: Flux2VAE
     transformer: Flux2Transformer
     text_encoder: Qwen3TextEncoder
+    small_decoder: bool = False
 
     def __init__(
         self,
@@ -36,6 +37,7 @@ class Flux2Klein(nn.Module):
         bake_lora: bool = True,
         model_config: ModelConfig | None = None,
         compute_precision: mx.Dtype | None = None,
+        small_decoder: bool = False,
     ):
         super().__init__()
         Flux2Initializer.init(
@@ -47,6 +49,7 @@ class Flux2Klein(nn.Module):
             bake_lora=bake_lora,
             model_config=model_config or ModelConfig.flux2_klein_4b(),
             compute_precision=compute_precision,
+            small_decoder=small_decoder,
         )
 
     def generate_image(
@@ -63,6 +66,8 @@ class Flux2Klein(nn.Module):
         pid_decode: bool = False,
         pid_degrade_sigma: float = 0.0,
     ) -> GeneratedImage:
+        if pid_decode and self.small_decoder:
+            raise ValueError("pid_decode replaces the VAE decoder, so it cannot be used with small_decoder.")
         # 0. Create a new config based on the model type and input parameters
         config = Config(
             model_config=self.model_config,
@@ -145,7 +150,7 @@ class Flux2Klein(nn.Module):
             generation_time=config.time_steps.format_dict["elapsed"],
             pid_decode=pid_decode,
             pid_degrade_sigma=pid_degrade_sigma,
-            generation_parameters=self.compute_precision.generation_parameters(),
+            generation_parameters=self._generation_parameters(),
         )
 
     def _encode_prompt_pair(
@@ -254,7 +259,14 @@ class Flux2Klein(nn.Module):
                 encoded = mx.pad(encoded, ((0, 0), (0, 0), (0, 0), (pad_before, pad_after)))
         return encoded
 
+    def _generation_parameters(self) -> dict:
+        params = self.compute_precision.generation_parameters()
+        return {**params, "small_decoder": True} if self.small_decoder else params
+
     def save_model(self, base_path: str) -> None:
+        if self.small_decoder:
+            # The saved vae/ folder must hold the full decoder: a load without the flag builds the full VAE.
+            raise ValueError("Cannot save a model loaded with small_decoder. Save it without the option.")
         ModelSaver.save_model(
             model=self,
             bits=self.bits,
