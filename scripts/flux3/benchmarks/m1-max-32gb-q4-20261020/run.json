@@ -1,0 +1,101 @@
+{
+  "date": "2026-10-20",
+  "hardware": "Apple M1 Max, 32 GiB unified memory",
+  "reports_note": "The four reports are unedited benchmark_memory.py output except for local paths, replaced with <checkout>, <checkpoint> and <output>.",
+  "external_wall_note": "From /usr/bin/time -l around each uv run process.",
+  "run_order": [
+    "lowram-1",
+    "default-1",
+    "default-2",
+    "lowram-2"
+  ],
+  "checkpoint_source": {
+    "repo": "black-forest-labs/flux-3-image-klein",
+    "revision": "1755314e2216b2a2c5cc0dd899d4e49ee3404d2c",
+    "note": "All five BF16 weight files matched the SHA256 hashes published at this revision before conversion."
+  },
+  "checkpoint_conversion": {
+    "command": "HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 uv run mflux-save --model <flux-3-image-klein snapshot> --base-model flux3-image-klein --quantize 4 --path <checkpoint>",
+    "mflux_revision": "a295c51ae502c7078cfab556110c53176a22890b",
+    "note": "Run from this branch (main at ff74500 plus this PR, which does not touch saving). A second conversion produced byte-identical files."
+  },
+  "checkpoint_manifest": [
+    {
+      "file": "text_encoder/0.safetensors",
+      "bytes": 2035881242,
+      "sha256": "8e2cb92e30c1a3aecdc19ed767f1d94f7f4df961a8a4099a229fd814adfe2fbb"
+    },
+    {
+      "file": "text_encoder/chat_template.jinja",
+      "bytes": 5292,
+      "sha256": "3636d0f0bd6bef02654cdffdc447b79cb2cef8ab02cc75267345946291a489e4"
+    },
+    {
+      "file": "text_encoder/model.safetensors.index.json",
+      "bytes": 45636,
+      "sha256": "b48642ad8a77bc00df01298b9ebf479104fca6bc108525ed5f68e99d693788f8"
+    },
+    {
+      "file": "text_encoder/tokenizer.json",
+      "bytes": 11422650,
+      "sha256": "be75606093db2094d7cd20f3c2f385c212750648bd6ea4fb2bf507a6a4c55506"
+    },
+    {
+      "file": "text_encoder/tokenizer_config.json",
+      "bytes": 692,
+      "sha256": "e1125421b81c2eedb6bf0e40a4aea9558d788018fd5bd19a21f2233839edf164"
+    },
+    {
+      "file": "transformer/0.safetensors",
+      "bytes": 2144245479,
+      "sha256": "4e389e6c1e80872b867cac2644bbd0ed9c4a272314d80be82994315438696da9"
+    },
+    {
+      "file": "transformer/1.safetensors",
+      "bytes": 977011460,
+      "sha256": "cd3ef97ebbe3d4db544790de6c0aa85bebdccd60760ef049c06d87f28a510a7e"
+    },
+    {
+      "file": "transformer/model.safetensors.index.json",
+      "bytes": 61760,
+      "sha256": "cda2c699ab6f985bb8f385a70cc88afc77b94a7652d491d24e2677cd4b794a32"
+    },
+    {
+      "file": "vae/0.safetensors",
+      "bytes": 165107912,
+      "sha256": "f9bb214b0be8d71bbcdeffa287cbd068b63e044fa7bd7aa19ebb02af20d11ab5"
+    },
+    {
+      "file": "vae/model.safetensors.index.json",
+      "bytes": 17547,
+      "sha256": "f7db5c6b987249ed9f8e0bead73dcb18155ac742f14cfb7242050923a861bb24"
+    }
+  ],
+  "runs": [
+    {
+      "run": "lowram-1",
+      "report": "lowram-1.json",
+      "external_wall_s": 52.63,
+      "image_rgb_sha256": "392e7c4aa56a6cc3f0e9e60c8b15adfd8a441ac1ab52be5601374f8166911d14"
+    },
+    {
+      "run": "default-1",
+      "report": "default-1.json",
+      "external_wall_s": 49.45,
+      "image_rgb_sha256": "392e7c4aa56a6cc3f0e9e60c8b15adfd8a441ac1ab52be5601374f8166911d14"
+    },
+    {
+      "run": "default-2",
+      "report": "default-2.json",
+      "external_wall_s": 67.35,
+      "image_rgb_sha256": "392e7c4aa56a6cc3f0e9e60c8b15adfd8a441ac1ab52be5601374f8166911d14"
+    },
+    {
+      "run": "lowram-2",
+      "report": "lowram-2.json",
+      "external_wall_s": 88.57,
+      "image_rgb_sha256": "392e7c4aa56a6cc3f0e9e60c8b15adfd8a441ac1ab52be5601374f8166911d14"
+    }
+  ],
+  "all_images_pixel_identical": true
+}
