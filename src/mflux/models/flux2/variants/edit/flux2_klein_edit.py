@@ -21,6 +21,7 @@ class Flux2KleinEdit(nn.Module):
     vae: Flux2VAE
     transformer: Flux2Transformer
     text_encoder: Qwen3TextEncoder
+    small_decoder: bool = False
 
     def __init__(
         self,
@@ -31,6 +32,7 @@ class Flux2KleinEdit(nn.Module):
         bake_lora: bool = True,
         model_config: ModelConfig | None = None,
         compute_precision: mx.Dtype | None = None,
+        small_decoder: bool = False,
     ):
         super().__init__()
         Flux2Initializer.init(
@@ -42,6 +44,7 @@ class Flux2KleinEdit(nn.Module):
             bake_lora=bake_lora,
             model_config=model_config or ModelConfig.flux2_klein_4b(),
             compute_precision=compute_precision,
+            small_decoder=small_decoder,
         )
 
     def generate_image(
@@ -197,8 +200,12 @@ class Flux2KleinEdit(nn.Module):
             image_paths=image_paths,
             image_path=config.image_path,
             generation_time=config.time_steps.format_dict["elapsed"],
-            generation_parameters=self.compute_precision.generation_parameters(),
+            generation_parameters=self._generation_parameters(),
         )
+
+    def _generation_parameters(self) -> dict:
+        params = self.compute_precision.generation_parameters()
+        return {**params, "small_decoder": True} if self.small_decoder else params
 
     def _create_kv_caches(
         self,

@@ -267,6 +267,9 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--pid-decode", action=argparse.BooleanOptionalAction, default=False, help="Decode with NVIDIA PiD's pixel-diffusion super-resolving decoder instead of the standard VAE. First run downloads two separate Hugging Face checkpoints (~8GB total); google/gemma-2-2b-it is gated and requires accepting its license + `hf auth login`.")
         self.add_argument("--pid-degrade-sigma", type=float, default=0.0, help="With --pid-decode, deliberately noise the latent to this flow-matching sigma before decoding (0.0-0.8). PiD's LQ gate was distilled on latents noised at sigma~U[0.0, 0.8]; a fully clean latent (the default, sigma=0.0) is the input it saw least during training, which can show up as over-textured detail invented on smooth areas like skin. Try 0.2 if you see that. Ignored without --pid-decode.")
 
+    def add_small_decoder_arguments(self) -> None:
+        self.add_argument("--small-decoder", action=argparse.BooleanOptionalAction, default=False, help="Decode with black-forest-labs/FLUX.2-small-decoder, a distilled VAE decoder with about half the parameters of the standard one. Decoding is faster and needs less memory; images are almost the same. First run downloads ~250 MB. Cannot be used with --pid-decode.")
+
     def add_float32_arguments(self) -> None:
         self.add_argument("--float32", action=argparse.BooleanOptionalAction, default=False, help="Run the transformer hidden stream in float32, as in mflux 0.20 and earlier. On an M5, the default bfloat16 stream is about 30%% faster. The two streams give slightly different images for the same seed. Use this flag to reproduce an image from an older release.")
 
@@ -606,6 +609,14 @@ class CommandLineParser(argparse.ArgumentParser):
             if hasattr(namespace, "pid_decode") and not self._option_was_provided("--pid-decode", "--no-pid-decode"):
                 namespace.pid_decode = prior_gen_metadata.get("pid_decode", False)
 
+
+            if hasattr(namespace, "small_decoder") and not self._option_was_provided("--small-decoder", "--no-small-decoder"):
+                # A JSON boolean only: bool("false") is True, and a wrong decoder changes the image.
+                recorded_small_decoder = prior_gen_metadata.get("small_decoder")
+                recorded_small_decoder = False if recorded_small_decoder is None else recorded_small_decoder
+                if not isinstance(recorded_small_decoder, bool):
+                    self.error(f"small_decoder in --config-from-metadata must be true or false, not {recorded_small_decoder!r}.")  # fmt: off
+                namespace.small_decoder = recorded_small_decoder
 
             if hasattr(namespace, "pid_degrade_sigma") and not self._option_was_provided("--pid-degrade-sigma"):
                 # Non-PiD sidecars omit the key entirely, but a hand-edited one can carry an
