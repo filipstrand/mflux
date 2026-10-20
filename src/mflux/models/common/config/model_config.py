@@ -503,7 +503,7 @@ AVAILABLE_MODELS = {
     ),
     "flux3-image-klein": ModelConfig(
         priority=11,
-        aliases=["flux3-image-klein", "flux3-klein", "flux3"],
+        aliases=["flux3-image-klein", "flux3-klein", "flux3", "flux-3-image-klein"],
         model_name="black-forest-labs/flux-3-image-klein",
         base_model=None,
         controlnet_model=None,
@@ -521,7 +521,7 @@ AVAILABLE_MODELS = {
     ),
     "flux3-image-klein-base": ModelConfig(
         priority=11,
-        aliases=["flux3-image-klein-base", "flux3-klein-base", "flux3-base"],
+        aliases=["flux3-image-klein-base", "flux3-klein-base", "flux3-base", "flux-3-image-klein-base"],
         model_name="black-forest-labs/flux-3-image-klein-base",
         base_model=None,
         controlnet_model=None,
