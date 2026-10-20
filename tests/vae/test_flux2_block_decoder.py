@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import mlx.core as mx
 import numpy as np
 import pytest
+from mlx import nn
 
 from mflux.cli.capabilities import describe_command
 from mflux.models.common.vae.tiling_config import TilingConfig
@@ -92,6 +93,23 @@ def test_low_memory_strips_have_no_seams(monkeypatch):
     edge_rows = [row for row in range(128) if row % 16 in (0, 15)]
     inner_rows = [row for row in range(128) if row % 16 not in (0, 15)]
     assert error_by_row[edge_rows].mean() < 1.3 * error_by_row[inner_rows].mean()
+
+
+@pytest.mark.fast
+def test_every_decoder_group_norm_uses_the_grouping_of_the_strip_statistics():
+    norms = [module for _, module in Flux2VAE().decoder.named_modules() if isinstance(module, nn.GroupNorm)]
+
+    assert norms
+    assert all(norm.pytorch_compatible for norm in norms)
+
+
+@pytest.mark.fast
+def test_low_memory_rejects_a_group_norm_with_a_different_grouping():
+    vae, packed = _tiny_vae(), _packed()
+    vae.decoder.mid_block.resnets[0].norm1.pytorch_compatible = False
+
+    with pytest.raises(ValueError, match="pytorch_compatible"):
+        _decode(vae, Flux2VAE.DECODE_LOW_MEMORY, packed)
 
 
 @pytest.mark.fast

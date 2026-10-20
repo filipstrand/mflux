@@ -123,6 +123,9 @@ class Flux2BlockDecoder:
 
     @staticmethod
     def _group_stats(x: mx.array, norm: nn.GroupNorm) -> tuple[mx.array, mx.array]:
+        # The strip statistics use the PyTorch grouping: consecutive channels form one group.
+        if not norm.pytorch_compatible:
+            raise ValueError("Flux2BlockDecoder strips need GroupNorm with pytorch_compatible=True.")
         batch, height, _, channels = x.shape
         groups = norm.num_groups
         count = x.size // (batch * groups)
