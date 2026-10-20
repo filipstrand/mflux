@@ -184,7 +184,7 @@ def _reference_model() -> Qwen3_5ForConditionalGeneration:
 
 def _mlx_encoder(reference: Qwen3_5ForConditionalGeneration) -> Qwen21SmallTextEncoder:
     encoder = Qwen21SmallTextEncoder(ENCODER_CONFIG, FUSION_CONFIG)
-    encoder.load_encoder_weights(_to_mx(reference.state_dict()), dtype=mx.float32)
+    encoder.load_encoder_weights(_to_mx(reference.state_dict()), language_model_dtype=mx.float32)
     return encoder
 
 
@@ -510,3 +510,23 @@ def test_the_vision_tower_loads_in_float32_and_the_language_model_in_bfloat16():
     }
     assert {dtype for key, dtype in dtypes.items() if key.startswith("visual.")} == {mx.float32}
     assert {dtype for key, dtype in dtypes.items() if key.startswith("language_model.")} == {mx.bfloat16}
+
+
+@pytest.mark.fast
+def test_the_vision_tower_runs_in_float32_when_the_language_model_runs_in_bfloat16(monkeypatch):
+    encoder = Qwen21SmallTextEncoder(ENCODER_CONFIG, FUSION_CONFIG)
+    encoder.load_encoder_weights(_to_mx(_reference_model().state_dict()))
+    vision_call = type(encoder.visual).__call__
+    seen = {}
+
+    def recording_call(module, pixel_values, grid_thw, return_deepstack=False):
+        features, deepstack = vision_call(module, pixel_values, grid_thw, return_deepstack)
+        seen["input"], seen["output"] = pixel_values.dtype, features.dtype
+        return features, deepstack
+
+    monkeypatch.setattr(type(encoder.visual), "__call__", recording_call)
+    ids = mx.array([[1, 2, VISION_START] + [IMAGE_TOKEN] * 6 + [VISION_END, 3]])
+    pixels = mx.zeros((24, 3 * 2 * 4 * 4), dtype=mx.bfloat16)
+    slices = encoder.hidden_slices(ids, pixels, mx.array([[1, 4, 6]]))
+    assert seen == {"input": mx.float32, "output": mx.float32}
+    assert slices.dtype == mx.bfloat16

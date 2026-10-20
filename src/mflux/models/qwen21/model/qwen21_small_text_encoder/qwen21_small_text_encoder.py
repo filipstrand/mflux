@@ -117,7 +117,9 @@ class Qwen21SmallTextEncoder(nn.Module):
         Qwen21SmallTextEncoder.load_fusion_weights(encoder.text_fusion, ZenImageEditWeights.text_fusion_weights(root))
         return encoder, processor
 
-    def load_encoder_weights(self, raw: dict[str, mx.array], dtype: mx.Dtype = ModelConfig.precision) -> None:
+    def load_encoder_weights(
+        self, raw: dict[str, mx.array], language_model_dtype: mx.Dtype = ModelConfig.precision
+    ) -> None:
         weights = {}
         for key, value in raw.items():
             if key.startswith("mtp.") or key.startswith("lm_head."):
@@ -125,7 +127,7 @@ class Qwen21SmallTextEncoder(nn.Module):
             key = key.removeprefix("model.")
             # The vision tower stays float32: its residual stream reaches ~2500 in the last block, and in
             # bfloat16 the image features drift to a cosine of ~0.76 against float32 (text is unaffected).
-            target = mx.float32 if key.startswith("visual.") else dtype
+            target = mx.float32 if key.startswith("visual.") else language_model_dtype
             weights[key] = QwenImage21WeightDefinition.text_weight(key, value).astype(target)
         Qwen21SmallTextEncoder._strict_update(self, weights, exclude=("text_fusion.",), name="Qwen3.5-0.8B encoder")
 
