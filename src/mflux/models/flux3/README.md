@@ -157,7 +157,7 @@ mflux-generate-flux3 --model ~/models/flux3-klein-q4 --prompt "..."
 ## Notes
 - `--negative-prompt` is not supported and exits with an error.
 - `--guidance` only matters for the Base checkpoint. The distilled checkpoint ignores it with a warning.
-- Both commands accept `--model flux3-image-klein` (default, aliases `flux3-klein`, `flux3`) and `--model flux3-image-klein-base` (aliases `flux3-klein-base`, `flux3-base`).
+- Both commands accept `--model flux3-image-klein` (default, aliases `flux3-klein`, `flux3`, `flux-3-image-klein`) and `--model flux3-image-klein-base` (aliases `flux3-klein-base`, `flux3-base`, `flux-3-image-klein-base`).
 - The VAE is the FLUX.2 VAE (identical weights).
 - Not ported from the reference implementation: the prompt upsampler (a separate 18.8 GB model), the NSFW safety classifier, the FP8 and NVFP4 transformer variants, and LoRA training. `mflux-train` is not available for this model.
 - Slow golden tests run at 512×512 or smaller: `tests/image_generation/test_generate_image_flux3_klein.py` and `..._flux3_klein_edit.py`.
