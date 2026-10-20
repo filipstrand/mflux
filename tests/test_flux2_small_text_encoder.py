@@ -406,3 +406,20 @@ class TestCommandLine:
         sidecar.write_text(json.dumps({"prompt": "a fox", "seed": 1, "steps": 4} | ({} if recorded is None else {"small_text_encoder": recorded})))  # fmt: skip
         monkeypatch.setattr(sys, "argv", ["cmd", "--config-from-metadata", str(sidecar), *extra, *argv_flag])
         assert module.build_parser().parse_args().small_text_encoder is expected
+
+    def test_a_sidecar_with_null_replays_as_off(self, monkeypatch, tmp_path):
+        sidecar = tmp_path / "image.metadata.json"
+        sidecar.write_text(json.dumps({"prompt": "a fox", "seed": 1, "steps": 4, "small_text_encoder": None}))
+        monkeypatch.setattr(sys, "argv", ["cmd", "--config-from-metadata", str(sidecar)])
+        assert flux2_generate.build_parser().parse_args().small_text_encoder is False
+
+    @pytest.mark.parametrize("recorded", ["false", "true", 1])
+    def test_a_recorded_value_that_is_not_a_boolean_stops_the_replay(self, monkeypatch, tmp_path, capsys, recorded):
+        # bool("false") is True: a hand-edited sidecar must not switch the text encoder.
+        sidecar = tmp_path / "image.metadata.json"
+        sidecar.write_text(json.dumps({"prompt": "a fox", "seed": 1, "steps": 4, "small_text_encoder": recorded}))
+        monkeypatch.setattr(sys, "argv", ["cmd", "--config-from-metadata", str(sidecar)])
+        with pytest.raises(SystemExit) as exit_info:
+            flux2_generate.build_parser().parse_args()
+        assert exit_info.value.code == 2
+        assert "small_text_encoder in --config-from-metadata must be true or false" in capsys.readouterr().err
