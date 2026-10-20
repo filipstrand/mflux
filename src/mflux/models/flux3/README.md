@@ -144,7 +144,7 @@ mflux-generate-flux3 --model ~/models/flux3-klein-q4 --prompt "..."
 ```
 
 > [!IMPORTANT]
-> A saved model is identified by its directory name. A saved **Base** model loads as the distilled model unless its directory name contains `flux3-klein-base` (or another alias of the Base entry), or you pass `--base-model flux3-klein-base`. For example, save Base to `~/models/flux3-klein-base-q8`.
+> A saved model is identified by its directory name. A saved **Base** model loads as the distilled model unless its directory name contains `flux3-klein-base` or `flux-3-image-klein-base` (or another alias of the Base entry), or you pass `--base-model flux3-klein-base`. For example, save Base to `~/models/flux3-klein-base-q8`.
 
 ## Speed and size
 - Distilled, 1024×1024, bf16: about 105 s per image including model load on an M4 Pro (6.4 s per step).
