@@ -21,6 +21,8 @@ from mflux.models.flux3.weights.flux3_weight_definition import (
     Flux3KleinBaseWeightDefinition,
     Flux3KleinWeightDefinition,
 )
+from mflux.models.iris.model.iris_transformer.iris_transformer import IrisTransformer
+from mflux.models.iris.weights.iris_weight_definition import IrisTurboWeightDefinition, IrisWeightDefinition
 from mflux.models.ming_image.weights.ming_image_weight_definition import MingImageWeightDefinition
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer
 from mflux.models.qwen.weights.qwen_weight_definition import QwenWeightDefinition
@@ -53,6 +55,9 @@ from mflux.models.z_image.weights.z_image_weight_definition import ZImageWeightD
 #   flux3_klein_text_encoder   black-forest-labs/flux-3-image-klein @ 8454017f9eba  text_encoder/, after the
 #                              component's key_transform (vision tower and layers >= 32 dropped)
 #   flux3_klein_vae            black-forest-labs/flux-3-image-klein @ 8454017f9eba  vae/
+#   iris_3b_transformer       speridlabs/iris-3b @ adc05b909fb0  turbo/model.safetensors (the base model's root file has the same names)  (captured 2026-10-18)
+#   iris_3b_text_encoder      Qwen/Qwen3-VL-4B-Instruct @ ebb281ec70b0  model-0000{1,2}-of-00002.safetensors, after the
+#                             component's key_transform (vision tower dropped, all 36 layers kept)  (captured 2026-10-18)
 # To regenerate one, take the keys of mx.load(<file>) (lazy, reads no weights) or of the shard index's weight_map;
 # only fibo_vlm_decoder is then filtered, to the "model.language_model" and "lm_head" prefixes.
 # A required mapping entry these names cannot satisfy would reject the official checkpoint at load time.
@@ -98,6 +103,8 @@ class _Component:
         ("flux3_klein_base_transformer", _Component.of(Flux3KleinBaseWeightDefinition, "transformer")),
         ("flux3_klein_text_encoder", _Component.of(Flux3KleinWeightDefinition, "text_encoder")),
         ("flux3_klein_vae", _Component.of(Flux3KleinWeightDefinition, "vae")),
+        ("iris_3b_transformer", IrisTurboWeightDefinition.source_transformer()),
+        ("iris_3b_text_encoder", IrisWeightDefinition.source_text_encoder()),
     ],
 )
 def test_an_official_checkpoint_carries_every_required_weight(fixture, component):
@@ -138,6 +145,7 @@ class _Placement:
             _Component.of(Flux3KleinBaseWeightDefinition, "transformer"),
             lambda: Flux3Transformer(flow_map=False),
         ),
+        ("iris_3b_transformer", IrisTurboWeightDefinition.source_transformer(), IrisTransformer),
     ],
 )  # fmt: skip
 def test_a_transformer_has_a_place_for_every_weight_of_its_official_checkpoint(fixture, component, build):

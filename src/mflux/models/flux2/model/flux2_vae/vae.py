@@ -17,10 +17,10 @@ class Flux2VAE(nn.Module):
     # decoder. Tiling stays available through --vae-tiling, but low-RAM mode must not choose it.
     supports_implicit_tiling: bool = False
 
-    def __init__(self):
+    def __init__(self, decoder_block_out_channels: tuple[int, ...] = (128, 256, 512, 512)):
         super().__init__()
         self.encoder = Flux2Encoder()
-        self.decoder = Flux2Decoder()
+        self.decoder = Flux2Decoder(block_out_channels=decoder_block_out_channels)
         self.quant_conv = nn.Conv2d(2 * self.latent_channels, 2 * self.latent_channels, kernel_size=1, padding=0)
         self.post_quant_conv = nn.Conv2d(self.latent_channels, self.latent_channels, kernel_size=1, padding=0)
         self.bn = Flux2BatchNormStats(num_features=4 * self.latent_channels, eps=1e-4, momentum=0.1)
