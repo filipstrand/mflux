@@ -7,6 +7,7 @@ class ModelRevisions:
     # A local path, a mflux save or a repo that is not listed loads as before.
     PINNED: dict[str, str] = {
         "AiArtLab/qwen3-0.6b-4b-adapter": "26a3064438fb32f5d51b482cfb1f7fa642ff0b0d",
+        "AiArtLab/zen-image-edit": "3d5717559ff5bd8b431e66032b285a3fa4a1b20c",
         "alibaba-pai/Qwen-Image-2.1-Fun-Controlnet-Union": "8a4702014d4dabb5f896fcba917e2ee0a961465f",
         "alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union-2.1": "5155fc56d17821007d6f62ac192c09e0f0e72016",
         "baidu/ERNIE-Image": "5346b31d68c9c23758ba56ef8be5e9dc174c7f99",

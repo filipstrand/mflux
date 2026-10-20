@@ -66,3 +66,14 @@ class Qwen21WeightDefinition:
         if not hasattr(module, "to_quantized"):
             return False
         return True
+
+
+class Qwen21NoTextEncoderWeightDefinition(Qwen21WeightDefinition):
+    # --small-text-encoder: the Qwen3-VL-8B text encoder is neither downloaded nor loaded.
+    @staticmethod
+    def get_components() -> List[ComponentDefinition]:
+        return [c for c in Qwen21WeightDefinition.get_components() if c.name != "text_encoder"]
+
+    @staticmethod
+    def get_download_patterns() -> List[str]:
+        return [p for p in Qwen21WeightDefinition.get_download_patterns() if not p.startswith("text_encoder/")]
