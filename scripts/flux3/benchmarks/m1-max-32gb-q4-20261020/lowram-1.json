@@ -1,0 +1,206 @@
+{
+  "schema_version": 1,
+  "source_path": "<checkout>/src/mflux/models/flux3/cli/flux3_generate.py",
+  "source_sha": "a295c51ae502c7078cfab556110c53176a22890b",
+  "benchmark_source_sha": "a295c51ae502c7078cfab556110c53176a22890b",
+  "platform": "macOS-14.6-arm64-arm-64bit-Mach-O",
+  "device": {
+    "device_name": "Apple M1 Max",
+    "max_recommended_working_set_size": 22906503168,
+    "memory_size": 34359738368,
+    "architecture": "applegpu_g13s",
+    "max_buffer_length": 17179869184,
+    "resource_limit": 499000
+  },
+  "versions": {
+    "mlx": "0.32.0",
+    "mlx-metal": "0.32.0",
+    "mflux": "0.23.0"
+  },
+  "cli_args": [
+    "--model",
+    "<checkpoint>",
+    "--base-model",
+    "flux3-image-klein",
+    "--low-ram",
+    "--width",
+    "512",
+    "--height",
+    "512",
+    "--steps",
+    "16",
+    "--seed",
+    "42",
+    "--prompt",
+    "A small red ceramic robot standing beside a green fern on a wooden desk, soft morning window light, detailed handmade textures, product photograph.",
+    "--output",
+    "<output>/flux3-lowram-1.png",
+    "--make-conf"
+  ],
+  "swap_before": "vm.swapusage: total = 3072.00M  used = 2064.88M  free = 1007.12M  (encrypted)",
+  "pressure_before": "kern.memorystatus_vm_pressure_level: 1",
+  "success": true,
+  "notes": [
+    "Python wall excludes interpreter and uv startup; measure external process wall separately.",
+    "Synchronised phase boundaries perturb timing; use the same wrapper for all compared runs.",
+    "Construction is lazy; SSD reads and weight materialisation also occur in later phases.",
+    "MLX peak is the maximum across observed reset segments; RSS is a separate macOS metric.",
+    "System swap and pressure include other processes; filesystem cache is uncontrolled.",
+    "Reports contain local paths and prompts; review before sharing."
+  ],
+  "python_wall_s": 51.8886068339998,
+  "phases": [
+    {
+      "label": "construct",
+      "duration_s": 2.6105844999983674
+    },
+    {
+      "label": "encode",
+      "duration_s": 4.516003625001758
+    },
+    {
+      "label": "before_loop",
+      "duration_s": 0.11927083300543018
+    },
+    {
+      "label": "after_loop",
+      "duration_s": 0.19081220799853327
+    },
+    {
+      "label": "decode",
+      "duration_s": 0.6730037079978501
+    },
+    {
+      "label": "save",
+      "duration_s": 0.09257654200337129
+    }
+  ],
+  "events": [
+    {
+      "label": "ready",
+      "elapsed_s": 1.0509325000020908,
+      "mlx_active_bytes": 0,
+      "mlx_cache_bytes": 0,
+      "mlx_peak_since_reset_bytes": 0,
+      "process_peak_rss_bytes": 104824832
+    },
+    {
+      "label": "construct_start",
+      "elapsed_s": 1.0531071670047822,
+      "mlx_active_bytes": 0,
+      "mlx_cache_bytes": 0,
+      "mlx_peak_since_reset_bytes": 0,
+      "process_peak_rss_bytes": 104923136
+    },
+    {
+      "label": "construct_end",
+      "elapsed_s": 3.6637867919998826,
+      "mlx_active_bytes": 8,
+      "mlx_cache_bytes": 10832,
+      "mlx_peak_since_reset_bytes": 10840,
+      "process_peak_rss_bytes": 611450880
+    },
+    {
+      "label": "before_peak_reset",
+      "elapsed_s": 3.6662875420006458,
+      "mlx_active_bytes": 8,
+      "mlx_cache_bytes": 0,
+      "mlx_peak_since_reset_bytes": 10840,
+      "process_peak_rss_bytes": 611450880
+    },
+    {
+      "label": "encode_start",
+      "elapsed_s": 3.666370500002813,
+      "mlx_active_bytes": 8,
+      "mlx_cache_bytes": 0,
+      "mlx_peak_since_reset_bytes": 0,
+      "process_peak_rss_bytes": 611450880
+    },
+    {
+      "label": "encode_end",
+      "elapsed_s": 8.182419667005888,
+      "mlx_active_bytes": 2040650824,
+      "mlx_cache_bytes": 130715088,
+      "mlx_peak_since_reset_bytes": 2159364096,
+      "process_peak_rss_bytes": 2630729728
+    },
+    {
+      "label": "before_loop_start",
+      "elapsed_s": 8.360579584004881,
+      "mlx_active_bytes": 2040650896,
+      "mlx_cache_bytes": 130715016,
+      "mlx_peak_since_reset_bytes": 2159364096,
+      "process_peak_rss_bytes": 2630729728
+    },
+    {
+      "label": "before_loop_end",
+      "elapsed_s": 8.479980834003072,
+      "mlx_active_bytes": 3278160,
+      "mlx_cache_bytes": 0,
+      "mlx_peak_since_reset_bytes": 2159364096,
+      "process_peak_rss_bytes": 2630729728
+    },
+    {
+      "label": "after_loop_start",
+      "elapsed_s": 50.917947709000146,
+      "mlx_active_bytes": 2748141900,
+      "mlx_cache_bytes": 1006388416,
+      "mlx_peak_since_reset_bytes": 3996814868,
+      "process_peak_rss_bytes": 3351674880
+    },
+    {
+      "label": "after_loop_end",
+      "elapsed_s": 51.108897375001106,
+      "mlx_active_bytes": 4080972,
+      "mlx_cache_bytes": 0,
+      "mlx_peak_since_reset_bytes": 3996814868,
+      "process_peak_rss_bytes": 3351674880
+    },
+    {
+      "label": "decode_start",
+      "elapsed_s": 51.108944375002466,
+      "mlx_active_bytes": 4080972,
+      "mlx_cache_bytes": 0,
+      "mlx_peak_since_reset_bytes": 3996814868,
+      "process_peak_rss_bytes": 3351674880
+    },
+    {
+      "label": "decode_end",
+      "elapsed_s": 51.78199212500476,
+      "mlx_active_bytes": 103502226,
+      "mlx_cache_bytes": 1125958690,
+      "mlx_peak_since_reset_bytes": 3996814868,
+      "process_peak_rss_bytes": 3351674880
+    },
+    {
+      "label": "save_start",
+      "elapsed_s": 51.79585595900426,
+      "mlx_active_bytes": 101126478,
+      "mlx_cache_bytes": 991462508,
+      "mlx_peak_since_reset_bytes": 3996814868,
+      "process_peak_rss_bytes": 3351674880
+    },
+    {
+      "label": "save_end",
+      "elapsed_s": 51.88847595900006,
+      "mlx_active_bytes": 101126478,
+      "mlx_cache_bytes": 991462508,
+      "mlx_peak_since_reset_bytes": 3996814868,
+      "process_peak_rss_bytes": 3351674880
+    },
+    {
+      "label": "finished",
+      "elapsed_s": 51.888602209000965,
+      "mlx_active_bytes": 101126478,
+      "mlx_cache_bytes": 991462508,
+      "mlx_peak_since_reset_bytes": 3996814868,
+      "process_peak_rss_bytes": 3351674880
+    }
+  ],
+  "saved_images": 1,
+  "expected_images": 1,
+  "mlx_lifetime_peak_bytes": 3996814868,
+  "process_peak_rss_bytes": 3351674880,
+  "swap_after": "vm.swapusage: total = 3072.00M  used = 2064.88M  free = 1007.12M  (encrypted)",
+  "pressure_after": "kern.memorystatus_vm_pressure_level: 1"
+}
