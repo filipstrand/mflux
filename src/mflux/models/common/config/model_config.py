@@ -144,6 +144,16 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
+    def iris_3b() -> "ModelConfig":
+        return AVAILABLE_MODELS["iris-3b"]
+
+    @staticmethod
+    @lru_cache
+    def iris_3b_base() -> "ModelConfig":
+        return AVAILABLE_MODELS["iris-3b-base"]
+
+    @staticmethod
+    @lru_cache
     def krea2() -> "ModelConfig":
         return AVAILABLE_MODELS["krea-2"]
 
@@ -525,6 +535,42 @@ AVAILABLE_MODELS = {
             "hidden_size": 2560,
             "intermediate_size": 9728,
             "num_hidden_layers": 32,
+            "rope_theta": 5000000.0,
+        },
+    ),
+    "iris-3b": ModelConfig(
+        priority=35,
+        aliases=["iris-3b", "iris-3b-turbo", "iris-turbo", "iris"],
+        model_name="speridlabs/iris-3b",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=300,
+        supports_guidance=False,
+        requires_sigma_shift=False,
+        text_encoder_overrides={
+            "hidden_size": 2560,
+            "intermediate_size": 9728,
+            "num_hidden_layers": 36,
+            "rope_theta": 5000000.0,
+        },
+    ),
+    "iris-3b-base": ModelConfig(
+        priority=36,
+        aliases=["iris-3b-base", "iris-base"],
+        model_name="speridlabs/iris-3b",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=300,
+        supports_guidance=True,
+        requires_sigma_shift=False,
+        text_encoder_overrides={
+            "hidden_size": 2560,
+            "intermediate_size": 9728,
+            "num_hidden_layers": 36,
             "rope_theta": 5000000.0,
         },
     ),

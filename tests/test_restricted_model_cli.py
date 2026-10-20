@@ -20,6 +20,7 @@ from mflux.models.ernie_image.cli import ernie_image_generate, ernie_image_turbo
 from mflux.models.flux2.cli import flux2_edit_generate, flux2_generate
 from mflux.models.flux3.cli import flux3_edit_generate, flux3_generate
 from mflux.models.ideogram4.cli import ideogram4_generate
+from mflux.models.iris.cli import iris_generate
 from mflux.models.krea2.cli import krea2_controlnet_generate, krea2_generate
 from mflux.models.lens.cli import lens_generate
 from mflux.models.qwen.cli import qwen_image_edit_generate, qwen_image_generate
@@ -61,6 +62,7 @@ CLI_MODELS = [
         flux3_edit_generate.FAMILY_MODELS,
         ("--image-paths", "ref.png"),
     ),
+    (iris_generate, "iris-3b", "dev", iris_generate.FAMILY_MODELS, ()),
     (qwen21_generate, "qwen-image-2.1", "dev", qwen21_generate.FAMILY_MODELS, ()),
     (qwen21_edit_generate, "qwen-image-2.1", "dev", qwen21_edit_generate.FAMILY_MODELS, ()),
     (
@@ -148,6 +150,11 @@ class TestRestrictedModelConfig:
         assert set(flux3_generate.FAMILY_MODELS) | {"flux3-image-klein"} == flux3_keys
         assert set(flux3_edit_generate.FAMILY_MODELS) | {"flux3-image-klein"} == flux3_keys
         assert flux3_generate.FAMILY_MODELS == ("flux3-image-klein-base",)
+
+    def test_iris_family_covers_every_iris_registry_entry(self):
+        iris_keys = {key for key in AVAILABLE_MODELS if key.startswith("iris-")}
+        assert set(iris_generate.FAMILY_MODELS) | {"iris-3b"} == iris_keys
+        assert iris_generate.FAMILY_MODELS == ("iris-3b-base",)
 
     def test_z_image_cli_rejects_the_controlnet_sibling(self, monkeypatch):
         # The base CLI runs z-image and z-image-turbo; the ControlNet entry has its own
