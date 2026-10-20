@@ -8,6 +8,8 @@ from mflux.models.common.pid_decoder import pid_decoder
 from mflux.models.common.resolution import path_resolution
 from mflux.models.common.resolution.model_revisions import ModelRevisions
 from mflux.models.common.resolution.path_resolution import PathResolution
+from mflux.models.flux2.model.flux2_text_encoder import small_text_encoder
+from mflux.models.flux2.model.flux2_vae import small_decoder
 from mflux.models.hed import hed
 from mflux.models.lens.model.text_encoder import lens_gpt_oss_encoder
 from mflux.models.lens.variants.txt2img import lens_image
@@ -45,6 +47,9 @@ def test_every_built_in_repo_is_pinned():
         openpose._HF_REPO,
         lens_gpt_oss_encoder.DEFAULT_ENCODER_REPO,
         lens_image.VAE_REPO,
+        small_text_encoder.ADAPTER_REPO,
+        small_text_encoder.SMALL_ENCODER_REPO,
+        small_decoder.SMALL_DECODER_REPO,
         "briaai/FIBO-vlm",
     }
     missing = sorted((_registry_repos() | helper_repos) - ModelRevisions.PINNED.keys())

@@ -20,6 +20,7 @@ from mflux.models.flux.cli import flux_generate
 from mflux.models.flux2.cli import flux2_edit_generate, flux2_generate
 from mflux.models.flux3.cli import flux3_edit_generate, flux3_generate
 from mflux.models.ideogram4.cli import ideogram4_generate
+from mflux.models.iris.cli import iris_generate
 from mflux.models.krea2.cli import krea2_controlnet_generate, krea2_generate
 from mflux.models.lens.cli import lens_generate
 from mflux.models.qwen.cli import qwen_image_edit_generate, qwen_image_generate
@@ -52,6 +53,7 @@ CLI_DEFAULTS = [
     (flux2_edit_generate, "flux2-klein-4b", 4),
     (flux3_generate, "flux3-image-klein", 16),
     (flux3_edit_generate, "flux3-image-klein", 16),
+    (iris_generate, "iris-3b", 4),
     (qwen_image_generate, "qwen-image", 20),
     (qwen_image_edit_generate, "qwen-image-edit", 20),
     (fibo_generate, "fibo", 50),
@@ -213,6 +215,10 @@ def test_invalid_base_model_leaves_the_default_for_the_validator_to_reject():
         (flux3_generate, ["--model", "/models/my-finetune"], "flux3-image-klein"),
         (flux3_generate, ["--model", "/models/flux3-klein-base-q4"], "flux3-image-klein-base"),
         (flux3_edit_generate, ["--base-model", "flux3-klein-base"], "flux3-image-klein-base"),
+        (iris_generate, ["--model", "iris-3b-base"], "iris-3b-base"),
+        (iris_generate, ["--model", "/models/iris-3b-base-q8"], "iris-3b-base"),
+        (iris_generate, ["--model", "/models/iris-3b-q8"], "iris-3b"),
+        (iris_generate, ["--model", "/models/my-finetune"], "iris-3b"),
         (z_image_generate, ["--model", "/models/my-finetune"], "z-image"),
         (z_image_generate, ["--model", "mlx-community/Z-Image-Turbo-8bit"], "z-image-turbo"),
     ],
@@ -225,6 +231,10 @@ def test_invalid_base_model_leaves_the_default_for_the_validator_to_reject():
         "flux3-nameless-fallback",
         "flux3-base-name",
         "flux3-edit-base-only",
+        "iris-base",
+        "iris-saved-base",
+        "iris-saved-turbo",
+        "iris-nameless-fallback",
         "z-image-nameless-fallback",
         "z-image-name",
     ],

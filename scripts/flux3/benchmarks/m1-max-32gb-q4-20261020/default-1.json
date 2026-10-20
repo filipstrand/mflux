@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "source_path": "<checkout>/src/mflux/models/flux3/cli/flux3_generate.py",
+  "source_sha": "a295c51ae502c7078cfab556110c53176a22890b",
+  "benchmark_source_sha": "a295c51ae502c7078cfab556110c53176a22890b",
+  "platform": "macOS-14.6-arm64-arm-64bit-Mach-O",
+  "device": {
+    "device_name": "Apple M1 Max",
+    "max_recommended_working_set_size": 22906503168,
+    "memory_size": 34359738368,
+    "architecture": "applegpu_g13s",
+    "max_buffer_length": 17179869184,
+    "resource_limit": 499000
+  },
+  "versions": {
+    "mlx": "0.32.0",
+    "mlx-metal": "0.32.0",
+    "mflux": "0.23.0"
+  },
+  "cli_args": [
+    "--model",
+    "<checkpoint>",
+    "--base-model",
+    "flux3-image-klein",
+    "--width",
+    "512",
+    "--height",
+    "512",
+    "--steps",
+    "16",
+    "--seed",
+    "42",
+    "--prompt",
+    "A small red ceramic robot standing beside a green fern on a wooden desk, soft morning window light, detailed handmade textures, product photograph.",
+    "--output",
+    "<output>/flux3-default-1.png",
+    "--make-conf"
+  ],
+  "swap_before": "vm.swapusage: total = 3072.00M  used = 2064.88M  free = 1007.12M  (encrypted)",
+  "pressure_before": "kern.memorystatus_vm_pressure_level: 1",
+  "success": true,
+  "notes": [
+    "Python wall excludes interpreter and uv startup; measure external process wall separately.",
+    "Synchronised phase boundaries perturb timing; use the same wrapper for all compared runs.",
+    "Construction is lazy; SSD reads and weight materialisation also occur in later phases.",
+    "MLX peak is the maximum across observed reset segments; RSS is a separate macOS metric.",
+    "System swap and pressure include other processes; filesystem cache is uncontrolled.",
+    "Reports contain local paths and prompts; review before sharing."
+  ],
+  "python_wall_s": 48.05168183299975,
+  "phases": [
+    {
+      "label": "construct",
+      "duration_s": 2.299818958999822
+    },
+    {
+      "label": "encode",
+      "duration_s": 2.3119020000012824
+    },
+    {
+      "label": "before_loop",
+      "duration_s": 0.1327827090062783
+    },
+    {
+      "label": "after_loop",
+      "duration_s": 0.1498830829950748
+    },
+    {
+      "label": "decode",
+      "duration_s": 2.3759259170037694
+    },
+    {
+      "label": "save",
+      "duration_s": 0.13595966599677922
+    }
+  ],
+  "events": [
+    {
+      "label": "ready",
+      "elapsed_s": 0.7097024169997894,
+      "mlx_active_bytes": 0,
+      "mlx_cache_bytes": 0,
+      "mlx_peak_since_reset_bytes": 0,
+      "process_peak_rss_bytes": 104054784
+    },
+    {
+      "label": "construct_start",
+      "elapsed_s": 0.7115773750047083,
+      "mlx_active_bytes": 0,
+      "mlx_cache_bytes": 0,
+      "mlx_peak_since_reset_bytes": 0,
+      "process_peak_rss_bytes": 104202240
+    },
+    {
+      "label": "construct_end",
+      "elapsed_s": 3.011453042003268,
+      "mlx_active_bytes": 8,
+      "mlx_cache_bytes": 10832,
+      "mlx_peak_since_reset_bytes": 10840,
+      "process_peak_rss_bytes": 620298240
+    },
+    {
+      "label": "encode_start",
+      "elapsed_s": 3.011541749998287,
+      "mlx_active_bytes": 8,
+      "mlx_cache_bytes": 10832,
+      "mlx_peak_since_reset_bytes": 10840,
+      "process_peak_rss_bytes": 620298240
+    },
+    {
+      "label": "encode_end",
+      "elapsed_s": 5.323485083004925,
+      "mlx_active_bytes": 2040650440,
+      "mlx_cache_bytes": 229088136,
+      "mlx_peak_since_reset_bytes": 2256207592,
+      "process_peak_rss_bytes": 2641362944
+    },
+    {
+      "label": "before_loop_start",
+      "elapsed_s": 5.419804292003391,
+      "mlx_active_bytes": 2040650512,
+      "mlx_cache_bytes": 229088064,
+      "mlx_peak_since_reset_bytes": 2256207592,
+      "process_peak_rss_bytes": 2641362944
+    },
+    {
+      "label": "before_loop_end",
+      "elapsed_s": 5.5527278750014375,
+      "mlx_active_bytes": 3278160,
+      "mlx_cache_bytes": 0,
+      "mlx_peak_since_reset_bytes": 2256207592,
+      "process_peak_rss_bytes": 2641362944
+    },
+    {
+      "label": "after_loop_start",
+      "elapsed_s": 45.357767749999766,
+      "mlx_active_bytes": 2748141900,
+      "mlx_cache_bytes": 2358267630,
+      "mlx_peak_since_reset_bytes": 3996814868,
+      "process_peak_rss_bytes": 3354492928
+    },
+    {
+      "label": "after_loop_end",
+      "elapsed_s": 45.50777224999911,
+      "mlx_active_bytes": 2748141900,
+      "mlx_cache_bytes": 0,
+      "mlx_peak_since_reset_bytes": 3996814868,
+      "process_peak_rss_bytes": 3354492928
+    },
+    {
+      "label": "decode_start",
+      "elapsed_s": 45.507850542002416,
+      "mlx_active_bytes": 2748141900,
+      "mlx_cache_bytes": 0,
+      "mlx_peak_since_reset_bytes": 3996814868,
+      "process_peak_rss_bytes": 3354492928
+    },
+    {
+      "label": "decode_end",
+      "elapsed_s": 47.88393470799929,
+      "mlx_active_bytes": 2847563154,
+      "mlx_cache_bytes": 8973283728,
+      "mlx_peak_since_reset_bytes": 6710069224,
+      "process_peak_rss_bytes": 3446751232
+    },
+    {
+      "label": "save_start",
+      "elapsed_s": 47.91521870800352,
+      "mlx_active_bytes": 2845187406,
+      "mlx_cache_bytes": 8980378068,
+      "mlx_peak_since_reset_bytes": 6710069224,
+      "process_peak_rss_bytes": 3446751232
+    },
+    {
+      "label": "save_end",
+      "elapsed_s": 48.051269916999445,
+      "mlx_active_bytes": 2845187406,
+      "mlx_cache_bytes": 8980378068,
+      "mlx_peak_since_reset_bytes": 6710069224,
+      "process_peak_rss_bytes": 3446751232
+    },
+    {
+      "label": "finished",
+      "elapsed_s": 48.05167229200015,
+      "mlx_active_bytes": 2845187406,
+      "mlx_cache_bytes": 8980378068,
+      "mlx_peak_since_reset_bytes": 6710069224,
+      "process_peak_rss_bytes": 3446751232
+    }
+  ],
+  "saved_images": 1,
+  "expected_images": 1,
+  "mlx_lifetime_peak_bytes": 6710069224,
+  "process_peak_rss_bytes": 3446751232,
+  "swap_after": "vm.swapusage: total = 4096.00M  used = 3508.81M  free = 587.19M  (encrypted)",
+  "pressure_after": "kern.memorystatus_vm_pressure_level: 4"
+}

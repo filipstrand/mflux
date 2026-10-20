@@ -6,6 +6,7 @@ class ModelRevisions:
     # To move a pin, change the hash here and regenerate that model's golden references in the same PR.
     # A local path, a mflux save or a repo that is not listed loads as before.
     PINNED: dict[str, str] = {
+        "AiArtLab/qwen3-0.6b-4b-adapter": "26a3064438fb32f5d51b482cfb1f7fa642ff0b0d",
         "alibaba-pai/Qwen-Image-2.1-Fun-Controlnet-Union": "8a4702014d4dabb5f896fcba917e2ee0a961465f",
         "alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union-2.1": "5155fc56d17821007d6f62ac192c09e0f0e72016",
         "baidu/ERNIE-Image": "5346b31d68c9c23758ba56ef8be5e9dc174c7f99",
@@ -24,6 +25,7 @@ class ModelRevisions:
         "black-forest-labs/FLUX.2-klein-9b-kv": "a6dfb36eca3a3906eb2fd460795adfb844e5fcce",
         "black-forest-labs/FLUX.2-klein-base-4B": "a3b4f4849157f664bdbc776fd7453c2783562f4d",
         "black-forest-labs/FLUX.2-klein-base-9B": "32773329fbe7e81a90ef971740e8ba4b0364ecf3",
+        "black-forest-labs/FLUX.2-small-decoder": "a3efc24f613ef42d9428af62fdbd6f5fd8856c4a",
         "Boogu/Boogu-Image-0.1-Turbo": "53ad54522023f64d049f7f38e4d679359ef3fb92",
         "briaai/FIBO": "7c7e00ca081f6cd24bbbd745d13cc214484c9199",
         "briaai/Fibo-Edit": "1bee4ae9b119d2634ec9f378370f2a1ae49d89cc",
@@ -48,6 +50,9 @@ class ModelRevisions:
         "Qwen/Qwen-Image-2512": "25468b98e3276ca6700de15c6628e51b7de54a26",
         "Qwen/Qwen-Image-Edit-2509": "d3968ef930e841f4c73640fb8afa3b306a78167e",
         "Qwen/Qwen-Image-Edit-2511": "6f3ccc0b56e431dc6a0c2b2039706d7d26f22cb9",
+        "Qwen/Qwen3-0.6B": "c1899de289a04d12100db370d81485cdf75e47ca",
+        "Qwen/Qwen3-VL-4B-Instruct": "ebb281ec70b05090aa6165b016eac8ec08e71b17",
+        "speridlabs/iris-3b": "adc05b909fb05d4276d26aae5a52b36406b2ef26",
         "Tongyi-MAI/Z-Image": "04cc4abb7c5069926f75c9bfde9ef43d49423021",
         "Tongyi-MAI/Z-Image-Turbo": "f332072aa78be7aecdf3ee76d5c247082da564a6",
         "xiaozaa/catvton-flux-beta": "4088ab884c686e07396d1eb12cf10bf0facb65e0",

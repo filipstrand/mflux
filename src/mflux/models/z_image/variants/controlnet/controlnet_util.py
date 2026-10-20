@@ -142,8 +142,9 @@ class ZImageControlnetUtil:
         lines = cv2.createLineSegmentDetector().detect(gray_u8)[0]
         canvas = np.zeros((gray_u8.shape[0], gray_u8.shape[1], 3), dtype=np.uint8)
         if lines is not None:
-            for line in lines:
-                x0, y0, x1, y1 = (int(round(v)) for v in line[0])
+            # OpenCV 4.x returns lines shaped (N, 1, 4), OpenCV 5.x returns (N, 4).
+            for line in lines.reshape(-1, 4):
+                x0, y0, x1, y1 = (int(round(v)) for v in line)
                 cv2.line(canvas, (x0, y0), (x1, y1), (255, 255, 255), 1)
         return PIL.Image.fromarray(canvas)
 

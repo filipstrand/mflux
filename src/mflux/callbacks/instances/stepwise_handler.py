@@ -86,11 +86,15 @@ class StepwiseHandler(BeforeLoopCallback, InLoopCallback, InterruptCallback):
         # decode_packed_latents (BN denorm + unpatchify → 32ch).  Ideogram4's unpack_latents
         # applies its own shift/scale and already returns 32-channel VAE-ready latents, so
         # calling decode_packed_latents on them causes a channel shape mismatch.
-        vae_latent_channels = getattr(self.model.vae, "latent_channels", 32)
-        if hasattr(self.model.vae, "decode_packed_latents") and unpack_latents.shape[1] > vae_latent_channels:
-            stepwise_decoded = self.model.vae.decode_packed_latents(unpack_latents)
+        vae = getattr(self.model, "vae", None)
+        vae_latent_channels = getattr(vae, "latent_channels", 32)
+        if vae is None:
+            # Pixel-space models (Iris) have no VAE: the sample already is the RGB image.
+            stepwise_decoded = unpack_latents
+        elif hasattr(vae, "decode_packed_latents") and unpack_latents.shape[1] > vae_latent_channels:
+            stepwise_decoded = vae.decode_packed_latents(unpack_latents)
         else:
-            stepwise_decoded = self.model.vae.decode(unpack_latents)
+            stepwise_decoded = vae.decode(unpack_latents)
         generation_time = time_steps.format_dict["elapsed"] if time_steps is not None else 0
         stepwise_img = ImageUtil.to_image(
             decoded_latents=stepwise_decoded,
