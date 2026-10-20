@@ -55,6 +55,8 @@ def _resolve_repo_url() -> str:
 STANDARD_QUANTS = ["q3", "q4", "q5", "q6", "q8", "bf16"]
 # q4, q6 and q8 are the levels checked on FLUX 3 Image Klein (load-time, mflux-save round trip, images inspected).
 FLUX3_QUANTS = ["q4", "q6", "q8", "bf16"]
+# q4 and q8 are the levels checked on Iris-3B (load-time, mflux-save round trip, images inspected).
+IRIS_QUANTS = ["q4", "q8", "bf16"]
 
 # key -> (model_type, model_family, model_sub_family, mflux_cli, mflux_cli_tools, status, quants)
 OVERLAY: dict[str, tuple[str, str, str, list[str], list[str], str, list[str] | None]] = {
@@ -164,6 +166,8 @@ OVERLAY: dict[str, tuple[str, str, str, list[str], list[str], str, list[str] | N
         "active",
         FLUX3_QUANTS,
     ),
+    "iris-3b": ("image", "iris", "iris-turbo", ["mflux-generate-iris"], [], "active", IRIS_QUANTS),
+    "iris-3b-base": ("image", "iris", "iris-base", ["mflux-generate-iris"], [], "active", IRIS_QUANTS),
     "krea-2": ("image", "krea2", "krea2-turbo", ["mflux-generate-krea2"], [], "active", STANDARD_QUANTS),
     "krea-2-raw": ("image", "krea2", "krea2-raw", ["mflux-generate-krea2"], [], "active", STANDARD_QUANTS),
     "krea-2-controlnet-depth": (
