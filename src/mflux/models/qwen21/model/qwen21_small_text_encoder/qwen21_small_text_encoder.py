@@ -93,7 +93,7 @@ class Qwen21SmallTextEncoder(nn.Module):
         hidden = self.language_model.embed_tokens(input_ids)
         if pixel_values is not None:
             image_indices = mx.array(np.flatnonzero(np.asarray(input_ids[0]) == self.image_token_id), dtype=mx.int32)
-            features, _ = self.visual(pixel_values.astype(hidden.dtype), image_grid_thw)
+            features, _ = self.visual(pixel_values.astype(mx.float32), image_grid_thw)
             if features.shape[0] != image_indices.size:
                 raise ValueError("Vision feature count does not match the image placeholders.")
             hidden[:, image_indices] = features.astype(hidden.dtype)[None]
@@ -123,7 +123,10 @@ class Qwen21SmallTextEncoder(nn.Module):
             if key.startswith("mtp.") or key.startswith("lm_head."):
                 continue  # multi-token prediction and the (tied) LM head serve generation only
             key = key.removeprefix("model.")
-            weights[key] = QwenImage21WeightDefinition.text_weight(key, value).astype(dtype)
+            # The vision tower stays float32: its residual stream reaches ~2500 in the last block, and in
+            # bfloat16 the image features drift to a cosine of ~0.76 against float32 (text is unaffected).
+            target = mx.float32 if key.startswith("visual.") else dtype
+            weights[key] = QwenImage21WeightDefinition.text_weight(key, value).astype(target)
         Qwen21SmallTextEncoder._strict_update(self, weights, exclude=("text_fusion.",), name="Qwen3.5-0.8B encoder")
 
     @staticmethod

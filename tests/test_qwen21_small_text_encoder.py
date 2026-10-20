@@ -7,7 +7,7 @@ import mlx.core as mx
 import numpy as np
 import pytest
 import torch
-from mlx.utils import tree_map
+from mlx.utils import tree_flatten, tree_map
 from torch import nn as tnn
 from transformers import Qwen3_5Config, Qwen3_5ForConditionalGeneration
 
@@ -498,3 +498,15 @@ def test_edit_rejects_the_qwen3_vl_chat_options_with_the_small_encoder(flag, mon
     args = parser.parse_args()
     with pytest.raises(SystemExit):
         qwen21_edit_generate.validate_edit_args(parser, args, [str(image)])
+
+
+@pytest.mark.fast
+def test_the_vision_tower_loads_in_float32_and_the_language_model_in_bfloat16():
+    # In bfloat16 the 12-block vision residual stream drifts to a cosine of ~0.76 on real weights.
+    encoder = Qwen21SmallTextEncoder(ENCODER_CONFIG, FUSION_CONFIG)
+    encoder.load_encoder_weights(_to_mx(_reference_model().state_dict()))
+    dtypes = {
+        key: value.dtype for key, value in tree_flatten(encoder.parameters()) if not key.startswith("text_fusion.")
+    }
+    assert {dtype for key, dtype in dtypes.items() if key.startswith("visual.")} == {mx.float32}
+    assert {dtype for key, dtype in dtypes.items() if key.startswith("language_model.")} == {mx.bfloat16}
