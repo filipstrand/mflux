@@ -6,6 +6,10 @@ from mflux.models.boogu.variants.txt2img.boogu_image import BooguImage
 from mflux.models.common.config import ModelConfig
 from mflux.models.common.config.model_config import AVAILABLE_MODELS
 from mflux.models.common.resolution.config_resolution import ConfigResolution
+from mflux.models.common.resolution.lora_resolution import LoraResolution
+from mflux.models.common.resolution.quantization_resolution import QuantizationResolution
+from mflux.models.common.weights.saving.hf_cache_alias import HfCacheAlias
+from mflux.models.common.weights.saving.saved_model_info import SavedModelInfo, SaveTarget
 from mflux.models.ernie_image.variants.txt2img.ernie_image import ErnieImage
 from mflux.models.fibo.variants.edit.fibo_edit import FIBOEdit
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
@@ -140,6 +144,7 @@ def main():
     parser = CommandLineParser(description="Save a quantized version of a model to disk.")  # fmt: off
     parser.add_model_arguments(path_type="save", require_model_arg=True)
     parser.add_lora_arguments()
+    parser.add_hf_symlink_argument()
     args = parser.parse_args()
 
     # 1. Determine model class based on the registry entry the model name resolves to
@@ -157,6 +162,23 @@ def main():
         model_config = ModelConfig.from_name(args.model, base_model=args.base_model)
         model_path = args.model_path
 
+    # Find and check the target folder and the alias name before the load, so a problem
+    # stops the command in seconds, not after the quantize.
+    # The bit width the save writes: a pre-quantized local model keeps its stored width.
+    quantize, _ = QuantizationResolution.resolve(
+        stored=SaveTarget.stored_quantization(model_path), requested=args.quantize
+    )
+    try:
+        target = SaveTarget.resolve(args.path, key, model_path, quantize, bool(args.lora_paths))
+    except ValueError as error:
+        parser.error(f"argument --path: {error}")
+    if args.hf_symlink is not None:
+        hf_username, hf_username_source = HfCacheAlias.resolve_username(args.hf_symlink)
+        try:
+            HfCacheAlias.check(target, hf_username)
+        except ValueError as error:
+            parser.error(f"argument --hf-symlink: {error} (name from {hf_username_source})")
+
     # 2. Load, quantize and save the model
     # The Z-Image ControlNet takes LoRA paths but no bake_lora flag; passing every LoRA
     # kwarg unconditionally is a TypeError before a single weight is read. Filtering is
@@ -173,7 +195,27 @@ def main():
         model_path=model_path,
         model_config=model_config,
     )
-    model.save_model(args.path)
+    model.save_model(str(target))
+
+    # 3. Record what the folder holds. Written last, so a folder without it is an incomplete save.
+    lora_files = LoraResolution.resolve_paths(args.lora_paths)
+    SavedModelInfo.write(
+        target=target,
+        key=key,
+        model_path=model_path,
+        model_config_repo_id=model_config.model_name,
+        quantize=quantize,
+        lora_sources=list(args.lora_paths or []),
+        lora_files=lora_files,
+        lora_scales=LoraResolution.resolve_scales(args.lora_scales, len(lora_files)),
+    )
+    print(f"Saved model: {target}")
+
+    # 4. Optionally link the saved folder into the Hugging Face cache
+    if args.hf_symlink is not None:
+        alias = HfCacheAlias.create(target, hf_username)
+        print(f"Hugging Face alias: {alias.repo_id} (name from {hf_username_source})")
+        print(f"  {alias.file_count} files linked in {alias.repo_cache}")
 
 
 if __name__ == "__main__":
