@@ -190,6 +190,20 @@ def test_interrupted_first_create_can_be_repaired(hf_cache, tmp_path, monkeypatc
 
 
 @pytest.mark.fast
+def test_new_entry_is_never_without_its_marker(hf_cache, tmp_path, monkeypatch):
+    # A stop before the marker is written must not leave an entry that check() refuses on the next run.
+    model_dir = make_saved_model(tmp_path)
+    with monkeypatch.context() as patched:
+        patched.setattr(Path, "write_text", lambda self, text: (_ for _ in ()).throw(OSError("stop")))
+        with pytest.raises(OSError):
+            HfCacheAlias.create(model_dir, "alice")
+
+    assert not (hf_cache / "models--alice--my-model_8bit").exists()
+    assert not list(hf_cache.glob(".mflux_alias-*"))
+    assert HfCacheAlias.create(model_dir, "alice").file_count == 2
+
+
+@pytest.mark.fast
 def test_cli_expands_home_once_for_the_save_and_the_alias(hf_cache, tmp_path, monkeypatch):
     home = tmp_path / "home"
     home.mkdir()

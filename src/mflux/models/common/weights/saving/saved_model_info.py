@@ -82,10 +82,10 @@ class SaveTarget:
         for index in sorted([*root.glob("model.safetensors.index.json"), *root.glob("*/model.safetensors.index.json")]):
             try:
                 level = json.loads(index.read_text()).get("metadata", {}).get("quantization_level")
-            except (OSError, ValueError, AttributeError):
+                if level not in (None, "None", "null", ""):
+                    return int(level)
+            except (OSError, ValueError, TypeError, AttributeError):  # noqa: PERF203
                 continue
-            if level not in (None, "None", "null", ""):
-                return int(level)
         return None
 
     @staticmethod

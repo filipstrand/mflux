@@ -464,6 +464,16 @@ def make_cached_q5_alias(hf_cache: Path) -> str:
 
 
 @pytest.mark.fast
+@pytest.mark.parametrize("level", ["q8", [8], {"bits": 8}])
+def test_malformed_stored_width_is_skipped(hf_cache, tmp_path, level):
+    earlier = make_saved(tmp_path / "Z-Image-Turbo-mflux-q8")
+    (earlier / "transformer" / "model.safetensors.index.json").write_text(
+        json.dumps({"metadata": {"quantization_level": level}})
+    )
+    assert SaveTarget.stored_quantization(str(earlier)) is None
+
+
+@pytest.mark.fast
 def test_cached_repo_alias_has_its_stored_width(hf_cache):
     assert SaveTarget.stored_quantization(make_cached_q5_alias(hf_cache)) == 5
 

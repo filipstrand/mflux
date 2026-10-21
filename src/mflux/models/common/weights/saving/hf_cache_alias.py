@@ -58,8 +58,22 @@ class HfCacheAlias:
         repo_cache = HfCacheAlias._repo_cache(model_dir, username)
         revision = HfCacheAlias._revision(model_dir)
         # The marker goes first: if the command stops before the end, the next run can repair the entry.
-        repo_cache.mkdir(parents=True, exist_ok=True)
-        (repo_cache / HfCacheAlias.MARKER).write_text(f"{model_dir}\n")
+        # A new entry gets its marker in a temporary folder that is then renamed, so the entry is never
+        # without a marker. check() refuses an entry without one.
+        umask = os.umask(0)
+        os.umask(umask)
+        if repo_cache.exists():
+            (repo_cache / HfCacheAlias.MARKER).write_text(f"{model_dir}\n")
+        else:
+            repo_cache.parent.mkdir(parents=True, exist_ok=True)
+            staging = Path(tempfile.mkdtemp(prefix=f".mflux_alias-{repo_cache.name}-", dir=repo_cache.parent))
+            try:
+                staging.chmod(0o777 & ~umask)
+                (staging / HfCacheAlias.MARKER).write_text(f"{model_dir}\n")
+                staging.rename(repo_cache)
+            except BaseException:
+                shutil.rmtree(staging, ignore_errors=True)
+                raise
         snapshot = repo_cache / "snapshots" / revision
         snapshot.parent.mkdir(exist_ok=True)
         # An earlier run stopped between the two renames below: put its old snapshot back first.
@@ -73,8 +87,6 @@ class HfCacheAlias:
         # locked: the swap of one run can still fail if another run swaps at the same moment.
         building = Path(tempfile.mkdtemp(prefix=f".mflux_building-{revision}-", dir=repo_cache))
         # mkdtemp makes the folder 0700. A shared cache needs the mode that mkdir gives.
-        umask = os.umask(0)
-        os.umask(umask)
         building.chmod(0o777 & ~umask)
         try:
             file_count = 0
