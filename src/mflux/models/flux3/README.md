@@ -151,17 +151,18 @@ mflux-generate-flux3 --model ~/models/flux3-klein-q4 --prompt "..."
 ## VAE decode
 FLUX 3 decodes the image in bf16 row strips of 128 rows. Each GroupNorm uses statistics from the full image, so the strips do not change the colours, and the image has no seams. The decoder releases the temporary data of each block before the next block starts, and the attention runs in chunks of 4096 queries.
 
-Measured as a decode of saved latents, with only the VAE loaded (`-q 8` latents, 14 prompts, MLX 0.32.0):
+Measured as a decode of saved latents, with only the VAE loaded (`-q 8` latents, 14 prompts, MLX 0.32.0). The 2048×2048 peaks of the earlier decode and of `--vae-full-precision` come from an M4 Pro with 64 GB:
 
 | Decode | Peak at 1024×1024 | Peak at 2048×2048 | Time at 1024×1024 | PSNR vs earlier decode |
 |---|---|---|---|---|
-| Earlier full-image decode | 13.8 GB | approximately 55 GB (not run) | 1.0 s | – |
+| Earlier full-image decode | 13.8 GB | 52.5 GB | 1.0 s | – |
 | Earlier `--vae-tiling` | 4.3 GB | – | 1.4 s | 26–35 dB (visible colour shift) |
 | Default (strips) | 1.6 GB | 5.6 GB | 1.3 s | 43–52 dB |
-| `--vae-full-precision` | 8.6 GB | – | 1.1 s | identical on the test Mac |
+| `--vae-full-precision` | 8.6 GB | approximately 34 GB | 1.1 s | identical on the Macs tested |
 
-- `--vae-full-precision` decodes each block on the full image in fp32, as the earlier decode did. On the test Mac the pixels were identical to the earlier decode. On other Macs the GPU kernels can round differently. The metadata records the flag, so `--config-from-metadata` uses it again.
-- `--vae-tiling` and `--vae-tile-size` do not change the decode, and the CLI shows a warning. In `mflux-generate-flux3-edit` they still tile the encode of the reference images.
+- `--vae-full-precision` decodes each block on the full image, at the precision of the earlier decode. The earlier decode and this mode both change each GroupNorm output to bf16. On the M4 Macs tested, the pixels were identical to the earlier decode. Other chips can round differently: an M5 Pro gave 43.6 dB. The metadata records the flag, so `--config-from-metadata` uses it again.
+- At 2048×2048, `--vae-full-precision` needs approximately 34 GB for the decode. It does not fit on a Mac with 32 GB or 36 GB. Use the default decode on these Macs.
+- `--vae-tiling` and `--vae-tile-size` do not change the decode, and the CLI shows a warning. In `mflux-generate-flux3-edit` they still tile the encode of the reference images. This saves little memory: approximately 0.6 GB with one 1024×1024 reference.
 - `--low-ram` still releases the text encoder and the transformer before the decode. It does not change the decode.
 
 ## Speed and size
