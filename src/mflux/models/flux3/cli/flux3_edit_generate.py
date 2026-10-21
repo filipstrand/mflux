@@ -25,7 +25,7 @@ IGNORED_OPTIONS = {
     "--lora-style": "Named LoRA styles are only supported by the Flux in-context CLI; use --lora.",
 }
 
-VAE_TILING_REASON = "--vae-tiling and --vae-tile-size change only the reference-image encode. The decode always uses row strips with full-image GroupNorm statistics."
+VAE_TILING_REASON = "--vae-tiling and --vae-tile-size change only the reference-image encode. The decode does not use tiles. It uses row strips with full-image GroupNorm statistics, or the full image with --vae-full-precision."
 
 CONDITIONAL_OPTIONS = {
     "--guidance": {

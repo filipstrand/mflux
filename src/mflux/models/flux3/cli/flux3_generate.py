@@ -19,8 +19,8 @@ FAMILY_MODELS = tuple(key for key in AVAILABLE_MODELS if key.startswith("flux3-"
 IGNORED_OPTIONS = {
     "--scheduler": "FLUX 3 Image Klein always runs the flow-map schedule its checkpoints were trained with (Base uses the same schedule with CFG).",
     "--lora-style": "Named LoRA styles are only supported by the Flux in-context CLI; use --lora.",
-    "--vae-tiling": "FLUX 3 Image Klein always decodes in row strips with full-image GroupNorm statistics. Use --vae-full-precision for a full-image decode.",
-    "--vae-tile-size": "FLUX 3 Image Klein always decodes in row strips with full-image GroupNorm statistics. Use --vae-full-precision for a full-image decode.",
+    "--vae-tiling": "FLUX 3 Image Klein does not decode in tiles. It decodes in row strips with full-image GroupNorm statistics, or on the full image with --vae-full-precision.",
+    "--vae-tile-size": "FLUX 3 Image Klein does not decode in tiles. It decodes in row strips with full-image GroupNorm statistics, or on the full image with --vae-full-precision.",
 }
 
 CONDITIONAL_OPTIONS = {
