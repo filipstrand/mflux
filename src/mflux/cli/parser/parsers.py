@@ -615,11 +615,15 @@ class CommandLineParser(argparse.ArgumentParser):
                 namespace.float32 = bool(prior_gen_metadata.get("float32", False))
 
             if hasattr(namespace, "small_text_encoder") and not self._option_was_provided("--small-text-encoder", "--no-small-text-encoder"):  # fmt: skip
-                namespace.small_text_encoder = bool(prior_gen_metadata.get("small_text_encoder", False))
+                # A JSON boolean only: bool("false") is True, and the small encoder changes the image.
+                recorded_small_text_encoder = prior_gen_metadata.get("small_text_encoder")
+                recorded_small_text_encoder = False if recorded_small_text_encoder is None else recorded_small_text_encoder
+                if not isinstance(recorded_small_text_encoder, bool):
+                    self.error(f"small_text_encoder in --config-from-metadata must be true or false, not {recorded_small_text_encoder!r}.")  # fmt: off
+                namespace.small_text_encoder = recorded_small_text_encoder
 
             if hasattr(namespace, "pid_decode") and not self._option_was_provided("--pid-decode", "--no-pid-decode"):
                 namespace.pid_decode = prior_gen_metadata.get("pid_decode", False)
-
 
             if hasattr(namespace, "small_decoder") and not self._option_was_provided("--small-decoder", "--no-small-decoder"):
                 # A JSON boolean only: bool("false") is True, and a wrong decoder changes the image.

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from huggingface_hub import snapshot_download
 from huggingface_hub.constants import HF_HUB_CACHE
+from huggingface_hub.utils import filter_repo_objects
 
 from mflux.models.common.resolution.actions import PathAction, Rule
 from mflux.models.common.resolution.model_revisions import ModelRevisions
@@ -86,6 +87,7 @@ class PathResolution:
     ) -> Path | None:
         if action == PathAction.LOCAL:
             return Path(path).expanduser() if path else None
+        allow_patterns = patterns + PathResolution._saved_shard_patterns(patterns, saved_subdirs)
         if action == PathAction.HUGGINGFACE_CACHED:
             # Find the best complete cached snapshot
             cached_path = PathResolution._find_complete_cached_snapshot(path, patterns, saved_subdirs)
@@ -94,12 +96,17 @@ class PathResolution:
             # Fallback to standard snapshot_download (shouldn't happen if _check passed)
             return Path(
                 snapshot_download(
-                    repo_id=path, allow_patterns=patterns, revision=ModelRevisions.get(path), local_files_only=True
+                    repo_id=path,
+                    allow_patterns=allow_patterns,
+                    revision=ModelRevisions.get(path),
+                    local_files_only=True,
                 )
             )
         if action == PathAction.HUGGINGFACE:
             print(f"Downloading model from HuggingFace: {path}...")
-            return Path(snapshot_download(repo_id=path, allow_patterns=patterns, revision=ModelRevisions.get(path)))
+            return Path(
+                snapshot_download(repo_id=path, allow_patterns=allow_patterns, revision=ModelRevisions.get(path))
+            )
         if action == PathAction.ERROR:
             raise FileNotFoundError(
                 f"Model not found: '{path}'. "
@@ -107,6 +114,43 @@ class PathResolution:
                 f"If HuggingFace repo, use 'org/model' format."
             )
         return None
+
+    @staticmethod
+    def _saved_shard_patterns(patterns: list[str], saved_subdirs: list[str] | None) -> list[str]:
+        # mflux-save names its shards 0.safetensors, 1.safetensors, ... in each component's save
+        # subdir. Where the download patterns already cover those (transformer/*.safetensors), a
+        # saved checkpoint on HuggingFace downloads like the original. Krea 2 saves its transformer
+        # at the repo root, where the patterns only name turbo.safetensors, so a saved Krea 2 came
+        # down without its transformer (#869). Those subdirs get their shards and index added.
+        extra: list[str] = []
+        for subdir in PathResolution._uncovered_saved_subdirs(patterns, saved_subdirs):
+            prefix = "" if subdir == "." else f"{subdir}/"
+            extra += [f"{prefix}[0-9]*.safetensors", f"{prefix}model.safetensors.index.json"]
+        return extra
+
+    @staticmethod
+    def _uncovered_saved_subdirs(patterns: list[str], saved_subdirs: list[str] | None) -> list[str]:
+        subdirs = [Path(d).as_posix() for d in saved_subdirs or []]
+        return [
+            d
+            for d in subdirs
+            if not list(filter_repo_objects([str(Path(d) / "0.safetensors")], allow_patterns=patterns))
+        ]
+
+    @staticmethod
+    def _is_saved_snapshot_complete(snapshot_path: Path, saved_subdirs: list[str]) -> bool:
+        # Shards and the saver's index in every component's save subdir, and every shard the
+        # index names on disk. The index is required: a download cut off after 0.safetensors
+        # has no other trace of the shards still missing. Only the saver's numbered names
+        # count: a cached original keeps other files there (Lens Turbo's diffusion_models/ can
+        # hold the base model's file), and taking those for a save would stop the download of
+        # the file that's missing.
+        return all(
+            any(p.is_file() for p in (snapshot_path / d).glob("[0-9]*.safetensors"))
+            and (snapshot_path / d / "model.safetensors.index.json").is_file()
+            and PathResolution._indexed_shards_present(snapshot_path / d)
+            for d in saved_subdirs
+        )
 
     @staticmethod
     def _find_complete_cached_snapshot(
@@ -125,6 +169,7 @@ class PathResolution:
 
         # Extract subdirectories that need safetensors files (e.g., "vae/*.safetensors" → "vae")
         required_subdirs = PathResolution._get_required_subdirs_with_safetensors(patterns)
+        saved_layout_differs = bool(PathResolution._uncovered_saved_subdirs(patterns, saved_subdirs))
 
         # Check each snapshot for completeness, prefer more recent ones
         snapshots = sorted(repo_cache_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True)
@@ -136,12 +181,12 @@ class PathResolution:
         for snapshot_path in snapshots:
             if not snapshot_path.is_dir():
                 continue
-            # mflux-save --hf-symlink links an mflux save into the cache. The save keeps its own
-            # layout, not the file names in the download patterns (SeedVR2, Krea 2 Turbo).
-            if PathResolution._is_snapshot_complete(
-                snapshot_path, required_subdirs, patterns
-            ) or PathResolution._is_complete_saved_checkpoint(snapshot_path, saved_subdirs):
+            if PathResolution._is_snapshot_complete(snapshot_path, required_subdirs, patterns):
                 logger.debug(f"Found complete cached snapshot: {snapshot_path}")
+                return snapshot_path
+            # A saved checkpoint whose layout the patterns don't describe (#869).
+            if saved_layout_differs and PathResolution._is_saved_snapshot_complete(snapshot_path, saved_subdirs or []):
+                logger.debug(f"Found complete cached mflux-saved snapshot: {snapshot_path}")
                 return snapshot_path
 
         return None
@@ -210,22 +255,6 @@ class PathResolution:
             if not PathResolution._indexed_shards_present(subdir_path):
                 return False
 
-        return True
-
-    @staticmethod
-    def _is_complete_saved_checkpoint(snapshot_path: Path, saved_subdirs: list[str] | None) -> bool:
-        # Each component folder has the index file that ModelSaver always writes, and every shard
-        # that the index names. A HuggingFace download has no such index in these folders.
-        if not saved_subdirs:
-            return False
-        for subdir in saved_subdirs:
-            directory = snapshot_path / subdir
-            if not (directory / "model.safetensors.index.json").is_file():
-                return False
-            if not any(p.is_file() for p in directory.glob("*.safetensors")):
-                return False
-            if not PathResolution._indexed_shards_present(directory):
-                return False
         return True
 
     @staticmethod

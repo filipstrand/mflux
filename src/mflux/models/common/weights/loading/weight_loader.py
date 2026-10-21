@@ -70,6 +70,14 @@ class WeightLoader:
             saved_subdirs=list(save_subdirs.values()),
         )
 
+        # Every component is read from a directory under the root, so a single checkpoint file
+        # used to fail on "<file>.safetensors/vae" (#869).
+        if root_path is not None and root_path.is_file():
+            raise ValueError(
+                f"{model_path} is a file. The model path (--model) must be a directory (a HuggingFace "
+                f"snapshot or an mflux-save output) or a HuggingFace repo id."
+            )
+
         # 2. Load each component (with caching for shared sources)
         # A missing root path is a whole-model condition: without it, the first component
         # that lacks a direct download URL used to raise a per-component error ("no
