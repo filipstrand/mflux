@@ -352,9 +352,10 @@ def test_offline_mode_makes_no_hub_call(hf_cache, tmp_path, monkeypatch):
 # --- CLI --------------------------------------------------------------------------------------
 
 
-def run_save(argv_extra: list[str]) -> list[str]:
+def run_save(argv_extra: list[str], model: str = "z-image-turbo", base_model: str | None = None) -> list[str]:
     # Stubs the load and the save. Returns the folders that the stubbed save wrote.
     saved = []
+    model_args = ["--model", model, *(["--base-model", base_model] if base_model else [])]
 
     def fake_save(self, base_path):
         saved.append(base_path)
@@ -362,7 +363,7 @@ def run_save(argv_extra: list[str]) -> list[str]:
 
     model_class = save.MODEL_CLASSES["z-image-turbo"]
     with contextlib.ExitStack() as stack:
-        stack.enter_context(patch.object(sys, "argv", ["mflux-save", "--model", "z-image-turbo", *argv_extra]))
+        stack.enter_context(patch.object(sys, "argv", ["mflux-save", *model_args, *argv_extra]))
         # The CLI checks the constructor signature for LoRA support, so the stub keeps those names.
         stack.enter_context(
             patch.object(model_class, "__init__", lambda self, lora_paths=None, lora_scales=None, **kwargs: None)
@@ -451,3 +452,38 @@ def test_unquantized_save_has_no_stored_width(hf_cache, tmp_path):
     )
     assert SaveTarget.stored_quantization(str(earlier)) is None
     assert SaveTarget.stored_quantization("Tongyi-MAI/Z-Image-Turbo") is None
+
+
+def make_cached_q5_alias(hf_cache: Path) -> str:
+    # A q5 save that --hf-symlink linked into the cache, loaded by its repo id.
+    repo_id = "bob/Z-Image-Turbo-mflux-q5"
+    files = {f"{d}/0.safetensors": b"x" * 1000 for d in ("transformer", "text_encoder", "vae")}
+    files["transformer/model.safetensors.index.json"] = json.dumps({"metadata": {"quantization_level": "5"}}).encode()
+    make_snapshot(hf_cache, repo_id, "abc123", files)
+    return repo_id
+
+
+@pytest.mark.fast
+def test_cached_repo_alias_has_its_stored_width(hf_cache):
+    assert SaveTarget.stored_quantization(make_cached_q5_alias(hf_cache)) == 5
+
+
+@pytest.mark.fast
+def test_cli_resave_of_a_cached_repo_alias_keeps_its_stored_width(hf_cache, models_dir):
+    # #912: the loader keeps q5, so the auto name and the metadata must not say q8.
+    repo_id = make_cached_q5_alias(hf_cache)
+
+    saved = run_save(["-q", "8"], model=repo_id, base_model="z-image-turbo")
+
+    target = Path(saved[0])
+    assert target.name == "Z-Image-Turbo-mflux-q5"
+    assert json.loads((target / SavedModelInfo.FILE_NAME).read_text())["quantize"] == 5
+
+
+@pytest.mark.fast
+def test_cli_explicit_path_records_the_stored_width_of_a_cached_repo_alias(hf_cache, tmp_path):
+    repo_id = make_cached_q5_alias(hf_cache)
+
+    saved = run_save(["-q", "8", "--path", str(tmp_path / "out")], model=repo_id, base_model="z-image-turbo")
+
+    assert json.loads((Path(saved[0]) / SavedModelInfo.FILE_NAME).read_text())["quantize"] == 5

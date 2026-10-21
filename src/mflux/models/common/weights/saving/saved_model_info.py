@@ -71,9 +71,14 @@ class SaveTarget:
     def stored_quantization(model_path: str | None) -> int | None:
         # The bit width of an earlier mflux save, from its index files. The loader keeps the stored
         # width and ignores -q (QuantizationResolution), so the name and the metadata must use it too.
-        if model_path is None or not Path(model_path).expanduser().is_dir():
+        # A repo id ("bob/Z-Image-Turbo-mflux-q5") is read from its cached snapshot, as the loader does.
+        if model_path is None:
             return None
         root = Path(model_path).expanduser()
+        if not root.is_dir():
+            root = UpstreamLocator.find(None, model_path).snapshot
+            if root is None or not root.is_dir():
+                return None
         for index in sorted([*root.glob("model.safetensors.index.json"), *root.glob("*/model.safetensors.index.json")]):
             try:
                 level = json.loads(index.read_text()).get("metadata", {}).get("quantization_level")
