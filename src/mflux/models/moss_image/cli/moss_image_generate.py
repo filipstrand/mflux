@@ -5,6 +5,7 @@ from mflux.cli.parser.parsers import CommandLineParser
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.resolution.config_resolution import ConfigResolution
 from mflux.models.moss_image.latent_creator import MOSSImageLatentCreator
+from mflux.models.moss_image.model.moss_image_scheduler import MOSSImageScheduler
 from mflux.models.moss_image.variants import MOSSImage
 from mflux.utils.exceptions import PromptFileReadError, StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
@@ -39,8 +40,13 @@ class MOSSImageCommand:
 
     @staticmethod
     def validate(args: Namespace) -> ModelConfig:
-        # Weight-free: resolves --model against the in-memory registry only.
-        return ConfigResolution.resolve_restricted(args.model, DEFAULT_MODEL, model_path=args.model_path)
+        # Weight-free: resolves --model against the in-memory registry only. The size and step
+        # checks run here so that a bad value fails before the 27 GB checkpoint loads.
+        model_config = ConfigResolution.resolve_restricted(args.model, DEFAULT_MODEL, model_path=args.model_path)
+        MOSSImageLatentCreator.check_size(height=args.height, width=args.width)
+        if args.steps is not None:
+            MOSSImageScheduler.compute_sigmas(args.steps)
+        return model_config
 
     @staticmethod
     def load(args: Namespace) -> MOSSImage:

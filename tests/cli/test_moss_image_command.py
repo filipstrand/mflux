@@ -257,3 +257,18 @@ def test_generate_returns_the_image_unsaved_with_the_given_prompt(monkeypatch, f
     assert image is model.images[0]
     assert image.saves == []
     assert model.generate_calls == [{**expected_generate_call(7), "prompt": "a different puffin"}]
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize(
+    ("argv", "message"),
+    [
+        (["--steps", "300"], "cannot run 300 steps"),
+        (["--width", "1000"], "multiples of 16"),
+    ],
+)
+def test_load_rejects_a_bad_step_count_or_size_before_building_the_model(monkeypatch, argv, message):
+    args = args_for(monkeypatch, ["--prompt", "x", *argv])
+    with pytest.raises(ValueError, match=message):
+        cli.MOSSImageCommand.load(args)
+    assert FakeMOSSImage.instances == []
