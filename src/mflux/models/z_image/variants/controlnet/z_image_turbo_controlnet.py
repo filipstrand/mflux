@@ -7,6 +7,7 @@ from mlx import nn
 
 from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.common.vae.vae_util import VAEUtil
 from mflux.models.z_image.latent_creator.z_image_latent_creator import ZImageLatentCreator
 from mflux.models.z_image.model.z_image_text_encoder.prompt_encoder import PromptEncoder
@@ -153,7 +154,10 @@ class ZImageTurboControlnet(nn.Module):
             lora_scales=self.lora_scales,
             controlnet_image_path=first_control_path,
             generation_time=config.time_steps.format_dict["elapsed"],
-            generation_parameters={"float32": True} if self.float32 else None,
+            generation_parameters={
+                **({"float32": True} if self.float32 else {}),
+                **VAEDecodeOptions.generation_parameters(self),
+            },
         )
 
     def save_model(self, base_path: str) -> None:

@@ -1,6 +1,7 @@
 import mlx.core as mx
 from mlx import nn
 
+from mflux.models.common.vae.block_decoder import VAEBlockDecoder
 from mflux.models.common.vae.tiling_config import TilingConfig
 from mflux.models.common.vae.vae_tiler import VAETiler
 
@@ -41,9 +42,10 @@ class VAEUtil:
         latent: mx.array,
         tiling_config: TilingConfig | None = None,
     ) -> mx.array:
-        # 1. Tiled decoding if enabled
+        # 1. Tiled decoding if enabled. A VAE in a VAEBlockDecoder mode decodes in its own way and ignores tiling.
         if (
-            tiling_config is not None
+            getattr(vae, "decode_mode", VAEBlockDecoder.LEGACY) == VAEBlockDecoder.LEGACY
+            and tiling_config is not None
             and tiling_config.vae_decode_tiles_per_dim
             and tiling_config.vae_decode_tiles_per_dim > 1
         ):

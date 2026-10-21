@@ -10,8 +10,8 @@ from mlx import nn
 
 from mflux.cli.capabilities import describe_command
 from mflux.models.common.compute_precision import ComputePrecision
+from mflux.models.common.vae.block_decoder import VAEBlockDecoder
 from mflux.models.common.vae.tiling_config import TilingConfig
-from mflux.models.flux2.model.flux2_vae.decoder.block_decoder import Flux2BlockDecoder
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 from mflux.models.flux3 import flux3_initializer
 from mflux.models.flux3.cli import flux3_edit_generate, flux3_generate
@@ -63,12 +63,12 @@ def test_full_precision_matches_legacy_within_rounding():
 @pytest.mark.fast
 def test_low_memory_strips_and_chunks_match_one_strip_and_one_chunk(monkeypatch):
     vae, packed = _tiny_vae(), _packed()
-    monkeypatch.setattr(Flux2BlockDecoder, "STRIP_ROWS", 10_000)
+    monkeypatch.setattr(VAEBlockDecoder, "STRIP_ROWS", 10_000)
     one_strip = _decode(vae, Flux2VAE.DECODE_LOW_MEMORY, packed)
 
     # 16-row strips split every layer from 32 rows up, and 64-query chunks split the 256-token attention.
-    monkeypatch.setattr(Flux2BlockDecoder, "STRIP_ROWS", 16)
-    monkeypatch.setattr(Flux2BlockDecoder, "ATTENTION_CHUNK", 64)
+    monkeypatch.setattr(VAEBlockDecoder, "STRIP_ROWS", 16)
+    monkeypatch.setattr(VAEBlockDecoder, "ATTENTION_CHUNK", 64)
     strips = _decode(vae, Flux2VAE.DECODE_LOW_MEMORY, packed)
 
     assert _relative_error(strips, one_strip) < 2e-2
@@ -77,7 +77,7 @@ def test_low_memory_strips_and_chunks_match_one_strip_and_one_chunk(monkeypatch)
 @pytest.mark.fast
 def test_low_memory_stays_within_bf16_rounding_of_legacy(monkeypatch):
     vae, packed = _tiny_vae(), _packed()
-    monkeypatch.setattr(Flux2BlockDecoder, "STRIP_ROWS", 16)
+    monkeypatch.setattr(VAEBlockDecoder, "STRIP_ROWS", 16)
 
     legacy = _decode(vae, Flux2VAE.DECODE_LEGACY, packed)
     low_memory = _decode(vae, Flux2VAE.DECODE_LOW_MEMORY, packed)
@@ -90,9 +90,9 @@ def test_low_memory_strips_have_no_seams(monkeypatch):
     # A wrong halo row shows as a larger error on the rows next to a strip edge: about 1.7x without the
     # halo, about 1.0x with it.
     vae, packed = _tiny_vae(), _packed()
-    monkeypatch.setattr(Flux2BlockDecoder, "STRIP_ROWS", 10_000)
+    monkeypatch.setattr(VAEBlockDecoder, "STRIP_ROWS", 10_000)
     one_strip = _decode(vae, Flux2VAE.DECODE_LOW_MEMORY, packed)
-    monkeypatch.setattr(Flux2BlockDecoder, "STRIP_ROWS", 16)
+    monkeypatch.setattr(VAEBlockDecoder, "STRIP_ROWS", 16)
     error_by_row = np.abs(_decode(vae, Flux2VAE.DECODE_LOW_MEMORY, packed) - one_strip).mean(axis=(0, 1, 3))
 
     edge_rows = [row for row in range(128) if row % 16 in (0, 15)]

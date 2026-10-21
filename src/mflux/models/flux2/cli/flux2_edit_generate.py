@@ -5,6 +5,7 @@ from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_ar
 from mflux.models.common.compute_precision import ComputePrecision
 from mflux.models.common.config.model_config import AVAILABLE_MODELS
 from mflux.models.common.resolution.config_resolution import ConfigResolution
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.flux2.flux2_initializer import Flux2Initializer
 from mflux.models.flux2.latent_creator.flux2_latent_creator import Flux2LatentCreator
 from mflux.models.flux2.variants import Flux2KleinEdit
@@ -25,6 +26,7 @@ REJECTED_OPTIONS = {
 }
 
 CONDITIONAL_OPTIONS = {
+    **VAEDecodeOptions.conditional_options(),
     "--small-text-encoder": {
         "condition": "FLUX.2-klein-4B and klein-base-4B",
         "reason": "the adapter only fits the 4B conditioning width; any other model exits with an error.",
@@ -47,12 +49,14 @@ def build_parser() -> CommandLineParser:
     parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
     parser.add_small_decoder_arguments()
     parser.add_output_arguments()
+    parser.add_vae_full_precision_arguments()
     return parser
 
 
 def main():
     parser = build_parser()
     args = parser.parse_args()
+    VAEDecodeOptions.warn_encode_only_tiling()
 
     # Keyed on the option, not on the value: a --config-from-metadata sidecar written by a
     # CFG model restores a negative prompt the user never typed, and rejecting the rerun for
@@ -99,6 +103,7 @@ def main():
         small_decoder=args.small_decoder,
         **lora_init_kwargs_from_args(args),
     )
+    VAEDecodeOptions.apply(args, model)
 
     memory_saver = CallbackManager.register_callbacks(
         args=args,

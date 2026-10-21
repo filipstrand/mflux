@@ -1,4 +1,3 @@
-import warnings
 from pathlib import Path
 
 from mflux.callbacks.callback_manager import CallbackManager
@@ -6,7 +5,7 @@ from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_ar
 from mflux.models.common.compute_precision import ComputePrecision
 from mflux.models.common.config.model_config import AVAILABLE_MODELS
 from mflux.models.common.resolution.config_resolution import ConfigResolution
-from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.flux3.latent_creator.flux3_latent_creator import Flux3LatentCreator
 from mflux.models.flux3.latent_creator.flux3_reference_images import MAX_REFERENCES
 from mflux.models.flux3.variants import Flux3KleinEdit
@@ -25,15 +24,12 @@ IGNORED_OPTIONS = {
     "--lora-style": "Named LoRA styles are only supported by the Flux in-context CLI; use --lora.",
 }
 
-VAE_TILING_REASON = "--vae-tiling and --vae-tile-size change only the reference-image encode. The decode does not use tiles. It uses row strips with full-image GroupNorm statistics, or the full image with --vae-full-precision."
-
 CONDITIONAL_OPTIONS = {
     "--guidance": {
         "condition": "base (non-distilled) FLUX 3 Image Klein checkpoints",
         "reason": "the distilled checkpoint has no CFG branch, so the value is ignored with a warning.",
     },
-    "--vae-tiling": {"condition": "the reference-image encode", "reason": VAE_TILING_REASON},
-    "--vae-tile-size": {"condition": "the reference-image encode", "reason": VAE_TILING_REASON},
+    **VAEDecodeOptions.conditional_options(),
 }
 
 REJECTED_OPTIONS = {
@@ -93,8 +89,7 @@ def main():
     CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
     if not model_config.supports_guidance:
         CommandLineParser.warn_ignored_options({"--guidance": CONDITIONAL_OPTIONS["--guidance"]["reason"]})
-    if CommandLineParser._option_was_provided("--vae-tiling", "--vae-tile-size"):
-        warnings.warn(VAE_TILING_REASON, stacklevel=2)
+    VAEDecodeOptions.warn_encode_only_tiling()
     model = Flux3KleinEdit(
         model_config=model_config,
         quantize=args.quantize,
@@ -102,8 +97,7 @@ def main():
         **lora_init_kwargs_from_args(args),
         compute_precision=ComputePrecision.dtype_for(args.compute_precision),
     )
-    if args.vae_full_precision:
-        model.vae.decode_mode = Flux2VAE.DECODE_FULL_PRECISION
+    VAEDecodeOptions.apply(args, model)
 
     memory_saver = CallbackManager.register_callbacks(
         args=args,

@@ -4,6 +4,7 @@ from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_args
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.resolution.config_resolution import ConfigResolution
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.ideogram4.latent_creator import Ideogram4LatentCreator
 from mflux.models.ideogram4.model.ideogram4_scheduler import Ideogram4Scheduler
 from mflux.models.ideogram4.variants.txt2img.ideogram4 import Ideogram4
@@ -20,6 +21,7 @@ DEFAULT_MODEL = "ideogram4"
 # Single source of truth for options this CLI accepts but cannot honour: the runtime
 # warning and the mflux-capabilities dump both read it.
 IGNORED_OPTIONS = {
+    **VAEDecodeOptions.ignored_options(),
     "--steps": "Ideogram 4 presets define the step count.",
     "--guidance": "Ideogram 4 presets define the guidance schedule.",
     "--negative-prompt": "Ideogram 4's CFG negative is the empty prompt; a user negative is never encoded.",
@@ -34,6 +36,7 @@ def build_parser() -> CommandLineParser:
     parser.add_image_generator_arguments(supports_metadata_config=True)
     parser.add_pid_decode_arguments()
     parser.add_output_arguments()
+    parser.add_vae_full_precision_arguments()
     parser.add_argument(
         "--preset",
         type=str,
@@ -70,12 +73,14 @@ class Ideogram4Command:
 
     @staticmethod
     def load(args: Namespace) -> Ideogram4:
-        return Ideogram4(
+        model = Ideogram4(
             model_config=Ideogram4Command.validate(args),
             quantize=args.quantize,
             model_path=args.model_path,
             **lora_init_kwargs_from_args(args),
         )
+        VAEDecodeOptions.apply(args, model)
+        return model
 
     @staticmethod
     def generate(model: Ideogram4, args: Namespace, seed: int, prompt: str) -> GeneratedImage:

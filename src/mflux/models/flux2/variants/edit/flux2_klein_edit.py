@@ -5,6 +5,7 @@ from mlx import nn
 
 from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.flux2.flux2_initializer import Flux2Initializer
 from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3TextEncoder
 from mflux.models.flux2.model.flux2_text_encoder.small_text_encoder import Flux2SmallTextEncoder
@@ -348,7 +349,10 @@ class Flux2KleinEdit(nn.Module):
         return predict
 
     def _generation_parameters(self) -> dict:
-        parameters = self.compute_precision.generation_parameters()
+        parameters = {
+            **self.compute_precision.generation_parameters(),
+            **VAEDecodeOptions.generation_parameters(self),
+        }
         if self.small_text_encoder:
             parameters = {**parameters, "small_text_encoder": True}
         if self.small_decoder:

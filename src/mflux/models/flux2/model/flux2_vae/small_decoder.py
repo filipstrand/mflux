@@ -49,6 +49,7 @@ class Flux2SmallDecoderLoader:
             quantization_predicate=Flux2KleinWeightDefinition.quantization_predicate,
         )
         small_vae.encoder, small_vae.quant_conv, small_vae.bn = vae.encoder, vae.quant_conv, vae.bn
+        small_vae.decode_mode = vae.decode_mode
         mx.eval(small_vae.parameters())
         return small_vae
 

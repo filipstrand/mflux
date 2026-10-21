@@ -3,7 +3,7 @@ from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_ar
 from mflux.models.common.compute_precision import ComputePrecision
 from mflux.models.common.config.model_config import AVAILABLE_MODELS
 from mflux.models.common.resolution.config_resolution import ConfigResolution
-from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.flux3.latent_creator.flux3_latent_creator import Flux3LatentCreator
 from mflux.models.flux3.variants import Flux3Klein
 from mflux.utils.dimension_resolver import DimensionResolver
@@ -19,8 +19,7 @@ FAMILY_MODELS = tuple(key for key in AVAILABLE_MODELS if key.startswith("flux3-"
 IGNORED_OPTIONS = {
     "--scheduler": "FLUX 3 Image Klein always runs the flow-map schedule its checkpoints were trained with (Base uses the same schedule with CFG).",
     "--lora-style": "Named LoRA styles are only supported by the Flux in-context CLI; use --lora.",
-    "--vae-tiling": "FLUX 3 Image Klein does not decode in tiles. It decodes in row strips with full-image GroupNorm statistics, or on the full image with --vae-full-precision.",
-    "--vae-tile-size": "FLUX 3 Image Klein does not decode in tiles. It decodes in row strips with full-image GroupNorm statistics, or on the full image with --vae-full-precision.",
+    **VAEDecodeOptions.ignored_options(),
 }
 
 CONDITIONAL_OPTIONS = {
@@ -73,8 +72,7 @@ def main():
         **lora_init_kwargs_from_args(args),
         compute_precision=ComputePrecision.dtype_for(args.compute_precision),
     )
-    if args.vae_full_precision:
-        model.vae.decode_mode = Flux2VAE.DECODE_FULL_PRECISION
+    VAEDecodeOptions.apply(args, model)
 
     memory_saver = CallbackManager.register_callbacks(
         args=args,

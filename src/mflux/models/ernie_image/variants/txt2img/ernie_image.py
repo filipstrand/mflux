@@ -7,6 +7,7 @@ from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.latent_creator.latent_creator import LatentCreator
 from mflux.models.common.pid_decoder.pid_decoder import pid_decode_latents
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.ernie_image.ernie_image_initializer import ErnieImageInitializer
 from mflux.models.ernie_image.latent_creator import ErnieLatentCreator
@@ -132,6 +133,7 @@ class ErnieImage(nn.Module):
             negative_prompt=negative_prompt,
             pid_decode=pid_decode,
             pid_degrade_sigma=pid_degrade_sigma,
+            generation_parameters=VAEDecodeOptions.generation_parameters(self),
         )
 
     def _prepare_latents(self, *, seed: int, config: Config) -> mx.array:

@@ -1,10 +1,10 @@
 import mlx.core as mx
 from mlx import nn
 
+from mflux.models.common.vae.block_decoder import VAEBlockDecoder
 from mflux.models.common.vae.tiling_config import TilingConfig
 from mflux.models.common.vae.vae_util import VAEUtil
 from mflux.models.flux2.model.flux2_vae.common.batch_norm_stats import Flux2BatchNormStats
-from mflux.models.flux2.model.flux2_vae.decoder.block_decoder import Flux2BlockDecoder
 from mflux.models.flux2.model.flux2_vae.decoder.decoder import Flux2Decoder
 from mflux.models.flux2.model.flux2_vae.encoder.encoder import Flux2Encoder
 
@@ -18,11 +18,11 @@ class Flux2VAE(nn.Module):
     # decoder. Tiling stays available through --vae-tiling, but low-RAM mode must not choose it.
     supports_implicit_tiling: bool = False
     # "legacy" decodes the full image in one graph and honours tiling_config. The other modes ignore
-    # tiling_config and use Flux2BlockDecoder: "low_memory" runs in bf16 row strips with full-image GroupNorm
+    # tiling_config and use VAEBlockDecoder: "low_memory" runs in bf16 row strips with full-image GroupNorm
     # statistics, and "full_precision" keeps the input dtype and the full image for each block.
-    DECODE_LEGACY = "legacy"
-    DECODE_LOW_MEMORY = "low_memory"
-    DECODE_FULL_PRECISION = "full_precision"
+    DECODE_LEGACY = VAEBlockDecoder.LEGACY
+    DECODE_LOW_MEMORY = VAEBlockDecoder.LOW_MEMORY
+    DECODE_FULL_PRECISION = VAEBlockDecoder.FULL_PRECISION
     decode_mode: str = DECODE_LEGACY
 
     def __init__(self, decoder_block_out_channels: tuple[int, ...] = (128, 256, 512, 512)):
@@ -47,6 +47,8 @@ class Flux2VAE(nn.Module):
     def decode(self, latents: mx.array) -> mx.array:
         if latents.ndim == 5:
             latents = latents[:, :, 0, :, :]
+        if self.decode_mode != self.DECODE_LEGACY:
+            return VAEBlockDecoder.decode(vae=self, latent=latents, strips=self.decode_mode == self.DECODE_LOW_MEMORY)
         latents = (latents / self.scaling_factor) + self.shift_factor
         latents = mx.transpose(latents, (0, 2, 3, 1))
         latents = self.post_quant_conv(latents)
@@ -65,10 +67,7 @@ class Flux2VAE(nn.Module):
         return self._unpatchify_latents(packed_latents * bn_std + bn_mean)
 
     def decode_packed_latents(self, packed_latents: mx.array, tiling_config: TilingConfig | None = None) -> mx.array:
-        latent = self.unpack_packed_latents(packed_latents)
-        if self.decode_mode == self.DECODE_LEGACY:
-            return VAEUtil.decode(vae=self, latent=latent, tiling_config=tiling_config)
-        return Flux2BlockDecoder.decode(vae=self, latent=latent, strips=self.decode_mode == self.DECODE_LOW_MEMORY)
+        return VAEUtil.decode(vae=self, latent=self.unpack_packed_latents(packed_latents), tiling_config=tiling_config)
 
     @staticmethod
     def _unpatchify_latents(latents: mx.array) -> mx.array:

@@ -5,6 +5,7 @@ from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_ar
 from mflux.models.common.compute_precision import ComputePrecision
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.resolution.config_resolution import ConfigResolution
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.z_image.latent_creator import ZImageLatentCreator
 from mflux.models.z_image.variants.z_image import ZImage
 from mflux.utils.dimension_resolver import DimensionResolver
@@ -24,6 +25,9 @@ IGNORED_OPTIONS = {
 }
 
 
+CONDITIONAL_OPTIONS = VAEDecodeOptions.conditional_options()
+
+
 def build_parser() -> CommandLineParser:
     parser = CommandLineParser(description="Generate an image using Z-Image Turbo based on a prompt.")
     parser.add_general_arguments()
@@ -35,6 +39,7 @@ def build_parser() -> CommandLineParser:
     parser.add_pid_decode_arguments()
     parser.add_float32_arguments()
     parser.add_output_arguments()
+    parser.add_vae_full_precision_arguments()
     return parser
 
 
@@ -52,7 +57,7 @@ class ZImageTurboCommand:
 
     @staticmethod
     def load(args: Namespace) -> ZImage:
-        return ZImage(
+        model = ZImage(
             model_config=ZImageTurboCommand.validate(args),
             quantize=args.quantize,
             model_path=args.model_path,
@@ -60,6 +65,8 @@ class ZImageTurboCommand:
             compute_precision=ComputePrecision.dtype_for(args.compute_precision),
             **lora_init_kwargs_from_args(args),
         )
+        VAEDecodeOptions.apply(args, model)
+        return model
 
     @staticmethod
     def generate(model: ZImage, args: Namespace, seed: int, prompt: str) -> GeneratedImage:
@@ -87,6 +94,7 @@ class ZImageTurboCommand:
 def main():
     parser = build_parser()
     args = parser.parse_args()
+    VAEDecodeOptions.warn_encode_only_tiling()
     CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
 
     # 1. Load the model
