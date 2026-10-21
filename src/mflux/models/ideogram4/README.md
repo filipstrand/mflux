@@ -351,6 +351,15 @@ MLX releases the FP8 weights as the graph evaluates, so peak stays below the sum
 
 Both levels are visually indistinguishable from FP8 side by side. They are not numerically identical, and the gap is larger than the pixel counts suggest at first glance: measured against an FP8 baseline generated on the same machine, 5.9% (`-q 8`) and 38.1% (`-q 4`) of subpixels differ on a photographic caption, 29.2% and 65.6% on a typographic one. Diffusion is chaotic, so a small weight perturbation moves discrete decisions — where a glyph lands, how an edge resolves — and the result is displacement rather than damage. Treat those percentages as change detection, not as a quality score.
 
+## VAE decode
+The VAE decodes the image in bf16 row strips of 128 rows. Each GroupNorm uses statistics from the full image, so the strips do not change the colours, and the image has no seams. The decoder releases the temporary data of each block before the next block starts, and the attention runs in chunks of 4096 queries.
+
+- `--vae-full-precision` decodes each block on the full image, as the earlier decode did. The metadata records the flag, so `--config-from-metadata` uses it again.
+- `--vae-tiling` and `--vae-tile-size` do not change the decode, and the CLI shows a warning.
+- `--low-ram` still releases the text encoder and the transformer before the decode. It does not change the decode.
+
+Ideogram 4 uses the FLUX.2 Klein VAE, so the decode figures in the [FLUX.2 README](../flux2/README.md#vae-decode) apply. They were not measured with Ideogram 4.
+
 ## Notes
 
 - Width and height must be in `[256, 2048]` and multiples of 16.

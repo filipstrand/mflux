@@ -184,6 +184,24 @@ image.save("statue.png")
 ```
 </details>
 
+## VAE decode
+The VAE decodes the image in bf16 row strips of 128 rows. Each GroupNorm uses statistics from the full image, so the strips do not change the colours, and the image has no seams. The decoder releases the temporary data of each block before the next block starts, and the attention runs in chunks of 4096 queries.
+
+- `--vae-full-precision` decodes each block on the full image, as the earlier decode did. The metadata records the flag, so `--config-from-metadata` uses it again.
+- `--vae-tiling` and `--vae-tile-size` do not change the decode, and the CLI shows a warning. They still tile the encode of an input image.
+- `--low-ram` still releases the text encoder and the transformer before the decode. It does not change the decode.
+
+Measured as a decode of saved latents, with only the VAE loaded. Test setup: Apple Silicon Mac, 36 GB, MLX 0.32.0, Z-Image Turbo `-q 8`, 1024×1024, seed 42, 14 prompts.
+
+| Decode | Peak | Time | PSNR vs earlier decode |
+|---|---|---|---|
+| Earlier full-image decode | 7.3 GB | 0.65 s | – |
+| Earlier `--vae-tiling` | 2.9 GB | 0.78 s | 37–47 dB (faint tile bands) |
+| Default (strips) | 1.6 GB | 1.29 s | 47–52 dB |
+| `--vae-full-precision` | 4.6 GB | 0.85 s | identical on the test Mac |
+
+Before this change, `--low-ram` selected the tiled decode for Z-Image without a flag.
+
 ## Training
 
 Use `mflux-train` with a training config that targets `z-image` or `z-image-turbo`. We automatically load the Z-Image Turbo training adapter ([ostris/zimage_turbo_training_adapter](https://huggingface.co/ostris/zimage_turbo_training_adapter)) only when training the turbo model; base Z-Image training does not use the assistant LoRA. You can start from the [example config](../common/training/_example/train.json). For the data/images folder layout, see the common training docs ([Training (LoRA)](../common/README.md#training-lora)).
