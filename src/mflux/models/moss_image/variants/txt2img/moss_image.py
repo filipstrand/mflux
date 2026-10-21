@@ -1,123 +1,143 @@
-import time
-from pathlib import Path
-
 import mlx.core as mx
-from PIL import Image
+from mlx import nn
 
+from mflux.models.common.config.config import Config
+from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.step_cache.step_cache import StepCache
-from mflux.models.moss_image.latent_creator.moss_image_latent_creator import (
-    MOSSImageLatentCreator,
-)
-from mflux.models.moss_image.model.moss_image_scheduler.moss_image_scheduler import (
-    MOSSImageScheduler,
-)
+from mflux.models.common.weights.saving.model_saver import ModelSaver
+from mflux.models.common_models.qwen3_5 import Qwen35TextModel
+from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
+from mflux.models.moss_image.latent_creator.moss_image_latent_creator import MOSSImageLatentCreator
+from mflux.models.moss_image.model.moss_image_text_encoder.moss_image_prompt_encoder import MOSSImagePromptEncoder
+from mflux.models.moss_image.model.moss_image_transformer.moss_image_transformer import MOSSImageTransformer
 from mflux.models.moss_image.moss_image_initializer import MOSSImageInitializer
+from mflux.models.moss_image.weights.moss_image_weight_definition import MOSSImageWeightDefinition
+from mflux.utils.exceptions import StopImageGenerationException
+from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.image_util import ImageUtil
 
 
-class MOSSImage:
+class MOSSImage(nn.Module):
+    vae: Flux2VAE
+    transformer: MOSSImageTransformer
+    text_encoder: Qwen35TextModel
+
+    # The reference sampling settings (model card of OpenMOSS-Team/MOSS-Image-SFT).
+    DEFAULT_STEPS = 50
+    DEFAULT_GUIDANCE = 3.0
+    # The negative CFG branch skips this zero-based transformer layer.
+    DEFAULT_UNCOND_SKIP_LAYERS = (22,)
+
     def __init__(
         self,
-        model_path: str | Path,
         quantize: int | None = None,
+        model_path: str | None = None,
+        model_config: ModelConfig | None = None,
     ):
-        self.model_path = Path(model_path)
-        self.transformer = None
-        self.vae = None
-        self.text_encoder = None
-        self.scheduler = MOSSImageScheduler()
-
+        super().__init__()
         MOSSImageInitializer.init(
-            self,
-            model_path=self.model_path,
+            model=self,
+            model_config=model_config or ModelConfig.moss_image_sft(),
             quantize=quantize,
+            model_path=model_path,
         )
 
     def generate_image(
         self,
+        seed: int,
         prompt: str,
-        width: int = 1024,
+        num_inference_steps: int = DEFAULT_STEPS,
         height: int = 1024,
-        num_inference_steps: int = 50,
-        guidance_scale: float = 3.0,
-        seed: int = 42,
-        negative_prompt: str = "",
-        uncond_skip_layers: tuple[int, ...] = (22,),
-        step_cache_ratio: float | None = 0.4,
-    ) -> Image.Image:
-        t0 = time.time()
-        cache_str = f"StepCache ratio={step_cache_ratio}" if step_cache_ratio else "no cache"
-        print(f"\n🎨 [MOSS-Image] 开始生图: 尺寸={width}x{height}, 步数={num_inference_steps}, CFG={guidance_scale}, 种子={seed}, 加速={cache_str}", flush=True)
+        width: int = 1024,
+        guidance: float = DEFAULT_GUIDANCE,
+        negative_prompt: str | None = None,
+        uncond_skip_layers: tuple[int, ...] = DEFAULT_UNCOND_SKIP_LAYERS,
+        step_cache_ratio: float | None = None,
+    ) -> GeneratedImage:
+        skip_layers = self._validate_skip_layers(uncond_skip_layers)
+        latents = MOSSImageLatentCreator.create_noise(seed=seed, height=height, width=width)
+        config = Config(
+            width=width,
+            height=height,
+            guidance=guidance,
+            scheduler="moss_image",
+            model_config=self.model_config,
+            num_inference_steps=num_inference_steps,
+        )
+        do_cfg = config.guidance != 1.0
+        positive = self._encode_prompt(prompt)
+        negative = self._encode_prompt(negative_prompt or "") if do_cfg else None
+        timesteps = config.scheduler.timesteps.tolist()
+        step_cache = StepCache.for_run(config, ratio=step_cache_ratio, signal_fn=self.transformer.time_signal)
 
-        # 1. Encode text
-        print("📝 [文本编码] 正在提取提示词特征 ...", flush=True)
-        t_enc = time.time()
-        positive_embeds = self.text_encoder.encode_prompt(prompt)
+        ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
+        ctx.before_loop(latents)
+        for t in config.time_steps:
+            try:
+                noise = step_cache.reuse(t)
+                if noise is None:
+                    noise = self._predict(latents, timesteps[t], positive, negative, config.guidance, skip_layers)
+                    step_cache.store(noise)
+                latents = config.scheduler.step(noise=noise, timestep=t, latents=latents)
+                ctx.in_loop(t, latents)
+                mx.eval(latents)
+            except KeyboardInterrupt:  # noqa: PERF203
+                ctx.interruption(t, latents)
+                raise StopImageGenerationException(
+                    f"Stopping image generation at step {t + 1}/{config.num_inference_steps}"
+                )
+        ctx.after_loop(latents)
 
-        do_cfg = guidance_scale != 1.0
-        negative_embeds = None
-        if do_cfg:
-            negative_embeds = self.text_encoder.encode_prompt(negative_prompt)
-        print(f"✅ [文本编码完成] 耗时: {time.time()-t_enc:.2f}s", flush=True)
+        decoded = self.vae.decode_packed_latents(
+            latents.astype(ModelConfig.precision), tiling_config=self.tiling_config
+        )
+        return ImageUtil.to_image(
+            decoded_latents=decoded,
+            config=config,
+            seed=seed,
+            prompt=prompt,
+            quantization=self.bits,
+            lora_paths=self.lora_paths,
+            lora_scales=self.lora_scales,
+            negative_prompt=negative_prompt,
+            generation_time=config.time_steps.format_dict["elapsed"],
+            generation_parameters=step_cache.generation_parameters(step_cache_ratio),
+        )
 
-        # 2. Setup Scheduler & Latents
-        timesteps = self.scheduler.set_timesteps(num_inference_steps)
-        latents = MOSSImageLatentCreator.create_latents(1, height, width, seed)
+    def save_model(self, base_path: str) -> None:
+        ModelSaver.save_model(
+            model=self,
+            bits=self.bits,
+            base_path=base_path,
+            weight_definition=MOSSImageWeightDefinition,
+        )
 
-        num_steps = len(timesteps)
+    def _predict(
+        self,
+        latents: mx.array,
+        timestep: float,
+        positive: mx.array,
+        negative: mx.array | None,
+        guidance: float,
+        skip_layers: frozenset[int],
+    ) -> mx.array:
+        # The two CFG branches run as separate passes: their text lengths differ and the
+        # negative branch skips layers, so they cannot share one batch.
+        cond = self.transformer(latents, timestep, positive).astype(mx.float32)
+        if negative is None:
+            return cond
+        uncond = self.transformer(latents, timestep, negative, skip_layers=skip_layers).astype(mx.float32)
+        return uncond + guidance * (cond - uncond)
 
-        # Build StepCache
-        skip_steps = frozenset()
-        if step_cache_ratio is not None and 0 < step_cache_ratio < 1 and num_steps >= 10:
-            skip_steps = StepCache.select_skip_steps(
-                steps=list(range(num_steps)),
-                sigmas=self.scheduler.sigmas,
-                ratio=step_cache_ratio
-            )
-            print(f"⚡ [StepCache 就绪] 共 {num_steps} 步，已启用特征复用，将自动跳过 {len(skip_steps)} 步计算！", flush=True)
-        step_cache = StepCache(skip_steps)
+    def _encode_prompt(self, prompt: str) -> mx.array:
+        if prompt not in self.prompt_cache:
+            embeds = MOSSImagePromptEncoder.encode(prompt, self.tokenizers["qwen3_5"], self.text_encoder)
+            mx.eval(embeds)
+            self.prompt_cache[prompt] = embeds
+        return self.prompt_cache[prompt]
 
-        # 3. Denoising loop
-        t_loop_start = time.time()
-        for step_idx in range(num_steps):
-            step_t0 = time.time()
-            t = timesteps[step_idx]
-
-            reused_pred = step_cache.reuse(step_idx)
-            if reused_pred is not None:
-                pred = reused_pred
-                is_skipped = True
-            else:
-                is_skipped = False
-                # Positive forward
-                pred = self.transformer(latents, t, positive_embeds)
-
-                if do_cfg:
-                    # Negative forward with skip layer 22
-                    uncond = self.transformer(latents, t, negative_embeds, skip_layers=uncond_skip_layers)
-                    pred = uncond + guidance_scale * (pred - uncond)
-
-                step_cache.store(pred)
-
-            latents = self.scheduler.step(pred, step_idx, latents)
-            mx.eval(latents)
-
-            step_sec = time.time() - step_t0
-            status = "⏩ [跳步复用]" if is_skipped else f"{step_sec:.2f}s"
-            if (step_idx + 1) % 5 == 0 or step_idx == num_steps - 1 or step_idx < 3:
-                print(f"   第 {step_idx + 1:2d}/{num_steps} 步完成 ({status})", flush=True)
-
-        loop_time = time.time() - t_loop_start
-        print(f"✅ [去噪完成] 纯采样总耗时: {loop_time:.2f}s (平均 {loop_time/num_steps:.2f} s/步)", flush=True)
-
-        # 4. Decode with FLUX.2 VAE
-        print("🖼️ [VAE解码] 正在将潜变量解码为高质量图像 ...", flush=True)
-        t_vae = time.time()
-        decoded = self.vae.decode_packed_latents(latents)
-        mx.eval(decoded)
-        print(f"✅ [VAE解码完成] 耗时: {time.time() - t_vae:.2f}s", flush=True)
-
-        image = ImageUtil.to_pil(decoded)
-        total_time = time.time() - t0
-        print(f"🎉 [生图完成] 总耗时: {total_time:.2f}s!", flush=True)
-        return image
+    def _validate_skip_layers(self, layers: tuple[int, ...]) -> frozenset[int]:
+        depth = len(self.transformer.layers)
+        if any(type(index) is not int or not 0 <= index < depth for index in layers):
+            raise ValueError(f"uncond_skip_layers must hold layer indices in [0, {depth}), got {list(layers)}.")
+        return frozenset(layers)

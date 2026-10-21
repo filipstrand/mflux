@@ -19,6 +19,7 @@ from mflux.models.ideogram4.weights.ideogram4_weight_definition import Ideogram4
 from mflux.models.iris.variants.txt2img.iris import Iris
 from mflux.models.krea2.variants.txt2img.krea2 import Krea2
 from mflux.models.ming_image import MingImage
+from mflux.models.moss_image import MOSSImage
 from mflux.models.qwen.variants.edit.qwen_image_edit import QwenImageEdit
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
 from mflux.models.qwen21.variants.controlnet.qwen_image_21_controlnet import QwenImage21Controlnet
@@ -65,6 +66,7 @@ MODEL_CLASSES: dict[str, type] = {
     "krea-2-raw": Krea2,
     "krea-dev": Flux1,
     "ming-image-design": MingImage,
+    "moss-image-sft": MOSSImage,
     "qwen-image": QwenImage,
     # One Qwen-Image-2.1 checkpoint does text-to-image and editing. QwenImage21Edit saves all of it
     # (vision tower and lm_head too), and mflux-generate-qwen-2.1 also loads that save.

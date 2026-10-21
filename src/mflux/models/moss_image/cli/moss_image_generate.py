@@ -1,38 +1,101 @@
-import argparse
-from pathlib import Path
+from argparse import Namespace
 
-from mflux.models.moss_image.variants.txt2img.moss_image import MOSSImage
+from mflux.callbacks.callback_manager import CallbackManager
+from mflux.cli.parser.parsers import CommandLineParser
+from mflux.models.common.config.model_config import ModelConfig
+from mflux.models.common.resolution.config_resolution import ConfigResolution
+from mflux.models.moss_image.latent_creator import MOSSImageLatentCreator
+from mflux.models.moss_image.variants import MOSSImage
+from mflux.utils.exceptions import PromptFileReadError, StopImageGenerationException
+from mflux.utils.generated_image import GeneratedImage
+from mflux.utils.prompt_util import PromptUtil
+
+# The model this CLI runs when --model is omitted. The parser also reads it for the --steps default.
+DEFAULT_MODEL = "moss-image-sft"
+DEFAULT_GUIDANCE = MOSSImage.DEFAULT_GUIDANCE
+
+# Options this CLI accepts but cannot honour. The runtime warning and mflux-capabilities read this.
+IGNORED_OPTIONS = {
+    "--scheduler": "MOSS-Image samples on the snapped flow-matching schedule it was trained with.",
+}
+
+
+def build_parser() -> CommandLineParser:
+    parser = CommandLineParser(
+        description="Generate an image using MOSS-Image-SFT (50 steps, CFG 3) based on a prompt."
+    )
+    parser.add_general_arguments()
+    parser.add_model_arguments(require_model_arg=False, default_model=DEFAULT_MODEL)
+    # No add_lora_arguments(): mflux has no LoRA mapping for MOSS-Image.
+    parser.add_image_generator_arguments(supports_metadata_config=True)
+    parser.add_step_cache_arguments()
+    parser.add_output_arguments()
+    parser.set_defaults(guidance=DEFAULT_GUIDANCE)
+    return parser
+
+
+class MOSSImageCommand:
+    latent_creator = MOSSImageLatentCreator
+
+    @staticmethod
+    def validate(args: Namespace) -> ModelConfig:
+        # Weight-free: resolves --model against the in-memory registry only.
+        return ConfigResolution.resolve_restricted(args.model, DEFAULT_MODEL, model_path=args.model_path)
+
+    @staticmethod
+    def load(args: Namespace) -> MOSSImage:
+        return MOSSImage(
+            model_config=MOSSImageCommand.validate(args),
+            quantize=args.quantize,
+            model_path=args.model_path,
+        )
+
+    @staticmethod
+    def generate(model: MOSSImage, args: Namespace, seed: int, prompt: str) -> GeneratedImage:
+        return model.generate_image(
+            seed=seed,
+            prompt=prompt,
+            width=args.width,
+            height=args.height,
+            num_inference_steps=args.steps,
+            guidance=MOSSImageCommand._guidance(args),
+            negative_prompt=args.negative_prompt,
+            step_cache_ratio=args.step_cache_ratio,
+        )
+
+    @staticmethod
+    def _guidance(args: Namespace) -> float:
+        # The parser sets the default. A namespace that a caller builds or edits can still hold None.
+        return DEFAULT_GUIDANCE if args.guidance is None else args.guidance
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate an image with MOSS-Image (MLX).")
-    parser.add_argument("--prompt", type=str, required=True, help="Text prompt for generation.")
-    parser.add_argument("--model", type=str, default="/Users/vanch/models/mlx/MOSS-Image-SFT-mlx-bf16", help="Path to MOSS-Image model directory.")
-    parser.add_argument("--steps", type=int, default=50, help="Number of inference steps (default: 50).")
-    parser.add_argument("--guidance", type=float, default=3.0, help="CFG Guidance scale (default: 3.0).")
-    parser.add_argument("--width", type=int, default=1024, help="Output image width (default: 1024).")
-    parser.add_argument("--height", type=int, default=1024, help="Output image height (default: 1024).")
-    parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42).")
-    parser.add_argument("--negative-prompt", type=str, default="", help="Negative prompt.")
-    parser.add_argument("--step-cache-ratio", type=float, default=0.4, help="StepCache skip ratio (0 to disable, default: 0.4).")
-    parser.add_argument("--output", type=str, default="output_moss.png", help="Output image path.")
+    # 0. Parse command line arguments
+    parser = build_parser()
     args = parser.parse_args()
+    CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
 
-    model = MOSSImage(model_path=args.model)
-    ratio = args.step_cache_ratio if args.step_cache_ratio > 0 else None
-    image = model.generate_image(
-        prompt=args.prompt,
-        width=args.width,
-        height=args.height,
-        num_inference_steps=args.steps,
-        guidance_scale=args.guidance,
-        seed=args.seed,
-        negative_prompt=args.negative_prompt,
-        step_cache_ratio=ratio,
+    # 1. Load the model
+    model = MOSSImageCommand.load(args)
+
+    # 2. Register callbacks
+    memory_saver = CallbackManager.register_callbacks(
+        args=args,
+        model=model,
+        latent_creator=MOSSImageCommand.latent_creator,
     )
-    out_path = Path(args.output)
-    image.save(out_path)
-    print(f"💾 Image successfully saved to: {out_path.resolve()}")
+
+    try:
+        for seed in args.seed:
+            # 3. Generate an image for each seed value
+            image = MOSSImageCommand.generate(model, args, seed, PromptUtil.read_prompt(args))
+            # 4. Save the image
+            image.save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)
+    except (StopImageGenerationException, PromptFileReadError) as exc:
+        print(exc)
+    finally:
+        if memory_saver:
+            print(memory_saver.memory_stats())
 
 
 if __name__ == "__main__":

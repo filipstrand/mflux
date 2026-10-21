@@ -1,17 +1,15 @@
 import mlx.core as mx
-import mlx.nn as nn
+import numpy as np
+from mlx import nn
 
-from mflux.models.moss_image.model.moss_image_transformer.moss_image_block import (
-    MOSSImageBlock,
-    RMSNorm,
-)
+from mflux.models.moss_image.model.moss_image_transformer.moss_image_block import MOSSImageBlock
 from mflux.models.moss_image.model.moss_image_transformer.moss_image_rope import MOSSImageRoPE
-from mflux.models.moss_image.model.moss_image_transformer.moss_image_text_embedder import (
-    MOSSImageTextProjection,
-)
+from mflux.models.moss_image.model.moss_image_transformer.moss_image_text_embedder import MOSSImageTextProjection
 
 
 class MOSSImageTransformer(nn.Module):
+    # Module names follow the official checkpoint (OpenMOSS-Team/MOSS-Image-SFT, transformer/),
+    # so the weight mapping is the identity.
     def __init__(
         self,
         dim: int = 3072,
@@ -24,84 +22,63 @@ class MOSSImageTransformer(nn.Module):
         rope_base: float = 10000.0,
     ):
         super().__init__()
+        if dim % num_heads or (dim // num_heads) % 8 or freq_dim % 2:
+            raise ValueError("MOSS-Image needs dim divisible by num_heads, head_dim divisible by 8, and an even freq_dim.")  # fmt: off
         self.dim = dim
-        self.latent_channels = latent_channels
         self.freq_dim = freq_dim
-        self.num_layers = num_layers
-
-        self.video_embedder = nn.Linear(latent_channels, dim, bias=True)
+        self.latent_channels = latent_channels
+        self.video_embedder = nn.Linear(latent_channels, dim)
         self.text_embedder = MOSSImageTextProjection(text_dim, dim, ffn_dim, num_heads)
         self.rope = MOSSImageRoPE(dim // num_heads, rope_base)
-
-        self.time_embedding_0 = nn.Linear(freq_dim, dim, bias=True)
-        self.time_embedding_2 = nn.Linear(dim, dim, bias=True)
-
-        self.shared_block_modulation = nn.Linear(dim, 6 * dim, bias=True)
-        self.video_head_modulation = nn.Linear(dim, 2 * dim, bias=True)
-
+        self.time_embedding = [nn.Linear(freq_dim, dim), nn.SiLU(), nn.Linear(dim, dim)]
+        self.shared_block_modulation = nn.Linear(dim, 6 * dim)
         self.layers = [MOSSImageBlock(dim, ffn_dim, num_heads) for _ in range(num_layers)]
-
-        self.final_norm_video = RMSNorm(dim)
+        self.final_norm_video = nn.RMSNorm(dim, eps=1e-6)
         self.final_linear_video = nn.Linear(dim, latent_channels, bias=False)
-
-    def time_embed(self, timestep: float | mx.array) -> tuple[mx.array, mx.array]:
-        # Timestep sinusoidal embedding in float32 / float64
-        t = mx.atleast_1d(mx.array(timestep, dtype=mx.float32))
-        half = self.freq_dim // 2
-        freq = 10000.0 ** (-mx.arange(half, dtype=mx.float32) / half)
-        phase = t[:, None] * freq[None, :]
-        sin_part = mx.sin(phase)
-        cos_part = mx.cos(phase)
-        embedding = mx.concatenate([cos_part, sin_part], axis=-1)
-
-        h = nn.silu(self.time_embedding_0(embedding))
-        time_feat = self.time_embedding_2(h)
-
-        mod = mx.reshape(self.shared_block_modulation(time_feat), (t.shape[0], 6, self.dim))
-        head = mx.reshape(self.video_head_modulation(time_feat), (t.shape[0], 2, self.dim))
-        return mod, head
+        self.video_head_modulation = nn.Linear(dim, 2 * dim)
 
     def __call__(
         self,
         hidden_states: mx.array,
-        timestep: float | mx.array,
+        timestep: float,
         encoder_hidden_states: mx.array,
-        skip_layers: list[int] | tuple[int, ...] | None = None,
+        skip_layers: frozenset[int] = frozenset(),
     ) -> mx.array:
-        # hidden_states: (B, C, H, W), C = 128
-        B, C, H, W = hidden_states.shape
-        skip_set = set(skip_layers or ())
+        # hidden_states: (B, latent_channels, H, W); encoder_hidden_states: (B, S, text_dim)
+        batch, channels, height, width = hidden_states.shape
+        modulation, head = self._modulation(timestep, batch)
 
-        mod, head = self.time_embed(timestep)
-
-        # video embed: (B, H*W, dim)
-        # flatten(2).transpose(1, 2) in PyTorch -> (B, H*W, C)
-        video = mx.reshape(hidden_states, (B, C, H * W))
-        video = mx.transpose(video, (0, 2, 1))
-        video = self.video_embedder(video)
-
-        # text embed
-        text_len = encoder_hidden_states.shape[1]
-        rope = self.rope(H, W, text_len)
-
-        text_rope = rope[:, H * W :]
-        text = self.text_embedder(encoder_hidden_states, text_rope)
+        video = hidden_states.reshape(batch, channels, height * width).transpose(0, 2, 1)
+        video = self.video_embedder(video.astype(modulation.dtype))
+        rope = self.rope(height, width, encoder_hidden_states.shape[1], dtype=video.dtype)
+        text = self.text_embedder(encoder_hidden_states, rope[:, height * width :])
 
         x = mx.concatenate([video, text], axis=1)
+        for index, layer in enumerate(self.layers):
+            if index not in skip_layers:
+                x = layer(x, rope, modulation)
 
-        for layer_idx, layer in enumerate(self.layers):
-            if layer_idx not in skip_set:
-                x = layer(x, rope, mod)
+        x = self.final_norm_video(x[:, : height * width])
+        x = x * (1 + head[:, 1:2]) + head[:, 0:1]
+        x = self.final_linear_video(x)
+        return x.transpose(0, 2, 1).reshape(batch, channels, height, width)
 
-        v_out = x[:, : H * W, :]
-        v_out = self.final_norm_video(v_out)
+    def time_signal(self, sigmas: mx.array) -> mx.array:
+        # The timestep embedding for each sigma. StepCache scores the steps with it.
+        return self._time_embedding([float(sigma) * 1000.0 for sigma in sigmas.tolist()])
 
-        shift_h = head[:, 0:1, :]
-        scale_h = head[:, 1:2, :]
-        v_out = v_out * (1.0 + scale_h) + shift_h
-        v_out = self.final_linear_video(v_out)
+    def _modulation(self, timestep: float, batch: int) -> tuple[mx.array, mx.array]:
+        time = self._time_embedding([float(timestep)])
+        modulation = self.shared_block_modulation(time).reshape(1, 6, self.dim)
+        head = self.video_head_modulation(time).reshape(1, 2, self.dim)
+        return mx.broadcast_to(modulation, (batch, 6, self.dim)), mx.broadcast_to(head, (batch, 2, self.dim))
 
-        # reshape back to (B, C, H, W)
-        v_out = mx.transpose(v_out, (0, 2, 1))
-        out = mx.reshape(v_out, (B, C, H, W))
-        return out
+    def _time_embedding(self, timesteps: list[float]) -> mx.array:
+        # The reference computes the sinusoid in float64. The timesteps are host scalars, so do that with numpy.
+        half = self.freq_dim // 2
+        phase = np.array(timesteps, dtype=np.float64)[:, None] * 10000.0 ** (-np.arange(half, dtype=np.float64) / half)
+        embedding = mx.array(np.concatenate([np.cos(phase), np.sin(phase)], axis=-1).astype(np.float32))
+        time = embedding.astype(self.shared_block_modulation.bias.dtype)
+        for module in self.time_embedding:
+            time = module(time)
+        return time
