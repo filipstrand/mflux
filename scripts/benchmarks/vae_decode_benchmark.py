@@ -178,7 +178,11 @@ class VAEDecodeBenchmark:
         weights = mx.load(str(run_dir / "vae.safetensors"))
         quantized = {key.rsplit(".", 1)[0] for key in weights if key.endswith(".scales")}
         if quantized:
-            nn.quantize(vae, bits=info["bits"], class_predicate=lambda path, module: path in quantized)
+            # A quantized weight has in_features * bits / 32 columns and in_features / group_size scales.
+            sample = next(iter(quantized))
+            group_size = 64
+            bits = info["bits"] or 32 * weights[f"{sample}.weight"].shape[1] // (weights[f"{sample}.scales"].shape[1] * group_size)  # fmt: skip
+            nn.quantize(vae, group_size=group_size, bits=bits, class_predicate=lambda path, module: path in quantized)
         vae.load_weights(list(weights.items()))
         mx.eval(vae.parameters())
         print(f"Loaded {class_name}: {sum(v.nbytes for _, v in tree_flatten(vae.parameters())) / GB:.2f} GB of weights")
