@@ -1,3 +1,4 @@
+import json
 import sys
 
 import pytest
@@ -33,6 +34,7 @@ def full_argv(tmp_path):
         "--guidance", "4.5",
         "--negative-prompt", "blurry",
         "--step-cache-ratio", "0.25",
+        "--uncond-skip-layers", "20", "24",
         "-q", "8",
         "--make-conf",
         "--output", str(tmp_path / "out.png"),
@@ -61,6 +63,7 @@ def expected_generate_call(seed):
         "guidance": 4.5,
         "negative_prompt": "blurry",
         "step_cache_ratio": 0.25,
+        "uncond_skip_layers": (20, 24),
     }
 
 
@@ -89,6 +92,7 @@ def test_main_runs_the_default_size_and_steps(monkeypatch, tmp_path):
     call = model.generate_calls[0]
     assert (call["width"], call["height"], call["num_inference_steps"]) == (1024, 1024, 50)
     assert (call["guidance"], call["negative_prompt"], call["step_cache_ratio"]) == (3.0, "", None)
+    assert call["uncond_skip_layers"] == (22,)
     assert model.images[0].saves == [(str(tmp_path / "out.png"), False)]
     assert model.init_kwargs["quantize"] is None
 
@@ -271,4 +275,39 @@ def test_load_rejects_a_bad_step_count_or_size_before_building_the_model(monkeyp
     args = args_for(monkeypatch, ["--prompt", "x", *argv])
     with pytest.raises(ValueError, match=message):
         cli.MOSSImageCommand.load(args)
+    assert FakeMOSSImage.instances == []
+
+
+@pytest.mark.fast
+def test_main_passes_an_empty_skip_layer_flag_as_no_skipped_layers(monkeypatch):
+    model = run_main(monkeypatch, ["--prompt", "x", "--uncond-skip-layers"])
+    assert model.generate_calls[0]["uncond_skip_layers"] == ()
+
+
+@pytest.mark.fast
+def test_load_rejects_a_skip_layer_outside_the_transformer_before_building_the_model(monkeypatch):
+    args = args_for(monkeypatch, ["--prompt", "x", "--uncond-skip-layers", "42"])
+    with pytest.raises(ValueError, match=r"layer indices in \[0, 42\)"):
+        cli.MOSSImageCommand.load(args)
+    assert FakeMOSSImage.instances == []
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize(("recorded", "argv", "expected"), [([], [], ()), ([5, 9], [], (5, 9)), ([5], ["--uncond-skip-layers", "3"], (3,))])  # fmt: skip
+def test_a_sidecar_replays_its_skip_layers_unless_the_flag_overrides_them(
+    monkeypatch, tmp_path, recorded, argv, expected
+):
+    sidecar = tmp_path / "run.metadata.json"
+    sidecar.write_text(json.dumps({"prompt": "a puffin", "seed": 7, "uncond_skip_layers": recorded}))
+    model = run_main(monkeypatch, ["--config-from-metadata", str(sidecar), *argv])
+    assert model.generate_calls[0]["uncond_skip_layers"] == expected
+
+
+@pytest.mark.fast
+def test_a_sidecar_with_bad_skip_layers_fails_before_the_model_loads(monkeypatch, tmp_path):
+    sidecar = tmp_path / "run.metadata.json"
+    sidecar.write_text(json.dumps({"prompt": "a puffin", "uncond_skip_layers": "22"}))
+    monkeypatch.setattr(sys, "argv", ["mflux-generate-moss-image", "--config-from-metadata", str(sidecar)])
+    with pytest.raises(SystemExit):
+        cli.main()
     assert FakeMOSSImage.instances == []

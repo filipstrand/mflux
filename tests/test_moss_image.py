@@ -13,7 +13,7 @@ from mlx.utils import tree_unflatten
 from torch import nn as tnn
 from torch.nn import functional as F
 
-from mflux.models.common_models.qwen3_5 import Qwen35TextModel
+from mflux.models.common_models.qwen3_5 import Qwen35GatedDeltaNet, Qwen35TextModel
 from mflux.models.moss_image.latent_creator.moss_image_latent_creator import MOSSImageLatentCreator
 from mflux.models.moss_image.model.moss_image_scheduler.moss_image_scheduler import MOSSImageScheduler
 from mflux.models.moss_image.model.moss_image_transformer.moss_image_transformer import MOSSImageTransformer
@@ -305,3 +305,41 @@ def test_the_step_cache_signal_is_one_timestep_embedding_per_sigma():
     # The signal row is the embedding the forward pass modulates with at that timestep.
     single = model.time_signal(mx.array([0.5]))
     assert np.allclose(np.array(signal[1]), np.array(single[0]), atol=1e-6)
+
+
+class _SequentialDeltaRule:
+    # The token-by-token recurrence (transformers' torch_recurrent_gated_delta_rule), in numpy.
+    @staticmethod
+    def run(query, key, value, g, beta):
+        def l2(x):
+            return x / np.sqrt((x * x).sum(-1, keepdims=True) + 1e-6)
+
+        query, key = l2(query) * query.shape[-1] ** -0.5, l2(key)
+        batch, seq_len, heads, key_dim = key.shape
+        state = np.zeros((batch, heads, key_dim, value.shape[-1]))
+        out = np.zeros(value.shape)
+        for t in range(seq_len):
+            state = state * np.exp(g[:, t])[:, :, None, None]
+            kv_mem = (state * key[:, t][..., None]).sum(-2)
+            delta = (value[:, t] - kv_mem) * beta[:, t][..., None]
+            state = state + key[:, t][..., None] * delta[..., None, :]
+            out[:, t] = (state * query[:, t][..., None]).sum(-2)
+        return out
+
+
+@pytest.mark.fast
+def test_the_chunked_delta_rule_matches_the_recurrence_on_a_long_prompt():
+    # 1000 tokens: 16 chunks, the last one padded. The chunked rule keeps the graph at one
+    # serial step for each chunk, so the 4096-token prompt limit stays practical.
+    rng = np.random.default_rng(0)
+    shape = (1, 1000, 2, 16)
+    query, key, value = (rng.standard_normal(shape) for _ in range(3))
+    g = -np.abs(rng.standard_normal((1, 1000, 2))) * 0.1
+    beta = 1 / (1 + np.exp(-rng.standard_normal((1, 1000, 2))))
+
+    expected = _SequentialDeltaRule.run(query, key, value, g, beta)
+    arrays = (mx.array(x.astype(np.float32)) for x in (query, key, value, g, beta))
+    actual = np.array(Qwen35GatedDeltaNet._gated_delta_rule(*arrays))
+
+    assert actual.shape == expected.shape
+    assert np.abs(actual - expected).max() < 1e-3

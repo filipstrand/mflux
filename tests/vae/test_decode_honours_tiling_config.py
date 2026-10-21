@@ -535,3 +535,15 @@ def test_moss_image_decode_passes_tiling_config_to_vae(tiling_config):
     model.generate_image(seed=1, prompt="x", num_inference_steps=1, height=64, width=64)
 
     assert vae.received_tiling_configs[-1] is tiling_config
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize(("layers", "recorded"), [((22,), [22]), ((), [])])
+def test_moss_image_records_the_skipped_layers_in_its_metadata(layers, recorded):
+    model = _PackedModelFixtures.moss_image(_RecordingPackedVAE(), None)
+
+    image = model.generate_image(
+        seed=1, prompt="x", num_inference_steps=1, height=64, width=64, uncond_skip_layers=layers
+    )
+
+    assert image.generation_parameters["uncond_skip_layers"] == recorded

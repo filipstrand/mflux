@@ -63,6 +63,13 @@ class MOSSImageTransformer(nn.Module):
         x = self.final_linear_video(x)
         return x.transpose(0, 2, 1).reshape(batch, channels, height, width)
 
+    @staticmethod
+    def check_skip_layers(layers, depth: int) -> frozenset[int]:
+        layers = tuple(layers)
+        if any(type(index) is not int or not 0 <= index < depth for index in layers):
+            raise ValueError(f"uncond_skip_layers must hold layer indices in [0, {depth}), got {list(layers)}.")
+        return frozenset(layers)
+
     def time_signal(self, sigmas: mx.array) -> mx.array:
         # The timestep embedding for each sigma. StepCache scores the steps with it.
         return self._time_embedding([float(sigma) * 1000.0 for sigma in sigmas.tolist()])

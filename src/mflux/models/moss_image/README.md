@@ -25,6 +25,8 @@ mflux-generate-moss-image \
 
 The defaults follow the model card: 50 steps, guidance 3 and an empty negative prompt. The
 negative branch of CFG skips transformer layer 22. Each step runs the transformer two times.
+`--uncond-skip-layers` sets other layers, and the flag with no values skips no layer. The image
+metadata records the skipped layers, so `--config-from-metadata` replays them.
 
 - Width and height must be multiples of 16.
 - `--steps` accepts 1 to 218. Above 218, two steps snap to the same point of the training

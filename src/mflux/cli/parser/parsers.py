@@ -512,6 +512,16 @@ class CommandLineParser(argparse.ArgumentParser):
                     namespace.step_cache_ratio = open_unit_float(str(prior_gen_metadata["step_cache_ratio"]))
                 except argparse.ArgumentTypeError as exc:
                     self.error(f"step_cache_ratio in --config-from-conf: {exc}")
+            # MOSS-Image records the layers its negative CFG branch skips. They change the image too.
+            if (
+                hasattr(namespace, "uncond_skip_layers")
+                and prior_gen_metadata.get("uncond_skip_layers") is not None
+                and not self._option_was_provided("--uncond-skip-layers")
+            ):
+                recorded_layers = prior_gen_metadata["uncond_skip_layers"]
+                if not isinstance(recorded_layers, list) or not all(type(layer) is int for layer in recorded_layers):
+                    self.error(f"uncond_skip_layers in --config-from-conf: {recorded_layers!r} is not a list of layer indices.")  # fmt: off
+                namespace.uncond_skip_layers = recorded_layers
             # Float16 compute changes the image too, so a sidecar that recorded it replays it.
             if (
                 hasattr(namespace, "compute_precision")

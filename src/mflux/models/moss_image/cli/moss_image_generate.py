@@ -6,7 +6,9 @@ from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.resolution.config_resolution import ConfigResolution
 from mflux.models.moss_image.latent_creator import MOSSImageLatentCreator
 from mflux.models.moss_image.model.moss_image_scheduler import MOSSImageScheduler
+from mflux.models.moss_image.model.moss_image_transformer.moss_image_transformer import MOSSImageTransformer
 from mflux.models.moss_image.variants import MOSSImage
+from mflux.models.moss_image.weights.moss_image_weight_mapping import MOSSImageWeightMapping
 from mflux.utils.exceptions import PromptFileReadError, StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
 from mflux.utils.prompt_util import PromptUtil
@@ -14,6 +16,7 @@ from mflux.utils.prompt_util import PromptUtil
 # The model this CLI runs when --model is omitted. The parser also reads it for the --steps default.
 DEFAULT_MODEL = "moss-image-sft"
 DEFAULT_GUIDANCE = MOSSImage.DEFAULT_GUIDANCE
+DEFAULT_UNCOND_SKIP_LAYERS = MOSSImage.DEFAULT_UNCOND_SKIP_LAYERS
 
 # Options this CLI accepts but cannot honour. The runtime warning and mflux-capabilities read this.
 IGNORED_OPTIONS = {
@@ -30,6 +33,7 @@ def build_parser() -> CommandLineParser:
     # No add_lora_arguments(): mflux has no LoRA mapping for MOSS-Image.
     parser.add_image_generator_arguments(supports_metadata_config=True)
     parser.add_step_cache_arguments()
+    parser.add_argument("--uncond-skip-layers", type=int, nargs="*", default=None, metavar="LAYER", help=f"Zero-based transformer layers that the negative CFG branch skips. Pass the flag with no values to skip no layer. Default: {' '.join(map(str, DEFAULT_UNCOND_SKIP_LAYERS))}.")  # fmt: off
     parser.add_output_arguments()
     parser.set_defaults(guidance=DEFAULT_GUIDANCE)
     return parser
@@ -46,6 +50,9 @@ class MOSSImageCommand:
         MOSSImageLatentCreator.check_size(height=args.height, width=args.width)
         if args.steps is not None:
             MOSSImageScheduler.compute_sigmas(args.steps)
+        MOSSImageTransformer.check_skip_layers(
+            MOSSImageCommand._uncond_skip_layers(args), MOSSImageWeightMapping.NUM_TRANSFORMER_LAYERS
+        )
         return model_config
 
     @staticmethod
@@ -67,7 +74,13 @@ class MOSSImageCommand:
             guidance=MOSSImageCommand._guidance(args),
             negative_prompt=args.negative_prompt,
             step_cache_ratio=args.step_cache_ratio,
+            uncond_skip_layers=MOSSImageCommand._uncond_skip_layers(args),
         )
+
+    @staticmethod
+    def _uncond_skip_layers(args: Namespace) -> tuple[int, ...]:
+        layers = getattr(args, "uncond_skip_layers", None)
+        return DEFAULT_UNCOND_SKIP_LAYERS if layers is None else tuple(layers)
 
     @staticmethod
     def _guidance(args: Namespace) -> float:

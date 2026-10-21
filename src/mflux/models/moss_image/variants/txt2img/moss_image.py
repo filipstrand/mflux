@@ -101,7 +101,11 @@ class MOSSImage(nn.Module):
             lora_scales=self.lora_scales,
             negative_prompt=negative_prompt,
             generation_time=config.time_steps.format_dict["elapsed"],
-            generation_parameters=step_cache.generation_parameters(step_cache_ratio),
+            generation_parameters={
+                **step_cache.generation_parameters(step_cache_ratio),
+                # The layer skip changes the image, so the metadata records it for --config-from-metadata.
+                "uncond_skip_layers": sorted(skip_layers),
+            },
         )
 
     def save_model(self, base_path: str) -> None:
@@ -137,7 +141,4 @@ class MOSSImage(nn.Module):
         return self.prompt_cache[prompt]
 
     def _validate_skip_layers(self, layers: tuple[int, ...]) -> frozenset[int]:
-        depth = len(self.transformer.layers)
-        if any(type(index) is not int or not 0 <= index < depth for index in layers):
-            raise ValueError(f"uncond_skip_layers must hold layer indices in [0, {depth}), got {list(layers)}.")
-        return frozenset(layers)
+        return MOSSImageTransformer.check_skip_layers(layers, len(self.transformer.layers))
