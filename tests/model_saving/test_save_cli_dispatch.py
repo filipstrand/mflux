@@ -25,6 +25,7 @@ from mflux.models.flux.variants.kontext.flux_kontext import Flux1Kontext
 from mflux.models.flux.variants.redux.flux_redux import Flux1Redux
 from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.models.flux2.variants.txt2img.flux2_klein import Flux2Klein
+from mflux.models.flux3.variants.txt2img.flux3_klein import Flux3Klein
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
 from mflux.models.seedvr2.variants.upscale.seedvr2 import SeedVR2
 from mflux.models.z_image import ZImageTurboControlnet
@@ -114,6 +115,8 @@ def test_every_name_dispatches_by_registry_entry(name):
     [
         ("klein-4b", Flux2Klein),
         ("flux2-klein-9b-kv", Flux2Klein),
+        ("flux3", Flux3Klein),
+        ("flux3-klein-base", Flux3Klein),
         ("fibo-edit", FIBOEdit),
         ("fiboedit-rmbg", FIBOEdit),
         ("z-image-controlnet", ZImageTurboControlnet),
@@ -170,6 +173,7 @@ def test_unmatched_name_errors_instead_of_defaulting_to_flux1():
     [
         ("qwen-image", QwenImage),
         ("klein-9b-kv", Flux2Klein),
+        ("flux3-klein-base", Flux3Klein),
         ("black-forest-labs/FLUX.1-dev", Flux1),
         # Two entries share the Z-Image-Turbo repo id; addressed by alias, the ControlNet
         # must not swallow the plain one, which a reverse lookup by model_name would do.
@@ -219,6 +223,8 @@ def test_lora_kwargs_match_the_constructor():
     # Boogu and FIBO apply no LoRA at all, so they take no LoRA kwargs to filter.
     assert "lora_paths" not in run_save("boogu")["kwargs"]
     assert "lora_paths" not in run_save("fibo")["kwargs"]
+    # FLUX 3 bakes LoRAs like FLUX.2.
+    assert {"lora_paths", "lora_scales", "bake_lora"} <= run_save("flux3")["kwargs"].keys()
 
 
 @pytest.mark.fast
@@ -236,3 +242,12 @@ def test_lora_is_refused_for_models_that_cannot_apply_it(name, lora_flag, tmp_pa
         run_save(name, lora_paths=[str(lora_file)], lora_flag=lora_flag)
     assert exit_info.value.code == 2
     assert "cannot apply LoRA weights" in capsys.readouterr().err
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize("name", ["flux3", "flux3-klein-base"])
+def test_flux3_saves_with_the_config_of_the_entry_that_was_asked_for(name):
+    # Base has a different transformer layout (no target time embedding), so the class alone is not enough.
+    built = run_save(name)
+    assert built["kwargs"]["model_config"] is ConfigResolution.resolve(model_name=name)
+    assert built["kwargs"]["model_config"].supports_guidance is (name == "flux3-klein-base")

@@ -26,6 +26,12 @@ from mflux.models.flux2.model.flux2_transformer.flux2_kv_cache import Flux2KVCac
 from mflux.models.flux2.model.flux2_transformer.parallel_self_attention import Flux2ParallelSelfAttention
 from mflux.models.flux2.model.flux2_transformer.transformer import Flux2Transformer
 from mflux.models.flux2.variants import Flux2Klein, Flux2KleinEdit
+from mflux.models.flux3.cli import flux3_edit_generate, flux3_generate
+from mflux.models.flux3.flux3_initializer import Flux3Initializer
+from mflux.models.flux3.model.flux3_transformer.flux3_attention import Flux3Attention
+from mflux.models.flux3.model.flux3_transformer.flux3_feed_forward import Flux3FeedForward
+from mflux.models.flux3.model.flux3_transformer.flux3_transformer import Flux3Transformer
+from mflux.models.flux3.variants import Flux3Klein, Flux3KleinEdit
 from mflux.models.qwen21 import qwen_image21_initializer
 from mflux.models.qwen21.cli import qwen21_edit_generate, qwen21_generate
 from mflux.models.qwen21.model.qwen21_transformer.qwen21_attention import Qwen21Attention
@@ -49,6 +55,7 @@ pytestmark = pytest.mark.fast
 
 FLOAT16 = ComputePrecision(mx.float16)
 FLUX2_MODULES = (Flux2Attention, Flux2FeedForward, Flux2ParallelSelfAttention)
+FLUX3_MODULES = (Flux3Attention, Flux3FeedForward)
 Z_IMAGE_MODULES = (ZImageAttention, FeedForward)
 QWEN21_MODULES = (Qwen21Attention, Qwen21SwiGLUFeedForward)
 QWEN21_EDIT_CONFIG = dict(
@@ -78,6 +85,22 @@ class Tiny:
             joint_attention_dim=64,
             timestep_guidance_channels=64,
             axes_dims_rope=(8, 8, 8, 8),
+        )
+
+    @staticmethod
+    def flux3(flow_map: bool = True) -> Flux3Transformer:
+        mx.random.seed(0)
+        return Flux3Transformer(
+            in_channels=16,
+            cond_in_channels=16,
+            num_layers=1,
+            num_single_layers=1,
+            attention_head_dim=32,
+            num_attention_heads=2,
+            joint_attention_dim=64,
+            timestep_channels=64,
+            axes_dims_rope=(8, 8, 8, 8),
+            flow_map=flow_map,
         )
 
     @staticmethod
@@ -194,6 +217,22 @@ class Run:
         return outputs
 
     @staticmethod
+    def flux3(transformer: Flux3Transformer) -> dict[str, mx.array]:
+        mx.random.seed(6)
+        hidden = mx.random.normal((1, 16, 16)).astype(mx.bfloat16)
+        cond = mx.random.normal((1, 4, 16)).astype(mx.bfloat16)
+        context = mx.random.normal((1, 8, 64)).astype(mx.bfloat16)
+        img_ids = mx.random.randint(0, 8, (16, 4))
+        cond_ids = mx.random.randint(0, 8, (4, 4))
+        txt_ids = mx.random.randint(0, 8, (8, 4))
+        timestep = mx.array([0.5])
+        target = mx.array([0.25]) if transformer.flow_map else None
+        return {
+            "plain": transformer(hidden, img_ids, context, txt_ids, timestep, target),
+            "reference": transformer(hidden, img_ids, context, txt_ids, timestep, target, cond, cond_ids),
+        }
+
+    @staticmethod
     def z_image(transformer: ZImageTransformer) -> dict[str, mx.array]:
         mx.random.seed(2)
         latents = mx.random.normal((4, 1, 8, 8)).astype(mx.bfloat16)
@@ -265,6 +304,11 @@ class SimulatedLoRA:
         SimulatedLoRA._adapt(model, (block.attn, "to_q"), (block.ff, "linear_out"))
 
     @staticmethod
+    def flux3(model, *args) -> None:
+        block = model.transformer.single_transformer_blocks[0]
+        SimulatedLoRA._adapt(model, (block.attn, "to_q"), (block.ff, "linear_out"))
+
+    @staticmethod
     def z_image(model, *args) -> None:
         layer = model.transformer.layers[0]
         SimulatedLoRA._adapt(model, (layer.attention, "to_q"), (layer.feed_forward, "w2"))
@@ -295,6 +339,15 @@ class TinyInit:
         monkeypatch.setattr(Flux2Initializer, "_init_models", lambda model: TinyInit._attach(model, Tiny.flux2()))
         monkeypatch.setattr(Flux2Initializer, "_apply_weights", TinyInit._load)
         monkeypatch.setattr(Flux2Initializer, "_apply_lora", SimulatedLoRA.flux2)
+
+    @staticmethod
+    def flux3(monkeypatch, tmp_path) -> None:
+        monkeypatch.setattr(Flux3Initializer, "_load_weights", lambda path, definition: None)
+        monkeypatch.setattr(Flux3Initializer, "_check_checkpoint_kind", lambda weights, model_config, path: None)
+        monkeypatch.setattr(Flux3Initializer, "_init_tokenizers", lambda model, path: None)
+        monkeypatch.setattr(Flux3Initializer, "_init_models", lambda model: TinyInit._attach(model, Tiny.flux3()))
+        monkeypatch.setattr(Flux3Initializer, "_apply_weights", lambda model, weights, quantize, definition: TinyInit._load(model, weights, quantize))  # fmt: skip
+        monkeypatch.setattr(Flux3Initializer, "_apply_lora", SimulatedLoRA.flux3)
 
     @staticmethod
     def z_image(monkeypatch, tmp_path) -> None:
@@ -369,6 +422,10 @@ class FakeTransformer:
         return nullcontext()
 
 
+class FakeFlux3Transformer(FakeTransformer):
+    flow_map = True
+
+
 class FakeQwen21EditTransformer:
     axes = (4, 6, 6)
 
@@ -411,6 +468,26 @@ class Generate:
         return model.generate_image(
             seed=1, prompt="x", num_inference_steps=1, height=64, width=64, image_paths=[reference]
         )
+
+    @staticmethod
+    def flux3_klein(precision: ComputePrecision, reference: Path) -> GeneratedImage:
+        model = Generate._flux3(Flux3Klein, precision)
+        return model.generate_image(seed=1, prompt="x", num_inference_steps=1, height=64, width=64)
+
+    @staticmethod
+    def flux3_klein_edit(precision: ComputePrecision, reference: Path) -> GeneratedImage:
+        model = Generate._flux3(Flux3KleinEdit, precision)
+        return model.generate_image(
+            seed=1, prompt="x", num_inference_steps=1, height=64, width=64, image_paths=[reference]
+        )
+
+    @staticmethod
+    def _flux3(model_class: type, precision: ComputePrecision):
+        model = Generate._model(model_class, ModelConfig.flux3_image_klein(), precision)
+        model.transformer = FakeFlux3Transformer()
+        model.prompt_cache = {"x": (mx.zeros((1, 4, 8)), mx.zeros((4, 4)))}
+        model._noise_override = None
+        return model
 
     @staticmethod
     def z_image(precision: ComputePrecision, reference: Path) -> GeneratedImage:
@@ -468,6 +545,14 @@ class FakeFlux2KleinEdit(FakeModel):
     real = Flux2KleinEdit
 
 
+class FakeFlux3Klein(FakeModel):
+    real = Flux3Klein
+
+
+class FakeFlux3KleinEdit(FakeModel):
+    real = Flux3KleinEdit
+
+
 class FakeQwenImage21(FakeModel):
     real = QwenImage21
 
@@ -517,6 +602,7 @@ class TestDefaultPath:
         ("build", "run", "module_types"),
         [
             (Tiny.flux2, Run.flux2, FLUX2_MODULES),
+            (Tiny.flux3, Run.flux3, FLUX3_MODULES),
             (Tiny.z_image, Run.z_image, Z_IMAGE_MODULES),
             (Tiny.qwen21, Run.qwen21, QWEN21_MODULES),
             (Tiny.qwen21_edit, Run.qwen21_edit, QWEN21_MODULES),
@@ -564,6 +650,30 @@ class TestFloat16Internals:
         Probe.assert_float16(probes)
         assert Tiny.compute_dtypes(transformer, FLUX2_MODULES) == {mx.float16}
         assert Tiny.stream_dtypes(transformer, FLUX2_MODULES) == {mx.bfloat16}
+        Run.assert_close(outputs, reference)
+
+    @pytest.mark.parametrize("bits", [None, 4])
+    @pytest.mark.parametrize("flow_map", [True, False])
+    def test_flux3_runs_attention_and_ffn_in_float16(self, bits, flow_map):
+        transformer = Tiny.as_loaded(Tiny.flux3(flow_map), bits)
+        reference = Run.flux3(transformer)
+
+        transformer.apply_compute_precision(FLOAT16)
+        mode, single = transformer.mode_blocks["image"][0], transformer.single_transformer_blocks[0]
+        probes = Probe.install(
+            [
+                (mode.attn, "to_out"),
+                (mode.ff, "linear_out"),
+                (transformer.txt_mode_blocks[0].attn, "to_out"),
+                (single.attn, "to_out"),
+                (single.ff, "linear_out"),
+            ]
+        )
+        outputs = Run.flux3(transformer)
+
+        Probe.assert_float16(probes)
+        assert Tiny.compute_dtypes(transformer, FLUX3_MODULES) == {mx.float16}
+        assert Tiny.stream_dtypes(transformer, FLUX3_MODULES) == {mx.bfloat16}
         Run.assert_close(outputs, reference)
 
     @pytest.mark.parametrize("bits", [None, 4])
@@ -681,10 +791,54 @@ class TestZImageHeadroom:
         assert mx.allclose(out.astype(mx.float32), expected, rtol=1e-2)
 
 
+class TestFlux3Headroom:
+    # FLUX 3's feed-forward output reaches ~3e5 and its attention output ~3e4 (single blocks, 1024x1024), so the
+    # feed-forward output overflows float16 without headroom. The weights make the same happen at toy size.
+    @pytest.mark.parametrize("stream", [mx.float32, mx.bfloat16])
+    def test_feed_forward_stays_finite_where_plain_float16_overflows(self, stream):
+        ff = Flux3FeedForward(dim=64, mlp_ratio=2.0)
+        ff.linear_in.weight = mx.full((256, 64), 9.375)
+        ff.linear_out.weight = mx.full((64, 128), 0.01)
+        x = mx.ones((1, 4, 64))
+        expected = ff(x)  # 600 * 600 per hidden unit, then 128 * 0.01 of it: 460800
+
+        ff16 = Flux3FeedForward(dim=64, mlp_ratio=2.0)
+        ff16.update(ff.parameters())
+        FLOAT16.apply(ff16, (Flux3FeedForward,))
+        gate, up = mx.split(ff16.linear_in(x.astype(mx.float16)), 2, axis=-1)
+        plain = ff16.linear_out(nn.silu(gate) * up)
+        out = ff16(x.astype(stream))
+
+        assert not mx.isfinite(plain).all()
+        assert out.dtype == stream
+        assert mx.allclose(out.astype(mx.float32), expected, rtol=1e-2)
+
+    @pytest.mark.parametrize("stream", [mx.float32, mx.bfloat16])
+    def test_attention_stays_finite_where_plain_float16_overflows(self, stream):
+        attention = Flux3Attention(dim=64, heads=2, dim_head=32)
+        attention.to_v.weight = mx.full((64, 64), 31.25)
+        attention.to_out.weight = mx.ones((64, 64))
+        x = mx.ones((1, 8, 64))
+        rope = (mx.ones((8, 16)), mx.zeros((8, 16)))
+        expected = attention(x, rope)  # V = 2000, then 64 * 2000: 128000
+
+        attention16 = Flux3Attention(dim=64, heads=2, dim_head=32)
+        attention16.update(attention.parameters())
+        FLOAT16.apply(attention16, (Flux3Attention,))
+        plain = attention16.to_out(attention16.to_v(x.astype(mx.float16)))
+        out = attention16(x.astype(stream), rope)
+
+        assert not mx.isfinite(plain).all()
+        assert out.dtype == stream
+        assert mx.allclose(out.astype(mx.float32), expected, rtol=1e-2)
+
+
 class TestInitializerOrder:
     FAMILIES = [
         (Flux2Klein, TinyInit.flux2, FLUX2_MODULES),
         (Flux2KleinEdit, TinyInit.flux2, FLUX2_MODULES),
+        (Flux3Klein, TinyInit.flux3, FLUX3_MODULES),
+        (Flux3KleinEdit, TinyInit.flux3, FLUX3_MODULES),
         (ZImage, TinyInit.z_image, Z_IMAGE_MODULES),
         (QwenImage21, TinyInit.qwen21, QWEN21_MODULES),
         (QwenImage21Edit, TinyInit.qwen21_edit, QWEN21_MODULES),
@@ -705,7 +859,8 @@ class TestInitializerOrder:
 
         model = model_class(quantize=4)
 
-        assert Tiny.compute_dtypes(model.transformer, module_types) == {mx.bfloat16, mx.float32}
+        dtypes = Tiny.compute_dtypes(model.transformer, module_types)
+        assert mx.bfloat16 in dtypes and mx.float16 not in dtypes
 
     @pytest.mark.parametrize(("model_class", "stub", "module_types"), FAMILIES)
     def test_an_unsupported_precision_fails_before_any_weight_loads(
@@ -714,6 +869,7 @@ class TestInitializerOrder:
         stub(monkeypatch, tmp_path)
         monkeypatch.setattr(PathResolution, "resolve", TinyInit.fail)
         monkeypatch.setattr(Flux2Initializer, "_load_weights", TinyInit.fail)
+        monkeypatch.setattr(Flux3Initializer, "_load_weights", TinyInit.fail)
         monkeypatch.setattr(ZImageInitializer, "_load_weights", TinyInit.fail)
 
         with pytest.raises(ValueError, match="Unsupported compute precision"):
@@ -736,6 +892,8 @@ class TestImageMetadata:
     CASES = [
         (Generate.flux2_klein, flux2_generate),
         (Generate.flux2_klein_edit, flux2_edit_generate),
+        (Generate.flux3_klein, flux3_generate),
+        (Generate.flux3_klein_edit, flux3_edit_generate),
         (Generate.z_image, z_image_turbo_generate),
         (Generate.qwen21, qwen21_generate),
         (Generate.qwen21_edit, qwen21_edit_generate),
@@ -776,6 +934,7 @@ class TestImageMetadata:
 class TestSaving:
     SAVABLE = [
         (Flux2Klein, TinyInit.flux2),
+        (Flux3Klein, TinyInit.flux3),
         (ZImage, TinyInit.z_image),
         (QwenImage21, TinyInit.qwen21),
         (QwenImage21Edit, TinyInit.qwen21_edit),
@@ -794,7 +953,7 @@ class TestSaving:
         assert not (tmp_path / "saved").exists()
 
     # The edit model also writes its processor, which the stub does not have.
-    @pytest.mark.parametrize(("model_class", "stub"), SAVABLE[:3])
+    @pytest.mark.parametrize(("model_class", "stub"), SAVABLE[:4])
     def test_without_the_option_the_model_still_saves(self, monkeypatch, tmp_path, model_class, stub):
         stub(monkeypatch, tmp_path)
         model = model_class(quantize=4)
@@ -808,6 +967,8 @@ class TestCommandLine:
     COMMANDS = [
         ("mflux-generate-flux2", flux2_generate, "Flux2Klein", FakeFlux2Klein),
         ("mflux-generate-flux2-edit", flux2_edit_generate, "Flux2KleinEdit", FakeFlux2KleinEdit),
+        ("mflux-generate-flux3", flux3_generate, "Flux3Klein", FakeFlux3Klein),
+        ("mflux-generate-flux3-edit", flux3_edit_generate, "Flux3KleinEdit", FakeFlux3KleinEdit),
         ("mflux-generate-qwen-2.1", qwen21_generate, "QwenImage21", FakeQwenImage21),
         ("mflux-generate-qwen-2.1-edit", qwen21_edit_generate, "QwenImage21Edit", FakeQwenImage21Edit),
     ]
@@ -819,7 +980,9 @@ class TestCommandLine:
         monkeypatch.setattr(module, attribute, fake)
         reset_cli_globals(monkeypatch)
         PIL.Image.new("RGB", (64, 64)).save(tmp_path / "ref.png")
-        images = ["--image-paths", str(tmp_path / "ref.png")] if command == "mflux-generate-flux2-edit" else []
+        images = (
+            ["--image-paths", str(tmp_path / "ref.png")] if command.endswith("-edit") and "qwen" not in command else []
+        )
         # A missing prompt file stops main() right after the model is built.
         argv = [command, "--prompt-file", str(tmp_path / "missing.txt"), *images, *flag]
         monkeypatch.setattr(sys, "argv", argv)
@@ -834,6 +997,8 @@ class TestCommandLine:
         [
             flux2_generate,
             flux2_edit_generate,
+            flux3_generate,
+            flux3_edit_generate,
             z_image_generate,
             z_image_turbo_generate,
             qwen21_generate,
@@ -870,6 +1035,8 @@ class TestCommandLine:
         assert supporting == {
             "mflux-generate-flux2",
             "mflux-generate-flux2-edit",
+            "mflux-generate-flux3",
+            "mflux-generate-flux3-edit",
             "mflux-generate-z-image",
             "mflux-generate-z-image-turbo",
             "mflux-generate-qwen-2.1",

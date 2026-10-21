@@ -13,8 +13,10 @@ from mflux.models.flux.variants.controlnet.flux_controlnet import Flux1Controlne
 from mflux.models.flux.variants.redux.flux_redux import Flux1Redux
 from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.models.flux2.variants.txt2img.flux2_klein import Flux2Klein
+from mflux.models.flux3.variants.txt2img.flux3_klein import Flux3Klein
 from mflux.models.ideogram4.variants.txt2img.ideogram4 import Ideogram4
 from mflux.models.ideogram4.weights.ideogram4_weight_definition import Ideogram4WeightDefinition
+from mflux.models.iris.variants.txt2img.iris import Iris
 from mflux.models.krea2.variants.txt2img.krea2 import Krea2
 from mflux.models.ming_image import MingImage
 from mflux.models.qwen.variants.edit.qwen_image_edit import QwenImageEdit
@@ -54,7 +56,11 @@ MODEL_CLASSES: dict[str, type] = {
     "flux2-klein-9b-kv": Flux2Klein,
     "flux2-klein-base-4b": Flux2Klein,
     "flux2-klein-base-9b": Flux2Klein,
+    "flux3-image-klein": Flux3Klein,
+    "flux3-image-klein-base": Flux3Klein,
     "ideogram-4-fp8": Ideogram4,
+    "iris-3b-base": Iris,
+    "iris-3b": Iris,
     "krea-2": Krea2,
     "krea-2-raw": Krea2,
     "krea-dev": Flux1,

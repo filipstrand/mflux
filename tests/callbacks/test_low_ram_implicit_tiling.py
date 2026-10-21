@@ -9,6 +9,7 @@ from mflux.models.common.vae.tiling_config import TilingConfig
 from mflux.models.flux.model.flux_vae.vae import VAE as Flux1VAE
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 from mflux.models.flux2.variants.txt2img.flux2_klein import Flux2Klein
+from mflux.models.flux3.variants.txt2img.flux3_klein import Flux3Klein
 from mflux.models.krea2.variants.txt2img.krea2 import Krea2
 from mflux.models.qwen.model.qwen_vae.qwen_vae import QwenVAE
 
@@ -98,6 +99,33 @@ def test_low_ram_leaves_a_real_flux2_klein_untiled():
     CallbackManager._register_memory_saver(_Args.low_ram(), model)
 
     assert model.tiling_config is None
+
+
+@pytest.mark.fast
+def test_low_ram_leaves_a_real_flux3_klein_untiled():
+    model = Flux3Klein.__new__(Flux3Klein)
+    model.callbacks = CallbackRegistry()
+    model.vae = Flux2VAE()
+    model.tiling_config = None
+
+    CallbackManager._register_memory_saver(_Args.low_ram(), model)
+
+    assert model.tiling_config is None
+
+
+@pytest.mark.fast
+def test_explicit_vae_tiling_still_tiles_a_real_flux3_klein():
+    model = Flux3Klein.__new__(Flux3Klein)
+    model.callbacks = CallbackRegistry()
+    model.vae = Flux2VAE()
+    model.tiling_config = None
+    args = _Args.low_ram()
+    args.vae_tiling = True
+
+    CallbackManager._register_memory_saver(args, model)
+
+    assert model.tiling_config is not None
+    assert model.tiling_config.vae_decode_tiles_per_dim > 1
 
 
 @pytest.mark.fast

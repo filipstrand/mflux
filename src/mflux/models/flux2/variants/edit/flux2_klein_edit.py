@@ -7,6 +7,7 @@ from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.flux2.flux2_initializer import Flux2Initializer
 from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3TextEncoder
+from mflux.models.flux2.model.flux2_text_encoder.small_text_encoder import Flux2SmallTextEncoder
 from mflux.models.flux2.model.flux2_transformer.flux2_kv_cache import CacheMode, Flux2KVCache
 from mflux.models.flux2.model.flux2_transformer.transformer import Flux2Transformer
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
@@ -20,7 +21,9 @@ from mflux.utils.image_util import ImageUtil
 class Flux2KleinEdit(nn.Module):
     vae: Flux2VAE
     transformer: Flux2Transformer
-    text_encoder: Qwen3TextEncoder
+    text_encoder: Qwen3TextEncoder | Flux2SmallTextEncoder | None
+    small_text_encoder: bool = False
+    small_decoder: bool = False
 
     def __init__(
         self,
@@ -31,6 +34,8 @@ class Flux2KleinEdit(nn.Module):
         bake_lora: bool = True,
         model_config: ModelConfig | None = None,
         compute_precision: mx.Dtype | None = None,
+        small_text_encoder: bool = False,
+        small_decoder: bool = False,
     ):
         super().__init__()
         Flux2Initializer.init(
@@ -42,6 +47,8 @@ class Flux2KleinEdit(nn.Module):
             bake_lora=bake_lora,
             model_config=model_config or ModelConfig.flux2_klein_4b(),
             compute_precision=compute_precision,
+            small_text_encoder=small_text_encoder,
+            small_decoder=small_decoder,
         )
 
     def generate_image(
@@ -197,7 +204,7 @@ class Flux2KleinEdit(nn.Module):
             image_paths=image_paths,
             image_path=config.image_path,
             generation_time=config.time_steps.format_dict["elapsed"],
-            generation_parameters=self.compute_precision.generation_parameters(),
+            generation_parameters=self._generation_parameters(),
         )
 
     def _create_kv_caches(
@@ -339,3 +346,11 @@ class Flux2KleinEdit(nn.Module):
             return noise
 
         return predict
+
+    def _generation_parameters(self) -> dict:
+        parameters = self.compute_precision.generation_parameters()
+        if self.small_text_encoder:
+            parameters = {**parameters, "small_text_encoder": True}
+        if self.small_decoder:
+            parameters = {**parameters, "small_decoder": True}
+        return parameters

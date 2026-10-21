@@ -14,6 +14,7 @@ from mflux.models.common.resolution.path_resolution import PathResolution
 from mflux.models.common.vae.tiling_config import TilingConfig
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 from mflux.models.flux2.variants import Flux2Klein, Flux2KleinEdit
+from mflux.models.flux3.variants import Flux3Klein, Flux3KleinEdit
 from mflux.models.ideogram4.variants import Ideogram4
 from mflux.models.krea2.variants import Krea2
 from mflux.models.lens.variants.txt2img.lens_image import LensImage
@@ -33,6 +34,8 @@ class _FakeQwen3TextEncoder:
 
 
 class _FakeHiddenStatesTransformer:
+    flow_map = True
+
     def __call__(self, **kwargs):
         return mx.zeros_like(kwargs["hidden_states"])
 
@@ -87,6 +90,23 @@ class _PackedModelFixtures:
         model.lora_scales = None
         model.compute_precision = ComputePrecision()
         model.tiling_config = tiling_config
+        return model
+
+    @staticmethod
+    def flux3_klein(vae: _RecordingPackedVAE, tiling_config: TilingConfig | None, edit: bool = False):
+        model = (Flux3KleinEdit if edit else Flux3Klein).__new__(Flux3KleinEdit if edit else Flux3Klein)
+        model.model_config = ModelConfig.flux3_image_klein()
+        model.callbacks = CallbackRegistry()
+        model.transformer = _FakeHiddenStatesTransformer()
+        model.vae = vae
+        model.bits = None
+        model.lora_paths = None
+        model.lora_scales = None
+        model.compute_precision = ComputePrecision()
+        model.tiling_config = tiling_config
+        model._noise_override = None
+        # The prompt is looked up in the cache, so no tokenizer or text encoder is needed.
+        model.prompt_cache = {"x": (mx.zeros((1, 80, 8)), mx.zeros((80, 4)))}
         return model
 
     @staticmethod
@@ -309,6 +329,41 @@ def test_flux2_klein_edit_decode_with_tiling_config_none_still_returns_image(tmp
     model.generate_image(seed=1, prompt="x", num_inference_steps=1, height=64, width=64, image_paths=[reference_path])
 
     assert vae.received_tiling_configs[-1] is None
+
+
+# FLUX 3 shares the FLUX.2 VAE; its decode (and the edit variant's reference encode) must honour the tiling config too.
+@pytest.mark.fast
+def test_flux3_klein_decode_passes_tiling_config_to_vae():
+    vae = _RecordingPackedVAE()
+    tiling_config = TilingConfig(vae_decode_tile_size=512)
+    model = _PackedModelFixtures.flux3_klein(vae, tiling_config)
+
+    model.generate_image(seed=1, prompt="x", num_inference_steps=1, height=64, width=64)
+
+    assert vae.received_tiling_configs[-1] is tiling_config
+
+
+@pytest.mark.fast
+def test_flux3_klein_decode_with_tiling_config_none_still_returns_image():
+    vae = _RecordingPackedVAE()
+    model = _PackedModelFixtures.flux3_klein(vae, None)
+
+    model.generate_image(seed=1, prompt="x", num_inference_steps=1, height=64, width=64)
+
+    assert vae.received_tiling_configs[-1] is None
+
+
+@pytest.mark.fast
+def test_flux3_klein_edit_decode_passes_tiling_config_to_vae(tmp_path):
+    reference_path = tmp_path / "reference.png"
+    _PackedModelFixtures.write_reference_image(reference_path)
+    vae = _RecordingPackedVAE()
+    tiling_config = TilingConfig(vae_decode_tile_size=512)
+    model = _PackedModelFixtures.flux3_klein(vae, tiling_config, edit=True)
+
+    model.generate_image(seed=1, prompt="x", num_inference_steps=1, height=64, width=64, image_paths=[reference_path])
+
+    assert vae.received_tiling_configs[-1] is tiling_config
 
 
 # Bug: lens_image.py's `decoded = self.vae.decode_packed_latents(packed.astype(mx.float32))`

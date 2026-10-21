@@ -18,7 +18,9 @@ from mflux.models.ernie_image.cli import ernie_image_generate, ernie_image_turbo
 from mflux.models.fibo.cli import fibo_edit, fibo_generate
 from mflux.models.flux.cli import flux_generate
 from mflux.models.flux2.cli import flux2_edit_generate, flux2_generate
+from mflux.models.flux3.cli import flux3_edit_generate, flux3_generate
 from mflux.models.ideogram4.cli import ideogram4_generate
+from mflux.models.iris.cli import iris_generate
 from mflux.models.krea2.cli import krea2_controlnet_generate, krea2_generate
 from mflux.models.lens.cli import lens_generate
 from mflux.models.qwen.cli import qwen_image_edit_generate, qwen_image_generate
@@ -31,6 +33,7 @@ from mflux.models.z_image.cli import (
 # Extra flags a CLI's argparse requires before parse_args() will return.
 _EXTRA_ARGV = {
     "flux2_edit_generate": ["--image-paths", "a.png"],
+    "flux3_edit_generate": ["--image-paths", "a.png"],
     "qwen_image_edit_generate": ["--image-paths", "a.png"],
     "fibo_edit": ["--image-path", "a.png"],
     "z_image_turbo_generate_controlnet": ["--control", "a.png"],
@@ -48,6 +51,9 @@ CLI_DEFAULTS = [
     (z_image_turbo_generate_controlnet, "z-image-turbo-controlnet-union-2.1", 8),
     (flux2_generate, "flux2-klein-4b", 4),
     (flux2_edit_generate, "flux2-klein-4b", 4),
+    (flux3_generate, "flux3-image-klein", 16),
+    (flux3_edit_generate, "flux3-image-klein", 16),
+    (iris_generate, "iris-3b", 4),
     (qwen_image_generate, "qwen-image", 20),
     (qwen_image_edit_generate, "qwen-image-edit", 20),
     (fibo_generate, "fibo", 50),
@@ -148,6 +154,10 @@ def test_repo_id_lookup_agrees_with_config_resolution():
         ("mlx-community/flux2-klein-base-9b-8bit", None, "flux2-klein-base-9b"),
         ("mlx-community/Z-Image-Turbo-8bit", None, "z-image-turbo"),
         ("/models/flux2-klein-9b-q8", None, "flux2-klein-9b"),
+        # A saved FLUX 3 model is the distilled one unless its directory name says base (or --base-model does).
+        ("/models/flux3-klein-q8", None, "flux3-image-klein"),
+        ("/models/flux3-klein-base-q8", None, "flux3-image-klein-base"),
+        ("/models/my-finetune", "flux3-klein-base", "flux3-image-klein-base"),
         ("/models/my-finetune", "schnell", "schnell"),
         (None, "schnell", "schnell"),
         # A shared repo id as the explicit base breaks the tie the way EXPLICIT_BASE does:
@@ -202,6 +212,13 @@ def test_invalid_base_model_leaves_the_default_for_the_validator_to_reject():
         (flux_generate, ["--base-model", "schnell"], "schnell"),
         # No usable name: the count of the entry the restricted CLI actually runs.
         (flux2_generate, ["--model", "/models/my-finetune"], "flux2-klein-4b"),
+        (flux3_generate, ["--model", "/models/my-finetune"], "flux3-image-klein"),
+        (flux3_generate, ["--model", "/models/flux3-klein-base-q4"], "flux3-image-klein-base"),
+        (flux3_edit_generate, ["--base-model", "flux3-klein-base"], "flux3-image-klein-base"),
+        (iris_generate, ["--model", "iris-3b-base"], "iris-3b-base"),
+        (iris_generate, ["--model", "/models/iris-3b-base-q8"], "iris-3b-base"),
+        (iris_generate, ["--model", "/models/iris-3b-q8"], "iris-3b"),
+        (iris_generate, ["--model", "/models/my-finetune"], "iris-3b"),
         (z_image_generate, ["--model", "/models/my-finetune"], "z-image"),
         (z_image_generate, ["--model", "mlx-community/Z-Image-Turbo-8bit"], "z-image-turbo"),
     ],
@@ -211,6 +228,13 @@ def test_invalid_base_model_leaves_the_default_for_the_validator_to_reject():
         "flux2-base-only",
         "generic-base-only",
         "flux2-nameless-fallback",
+        "flux3-nameless-fallback",
+        "flux3-base-name",
+        "flux3-edit-base-only",
+        "iris-base",
+        "iris-saved-base",
+        "iris-saved-turbo",
+        "iris-nameless-fallback",
         "z-image-nameless-fallback",
         "z-image-name",
     ],

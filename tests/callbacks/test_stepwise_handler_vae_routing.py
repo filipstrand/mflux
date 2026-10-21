@@ -8,7 +8,9 @@ from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.flux.latent_creator.flux_latent_creator import FluxLatentCreator
 from mflux.models.flux2.latent_creator.flux2_latent_creator import Flux2LatentCreator
+from mflux.models.flux3.latent_creator.flux3_latent_creator import Flux3LatentCreator
 from mflux.models.ideogram4.latent_creator.ideogram4_latent_creator import Ideogram4LatentCreator
+from mflux.models.iris.latent_creator.iris_latent_creator import IrisLatentCreator
 
 SIZE = 256
 
@@ -94,6 +96,22 @@ def test_stepwise_flux2_uses_packed_decode(tmp_path) -> None:
 
 
 @pytest.mark.fast
+@pytest.mark.parametrize("model_config", [ModelConfig.flux3_image_klein(), ModelConfig.flux3_image_klein_base()])
+def test_stepwise_flux3_uses_packed_decode(tmp_path, model_config) -> None:
+    # FLUX 3 shares the FLUX.2 VAE and its 128ch patchified latent layout, so previews decode packed too.
+    vae = RecordingPackedVAE()
+    handler = _handler(tmp_path, vae, Flux3LatentCreator)
+    latents = mx.zeros((1, (SIZE // 16) * (SIZE // 16), 128))
+
+    assert Flux3LatentCreator.unpack_latents(latents, SIZE, SIZE).shape[1] == 4 * vae.latent_channels
+
+    handler.call_before_loop(seed=1, prompt="a", latents=latents, config=_config(model_config))
+
+    assert vae.calls == ["decode_packed_latents"]
+    assert (tmp_path / "seed_1_step0of1.png").exists()
+
+
+@pytest.mark.fast
 def test_stepwise_vae_without_packed_decode_falls_back(tmp_path) -> None:
     vae = RecordingPlainVAE()
     handler = _handler(tmp_path, vae, FluxLatentCreator)
@@ -115,5 +133,18 @@ def test_stepwise_survives_models_without_lora_attributes(tmp_path) -> None:
     latents = mx.zeros((1, (SIZE // 16) * (SIZE // 16), 128))
 
     handler.call_before_loop(seed=1, prompt="a", latents=latents, config=_config(ModelConfig.ideogram4_fp8()))
+
+    assert (tmp_path / "seed_1_step0of1.png").exists()
+
+
+@pytest.mark.fast
+def test_stepwise_saves_pixel_space_samples_without_a_vae(tmp_path) -> None:
+    # Iris has no VAE: its samples are RGB images already, and the handler must not look for a decoder.
+    model = SimpleNamespace(bits=None, lora_paths=None, lora_scales=None)
+    handler = StepwiseHandler(model=model, output_dir=str(tmp_path), latent_creator=IrisLatentCreator)
+
+    handler.call_before_loop(
+        seed=1, prompt="a", latents=mx.zeros((1, 3, SIZE, SIZE)), config=_config(ModelConfig.iris_3b())
+    )
 
     assert (tmp_path / "seed_1_step0of1.png").exists()

@@ -68,3 +68,19 @@ def test_register_memory_saver_keeps_text_encoder_for_verify(low_ram):
 
     assert verify.keep_text_encoder is True
     assert plain.keep_text_encoder is False
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize("low_ram", [False, True])
+@pytest.mark.parametrize(
+    ("seeds", "prompt_file", "expected"),
+    [([1, 2], "prompt.txt", True), ([1], "prompt.txt", False), ([1, 2], None, False)],
+)
+def test_register_memory_saver_keeps_text_encoder_for_multi_seed_prompt_file(low_ram, seeds, prompt_file, expected):
+    model = SimpleNamespace(callbacks=MagicMock(), tiling_config=None)
+    args = Namespace(low_ram=low_ram, seed=seeds, prompt_file=prompt_file, image_path=None)
+
+    with patch("mflux.callbacks.instances.memory_saver.mx"):
+        memory_saver = CallbackManager._register_memory_saver(args, model)
+
+    assert memory_saver.keep_text_encoder is expected
