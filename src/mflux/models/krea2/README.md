@@ -35,6 +35,8 @@ mflux-generate-krea2 \
 Weights download automatically from [`krea/Krea-2-Turbo`](https://huggingface.co/krea/Krea-2-Turbo)
 on first run (accept the model's terms and set a Hugging Face token if prompted).
 No `--model` is needed; pass `--model /path/to/local/dir` only to use a local copy.
+A checkpoint saved with `mflux-save` loads from its directory or its Hugging Face repo, e.g.
+`--model mflux-community/krea-2-turbo-mflux-q4 --base-model krea-2`.
 
 <details>
 <summary>Python API</summary>

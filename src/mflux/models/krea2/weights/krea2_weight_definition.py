@@ -89,8 +89,14 @@ class Krea2WeightDefinition:
                 return component
         if (root_path / "transformer").is_dir():
             return Krea2WeightDefinition._diffusers_transformer()
-        # Nothing recognized: keep native so the missing-file error stays clear.
-        return Krea2WeightDefinition._native_transformer()
+        # An mflux-save keeps the transformer's shards at the root, and the loader finds them
+        # through the native definition's empty subdir.
+        if any(f.is_file() for f in root_path.glob("*.safetensors")):
+            return Krea2WeightDefinition._native_transformer()
+        raise FileNotFoundError(
+            f"No Krea 2 transformer in {root_path}. Expected turbo.safetensors or raw.safetensors at the root, "
+            f"a transformer/ directory, or the shards of an mflux-save at the root."
+        )
 
     @staticmethod
     def get_tokenizers() -> List[TokenizerDefinition]:
