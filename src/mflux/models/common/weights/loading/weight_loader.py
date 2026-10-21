@@ -74,8 +74,8 @@ class WeightLoader:
         # used to fail on "<file>.safetensors/vae" (#869).
         if root_path is not None and root_path.is_file():
             raise ValueError(
-                f"{model_path} is a file. --model takes a directory (a HuggingFace snapshot or an "
-                f"mflux-save output) or a HuggingFace repo id."
+                f"{model_path} is a file. The model path (--model) must be a directory (a HuggingFace "
+                f"snapshot or an mflux-save output) or a HuggingFace repo id."
             )
 
         # 2. Load each component (with caching for shared sources)
