@@ -61,6 +61,18 @@ def test_full_precision_matches_legacy_within_rounding():
 
 
 @pytest.mark.fast
+def test_full_precision_with_attention_chunks_matches_legacy_within_rounding(monkeypatch):
+    vae, packed = _tiny_vae(), _packed()
+    legacy = _decode(vae, Flux2VAE.DECODE_LEGACY, packed)
+
+    # 64-query chunks split the 256-token attention into 4 calls.
+    monkeypatch.setattr(Flux2BlockDecoder, "ATTENTION_CHUNK", 64)
+    full_precision = _decode(vae, Flux2VAE.DECODE_FULL_PRECISION, packed)
+
+    assert _relative_error(full_precision, legacy) < 1e-2
+
+
+@pytest.mark.fast
 def test_low_memory_strips_and_chunks_match_one_strip_and_one_chunk(monkeypatch):
     vae, packed = _tiny_vae(), _packed()
     monkeypatch.setattr(Flux2BlockDecoder, "STRIP_ROWS", 10_000)
@@ -106,6 +118,21 @@ def test_every_decoder_group_norm_uses_the_grouping_of_the_strip_statistics():
 
     assert norms
     assert all(norm.pytorch_compatible for norm in norms)
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize(
+    "conv",
+    [
+        nn.Conv2d(4, 4, kernel_size=3, stride=1, padding=0),
+        nn.Conv2d(4, 4, kernel_size=3, stride=2, padding=1),
+        nn.Conv2d(4, 4, kernel_size=5, stride=1, padding=1),
+        nn.Conv2d(4, 4, kernel_size=3, stride=1, padding=1, dilation=2),
+    ],
+)
+def test_block_decode_rejects_a_conv_that_is_not_3x3_stride_1_padding_1(conv):
+    with pytest.raises(ValueError, match="3x3 convs"):
+        Flux2BlockDecoder._conv3x3_rows(conv, lambda a, b: mx.zeros((1, b - a, 8, 4)), 0, 8, 8)
 
 
 @pytest.mark.fast

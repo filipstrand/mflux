@@ -22,6 +22,8 @@ class Flux2BlockDecoder:
         x = (latent / vae.scaling_factor) + vae.shift_factor
         x = vae.post_quant_conv(mx.transpose(x, (0, 2, 3, 1)))
         decoder = vae.decoder
+        # Flux2ConvIn.__call__ adds only the NCHW transposes around nn.Conv2d. This decode runs in NHWC, so it
+        # calls nn.Conv2d.__call__ directly. If a decoder changes conv_in in other ways, change this line too.
         x = Flux2BlockDecoder._evaluated(nn.Conv2d.__call__(decoder.conv_in, x))
         x = Flux2BlockDecoder._resnet(decoder.mid_block.resnets[0], x, strips)
         for attention in decoder.mid_block.attentions:
@@ -117,9 +119,18 @@ class Flux2BlockDecoder:
     @staticmethod
     def _conv3x3_rows(conv: nn.Conv2d, source, r0: int, r1: int, height: int) -> mx.array:
         # One halo row above and below the strip. Zero padding exists only at the image edges.
+        Flux2BlockDecoder._check_conv3x3(conv)
         a, b = max(r0 - 1, 0), min(r1 + 1, height)
         rows = mx.pad(source(a, b), ((0, 0), (1 if r0 == 0 else 0, 1 if r1 == height else 0), (1, 1), (0, 0)))
         return mx.conv2d(rows, conv.weight) + conv.bias
+
+    @staticmethod
+    def _check_conv3x3(conv: nn.Conv2d) -> None:
+        # The halo rows and the padding in _conv3x3_rows are correct only for this conv shape.
+        # nn.Conv2d keeps an int dilation as given, so 1 and (1, 1) are both correct.
+        shape = (conv.weight.shape[1:3], conv.stride, conv.padding, conv.groups)
+        if shape != ((3, 3), (1, 1), (1, 1), 1) or conv.dilation not in (1, (1, 1)):
+            raise ValueError("Flux2BlockDecoder needs 3x3 convs with stride 1, padding 1, dilation 1 and groups 1.")
 
     @staticmethod
     def _group_stats(x: mx.array, norm: nn.GroupNorm) -> tuple[mx.array, mx.array]:
