@@ -147,7 +147,8 @@ class CommandLineParser(argparse.ArgumentParser):
         self.default_model = default_model
         self.add_argument("--model", "-m", type=str, required=require_model_arg, action=ModelSpecAction, help=f"The model to use: a built-in model name ({', '.join(ui_defaults.canonical_model_choices())}) or any of its aliases, a HuggingFace repo org/model, or a local path.")
         if path_type == "save":
-            self.add_argument("--path", type=str, required=True, help="Local path for saving a model to disk.")
+            # Not required here: mflux-save picks a folder in $MFLUX_MODELS_DIR when --path is missing.
+            self.add_argument("--path", type=str, default=None, help="Local folder to save the model to. If you do not give it, mflux saves to $MFLUX_MODELS_DIR/<name>-mflux-<qN|bf16|fp8>[-loraNN].")
         # No argparse choices= here: the accepted values are whatever ConfigResolution's
         # explicit-base rule accepts, and they are validated post-parse (see parse_args) so
         # the two can never drift apart again, and so values restored from a metadata
@@ -251,6 +252,10 @@ class CommandLineParser(argparse.ArgumentParser):
     def add_save_depth_arguments(self) -> None:
         self.add_argument("--image-path", type=Path, required=True, help="Local path to the source image")
         self.add_argument("--quantize",  "-q", type=int, choices=ui_defaults.QUANTIZE_CHOICES, default=None, required=False, help=f"Quantize the model ({' or '.join(map(str, ui_defaults.QUANTIZE_CHOICES))}, Default is None)")
+
+    def add_hf_symlink_argument(self) -> None:
+        # const="" marks "flag given without a name", so the name comes from the environment or the OS.
+        self.add_argument("--hf-symlink", type=str, nargs="?", const="", default=None, metavar="USERNAME", help="After the save, add a Hugging Face cache entry <USERNAME>/<folder name> that links to the saved files, so --model can load it by repo id. mflux copies no data. USERNAME order: this flag, then $MFLUX_HF_USERNAME, $HF_NAMESPACE, $HF_NAME, then the OS user name.")
 
     def add_redux_arguments(self) -> None:
         # Same post-parse requirement as --image-paths: argparse required= is checked
