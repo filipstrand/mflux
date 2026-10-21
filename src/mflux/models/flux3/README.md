@@ -158,9 +158,9 @@ Measured as a decode of saved latents, with only the VAE loaded (`-q 8` latents,
 | Earlier full-image decode | 13.8 GB | approximately 55 GB (not run) | 1.0 s | – |
 | Earlier `--vae-tiling` | 4.3 GB | – | 1.4 s | 26–35 dB (visible colour shift) |
 | Default (strips) | 1.6 GB | 5.6 GB | 1.3 s | 43–52 dB |
-| `--vae-full-precision` | 8.6 GB | – | 1.1 s | identical |
+| `--vae-full-precision` | 8.6 GB | – | 1.1 s | identical on the test Mac |
 
-- `--vae-full-precision` decodes each block on the full image in fp32. It gives the same pixels as the earlier decode.
+- `--vae-full-precision` decodes each block on the full image in fp32, as the earlier decode did. On the test Mac the pixels were identical to the earlier decode. On other Macs the GPU kernels can round differently. The metadata records the flag, so `--config-from-metadata` uses it again.
 - `--vae-tiling` and `--vae-tile-size` do not change the decode, and the CLI shows a warning. In `mflux-generate-flux3-edit` they still tile the encode of the reference images.
 - `--low-ram` still releases the text encoder and the transformer before the decode. It does not change the decode.
 

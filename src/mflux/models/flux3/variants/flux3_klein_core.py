@@ -135,12 +135,18 @@ class _Flux3KleinCore(nn.Module):
             lora_scales=self.lora_scales,
             image_paths=image_paths,
             generation_time=config.time_steps.format_dict["elapsed"],
-            generation_parameters=self.compute_precision.generation_parameters(),
+            generation_parameters=self._generation_parameters(),
         )
         if crop_box is not None:
             generated.image = generated.image.crop(crop_box)
             generated.width, generated.height = generated.image.size
         return generated
+
+    def _generation_parameters(self) -> dict:
+        parameters = self.compute_precision.generation_parameters()
+        if getattr(self.vae, "decode_mode", Flux2VAE.DECODE_LEGACY) == Flux2VAE.DECODE_FULL_PRECISION:
+            parameters = {**parameters, "vae_full_precision": True}
+        return parameters
 
     def _resolve_sampling(self, num_inference_steps: int | None, guidance: float | None) -> tuple[int, float | None]:
         # Steps default per checkpoint (16 distilled, 50 Base); guidance only exists for Base (default 3.5).

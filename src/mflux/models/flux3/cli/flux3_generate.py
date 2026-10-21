@@ -43,11 +43,7 @@ def build_parser() -> CommandLineParser:
     parser.add_compute_precision_arguments()
     parser.add_lora_arguments()
     parser.add_output_arguments()
-    parser.add_argument(
-        "--vae-full-precision",
-        action="store_true",
-        help="Decode each VAE block on the full image in fp32, not in bf16 row strips. This gives the same pixels as the earlier decode, but the decode needs more memory (8.6 GB at 1024x1024, compared with 1.6 GB).",
-    )
+    parser.add_vae_full_precision_arguments()
     return parser
 
 

@@ -1,3 +1,4 @@
+import json
 import sys
 import warnings
 from types import SimpleNamespace
@@ -8,11 +9,13 @@ import pytest
 from mlx import nn
 
 from mflux.cli.capabilities import describe_command
+from mflux.models.common.compute_precision import ComputePrecision
 from mflux.models.common.vae.tiling_config import TilingConfig
 from mflux.models.flux2.model.flux2_vae.decoder.block_decoder import Flux2BlockDecoder
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 from mflux.models.flux3 import flux3_initializer
 from mflux.models.flux3.cli import flux3_edit_generate, flux3_generate
+from mflux.models.flux3.variants.flux3_klein_core import _Flux3KleinCore
 
 # 8x8 packed latent -> 16x16 VAE latent -> 128x128 image; 256 attention tokens.
 PACKED_SHAPE = (1, 128, 8, 8)
@@ -45,14 +48,16 @@ def test_legacy_is_the_default_decode_mode():
 
 
 @pytest.mark.fast
-def test_full_precision_gives_the_same_pixels_as_legacy():
+def test_full_precision_matches_legacy_within_rounding():
     vae, packed = _tiny_vae(), _packed()
 
     legacy = _decode(vae, Flux2VAE.DECODE_LEGACY, packed)
     full_precision = _decode(vae, Flux2VAE.DECODE_FULL_PRECISION, packed)
 
+    # The two paths run the same maths with different conv and upsample graphs. Different GPU kernels can
+    # round the bf16 intermediates in a different way, so the test allows bf16 rounding, not more.
     assert full_precision.shape == legacy.shape == (1, 3, 128, 128)
-    assert np.array_equal(full_precision, legacy)
+    assert _relative_error(full_precision, legacy) < 1e-2
 
 
 @pytest.mark.fast
@@ -194,3 +199,51 @@ def test_capabilities_report_vae_tiling_status():
 
     assert status(flux3_generate, "--vae-tiling") == "ignored"
     assert status(flux3_edit_generate, "--vae-tiling") == "conditional"
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize(
+    ("mode", "expected"),
+    [(Flux2VAE.DECODE_FULL_PRECISION, {"vae_full_precision": True}), (Flux2VAE.DECODE_LOW_MEMORY, {})],
+)
+def test_metadata_records_the_full_precision_decode_only_when_on(mode, expected):
+    model = SimpleNamespace(compute_precision=ComputePrecision(None), vae=SimpleNamespace(decode_mode=mode))
+
+    assert _Flux3KleinCore._generation_parameters(model) == expected
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize("cli", CLIS, ids=lambda cli: cli.__name__.rsplit(".", 1)[-1])
+@pytest.mark.parametrize(
+    ("recorded", "argv_flag", "expected"),
+    [
+        (True, [], True),
+        (True, ["--no-vae-full-precision"], False),
+        (False, ["--vae-full-precision"], True),
+        (None, [], False),
+    ],
+)
+def test_a_sidecar_replays_the_full_precision_decode(monkeypatch, tmp_path, cli, recorded, argv_flag, expected):
+    sidecar = tmp_path / "image.metadata.json"
+    recorded_field = {} if recorded is None else {"vae_full_precision": recorded}
+    sidecar.write_text(json.dumps({"prompt": "a fox", "seed": 1, "steps": 4} | recorded_field))
+    reference = tmp_path / "ref.png"
+    reference.touch()
+    extra = ["--image-paths", str(reference)] if cli is flux3_edit_generate else []
+    monkeypatch.setattr(sys, "argv", ["cmd", "--config-from-metadata", str(sidecar), *extra, *argv_flag])
+
+    assert cli.build_parser().parse_args().vae_full_precision is expected
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize("recorded", ["false", "true", 1])
+def test_a_recorded_value_that_is_not_a_boolean_stops_the_replay(monkeypatch, tmp_path, capsys, recorded):
+    # bool("false") is True: a hand-edited sidecar must not switch the decode mode.
+    sidecar = tmp_path / "image.metadata.json"
+    sidecar.write_text(json.dumps({"prompt": "a fox", "seed": 1, "steps": 4, "vae_full_precision": recorded}))
+    monkeypatch.setattr(sys, "argv", ["cmd", "--config-from-metadata", str(sidecar)])
+
+    with pytest.raises(SystemExit) as exit_info:
+        flux3_generate.build_parser().parse_args()
+    assert exit_info.value.code == 2
+    assert "vae_full_precision in --config-from-metadata must be true or false" in capsys.readouterr().err

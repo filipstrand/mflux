@@ -270,6 +270,9 @@ class CommandLineParser(argparse.ArgumentParser):
     def add_small_text_encoder_arguments(self) -> None:
         self.add_argument("--small-text-encoder", action=argparse.BooleanOptionalAction, default=False, help="[EXPERIMENTAL] Replace klein-4B's Qwen3-4B text encoder with Qwen3-0.6B + the AiArtLab/qwen3-0.6b-4b-adapter (FLUX.2-klein-4B / klein-base-4B only). Needs 1-5.6 GB less memory for weights depending on -q and downloads ~2.3 GB instead of ~7.5 GB; prompts are capped at 256 tokens and fine details can drift from the native encoder.")
 
+    def add_vae_full_precision_arguments(self) -> None:
+        self.add_argument("--vae-full-precision", action=argparse.BooleanOptionalAction, default=False, help="Decode each VAE block on the full image in fp32, as the earlier decode did, not in bf16 row strips. The decode needs more memory (8.6 GB at 1024x1024, compared with 1.6 GB).")
+
     def add_small_decoder_arguments(self) -> None:
         self.add_argument("--small-decoder", action=argparse.BooleanOptionalAction, default=False, help="Decode with black-forest-labs/FLUX.2-small-decoder, a distilled VAE decoder with about half the parameters of the standard one. Decoding is faster and needs less memory; images are almost the same. First run downloads ~250 MB. Cannot be used with --pid-decode.")
 
@@ -627,6 +630,14 @@ class CommandLineParser(argparse.ArgumentParser):
                 if not isinstance(recorded_small_decoder, bool):
                     self.error(f"small_decoder in --config-from-metadata must be true or false, not {recorded_small_decoder!r}.")  # fmt: off
                 namespace.small_decoder = recorded_small_decoder
+
+            if hasattr(namespace, "vae_full_precision") and not self._option_was_provided("--vae-full-precision", "--no-vae-full-precision"):  # fmt: skip
+                # A JSON boolean only: bool("false") is True, and the decode mode changes the image.
+                recorded_vae_full_precision = prior_gen_metadata.get("vae_full_precision")
+                recorded_vae_full_precision = False if recorded_vae_full_precision is None else recorded_vae_full_precision
+                if not isinstance(recorded_vae_full_precision, bool):
+                    self.error(f"vae_full_precision in --config-from-metadata must be true or false, not {recorded_vae_full_precision!r}.")  # fmt: off
+                namespace.vae_full_precision = recorded_vae_full_precision
 
             if hasattr(namespace, "pid_degrade_sigma") and not self._option_was_provided("--pid-degrade-sigma"):
                 # Non-PiD sidecars omit the key entirely, but a hand-edited one can carry an
