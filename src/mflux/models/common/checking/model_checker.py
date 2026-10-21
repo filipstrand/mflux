@@ -343,7 +343,14 @@ class ModelChecker:
             # Use the on-disk layout that the loader selects. For example, Krea 2 Raw keeps
             # its transformer under transformer/, not at the repository root.
             if component.variant_selector is not None:
-                component = component.variant_selector(root)
+                # A selector can raise when no known layout is on disk (Krea 2 without a
+                # transformer). Report it as a missing part, not as a crash.
+                try:
+                    component = component.variant_selector(root)
+                except FileNotFoundError as exc:
+                    problems.append(str(exc))
+                    missing_parts = True
+                    continue
             if format_name == "mflux":
                 # The loader reads the save subdir first, then the hf_subdir of the variant.
                 candidates = dict.fromkeys([save_subdir, component.hf_subdir])
