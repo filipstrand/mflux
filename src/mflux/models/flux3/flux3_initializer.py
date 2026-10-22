@@ -95,6 +95,7 @@ class Flux3Initializer:
     @staticmethod
     def _init_models(model) -> None:
         model.vae = Flux2VAE()
+        model.vae.decode_mode = Flux2VAE.DECODE_LOW_MEMORY
         model.transformer = Flux3Transformer(**model.model_config.transformer_overrides)
         model.text_encoder = Qwen3TextEncoder(**model.model_config.text_encoder_overrides)
 

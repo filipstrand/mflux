@@ -6,6 +6,7 @@ from mlx import nn
 from mflux.cli.defaults import defaults as ui_defaults
 from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3TextEncoder
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
@@ -135,12 +136,15 @@ class _Flux3KleinCore(nn.Module):
             lora_scales=self.lora_scales,
             image_paths=image_paths,
             generation_time=config.time_steps.format_dict["elapsed"],
-            generation_parameters=self.compute_precision.generation_parameters(),
+            generation_parameters=self._generation_parameters(),
         )
         if crop_box is not None:
             generated.image = generated.image.crop(crop_box)
             generated.width, generated.height = generated.image.size
         return generated
+
+    def _generation_parameters(self) -> dict:
+        return {**self.compute_precision.generation_parameters(), **VAEDecodeOptions.generation_parameters(self)}
 
     def _resolve_sampling(self, num_inference_steps: int | None, guidance: float | None) -> tuple[int, float | None]:
         # Steps default per checkpoint (16 distilled, 50 Base); guidance only exists for Base (default 3.5).

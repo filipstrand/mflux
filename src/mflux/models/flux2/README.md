@@ -141,12 +141,30 @@ mflux-generate-flux2 \
 ```
 
 - The first run downloads about 250 MB. The transformer, the text encoder and the VAE encoder do not change.
-- On an M4 Pro (bf16), decoding a 1024x1024 image takes 1.1 s instead of 1.3 s and needs 7.0 GB of working memory instead of 9.4 GB. At 2048x2048 it takes 5.2 s instead of 6.4 s and needs 28 GB instead of 38 GB.
-- The peak memory of a whole `-q 4 --low-ram` run at 2048x2048 decreases from 40.4 GB to 30.4 GB, because the decode sets that peak. At 1024x1024 with `-q 4`, it decreases from 10.2 GB to 9.5 GB.
-- The images are almost the same: 35-42 dB PSNR against the standard decoder on our test prompts.
+- With the default [strip decode](#vae-decode), the small decoder needs 1.1 s instead of 1.3 s at 1024x1024. It needs 1.2 GB instead of 1.6 GB. At 2048x2048 it takes 4.7 s instead of 5.5 s and needs 4.3 GB instead of 5.6 GB. These are VAE-only decodes of klein-9B-kv `-q 4` latents on an Apple Silicon Mac with 36 GB.
+- The peak of a whole `-q 4 --low-ram` run does not decrease, because the decode no longer sets it. With klein-9B-kv it is 7.2 GB instead of 7.1 GB at 1024x1024, and 10.4 GB instead of 10.3 GB at 2048x2048.
+- With `--vae-full-precision` the decode sets the peak again, and the small decoder saves more. The decode needs 5.5 GB instead of 7.3 GB at 1024x1024, and 21.5 GB instead of 28.5 GB at 2048x2048.
+- The images are almost the same: 31-41 dB PSNR against the standard decoder on our test prompts.
 - `--pid-decode` replaces the VAE decoder, so the two flags cannot be used together.
 - The image metadata records the flag, and `--config-from-metadata` uses it again.
 - `save_model()` refuses a model loaded with `small_decoder=True`. Save the model without the flag.
+
+## VAE decode
+The VAE decodes the image in bf16 row strips of 128 rows. Each GroupNorm uses statistics from the full image, so the strips do not change the colours, and the image has no seams. The decoder releases the temporary data of each block before the next block starts, and the attention runs in chunks of 4096 queries.
+
+- `--vae-full-precision` decodes each block on the full image, as the earlier decode did. The metadata records the flag, so `--config-from-metadata` uses it again.
+- `--vae-tiling` and `--vae-tile-size` do not change the decode, and the CLI shows a warning. They still tile the encode of an input image.
+- `--low-ram` still releases the text encoder and the transformer before the decode. It does not change the decode.
+- `--small-decoder` uses the same strip decode.
+
+Measured as a decode of saved latents, with only the VAE loaded. Test setup: Apple Silicon Mac, 36 GB, MLX 0.32.0, klein-9B-kv `-q 4`, seed 42, 14 prompts at 1024x1024 and 3 prompts at 2048x2048.
+
+| Decode | Peak 1024x1024 | Peak 2048x2048 | Time 1024x1024 | PSNR vs earlier decode |
+|---|---|---|---|---|
+| Earlier full-image decode | 10.3 GB | 40.5 GB | 0.87 s | – |
+| Earlier `--vae-tiling` | 3.1 GB | – | 0.99 s | 25–28 dB (visible colour shift) |
+| Default (strips) | 1.6 GB | 5.6 GB | 1.27 s | 43–51 dB |
+| `--vae-full-precision` | 7.3 GB | 28.5 GB | 0.96 s | identical on the test Mac |
 
 ## Notes
 - FLUX.2 does not support `--negative-prompt`.

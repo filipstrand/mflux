@@ -16,6 +16,8 @@ from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.models.common.config import ModelConfig
 from mflux.models.common.config.config import Config
 from mflux.models.common.resolution.path_resolution import PathResolution
+from mflux.models.common.vae.block_decoder import VAEBlockDecoder
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.common.weights.loading.weight_applier import WeightApplier
 from mflux.models.common.weights.loading.weight_loader import WeightLoader
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
@@ -76,6 +78,7 @@ class LensImage:
         # judges a cached snapshot complete, and "vae/*" is satisfied by a stray config.json.
         vae_weights = WeightLoader.load_single(vae_component, VAE_REPO, file_pattern="vae/*.safetensors")
         self.vae = Flux2VAE()
+        self.vae.decode_mode = VAEBlockDecoder.LOW_MEMORY
         WeightApplier.apply_and_quantize_single(vae_weights, self.vae, vae_component, None)
         mx.eval(self.vae.parameters())
 
@@ -134,6 +137,7 @@ class LensImage:
             prompt=prompt,
             quantization=self.bits,
             generation_time=time.time() - start,
+            generation_parameters=VAEDecodeOptions.generation_parameters(self),
         )
 
     def _turbo_sigmas(self, image_seq_len: int, num_steps: int) -> list[float]:
