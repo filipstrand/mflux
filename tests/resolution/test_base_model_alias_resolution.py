@@ -1,6 +1,7 @@
 import pytest
 
 from mflux.models.common.config.model_config import AVAILABLE_MODELS, ModelConfig
+from mflux.models.common.resolution.config_resolution import ConfigResolution
 from mflux.utils.exceptions import ModelConfigError
 
 
@@ -54,3 +55,46 @@ def test_custom_checkpoint_with_base_model_keeps_both_fields():
     resolved = ModelConfig.from_name(model_name="some-user/some-finetune", base_model="schnell")
     assert resolved.model_name == "some-user/some-finetune"
     assert resolved.base_model == "black-forest-labs/FLUX.1-schnell"
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize(
+    ("repo", "key"),
+    [
+        ("mflux-community/flux-3-image-klein-mflux-bf16", "flux3-image-klein"),
+        ("mflux-community/flux-3-image-klein-mflux-q8", "flux3-image-klein"),
+        ("mflux-community/flux-3-image-klein-mflux-q4", "flux3-image-klein"),
+        ("mflux-community/flux-3-image-klein-base-mflux-bf16", "flux3-image-klein-base"),
+        ("mflux-community/flux-3-image-klein-base-mflux-q8", "flux3-image-klein-base"),
+        ("mflux-community/flux-3-image-klein-base-mflux-q4", "flux3-image-klein-base"),
+    ],
+)
+def test_published_flux3_community_repos_resolve_by_name(repo, key):
+    # #908: no flux3 alias was a substring of these repo names, so from_name raised
+    # "Cannot infer base_model". The -base repos contain both aliases. The longest alias wins.
+    assert ConfigResolution.resolve_key(repo) == key
+    resolved = ModelConfig.from_name(model_name=repo)
+    assert resolved.model_name == repo
+    assert resolved.base_model == AVAILABLE_MODELS[key].model_name
+
+
+@pytest.mark.fast
+def test_flux3_family_inference_selects_base_from_repo_name():
+    # Without --base-model, the flux3 CLI infers the variant from the repo name.
+    assert (
+        ConfigResolution.infer_family_member(
+            "mflux-community/flux-3-image-klein-base-mflux-q8", "flux3-image-klein", ("flux3-image-klein-base",)
+        )
+        is AVAILABLE_MODELS["flux3-image-klein-base"]
+    )
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize(
+    ("name", "key"),
+    [("flux-3-image-klein", "flux3-image-klein"), ("flux-3-image-klein-base", "flux3-image-klein-base")],
+)
+def test_hyphenated_flux3_aliases_are_exact_names(name, key):
+    # The new aliases are also valid --model and --base-model values.
+    assert ModelConfig.from_name(model_name=name) is AVAILABLE_MODELS[key]
+    assert name in ConfigResolution.base_model_names()

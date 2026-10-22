@@ -45,6 +45,7 @@ class ModelRevisions:
         "mlx-community/gpt-oss-20b-MXFP4-Q8": "773a7da77e569019bb0fd17a554b263738d669a3",
         "numz/SeedVR2_comfyUI": "09ced71023636e9bc8cdf9cdecfb2625d1e691e8",
         "nvidia/PiD": "1b9b0872cef786e527ecc5f12b5ab2e6a02d55a4",
+        "OpenMOSS-Team/MOSS-Image-SFT": "f972bd4b4b9e3852133cc5da954d87bc32cd8fb9",
         "Patil/Krea-2-depth-controlnet": "21889413aa7282a6e78bd510247cceccad034b24",
         "Qwen/Qwen-Image-2.1": "d26bb61231c349cf6b7896fa83353113880e1ba3",
         "Qwen/Qwen-Image-2.1-Turbo": "fc13ba1986fcb905854dc8de2f52eee395f49b5b",

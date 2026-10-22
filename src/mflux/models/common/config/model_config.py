@@ -209,6 +209,11 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
+    def moss_image_sft() -> "ModelConfig":
+        return AVAILABLE_MODELS["moss-image-sft"]
+
+    @staticmethod
+    @lru_cache
     def fibo() -> "ModelConfig":
         return AVAILABLE_MODELS["fibo"]
 
@@ -503,7 +508,7 @@ AVAILABLE_MODELS = {
     ),
     "flux3-image-klein": ModelConfig(
         priority=11,
-        aliases=["flux3-image-klein", "flux3-klein", "flux3"],
+        aliases=["flux3-image-klein", "flux3-klein", "flux3", "flux-3-image-klein"],
         model_name="black-forest-labs/flux-3-image-klein",
         base_model=None,
         controlnet_model=None,
@@ -521,7 +526,7 @@ AVAILABLE_MODELS = {
     ),
     "flux3-image-klein-base": ModelConfig(
         priority=11,
-        aliases=["flux3-image-klein-base", "flux3-klein-base", "flux3-base"],
+        aliases=["flux3-image-klein-base", "flux3-klein-base", "flux3-base", "flux-3-image-klein-base"],
         model_name="black-forest-labs/flux-3-image-klein-base",
         base_model=None,
         controlnet_model=None,
@@ -965,6 +970,18 @@ AVAILABLE_MODELS = {
         num_train_steps=None,
         max_sequence_length=1024,
         supports_guidance=False,
+        requires_sigma_shift=False,
+    ),
+    "moss-image-sft": ModelConfig(
+        priority=37,
+        aliases=["moss-image-sft", "moss-image", "moss"],
+        model_name="OpenMOSS-Team/MOSS-Image-SFT",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=4096,
+        supports_guidance=True,
         requires_sigma_shift=False,
     ),
     "qwen-image-2.1": ModelConfig(

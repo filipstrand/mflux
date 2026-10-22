@@ -61,6 +61,8 @@ def run_save(
 
     with contextlib.ExitStack() as stack:
         stack.enter_context(patch.object(sys, "argv", argv))
+        # The stubbed save writes no folder, so there is nothing for mflux_model.json to describe.
+        stack.enter_context(patch.object(save.SavedModelInfo, "write", lambda **kwargs: None))
         for model_class in set(save.MODEL_CLASSES.values()):
             stack.enter_context(patch.object(model_class, "__init__", stub_init(model_class.__init__)))
             stack.enter_context(patch.object(model_class, "save_model", lambda self, base_path: None))

@@ -335,6 +335,15 @@ OVERLAY: dict[str, tuple[str, str, str, list[str], list[str], str, list[str] | N
         "active",
         STANDARD_QUANTS,
     ),
+    "moss-image-sft": (
+        "image",
+        "moss-image",
+        "moss-image-sft",
+        ["mflux-generate-moss-image"],
+        [],
+        "active",
+        STANDARD_QUANTS,
+    ),
     "seedvr2-3b": ("video-upscale", "seedvr2", "seedvr2-3b", ["mflux-upscale-seedvr2"], [], "active", STANDARD_QUANTS),
     "seedvr2-7b": ("video-upscale", "seedvr2", "seedvr2-7b", ["mflux-upscale-seedvr2"], [], "active", STANDARD_QUANTS),
 }

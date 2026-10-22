@@ -250,6 +250,8 @@ def test_ideogram4_save_cli_treats_alias_as_builtin(monkeypatch, tmp_path: Path)
             captured["save_path"] = path
 
     monkeypatch.setitem(save.MODEL_CLASSES, "ideogram-4-fp8", FakeIdeogram4)
+    # The fake save writes no folder, so there is nothing for mflux_model.json to describe.
+    monkeypatch.setattr(save.SavedModelInfo, "write", lambda **kwargs: None)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -284,6 +286,8 @@ def test_ideogram4_save_cli_uses_local_path_with_base_model(monkeypatch, tmp_pat
             captured["save_path"] = path
 
     monkeypatch.setitem(save.MODEL_CLASSES, "ideogram-4-fp8", FakeIdeogram4)
+    # The fake save writes no folder, so there is nothing for mflux_model.json to describe.
+    monkeypatch.setattr(save.SavedModelInfo, "write", lambda **kwargs: None)
     monkeypatch.setattr(
         sys,
         "argv",

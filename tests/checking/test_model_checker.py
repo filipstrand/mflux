@@ -222,6 +222,27 @@ def test_variant_selector_chooses_the_component_directory(tmp_path, monkeypatch)
 
 
 @pytest.mark.fast
+def test_variant_selector_error_is_a_problem_not_a_crash(tmp_path, monkeypatch):
+    def select(root):
+        raise FileNotFoundError(f"No transformer in {root}.")
+
+    class Definition:
+        @staticmethod
+        def get_components():
+            return [ComponentDefinition(name="transformer", hf_subdir="", variant_selector=select)]
+
+    monkeypatch.setattr(ModelChecker, "_definition_for", staticmethod(lambda key: Definition))
+    monkeypatch.setattr(ModelChecker, "_resolve_model_key", staticmethod(lambda reference, base_model=None: "krea-2"))
+    root = tmp_path / "Krea-2-Turbo"
+    write_safetensors(root / "vae" / "diffusion_pytorch_model.safetensors")
+
+    result = ModelChecker.check(str(root))
+
+    assert result.check == "fail"
+    assert "No transformer in" in " ".join(result.problems)
+
+
+@pytest.mark.fast
 def test_empty_package_with_missing_index_shards_warns(tmp_path, qwen_definition):
     root = tmp_path / "qwen-image-mflux-q6"
     write_index(root / "transformer" / "model.safetensors.index.json", ["0.safetensors"])

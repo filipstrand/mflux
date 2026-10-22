@@ -107,6 +107,62 @@ model.save_model("/Users/me/models/z-image-turbo_8bit")
 ```
 </details>
 
+To load the saved model by a Hugging Face repo id, add `--hf-symlink`:
+
+```sh
+mflux-save \
+  --path "/Users/me/models/z-image-turbo_8bit" \
+  --model z-image-turbo \
+  --quantize 8 \
+  --hf-symlink me
+
+mflux-generate-z-image-turbo --model me/z-image-turbo_8bit --base-model z-image-turbo --prompt "a dog"
+```
+
+After the save, mflux adds the entry `<USERNAME>/<folder name>` to the Hugging Face cache (`$HF_HUB_CACHE`). The entry holds one symlink for each saved file. mflux copies no model data. If you do not give a name, mflux uses the first value it finds: `$MFLUX_HF_USERNAME`, `$HF_NAMESPACE`, `$HF_NAME`, then your OS user name. The name does not have to be a real Hugging Face account. If you move or delete the saved folder, the links break.
+
+#### Save without `--path`
+
+Set `MFLUX_MODELS_DIR` to a folder for your saved models. Then `mflux-save` can pick the folder name:
+
+```sh
+export MFLUX_MODELS_DIR="/Volumes/T7/mflux-models"
+mflux-save --model z-image-turbo --quantize 8 --hf-symlink me
+# Saved model: /Volumes/T7/mflux-models/Z-Image-Turbo-mflux-q8
+```
+
+The name is `<repo name>-mflux-<q3|q4|q5|q6|q8|bf16|fp8>`, with the repo name in its own case. `bf16` and `fp8` mark a save without `--quantize`. A save with LoRAs adds `-lora01`, `-lora02` and so on. If the folder exists, the command stops before it loads weights. `--path` always wins over `MFLUX_MODELS_DIR`. The folder in `MFLUX_MODELS_DIR` must exist.
+
+#### mflux_model.json
+
+Each `mflux-save` writes `mflux_model.json` in the root of the saved folder. The file records what the folder holds. mflux does not read it when it loads the model. The sizes and the date below are example values.
+
+```json
+{
+  "format_version": 1,
+  "mflux_version": "0.23.0",
+  "created_at": "2026-10-19T10:22:03Z",
+  "updated_at": "2026-10-19T10:22:03Z",
+  "model_name": "z-image-turbo",
+  "base_model": null,
+  "quantize": 8,
+  "size_gb": 6.12,
+  "upstream": {
+    "repo_id": "Tongyi-MAI/Z-Image-Turbo",
+    "revision": "f332072aa78be7aecdf3ee76d5c247082da564a6",
+    "revision_date": "2025-11-27T03:15:00Z",
+    "size_gb": 20.67
+  },
+  "text_encoders": ["qwen3"],
+  "loras": [{"source": "style.safetensors", "scale": 0.7, "sha256": "…"}]
+}
+```
+
+- `upstream` names the main Hugging Face repo and the cached commit that the save used. `revision_date` needs one Hub call. It is `null` when the call fails or `HF_HUB_OFFLINE=1`.
+- `size_gb` is the saved folder. `upstream.size_gb` is the cached upstream files. 1 GB = 1000³ bytes.
+- The file holds no absolute paths. A local LoRA or model keeps only its file or folder name. `sha256` identifies each LoRA file.
+- Python API saves (`model.save_model(...)`) do not write this file.
+
 > [!WARNING]
 > Quantized models saved with mflux < v0.6.0 are incompatible with newer versions. Re-save using `mflux-save`.
 
@@ -551,7 +607,7 @@ Metadata records the PiD flags, so `--config-from-conf` reproduces a PiD run. `c
 
 ## Step reuse (step cache)
 
-Commands that support it take `--step-cache-ratio` (TeaCache-style step reuse). On that fraction of denoise steps the transformer is skipped and the previous step's prediction is reused, while the scheduler still takes its normal step. The skipped steps are the ones whose timestep signal changes least. The first and last 10% of the run always run, and runs under 10 steps are unaffected, so this only pays off on models sampled for many steps. It trades a little detail for speed: the ratio is recorded in image metadata and replayed by `--config-from-conf`. Check `mflux-capabilities` for the commands that honor it; today that is `mflux-generate-qwen-2.1`.
+Commands that support it take `--step-cache-ratio` (TeaCache-style step reuse). On that fraction of denoise steps the transformer is skipped and the previous step's prediction is reused, while the scheduler still takes its normal step. The skipped steps are the ones whose timestep signal changes least. The first and last 10% of the run always run, and runs under 10 steps are unaffected, so this only pays off on models sampled for many steps. It trades a little detail for speed: the ratio is recorded in image metadata and replayed by `--config-from-conf`. Check `mflux-capabilities` for the commands that honor it; today that is `mflux-generate-qwen-2.1` and `mflux-generate-moss-image`.
 
 ```sh
 mflux-generate-qwen-2.1 --prompt "a lighthouse at dusk" --steps 40 --step-cache-ratio 0.25
@@ -700,6 +756,7 @@ mflux-generate-z-image-turbo \
 ## Cache locations
 
 - **MFLUX cache**: set `MFLUX_CACHE_DIR` to override the default (`~/Library/Caches/mflux` on macOS, `~/.cache/mflux` on Linux).
+- **Saved models**: set `MFLUX_MODELS_DIR` to let `mflux-save` pick the folder when you do not give `--path` (see [Save without `--path`](#save-without---path)). This folder is not a cache: mflux never deletes files in it.
 - **Hugging Face cache**: set `HF_HOME` (for example, `HF_HOME=/Volumes/T7/.cache/huggingface`). For more details, refer to the Hugging Face cache documentation.
 
 Example with `HF_HOME` set for a generation run:
