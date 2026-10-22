@@ -4,7 +4,7 @@
 
 MFlux does all model math in MLX. PyTorch never runs a forward pass. MFlux uses PyTorch for only two jobs:
 
-1. Read weight files that MLX cannot read (`.pt` / `.pth` pickles).
+1. Read weight files that MLX cannot read (`.pt` / `.pth` pickles). The Depth Pro loader calls `torch.load` with `weights_only=False`, so a `.pt` file can run code when it loads. Use only Depth Pro files from a source that you trust.
 2. Convert some bf16 safetensors through `torch` to float16 before MLX gets them.
 
 All `import torch` lines are lazy. They are inside the function that needs them. Thus MFlux starts and runs without PyTorch until a code path needs one of these two jobs.
@@ -28,7 +28,7 @@ Paths are relative to `src/mflux/`.
 
 ## What runs without torch
 
-These commands do not need torch:
+These commands do not need torch, if you do not use a feature from "What needs torch" (for example `--pid-decode`):
 
 - `mflux-generate` (FLUX.1), `-controlnet` (canny), `-fill`, `-redux`, `-kontext`, `-in-context*`, `mflux-concept*`
 - `mflux-generate-flux2`, `-flux2-edit`, `-flux3`, `-flux3-edit`
@@ -67,6 +67,12 @@ On both platforms, MLX does the GPU work. Torch only reads files on the CPU (`ma
 
 ```sh
 pip install torch --index-url https://download.pytorch.org/whl/cpu
+```
+
+If the CUDA build is already installed, remove it first. `pip uninstall` alone does not install the CPU wheel:
+
+```sh
+pip uninstall -y torch && pip install torch --index-url https://download.pytorch.org/whl/cpu
 ```
 
 ## How to install without torch

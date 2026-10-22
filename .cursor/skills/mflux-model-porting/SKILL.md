@@ -173,7 +173,7 @@ Copy the structure of `src/mflux/models/qwen/cli/qwen_image_generate.py`:
 | Member | Rule |
 |---|---|
 | `latent_creator` | Class attribute. `main()` passes it to `CallbackManager.register_callbacks(...)`. |
-| `validate(args) -> ModelConfig` | Static. Do not load weights. Resolve `--model` with `ConfigResolution.resolve_restricted(...)`. Raise `ValueError` for bad flag combinations, sizes or output formats. |
+| `validate(args) -> ModelConfig` | Static. Do not load weights. Resolve `--model` with `ConfigResolution.resolve_restricted(...)`. If the command has rules for flag combinations, sizes or output formats, test them here and raise `ValueError`. |
 | `load(args) -> Model` | Static. Call `validate(args)` first. Then make the model with `quantize`, `model_path` and `**lora_init_kwargs_from_args(args)`. |
 | `generate(model, args, seed, prompt) -> GeneratedImage` | Static. Make one image for one seed and one prompt. Apply the command defaults here, for example guidance and `DimensionResolver`. A direct caller must get the same image as `main()`. Do not save the image. |
 

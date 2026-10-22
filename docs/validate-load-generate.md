@@ -72,4 +72,4 @@ A plugin follows the same order. It can add work between the steps, or replace o
 
 ## Stability
 
-The command steps have no stability promise. They can change in any mflux release. Test each plugin against mflux `main`. See [docs/plugins.md](docs/plugins.md) for the plugin rules.
+The command steps have no stability promise. They can change in any mflux release. Test each plugin against mflux `main`. See [plugins.md](plugins.md) for the plugin rules.
