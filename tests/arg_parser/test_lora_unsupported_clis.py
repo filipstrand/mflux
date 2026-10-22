@@ -1,4 +1,4 @@
-# Boogu and FIBO have no LoRA mapping in mflux, but used to accept every LoRA flag anyway:
+# Boogu, FIBO and MOSS-Image have no LoRA mapping in mflux, but used to accept every LoRA flag anyway:
 # the parser resolved the adapter — downloading it from HuggingFace when the name was a repo
 # id — and the initializers then dropped it, with mflux-capabilities reporting "lora": true.
 
@@ -11,12 +11,20 @@ from mflux.cli import capabilities
 from mflux.models.boogu.cli import boogu_image_generate
 from mflux.models.fibo.cli import fibo_edit, fibo_generate
 from mflux.models.flux.cli import flux_generate
+from mflux.models.moss_image.cli import moss_image_generate
 
 LORA_LESS_CLIS = pytest.mark.parametrize(
-    "module", [boogu_image_generate, fibo_generate, fibo_edit], ids=["boogu", "fibo", "fibo-edit"]
+    "module",
+    [boogu_image_generate, fibo_generate, fibo_edit, moss_image_generate],
+    ids=["boogu", "fibo", "fibo-edit", "moss-image"],
 )
 
-LORA_LESS_COMMANDS = ["mflux-generate-boogu", "mflux-generate-fibo", "mflux-generate-fibo-edit"]
+LORA_LESS_COMMANDS = [
+    "mflux-generate-boogu",
+    "mflux-generate-fibo",
+    "mflux-generate-fibo-edit",
+    "mflux-generate-moss-image",
+]
 
 
 @pytest.mark.fast

@@ -7,6 +7,7 @@ from mflux.models.common.config import ModelConfig
 from mflux.models.common.weights.loading.weight_definition import ComponentDefinition
 from mflux.models.common.weights.mapping.weight_mapper import WeightMapper
 from mflux.models.common.weights.mapping.weight_mapping import WeightTarget
+from mflux.models.common_models.qwen3_5 import Qwen35TextModel
 from mflux.models.fibo.model.fibo_transformer.transformer import FiboTransformer
 from mflux.models.fibo.weights.fibo_weight_definition import FIBOWeightDefinition
 from mflux.models.fibo_vlm.weights.fibo_vlm_weight_definition import FIBOVLMWeightDefinition
@@ -24,6 +25,8 @@ from mflux.models.flux3.weights.flux3_weight_definition import (
 from mflux.models.iris.model.iris_transformer.iris_transformer import IrisTransformer
 from mflux.models.iris.weights.iris_weight_definition import IrisTurboWeightDefinition, IrisWeightDefinition
 from mflux.models.ming_image.weights.ming_image_weight_definition import MingImageWeightDefinition
+from mflux.models.moss_image.model.moss_image_transformer.moss_image_transformer import MOSSImageTransformer
+from mflux.models.moss_image.weights.moss_image_weight_definition import MOSSImageWeightDefinition
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer
 from mflux.models.qwen.weights.qwen_weight_definition import QwenWeightDefinition
 from mflux.models.qwen21.weights.qwen21_weight_definition import Qwen21WeightDefinition
@@ -58,6 +61,10 @@ from mflux.models.z_image.weights.z_image_weight_definition import ZImageWeightD
 #   iris_3b_transformer       speridlabs/iris-3b @ adc05b909fb0  turbo/model.safetensors (the base model's root file has the same names)  (captured 2026-10-18)
 #   iris_3b_text_encoder      Qwen/Qwen3-VL-4B-Instruct @ ebb281ec70b0  model-0000{1,2}-of-00002.safetensors, after the
 #                             component's key_transform (vision tower dropped, all 36 layers kept)  (captured 2026-10-18)
+#   moss_image_transformer    OpenMOSS-Team/MOSS-Image-SFT @ f972bd4b4b9e  transformer/, after the component's
+#                             key_transform (rope.bands dropped)  (captured 2026-10-21)
+#   moss_image_text_encoder   OpenMOSS-Team/MOSS-Image-SFT @ f972bd4b4b9e  text_encoder/, after the component's
+#                             prefix filter (vision tower dropped)  (captured 2026-10-21)
 # To regenerate one, take the keys of mx.load(<file>) (lazy, reads no weights) or of the shard index's weight_map;
 # only fibo_vlm_decoder is then filtered, to the "model.language_model" and "lm_head" prefixes.
 # A required mapping entry these names cannot satisfy would reject the official checkpoint at load time.
@@ -105,6 +112,8 @@ class _Component:
         ("flux3_klein_vae", _Component.of(Flux3KleinWeightDefinition, "vae")),
         ("iris_3b_transformer", IrisTurboWeightDefinition.source_transformer()),
         ("iris_3b_text_encoder", IrisWeightDefinition.source_text_encoder()),
+        ("moss_image_transformer", _Component.of(MOSSImageWeightDefinition, "transformer")),
+        ("moss_image_text_encoder", _Component.of(MOSSImageWeightDefinition, "text_encoder")),
     ],
 )
 def test_an_official_checkpoint_carries_every_required_weight(fixture, component):
@@ -146,6 +155,8 @@ class _Placement:
             lambda: Flux3Transformer(flow_map=False),
         ),
         ("iris_3b_transformer", IrisTurboWeightDefinition.source_transformer(), IrisTransformer),
+        ("moss_image_transformer", _Component.of(MOSSImageWeightDefinition, "transformer"), MOSSImageTransformer),
+        ("moss_image_text_encoder", _Component.of(MOSSImageWeightDefinition, "text_encoder"), Qwen35TextModel),
     ],
 )  # fmt: skip
 def test_a_transformer_has_a_place_for_every_weight_of_its_official_checkpoint(fixture, component, build):

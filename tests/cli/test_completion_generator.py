@@ -84,6 +84,7 @@ def test_completion_generator_tracks_installed_console_scripts():
         "mflux-generate-ernie-image",
         "mflux-generate-ernie-image-turbo",
         "mflux-generate-ideogram4",
+        "mflux-generate-moss-image",
         "mflux-capabilities",
     ):
         assert command in generator.commands
