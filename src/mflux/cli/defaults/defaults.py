@@ -53,6 +53,7 @@ MODEL_INFERENCE_STEPS = {
     "krea-dev": 25,
     "lens-turbo": 4,
     "ming-image-design": 12,
+    "moss-image-sft": 50,
     "qwen-image": 20,
     "qwen-image-edit": 20,
     "qwen-image-edit-2511": 20,

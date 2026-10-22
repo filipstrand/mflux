@@ -318,6 +318,10 @@ class ModelChecker:
             from mflux.models.ming_image.weights.ming_image_weight_definition import MingImageWeightDefinition
 
             return MingImageWeightDefinition
+        if key == "moss-image-sft":
+            from mflux.models.moss_image.weights.moss_image_weight_definition import MOSSImageWeightDefinition
+
+            return MOSSImageWeightDefinition
         if key in {"iris-3b", "iris-3b-base"}:
             from mflux.models.iris.weights.iris_weight_definition import (
                 IrisTurboWeightDefinition,

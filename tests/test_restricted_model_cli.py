@@ -23,6 +23,7 @@ from mflux.models.ideogram4.cli import ideogram4_generate
 from mflux.models.iris.cli import iris_generate
 from mflux.models.krea2.cli import krea2_controlnet_generate, krea2_generate
 from mflux.models.lens.cli import lens_generate
+from mflux.models.moss_image.cli import moss_image_generate
 from mflux.models.qwen.cli import qwen_image_edit_generate, qwen_image_generate
 from mflux.models.qwen21.cli import qwen21_controlnet_generate, qwen21_edit_generate, qwen21_generate
 from mflux.models.z_image.cli import z_image_generate, z_image_turbo_generate
@@ -44,6 +45,7 @@ CLI_MODELS = [
     (ernie_image_turbo_generate, "ernie-image-turbo", "ernie-image", (), ()),
     (lens_generate, "lens-turbo", "dev", (), ()),
     (boogu_image_generate, "boogu-image-turbo", "dev", (), ()),
+    (moss_image_generate, "moss-image-sft", "dev", (), ()),
     (ideogram4_generate, "ideogram-4-fp8", "dev", (), ()),
     (z_image_generate, "z-image", "dev", z_image_generate.FAMILY_MODELS, ()),
     (flux2_generate, "flux2-klein-4b", "dev", flux2_generate.FAMILY_MODELS, ()),

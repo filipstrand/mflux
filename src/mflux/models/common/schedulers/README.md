@@ -30,6 +30,7 @@ The command line flag is `--scheduler`. It is defined in `src/mflux/cli/parser/p
 | `flow_match_euler_discrete` | `FlowMatchEulerDiscreteScheduler` | common | Flow-match Euler with a dynamic shift. Used by FLUX.2, FIBO and the Z-Image base model. |
 | `seedvr2_euler` | `SeedVR2EulerScheduler` | common | For SeedVR2 only. SeedVR2 sets it in code. |
 | `euler`, `er_sde` | `Krea2FlowScheduler` | `krea2/model/krea2_scheduler` | Krea 2 only. The class builds the sigmas. The Krea 2 sampler does the stepping. |
+| `moss_image` | `MOSSImageScheduler` | `moss_image/model/moss_image_scheduler` | MOSS-Image only. Shifted sigmas (shift 5) that snap to the 1000-step training grid. Euler step in float32. The model sets it in code. |
 | `viggle_turbo` | `ViggleTurboScheduler` | `qwen21/model/qwen21_scheduler.py` | Qwen Image 2.1 only. Fixed 6-step schedule for the Viggle turbo LoRA. Needs `--steps 6`. |
 
 The common schedulers register with the names `linear`, `flow_match_euler_discrete` and `seedvr2_euler`. The class names also work.
@@ -60,6 +61,7 @@ The user cannot change the scheduler for these models.
 | Ideogram 4 | `Config` names `linear`, but the denoise loop does not use it. `Ideogram4Scheduler.make_timesteps` builds the timesteps. Use `--preset` to select the step count and noise schedule. |
 | SeedVR2 | `seedvr2_euler` |
 | Lens, Ming-Image, Boogu Image | The model uses the schedule it was trained on. The CLI accepts `--scheduler` and ignores it. Lens and Ming warn (they list it in `IGNORED_OPTIONS`). Boogu does not warn. |
+| MOSS-Image | The model uses its training schedule: shifted sigmas that snap to the 1000-step training grid (`MOSSImageScheduler`, registered as `moss_image`). The CLI accepts `--scheduler`, ignores it and warns. |
 
 Python callers can pass `scheduler=` to the FLUX.2 and FIBO model classes. The CLI does not.
 
