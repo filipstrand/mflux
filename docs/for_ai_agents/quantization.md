@@ -2,7 +2,7 @@
 
 Scope: diffusion transformers (DiT) and text encoders. This file does not cover depth, upscale (SeedVR2), Redux, or ControlNet internals, except where noted.
 
-Verified against: MLX 0.32.0 (`pyproject.toml` pins `mlx>=0.32.0,<0.33.0` on macOS), git HEAD `02bbe7b`. Paths are relative to `src/mflux/` unless noted.
+Verified against: MLX 0.32.0 (`pyproject.toml` pins `mlx>=0.32.0,<0.33.0` on macOS), git commit `02bbe7b` (#844, 2026-10-08). Paths are relative to `src/mflux/` unless noted.
 
 ## 1. Short answers
 
