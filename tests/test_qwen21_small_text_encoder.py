@@ -1,6 +1,7 @@
 import json
 import struct
 import sys
+from contextlib import contextmanager
 from types import SimpleNamespace
 
 import mlx.core as mx
@@ -366,6 +367,60 @@ def _safetensors(path, tensors: dict[str, np.ndarray]) -> None:
     path.write_bytes(struct.pack("<Q", len(encoded)) + encoded + b"".join(blobs))
 
 
+class FakeRangeResponse:
+    def __init__(self, status_code=206, content_range=None, chunks=None):
+        self.status_code = status_code
+        self._headers = {"content-range": content_range} if content_range is not None else {}
+        self._chunks = list(chunks or [])
+
+    @property
+    def is_error(self):
+        return 400 <= self.status_code < 600
+
+    @property
+    def headers(self):
+        return self._headers
+
+    def iter_bytes(self):
+        return iter(self._chunks)
+
+    def raise_for_status(self):
+        if self.is_error:
+            raise OSError(f"HTTP {self.status_code}")
+        return self
+
+
+def _range_cm(response):
+    @contextmanager
+    def cm():
+        yield response
+
+    return cm()
+
+
+class FakeRangeFileSystem:
+    class _Api:
+        def _build_hf_headers(self):
+            return {"authorization": "token fake"}
+
+    _api = _Api()
+
+    def url(self, path):
+        return f"https://example.com/{path}"
+
+
+def _range_open_from(shard):
+    # Stand-in for the remote range read: serve the file-absolute byte range from the local shard.
+    def fake_open_range(filesystem, path, file_start, file_end):
+        data = shard.read_bytes()[file_start:file_end]
+        total = len(shard.read_bytes())
+        return _range_cm(
+            FakeRangeResponse(206, content_range=f"bytes {file_start}-{file_end - 1}/{total}", chunks=[data])
+        )
+
+    return fake_open_range
+
+
 @pytest.mark.fast
 def test_only_the_text_fusion_byte_range_is_extracted_and_then_reused(tmp_path, monkeypatch):
     rng = np.random.default_rng(0)
@@ -389,6 +444,7 @@ def test_only_the_text_fusion_byte_range_is_extracted_and_then_reused(tmp_path, 
             return shard.open(mode)
 
     monkeypatch.setattr(zen_image_edit_weights, "HfFileSystem", LocalFileSystem)
+    monkeypatch.setattr(zen_image_edit_weights, "_open_range", _range_open_from(shard))
     monkeypatch.setattr(zen_image_edit_weights, "MFLUX_CACHE_DIR", tmp_path / "cache")
     weights = ZenImageEditWeights.text_fusion_weights(snapshot)
     assert sorted(weights) == ["attn.pos", "mlp.1.weight"]
@@ -553,7 +609,50 @@ def test_a_download_that_ends_early_leaves_no_partial_file(tmp_path, monkeypatch
             return shard.open(mode)
 
     monkeypatch.setattr(zen_image_edit_weights, "HfFileSystem", LocalFileSystem)
+    monkeypatch.setattr(zen_image_edit_weights, "_open_range", _range_open_from(shard))
     monkeypatch.setattr(zen_image_edit_weights, "MFLUX_CACHE_DIR", tmp_path / "cache")
     with pytest.raises(RuntimeError, match="ended early"):
         ZenImageEditWeights.text_fusion_weights(snapshot)
     assert [p for p in (tmp_path / "cache").rglob("*") if p.is_file()] == []
+
+
+@pytest.mark.fast
+def test_a_range_response_that_is_not_206_is_rejected(monkeypatch):
+    # A server that ignores the range request and returns the full body (200) would misalign the bytes.
+    monkeypatch.setattr(
+        zen_image_edit_weights,
+        "http_stream_backoff",
+        lambda *a, **k: _range_cm(FakeRangeResponse(200, chunks=[b"full body"])),
+    )
+    with pytest.raises(OSError, match="Expected HTTP 206"):
+        with zen_image_edit_weights._open_range(FakeRangeFileSystem(), "transformer/shard.safetensors", 16, 32):
+            pass
+
+
+@pytest.mark.fast
+def test_a_range_response_with_a_mismatched_content_range_is_rejected(monkeypatch):
+    monkeypatch.setattr(
+        zen_image_edit_weights,
+        "http_stream_backoff",
+        lambda *a, **k: _range_cm(FakeRangeResponse(206, content_range="bytes 0-15/100", chunks=[b"0123456789abcdef"])),
+    )
+    with pytest.raises(OSError, match="Content-Range"):
+        with zen_image_edit_weights._open_range(FakeRangeFileSystem(), "transformer/shard.safetensors", 16, 32):
+            pass
+
+
+@pytest.mark.fast
+def test_a_valid_206_range_response_is_yielded_with_the_requested_range(monkeypatch):
+    seen = {}
+
+    def fake_http_stream_backoff(method, url, **kwargs):
+        seen["method"], seen["url"], seen["headers"] = method, url, kwargs["headers"]
+        return _range_cm(FakeRangeResponse(206, content_range="bytes 16-31/100", chunks=[b"0123456789abcdef"]))
+
+    monkeypatch.setattr(zen_image_edit_weights, "http_stream_backoff", fake_http_stream_backoff)
+    with zen_image_edit_weights._open_range(FakeRangeFileSystem(), "transformer/shard.safetensors", 16, 32) as response:
+        assert b"".join(response.iter_bytes()) == b"0123456789abcdef"
+    assert seen["method"] == "GET"
+    assert seen["url"] == "https://example.com/transformer/shard.safetensors"
+    assert seen["headers"]["range"] == "bytes=16-31"
+    assert seen["headers"]["authorization"] == "token fake"
