@@ -139,6 +139,14 @@ mflux-generate-qwen-2.1-edit \
   -q 8
 ```
 
+The small text encoder (Qwen3.5-0.8B + the zen-image-edit adapter) on a red-fox prompt across four lighting conditions:
+
+![Small text encoder output](../../assets/qwen_image_21_small_encoder.jpg)
+
+The same red-fox subject with the small and the full Qwen3-VL-8B text encoder:
+
+![Small vs full text encoder](../../assets/qwen_image_21_small_encoder_compare.jpg)
+
 - `mflux-generate-qwen-2.1` and `mflux-generate-qwen-2.1-edit` accept the flag. The edit command also sends the reference images through the 12-layer vision tower of Qwen3.5-0.8B.
 - The first run downloads about 2.1 GB: the 1.7 GB encoder and processor files, and the 320 MB `text_fusion.*` byte range of the zen-image-edit transformer. mflux reads that byte range with an HTTP range request and does not download the 14.5 GB transformer. The adapter file goes into the mflux cache (`MFLUX_CACHE_DIR`).
 - `-q` does not quantize the small encoder. Its language model runs in bf16. The vision tower and the adapter run in float32, because in bf16 the image features drift away from the reference. The float32 vision tower uses about 200 MB more memory than a bf16 one (402 MB instead of 201 MB).
