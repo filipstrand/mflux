@@ -6,6 +6,10 @@ from mflux.models.boogu.variants.txt2img.boogu_image import BooguImage
 from mflux.models.common.config import ModelConfig
 from mflux.models.common.config.model_config import AVAILABLE_MODELS
 from mflux.models.common.resolution.config_resolution import ConfigResolution
+from mflux.models.common.resolution.lora_resolution import LoraResolution
+from mflux.models.common.resolution.quantization_resolution import QuantizationResolution
+from mflux.models.common.weights.saving.hf_cache_alias import HfCacheAlias
+from mflux.models.common.weights.saving.saved_model_info import SavedModelInfo, SaveTarget
 from mflux.models.ernie_image.variants.txt2img.ernie_image import ErnieImage
 from mflux.models.fibo.variants.edit.fibo_edit import FIBOEdit
 from mflux.models.fibo.variants.txt2img.fibo import FIBO
@@ -13,14 +17,17 @@ from mflux.models.flux.variants.controlnet.flux_controlnet import Flux1Controlne
 from mflux.models.flux.variants.redux.flux_redux import Flux1Redux
 from mflux.models.flux.variants.txt2img.flux import Flux1
 from mflux.models.flux2.variants.txt2img.flux2_klein import Flux2Klein
+from mflux.models.flux3.variants.txt2img.flux3_klein import Flux3Klein
 from mflux.models.ideogram4.variants.txt2img.ideogram4 import Ideogram4
 from mflux.models.ideogram4.weights.ideogram4_weight_definition import Ideogram4WeightDefinition
+from mflux.models.iris.variants.txt2img.iris import Iris
 from mflux.models.krea2.variants.txt2img.krea2 import Krea2
 from mflux.models.ming_image import MingImage
+from mflux.models.moss_image import MOSSImage
 from mflux.models.qwen.variants.edit.qwen_image_edit import QwenImageEdit
 from mflux.models.qwen.variants.txt2img.qwen_image import QwenImage
 from mflux.models.qwen21.variants.controlnet.qwen_image_21_controlnet import QwenImage21Controlnet
-from mflux.models.qwen21.variants.txt2img.qwen_image_21 import QwenImage21
+from mflux.models.qwen21.variants.edit.qwen_image_21_edit import QwenImage21Edit
 from mflux.models.seedvr2.variants.upscale.seedvr2 import SeedVR2
 from mflux.models.z_image import ZImage, ZImageTurbo, ZImageTurboControlnet
 from mflux.utils.exceptions import ModelConfigError
@@ -54,14 +61,23 @@ MODEL_CLASSES: dict[str, type] = {
     "flux2-klein-9b-kv": Flux2Klein,
     "flux2-klein-base-4b": Flux2Klein,
     "flux2-klein-base-9b": Flux2Klein,
+    "flux3-image-klein": Flux3Klein,
+    "flux3-image-klein-base": Flux3Klein,
     "ideogram-4-fp8": Ideogram4,
+    "iris-3b-base": Iris,
+    "iris-3b": Iris,
     "krea-2": Krea2,
     "krea-2-raw": Krea2,
     "krea-dev": Flux1,
     "ming-image-design": MingImage,
+    "moss-image-sft": MOSSImage,
     "qwen-image": QwenImage,
-    "qwen-image-2.1": QwenImage21,
+    # One Qwen-Image-2.1 checkpoint does text-to-image and editing. QwenImage21Edit saves all of it
+    # (vision tower and lm_head too), and mflux-generate-qwen-2.1 also loads that save.
+    "qwen-image-2.1": QwenImage21Edit,
     "qwen-image-2.1-controlnet-union": QwenImage21Controlnet,
+    "qwen-image-2.1-turbo": QwenImage21Edit,
+    "qwen-image-2.1-turbo-controlnet-union": QwenImage21Controlnet,
     "qwen-image-edit": QwenImageEdit,
     "qwen-image-edit-2511": QwenImageEdit,
     "schnell": Flux1,
@@ -78,6 +94,7 @@ MODEL_CLASSES: dict[str, type] = {
 # "not supported yet" from "someone added a model and forgot this table".
 UNSUPPORTED_MODELS = {
     "lens-turbo": "LensImage has no save_model(); its transformer is a single-file checkpoint",
+    "krea-2-controlnet-depth": "the depth ControlNet is added at load; save krea-2 instead and pass it to mflux-generate-krea2-controlnet with --base-model krea-2-controlnet-depth",
 }
 
 
@@ -127,6 +144,7 @@ def main():
     parser = CommandLineParser(description="Save a quantized version of a model to disk.")  # fmt: off
     parser.add_model_arguments(path_type="save", require_model_arg=True)
     parser.add_lora_arguments()
+    parser.add_hf_symlink_argument()
     args = parser.parse_args()
 
     # 1. Determine model class based on the registry entry the model name resolves to
@@ -144,6 +162,23 @@ def main():
         model_config = ModelConfig.from_name(args.model, base_model=args.base_model)
         model_path = args.model_path
 
+    # Find and check the target folder and the alias name before the load, so a problem
+    # stops the command in seconds, not after the quantize.
+    # The bit width the save writes: a pre-quantized local model keeps its stored width.
+    quantize, _ = QuantizationResolution.resolve(
+        stored=SaveTarget.stored_quantization(model_path), requested=args.quantize
+    )
+    try:
+        target = SaveTarget.resolve(args.path, key, model_path, quantize, bool(args.lora_paths))
+    except ValueError as error:
+        parser.error(f"argument --path: {error}")
+    if args.hf_symlink is not None:
+        hf_username, hf_username_source = HfCacheAlias.resolve_username(args.hf_symlink)
+        try:
+            HfCacheAlias.check(target, hf_username)
+        except ValueError as error:
+            parser.error(f"argument --hf-symlink: {error} (name from {hf_username_source})")
+
     # 2. Load, quantize and save the model
     # The Z-Image ControlNet takes LoRA paths but no bake_lora flag; passing every LoRA
     # kwarg unconditionally is a TypeError before a single weight is read. Filtering is
@@ -160,7 +195,27 @@ def main():
         model_path=model_path,
         model_config=model_config,
     )
-    model.save_model(args.path)
+    model.save_model(str(target))
+
+    # 3. Record what the folder holds. Written last, so a folder without it is an incomplete save.
+    lora_files = LoraResolution.resolve_paths(args.lora_paths)
+    SavedModelInfo.write(
+        target=target,
+        key=key,
+        model_path=model_path,
+        model_config_repo_id=model_config.model_name,
+        quantize=quantize,
+        lora_sources=list(args.lora_paths or []),
+        lora_files=lora_files,
+        lora_scales=LoraResolution.resolve_scales(args.lora_scales, len(lora_files)),
+    )
+    print(f"Saved model: {target}")
+
+    # 4. Optionally link the saved folder into the Hugging Face cache
+    if args.hf_symlink is not None:
+        alias = HfCacheAlias.create(target, hf_username)
+        print(f"Hugging Face alias: {alias.repo_id} (name from {hf_username_source})")
+        print(f"  {alias.file_count} files linked in {alias.repo_cache}")
 
 
 if __name__ == "__main__":

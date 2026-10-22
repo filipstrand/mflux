@@ -5,6 +5,7 @@ import pytest
 
 from mflux.cli.parser.parsers import CommandLineParser
 from mflux.models.flux.cli import flux_generate
+from mflux.models.flux3.cli import flux3_edit_generate, flux3_generate
 from mflux.models.ideogram4.cli import ideogram4_generate
 from mflux.models.z_image.cli import z_image_generate, z_image_turbo_generate
 
@@ -153,3 +154,23 @@ def test_z_image_cli_resolving_turbo_warns_regardless_of_guidance_value(monkeypa
     )
     assert any("--guidance is ignored" in m for m in messages)
     assert any("--negative-prompt is ignored" in m for m in messages)
+
+
+# --- FLUX 3 Image Klein: --guidance is honoured by the Base checkpoint only -----------
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize(
+    ("module", "symbol", "extra"),
+    [
+        (flux3_generate, "Flux3Klein", []),
+        (flux3_edit_generate, "Flux3KleinEdit", ["--image-paths", "a.png"]),
+    ],
+    ids=["flux3", "flux3-edit"],
+)
+def test_flux3_warns_about_guidance_only_for_the_distilled_checkpoint(monkeypatch, module, symbol, extra):
+    argv = ["--prompt", "x", "--guidance", "3.0", *extra]
+    distilled = _run_main(monkeypatch, module, symbol, argv)
+    base = _run_main(monkeypatch, module, symbol, [*argv, "--model", "flux3-image-klein-base"])
+    assert any("--guidance is ignored" in m for m in distilled)
+    assert base == []

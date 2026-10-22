@@ -1,4 +1,5 @@
 import sys
+from contextlib import nullcontext
 from types import SimpleNamespace
 
 import mlx.core as mx
@@ -11,7 +12,9 @@ from mflux.models.common.config import ModelConfig
 from mflux.models.common.step_cache.step_cache import StepCache
 from mflux.models.qwen21.cli import qwen21_generate
 from mflux.models.qwen21.model.qwen21_transformer.qwen21_time_text_embed import Qwen21TimeTextEmbed
+from mflux.models.qwen21.model.qwen21_transformer.qwen21_transformer import Qwen21Transformer
 from mflux.models.qwen21.variants.txt2img.qwen_image_21 import QwenImage21
+from mflux.utils.exceptions import StopImageGenerationException
 
 
 class _StubTransformer:
@@ -20,14 +23,13 @@ class _StubTransformer:
     def __init__(self):
         self.time_text_embed = Qwen21TimeTextEmbed(embedding_dim=64)
         self.called_steps: list[int] = []
-        self.cleared = False
 
     def __call__(self, t, config, hidden_states, encoder_hidden_states, encoder_hidden_states_mask):
         self.called_steps.append(t)
         return mx.zeros_like(hidden_states)
 
-    def clear_text_cache(self):
-        self.cleared = True
+    def inference_projections(self):
+        return nullcontext()
 
 
 def _stub_model() -> QwenImage21:
@@ -77,7 +79,6 @@ class TestQwen21StepCacheWiring:
             seed=1, prompt="a cat", num_inference_steps=40, height=128, width=128, step_cache_ratio=0.25
         )
         assert len(model.transformer.called_steps) == 30  # 40 steps, 10 reused
-        assert model.transformer.cleared
         assert no_decode["generation_parameters"] == {"step_cache_ratio": 0.25}
 
     def test_default_run_calls_the_transformer_every_step(self, no_decode):
@@ -132,6 +133,53 @@ class TestQwen21StepCacheWiring:
                 step_cache_ratio=0.2,
                 teacache_ratio=0.3,
             )
+
+
+@pytest.mark.fast
+class TestQwen21GenerationLifecycle:
+    @pytest.mark.parametrize("text_cache", [False, True])
+    @pytest.mark.parametrize("error", [None, RuntimeError, KeyboardInterrupt])
+    def test_generation_releases_derived_transformer_state(self, no_decode, text_cache, error):
+        model = _stub_model()
+        transformer = Qwen21Transformer(
+            in_channels=64,
+            out_channels=64,
+            context_in_dim=64,
+            num_layers=2,
+            num_attention_heads=1,
+            attention_head_dim=64,
+            mlp_ratio=1,
+            axes_dims_rope=(16, 24, 24),
+        )
+        transformer.apply(lambda weight: mx.full(weight.shape, 0.01, dtype=ModelConfig.precision))
+        transformer.use_text_cache = text_cache
+        model.__dict__["transformer"] = transformer
+
+        def inspect_denoise(latents, **kwargs):
+            mx.eval(latents)
+            assert bool(mx.all(mx.isfinite(latents)))
+            for block in transformer.transformer_blocks:
+                assert block.attn._qkv_weight is not None
+                assert block.img_mlp._gate_proj_weight is not None
+            if text_cache:
+                assert transformer._image_step_fn is not None
+                assert transformer._text_caches
+            else:
+                assert transformer._step_fn is not None
+            if error is not None:
+                raise error("denoise interrupted")
+
+        model.callbacks.register(SimpleNamespace(call_in_loop=inspect_denoise))
+        expected_error = StopImageGenerationException if error is KeyboardInterrupt else error
+        message = "Stopping image generation" if error is KeyboardInterrupt else "denoise interrupted"
+        with pytest.raises(expected_error, match=message) if expected_error else nullcontext():
+            model.generate_image(seed=1, prompt="a cat", num_inference_steps=2, height=32, width=32)
+        for block in transformer.transformer_blocks:
+            assert block.attn._qkv_weight is None
+            assert block.img_mlp._gate_proj_weight is None
+        assert transformer._text_caches == {}
+        assert transformer._step_fn is None
+        assert transformer._image_step_fn is None
 
 
 @pytest.mark.fast

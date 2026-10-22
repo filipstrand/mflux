@@ -132,7 +132,7 @@ If you keep the model loaded, as a UI or a server does:
 
 The other two Z-Image commands have the same steps. `mflux-generate-z-image` is `ZImageCommand` in `mflux.models.z_image.cli.z_image_generate`, and `mflux-generate-z-image-controlnet` is `ZImageTurboControlnetCommand` in `mflux.models.z_image.cli.z_image_turbo_generate_controlnet`. The rules above apply to both, with three differences:
 
-- The base command runs `flow_match_euler_discrete` unless you pass `--scheduler`. Only the command line applies that default, so a script that calls `generate()` sets `args.scheduler` itself.
+- The base command runs `flow_match_euler_discrete` unless you pass `--scheduler`.
 - The controlnet command's `validate()` also checks the `--control` specs. It raises `ValueError` for a bad spec or for a `--model` without a ControlNet, and `ModelConfigError` (a `ValueError` too) for a `--model` it cannot place.
 - The controlnet command keeps the depth, HED and pose detectors loaded for the rest of the process once a control of that type has run. Dropping the model does not free them.
 </details>
@@ -183,6 +183,24 @@ image = model.generate_image(
 image.save("statue.png")
 ```
 </details>
+
+## VAE decode
+The VAE decodes the image in bf16 row strips of 128 rows. Each GroupNorm uses statistics from the full image, so the strips do not change the colours, and the image has no seams. The decoder releases the temporary data of each block before the next block starts, and the attention runs in chunks of 4096 queries.
+
+- `--vae-full-precision` decodes each block on the full image, as the earlier decode did. The metadata records the flag, so `--config-from-metadata` uses it again.
+- `--vae-tiling` and `--vae-tile-size` do not change the decode, and the CLI shows a warning. They still tile the encode of an input image.
+- `--low-ram` still releases the text encoder and the transformer before the decode. It does not change the decode.
+
+Measured as a decode of saved latents, with only the VAE loaded. Test setup: Apple Silicon Mac, 36 GB, MLX 0.32.0, Z-Image Turbo `-q 8`, 1024×1024, seed 42, 14 prompts.
+
+| Decode | Peak | Time | PSNR vs earlier decode |
+|---|---|---|---|
+| Earlier full-image decode | 7.3 GB | 0.65 s | – |
+| Earlier `--vae-tiling` | 2.9 GB | 0.78 s | 37–47 dB (faint tile bands) |
+| Default (strips) | 1.6 GB | 1.29 s | 47–52 dB |
+| `--vae-full-precision` | 4.6 GB | 0.85 s | identical on the test Mac |
+
+Before this change, `--low-ram` selected the tiled decode for Z-Image without a flag.
 
 ## Training
 

@@ -94,13 +94,17 @@ class QwenImage21TextEncoder(nn.Module):
         return generated
 
     def position_ids(self, input_ids: mx.array, grids: mx.array | None) -> mx.array:
+        return QwenImage21TextEncoder.mrope_positions(input_ids, grids, self.image_token_id, self.merge_size)
+
+    @staticmethod
+    def mrope_positions(input_ids: mx.array, grids: mx.array | None, image_token_id: int, merge_size: int) -> mx.array:
         ids = np.asarray(input_ids[0])
         result = np.zeros((3, len(ids)), dtype=np.int32)
         cursor, position = 0, 0
         if grids is not None:
             for t, h, w in grids.tolist():
-                h, w = h // self.merge_size, w // self.merge_size
-                start = int(np.flatnonzero(ids[cursor:] == self.image_token_id)[0]) + cursor
+                h, w = h // merge_size, w // merge_size
+                start = int(np.flatnonzero(ids[cursor:] == image_token_id)[0]) + cursor
                 result[:, cursor:start] = np.arange(position, position + start - cursor)[None]
                 position += start - cursor
                 length = t * h * w

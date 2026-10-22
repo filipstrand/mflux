@@ -7,6 +7,7 @@ from mflux.models.common.config import ModelConfig
 from mflux.models.common.weights.loading.weight_definition import ComponentDefinition
 from mflux.models.common.weights.mapping.weight_mapper import WeightMapper
 from mflux.models.common.weights.mapping.weight_mapping import WeightTarget
+from mflux.models.common_models.qwen3_5 import Qwen35TextModel
 from mflux.models.fibo.model.fibo_transformer.transformer import FiboTransformer
 from mflux.models.fibo.weights.fibo_weight_definition import FIBOWeightDefinition
 from mflux.models.fibo_vlm.weights.fibo_vlm_weight_definition import FIBOVLMWeightDefinition
@@ -16,7 +17,16 @@ from mflux.models.flux.weights.flux_weight_definition import FluxControlnetWeigh
 from mflux.models.flux.weights.flux_weight_mapping import FluxWeightMapping
 from mflux.models.flux2.model.flux2_transformer.transformer import Flux2Transformer
 from mflux.models.flux2.weights.flux2_weight_definition import Flux2KleinWeightDefinition
+from mflux.models.flux3.model.flux3_transformer.flux3_transformer import Flux3Transformer
+from mflux.models.flux3.weights.flux3_weight_definition import (
+    Flux3KleinBaseWeightDefinition,
+    Flux3KleinWeightDefinition,
+)
+from mflux.models.iris.model.iris_transformer.iris_transformer import IrisTransformer
+from mflux.models.iris.weights.iris_weight_definition import IrisTurboWeightDefinition, IrisWeightDefinition
 from mflux.models.ming_image.weights.ming_image_weight_definition import MingImageWeightDefinition
+from mflux.models.moss_image.model.moss_image_transformer.moss_image_transformer import MOSSImageTransformer
+from mflux.models.moss_image.weights.moss_image_weight_definition import MOSSImageWeightDefinition
 from mflux.models.qwen.model.qwen_transformer.qwen_transformer import QwenTransformer
 from mflux.models.qwen.weights.qwen_weight_definition import QwenWeightDefinition
 from mflux.models.qwen21.weights.qwen21_weight_definition import Qwen21WeightDefinition
@@ -43,6 +53,18 @@ from mflux.models.z_image.weights.z_image_weight_definition import ZImageWeightD
 #   flux1_schnell_transformer  black-forest-labs/FLUX.1-schnell @ 741f7c3ce8b3  transformer/  (captured 2026-10-07)
 #   qwen_image_transformer     Qwen/Qwen-Image-2512 @ 25468b98e327  transformer/  (captured 2026-10-07)
 #   flux2_klein_4b_transformer black-forest-labs/FLUX.2-klein-4B @ e7b7dc27f91d  transformer/  (captured 2026-10-07)
+#   flux3_klein_transformer    black-forest-labs/flux-3-image-klein @ 8454017f9eba  transformer/  (captured 2026-10-15)
+#   flux3_klein_base_transformer  black-forest-labs/flux-3-image-klein-base @ 1469d27cfb9b  transformer/  (captured 2026-10-15)
+#   flux3_klein_text_encoder   black-forest-labs/flux-3-image-klein @ 8454017f9eba  text_encoder/, after the
+#                              component's key_transform (vision tower and layers >= 32 dropped)
+#   flux3_klein_vae            black-forest-labs/flux-3-image-klein @ 8454017f9eba  vae/
+#   iris_3b_transformer       speridlabs/iris-3b @ adc05b909fb0  turbo/model.safetensors (the base model's root file has the same names)  (captured 2026-10-18)
+#   iris_3b_text_encoder      Qwen/Qwen3-VL-4B-Instruct @ ebb281ec70b0  model-0000{1,2}-of-00002.safetensors, after the
+#                             component's key_transform (vision tower dropped, all 36 layers kept)  (captured 2026-10-18)
+#   moss_image_transformer    OpenMOSS-Team/MOSS-Image-SFT @ f972bd4b4b9e  transformer/, after the component's
+#                             key_transform (rope.bands dropped)  (captured 2026-10-21)
+#   moss_image_text_encoder   OpenMOSS-Team/MOSS-Image-SFT @ f972bd4b4b9e  text_encoder/, after the component's
+#                             prefix filter (vision tower dropped)  (captured 2026-10-21)
 # To regenerate one, take the keys of mx.load(<file>) (lazy, reads no weights) or of the shard index's weight_map;
 # only fibo_vlm_decoder is then filtered, to the "model.language_model" and "lm_head" prefixes.
 # A required mapping entry these names cannot satisfy would reject the official checkpoint at load time.
@@ -84,6 +106,14 @@ class _Component:
         ("qwen_image_vae", _Component.of(QwenWeightDefinition, "vae")),
         ("z_image_controlnet_union", ZImageControlnetWeightDefinition.get_controlnet_component()),
         ("ming_image_transformer", _Component.of(MingImageWeightDefinition, "transformer")),
+        ("flux3_klein_transformer", _Component.of(Flux3KleinWeightDefinition, "transformer")),
+        ("flux3_klein_base_transformer", _Component.of(Flux3KleinBaseWeightDefinition, "transformer")),
+        ("flux3_klein_text_encoder", _Component.of(Flux3KleinWeightDefinition, "text_encoder")),
+        ("flux3_klein_vae", _Component.of(Flux3KleinWeightDefinition, "vae")),
+        ("iris_3b_transformer", IrisTurboWeightDefinition.source_transformer()),
+        ("iris_3b_text_encoder", IrisWeightDefinition.source_text_encoder()),
+        ("moss_image_transformer", _Component.of(MOSSImageWeightDefinition, "transformer")),
+        ("moss_image_text_encoder", _Component.of(MOSSImageWeightDefinition, "text_encoder")),
     ],
 )
 def test_an_official_checkpoint_carries_every_required_weight(fixture, component):
@@ -118,6 +148,15 @@ class _Placement:
         ("fibo_transformer", _Component.of(FIBOWeightDefinition, "transformer"), FiboTransformer),
         ("qwen_image_transformer", _Component.of(QwenWeightDefinition, "transformer"), QwenTransformer),
         ("flux2_klein_4b_transformer", _Component.of(Flux2KleinWeightDefinition, "transformer"), Flux2Transformer),
+        ("flux3_klein_transformer", _Component.of(Flux3KleinWeightDefinition, "transformer"), Flux3Transformer),
+        (
+            "flux3_klein_base_transformer",
+            _Component.of(Flux3KleinBaseWeightDefinition, "transformer"),
+            lambda: Flux3Transformer(flow_map=False),
+        ),
+        ("iris_3b_transformer", IrisTurboWeightDefinition.source_transformer(), IrisTransformer),
+        ("moss_image_transformer", _Component.of(MOSSImageWeightDefinition, "transformer"), MOSSImageTransformer),
+        ("moss_image_text_encoder", _Component.of(MOSSImageWeightDefinition, "text_encoder"), Qwen35TextModel),
     ],
 )  # fmt: skip
 def test_a_transformer_has_a_place_for_every_weight_of_its_official_checkpoint(fixture, component, build):
@@ -232,3 +271,18 @@ def test_a_controlnet_that_has_single_blocks_needs_each_of_their_weights(removed
     del weights[removed]
 
     assert [target.to_pattern for target in _Component.missing(weights, component)] == [reported]
+
+
+@pytest.mark.fast
+def test_flux3_distilled_needs_the_target_time_embedding_and_base_has_none():
+    # The Base checkpoint is the distilled layout minus target_timestep_embedder; loading it with the distilled
+    # mapping must be reported, not silently run on a randomly initialised embedder.
+    base_weights = _OfficialNames.weights("flux3_klein_base_transformer")
+
+    missing = _Component.missing(base_weights, _Component.of(Flux3KleinWeightDefinition, "transformer"))
+
+    assert sorted(target.to_pattern for target in missing) == [
+        "target_timestep_embedder.linear_1.weight",
+        "target_timestep_embedder.linear_2.weight",
+    ]
+    assert Flux3Transformer(flow_map=False).target_timestep_embedder is None

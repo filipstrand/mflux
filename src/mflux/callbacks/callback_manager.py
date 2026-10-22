@@ -85,8 +85,10 @@ class CallbackManager:
         CallbackManager._apply_vae_tiling(args, model)
         seeds = getattr(args, "seed", []) or []
         num_seeds = len(seeds) if seeds else 1
-        # --verify reads the image back with the text encoder after the loop
-        keep_text_encoder = bool(getattr(args, "verify", False))
+        # --verify reads the image back with the text encoder after the loop; a re-read
+        # --prompt-file can change between seeds, so later seeds may need to re-encode
+        rereads_prompt_file = num_seeds > 1 and getattr(args, "prompt_file", None) is not None
+        keep_text_encoder = bool(getattr(args, "verify", False)) or rereads_prompt_file
         if args.low_ram:
             images = getattr(args, "image_path", [])
             if not isinstance(images, list):

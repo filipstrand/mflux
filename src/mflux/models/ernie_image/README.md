@@ -83,6 +83,22 @@ mflux-generate-ernie-image-turbo \
 > [!WARNING]
 > Note: ERNIE-Image requires downloading model weights (~22 GB unquantized on disk), or use `-q 8` (~12 GB) / `-q 4` (~6.2 GB) for smaller on-disk sizes (e.g. via `mflux-save`).
 
+## VAE decode
+The VAE decodes the image in bf16 row strips of 128 rows. Each GroupNorm uses statistics from the full image, so the strips do not change the colours, and the image has no seams. The decoder releases the temporary data of each block before the next block starts, and the attention runs in chunks of 4096 queries.
+
+- `--vae-full-precision` decodes each block on the full image, as the earlier decode did. The metadata records the flag, so `--config-from-metadata` uses it again.
+- `--vae-tiling` and `--vae-tile-size` do not change the decode, and the CLI shows a warning. They still tile the encode of an input image.
+- `--low-ram` still releases the text encoder and the transformer before the decode. It does not change the decode.
+
+Measured as a decode of saved latents, with only the VAE loaded. Test setup: Apple Silicon Mac, 36 GB, MLX 0.32.0, ERNIE-Image Turbo `-q 8`, 1024×1024, seed 42, 14 prompts.
+
+| Decode | Peak | Time | PSNR vs earlier decode |
+|---|---|---|---|
+| Earlier full-image decode | 10.3 GB | 0.88 s | – |
+| Earlier `--vae-tiling` | 3.1 GB | 1.00 s | 25–28 dB (visible colour shift) |
+| Default (strips) | 1.6 GB | 1.27 s | 45–51 dB |
+| `--vae-full-precision` | 7.3 GB | 0.96 s | identical on the test Mac |
+
 ## Notes
 - ERNIE-Image tends toward vivid, high-contrast output. Prompts like `35mm film grain`, `analog`, or `soft lighting` can soften the look.
 - The official pipeline includes a **Prompt Enhancer (PE)** that rewrites short prompts into longer descriptions. This port does not include the PE — use detailed, descriptive prompts for best results.

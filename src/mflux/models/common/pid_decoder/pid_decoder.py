@@ -16,6 +16,7 @@ from mflux.models.common.pid_decoder.gemma2.gemma2_weight_mapping import Gemma2W
 from mflux.models.common.pid_decoder.pid_sampler import sample
 from mflux.models.common.pid_decoder.pid_weight_mapping import convert_checkpoint
 from mflux.models.common.pid_decoder.pixdit.pixdit_network import PidNet
+from mflux.models.common.resolution.model_revisions import ModelRevisions
 from mflux.models.common.tokenizer.tokenizer_loader import TokenizerLoader
 from mflux.models.common.weights.loading.weight_definition import TokenizerDefinition
 from mflux.models.common.weights.loading.weight_loader import WeightLoader
@@ -340,4 +341,10 @@ class PidDecoder:
         local_path = Path(model_path).expanduser()
         if local_path.is_file():
             return local_path
-        return Path(hf_hub_download(repo_id=model_path, filename=PID_CHECKPOINT_VARIANTS[variant][0]))
+        return Path(
+            hf_hub_download(
+                repo_id=model_path,
+                filename=PID_CHECKPOINT_VARIANTS[variant][0],
+                revision=ModelRevisions.get(model_path),
+            )
+        )

@@ -84,3 +84,14 @@ class QwenImage21WeightDefinition:
             and module.weight.shape[-1] % 64 == 0
             and not any(name in path for name in ("modulation", "time_text_embed", "norm_out"))
         )
+
+
+class QwenImage21NoTextEncoderWeightDefinition(QwenImage21WeightDefinition):
+    # --small-text-encoder: the Qwen3-VL-8B text encoder is neither downloaded nor loaded.
+    @staticmethod
+    def get_components() -> list[ComponentDefinition]:
+        return [c for c in QwenImage21WeightDefinition.get_components() if c.name != "text_encoder"]
+
+    @staticmethod
+    def get_download_patterns() -> list[str]:
+        return [p for p in QwenImage21WeightDefinition.get_download_patterns() if not p.startswith("text_encoder/")]

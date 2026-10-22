@@ -16,12 +16,14 @@ def is_fp8_linear(linear) -> bool:
     )
 
 
-def dense_weight(linear) -> mx.array:
+def dense_weight(linear, dtype: mx.Dtype | None = None) -> mx.array:
     """The base layer's weight as real numbers, whatever it is stored as.
 
     Adapter deltas are computed against, and folded into, the actual weight values, so
     quantized and fp8 bases have to be decoded first. DoRA in particular is a non-linear
     function of the base weight, and would otherwise take a norm over packed codes.
+    dtype, when given, is the precision a quantized weight is decoded in; by default MLX
+    infers it from the scales and biases.
     """
     if isinstance(linear, nn.QuantizedLinear):
         return mx.dequantize(
@@ -31,6 +33,7 @@ def dense_weight(linear) -> mx.array:
             group_size=linear.group_size,
             bits=linear.bits,
             mode=linear.mode,
+            dtype=dtype,
         )
     if is_fp8_linear(linear):
         return mx.from_fp8(linear.weight, dtype=mx.float32) * linear.weight_scale[:, None]

@@ -134,6 +134,26 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
+    def flux3_image_klein() -> "ModelConfig":
+        return AVAILABLE_MODELS["flux3-image-klein"]
+
+    @staticmethod
+    @lru_cache
+    def flux3_image_klein_base() -> "ModelConfig":
+        return AVAILABLE_MODELS["flux3-image-klein-base"]
+
+    @staticmethod
+    @lru_cache
+    def iris_3b() -> "ModelConfig":
+        return AVAILABLE_MODELS["iris-3b"]
+
+    @staticmethod
+    @lru_cache
+    def iris_3b_base() -> "ModelConfig":
+        return AVAILABLE_MODELS["iris-3b-base"]
+
+    @staticmethod
+    @lru_cache
     def krea2() -> "ModelConfig":
         return AVAILABLE_MODELS["krea-2"]
 
@@ -141,6 +161,11 @@ class ModelConfig:
     @lru_cache
     def krea2_raw() -> "ModelConfig":
         return AVAILABLE_MODELS["krea-2-raw"]
+
+    @staticmethod
+    @lru_cache
+    def krea2_controlnet_depth() -> "ModelConfig":
+        return AVAILABLE_MODELS["krea-2-controlnet-depth"]
 
     @staticmethod
     @lru_cache
@@ -169,8 +194,23 @@ class ModelConfig:
 
     @staticmethod
     @lru_cache
+    def qwen_image_21_turbo() -> "ModelConfig":
+        return AVAILABLE_MODELS["qwen-image-2.1-turbo"]
+
+    @staticmethod
+    @lru_cache
+    def qwen_image_21_turbo_controlnet_union() -> "ModelConfig":
+        return AVAILABLE_MODELS["qwen-image-2.1-turbo-controlnet-union"]
+
+    @staticmethod
+    @lru_cache
     def boogu_image_turbo() -> "ModelConfig":
         return AVAILABLE_MODELS["boogu-image-turbo"]
+
+    @staticmethod
+    @lru_cache
+    def moss_image_sft() -> "ModelConfig":
+        return AVAILABLE_MODELS["moss-image-sft"]
 
     @staticmethod
     @lru_cache
@@ -289,6 +329,21 @@ AVAILABLE_MODELS = {
         model_name="krea/Krea-2-Raw",
         base_model=None,
         controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=None,
+        max_sequence_length=1024,
+        supports_guidance=True,
+        requires_sigma_shift=True,
+        sigma_max_shift=1.15,
+        sigma_max_seq_len=6400,
+    ),
+    "krea-2-controlnet-depth": ModelConfig(
+        # Krea 2 Turbo with Tanmay Patil's depth ControlNet merged into it at load.
+        priority=16,
+        aliases=["krea-2-controlnet-depth", "krea-2-controlnet", "krea2-controlnet"],
+        model_name="krea/Krea-2-Turbo",
+        base_model=None,
+        controlnet_model="Patil/Krea-2-depth-controlnet",
         custom_transformer_model=None,
         num_train_steps=None,
         max_sequence_length=1024,
@@ -449,6 +504,79 @@ AVAILABLE_MODELS = {
         text_encoder_overrides={
             "hidden_size": 2560,
             "intermediate_size": 9728,
+        },
+    ),
+    "flux3-image-klein": ModelConfig(
+        priority=11,
+        aliases=["flux3-image-klein", "flux3-klein", "flux3", "flux-3-image-klein"],
+        model_name="black-forest-labs/flux-3-image-klein",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=None,
+        max_sequence_length=4096,
+        supports_guidance=False,
+        requires_sigma_shift=False,
+        text_encoder_overrides={
+            "hidden_size": 2560,
+            "intermediate_size": 9728,
+            "num_hidden_layers": 32,
+            "rope_theta": 5000000.0,
+        },
+    ),
+    "flux3-image-klein-base": ModelConfig(
+        priority=11,
+        aliases=["flux3-image-klein-base", "flux3-klein-base", "flux3-base", "flux-3-image-klein-base"],
+        model_name="black-forest-labs/flux-3-image-klein-base",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=None,
+        max_sequence_length=4096,
+        supports_guidance=True,
+        requires_sigma_shift=False,
+        transformer_overrides={"flow_map": False},
+        text_encoder_overrides={
+            "hidden_size": 2560,
+            "intermediate_size": 9728,
+            "num_hidden_layers": 32,
+            "rope_theta": 5000000.0,
+        },
+    ),
+    "iris-3b": ModelConfig(
+        priority=35,
+        aliases=["iris-3b", "iris-3b-turbo", "iris-turbo", "iris"],
+        model_name="speridlabs/iris-3b",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=300,
+        supports_guidance=False,
+        requires_sigma_shift=False,
+        text_encoder_overrides={
+            "hidden_size": 2560,
+            "intermediate_size": 9728,
+            "num_hidden_layers": 36,
+            "rope_theta": 5000000.0,
+        },
+    ),
+    "iris-3b-base": ModelConfig(
+        priority=36,
+        aliases=["iris-3b-base", "iris-base"],
+        model_name="speridlabs/iris-3b",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=300,
+        supports_guidance=True,
+        requires_sigma_shift=False,
+        text_encoder_overrides={
+            "hidden_size": 2560,
+            "intermediate_size": 9728,
+            "num_hidden_layers": 36,
+            "rope_theta": 5000000.0,
         },
     ),
     "flux2-klein-9b": ModelConfig(
@@ -772,6 +900,24 @@ AVAILABLE_MODELS = {
         lora_training_guidance=1.0,
         transformer_overrides={"rope_axes_dim": [32, 48, 48]},
     ),
+    "qwen-image-2.1-turbo-controlnet-union": ModelConfig(
+        # The Turbo checkpoint with the Fun ControlNet-Union branch beside it. alibaba-pai trained the
+        # branch with the base model. It runs on the Turbo schedule in 8 steps.
+        priority=34,
+        aliases=[
+            "qwen-image-2.1-turbo-controlnet-union",
+            "qwen-image-2.1-turbo-controlnet",
+            "qwen-2.1-turbo-controlnet",
+        ],
+        model_name="Qwen/Qwen-Image-2.1-Turbo",
+        base_model=None,
+        controlnet_model="alibaba-pai/Qwen-Image-2.1-Fun-Controlnet-Union",
+        custom_transformer_model=None,
+        num_train_steps=None,
+        max_sequence_length=None,
+        supports_guidance=False,
+        requires_sigma_shift=False,
+    ),
     "seedvr2-7b": ModelConfig(
         priority=23,
         aliases=["seedvr2-7b", "seedvr2-7B"],
@@ -826,6 +972,18 @@ AVAILABLE_MODELS = {
         supports_guidance=False,
         requires_sigma_shift=False,
     ),
+    "moss-image-sft": ModelConfig(
+        priority=37,
+        aliases=["moss-image-sft", "moss-image", "moss"],
+        model_name="OpenMOSS-Team/MOSS-Image-SFT",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=1000,
+        max_sequence_length=4096,
+        supports_guidance=True,
+        requires_sigma_shift=False,
+    ),
     "qwen-image-2.1": ModelConfig(
         priority=29,
         aliases=["qwen-image-2.1", "qwen-2.1", "qwen-image-21"],
@@ -840,6 +998,21 @@ AVAILABLE_MODELS = {
         sigma_max_shift=0.9,
         sigma_max_seq_len=8192,
         sigma_shift_terminal=0.02,
+    ),
+    "qwen-image-2.1-turbo": ModelConfig(
+        # The distilled 8-step checkpoint of the base model, with the same architecture. It
+        # samples on the fixed sigma nodes in its model_index.json (see Qwen21TurboScheduler),
+        # not on a shifted linspace. It runs without CFG.
+        priority=32,
+        aliases=["qwen-image-2.1-turbo", "qwen-2.1-turbo", "qwen-image-21-turbo", "qwen-image-turbo-21"],
+        model_name="Qwen/Qwen-Image-2.1-Turbo",
+        base_model=None,
+        controlnet_model=None,
+        custom_transformer_model=None,
+        num_train_steps=None,
+        max_sequence_length=None,
+        supports_guidance=False,
+        requires_sigma_shift=False,
     ),
     "qwen-image-2.1-controlnet-union": ModelConfig(
         # The base model with alibaba-pai's Fun ControlNet-Union branch beside it.

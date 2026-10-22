@@ -147,7 +147,8 @@ class CommandLineParser(argparse.ArgumentParser):
         self.default_model = default_model
         self.add_argument("--model", "-m", type=str, required=require_model_arg, action=ModelSpecAction, help=f"The model to use: a built-in model name ({', '.join(ui_defaults.canonical_model_choices())}) or any of its aliases, a HuggingFace repo org/model, or a local path.")
         if path_type == "save":
-            self.add_argument("--path", type=str, required=True, help="Local path for saving a model to disk.")
+            # Not required here: mflux-save picks a folder in $MFLUX_MODELS_DIR when --path is missing.
+            self.add_argument("--path", type=str, default=None, help="Local folder to save the model to. If you do not give it, mflux saves to $MFLUX_MODELS_DIR/<name>-mflux-<qN|bf16|fp8>[-loraNN].")
         # No argparse choices= here: the accepted values are whatever ConfigResolution's
         # explicit-base rule accepts, and they are validated post-parse (see parse_args) so
         # the two can never drift apart again, and so values restored from a metadata
@@ -252,6 +253,10 @@ class CommandLineParser(argparse.ArgumentParser):
         self.add_argument("--image-path", type=Path, required=True, help="Local path to the source image")
         self.add_argument("--quantize",  "-q", type=int, choices=ui_defaults.QUANTIZE_CHOICES, default=None, required=False, help=f"Quantize the model ({' or '.join(map(str, ui_defaults.QUANTIZE_CHOICES))}, Default is None)")
 
+    def add_hf_symlink_argument(self) -> None:
+        # const="" marks "flag given without a name", so the name comes from the environment or the OS.
+        self.add_argument("--hf-symlink", type=str, nargs="?", const="", default=None, metavar="USERNAME", help="After the save, add a Hugging Face cache entry <USERNAME>/<folder name> that links to the saved files, so --model can load it by repo id. mflux copies no data. USERNAME order: this flag, then $MFLUX_HF_USERNAME, $HF_NAMESPACE, $HF_NAME, then the OS user name.")
+
     def add_redux_arguments(self) -> None:
         # Same post-parse requirement as --image-paths: argparse required= is checked
         # before the metadata block, so a redux sidecar could not be replayed with -C.
@@ -266,6 +271,15 @@ class CommandLineParser(argparse.ArgumentParser):
     def add_pid_decode_arguments(self) -> None:
         self.add_argument("--pid-decode", action=argparse.BooleanOptionalAction, default=False, help="Decode with NVIDIA PiD's pixel-diffusion super-resolving decoder instead of the standard VAE. First run downloads two separate Hugging Face checkpoints (~8GB total); google/gemma-2-2b-it is gated and requires accepting its license + `hf auth login`.")
         self.add_argument("--pid-degrade-sigma", type=float, default=0.0, help="With --pid-decode, deliberately noise the latent to this flow-matching sigma before decoding (0.0-0.8). PiD's LQ gate was distilled on latents noised at sigma~U[0.0, 0.8]; a fully clean latent (the default, sigma=0.0) is the input it saw least during training, which can show up as over-textured detail invented on smooth areas like skin. Try 0.2 if you see that. Ignored without --pid-decode.")
+
+    def add_small_text_encoder_arguments(self, help_text: str | None = None) -> None:
+        self.add_argument("--small-text-encoder", action=argparse.BooleanOptionalAction, default=False, help=help_text or "[EXPERIMENTAL] Replace klein-4B's Qwen3-4B text encoder with Qwen3-0.6B + the AiArtLab/qwen3-0.6b-4b-adapter (FLUX.2-klein-4B / klein-base-4B only). Needs 1-5.6 GB less memory for weights depending on -q and downloads ~2.3 GB instead of ~7.5 GB; prompts are capped at 256 tokens and fine details can drift from the native encoder.")
+
+    def add_vae_full_precision_arguments(self) -> None:
+        self.add_argument("--vae-full-precision", action=argparse.BooleanOptionalAction, default=False, help="Decode each VAE block on the full image in fp32, as the earlier decode did, not in bf16 row strips. The decode needs more memory (8.6 GB at 1024x1024, compared with 1.6 GB).")
+
+    def add_small_decoder_arguments(self) -> None:
+        self.add_argument("--small-decoder", action=argparse.BooleanOptionalAction, default=False, help="Decode with black-forest-labs/FLUX.2-small-decoder, a distilled VAE decoder with about half the parameters of the standard one. Decoding is faster and needs less memory; images are almost the same. First run downloads ~250 MB. Cannot be used with --pid-decode.")
 
     def add_float32_arguments(self) -> None:
         self.add_argument("--float32", action=argparse.BooleanOptionalAction, default=False, help="Run the transformer hidden stream in float32, as in mflux 0.20 and earlier. On an M5, the default bfloat16 stream is about 30%% faster. The two streams give slightly different images for the same seed. Use this flag to reproduce an image from an older release.")
@@ -506,6 +520,16 @@ class CommandLineParser(argparse.ArgumentParser):
                     namespace.step_cache_ratio = open_unit_float(str(prior_gen_metadata["step_cache_ratio"]))
                 except argparse.ArgumentTypeError as exc:
                     self.error(f"step_cache_ratio in --config-from-conf: {exc}")
+            # MOSS-Image records the layers its negative CFG branch skips. They change the image too.
+            if (
+                hasattr(namespace, "uncond_skip_layers")
+                and prior_gen_metadata.get("uncond_skip_layers") is not None
+                and not self._option_was_provided("--uncond-skip-layers")
+            ):
+                recorded_layers = prior_gen_metadata["uncond_skip_layers"]
+                if not isinstance(recorded_layers, list) or not all(type(layer) is int for layer in recorded_layers):
+                    self.error(f"uncond_skip_layers in --config-from-conf: {recorded_layers!r} is not a list of layer indices.")  # fmt: off
+                namespace.uncond_skip_layers = recorded_layers
             # Float16 compute changes the image too, so a sidecar that recorded it replays it.
             if (
                 hasattr(namespace, "compute_precision")
@@ -603,9 +627,32 @@ class CommandLineParser(argparse.ArgumentParser):
             if hasattr(namespace, "float32") and not self._option_was_provided("--float32", "--no-float32"):
                 namespace.float32 = bool(prior_gen_metadata.get("float32", False))
 
+            if hasattr(namespace, "small_text_encoder") and not self._option_was_provided("--small-text-encoder", "--no-small-text-encoder"):  # fmt: skip
+                # A JSON boolean only: bool("false") is True, and the small encoder changes the image.
+                recorded_small_text_encoder = prior_gen_metadata.get("small_text_encoder")
+                recorded_small_text_encoder = False if recorded_small_text_encoder is None else recorded_small_text_encoder
+                if not isinstance(recorded_small_text_encoder, bool):
+                    self.error(f"small_text_encoder in --config-from-metadata must be true or false, not {recorded_small_text_encoder!r}.")  # fmt: off
+                namespace.small_text_encoder = recorded_small_text_encoder
+
             if hasattr(namespace, "pid_decode") and not self._option_was_provided("--pid-decode", "--no-pid-decode"):
                 namespace.pid_decode = prior_gen_metadata.get("pid_decode", False)
 
+            if hasattr(namespace, "small_decoder") and not self._option_was_provided("--small-decoder", "--no-small-decoder"):
+                # A JSON boolean only: bool("false") is True, and a wrong decoder changes the image.
+                recorded_small_decoder = prior_gen_metadata.get("small_decoder")
+                recorded_small_decoder = False if recorded_small_decoder is None else recorded_small_decoder
+                if not isinstance(recorded_small_decoder, bool):
+                    self.error(f"small_decoder in --config-from-metadata must be true or false, not {recorded_small_decoder!r}.")  # fmt: off
+                namespace.small_decoder = recorded_small_decoder
+
+            if hasattr(namespace, "vae_full_precision") and not self._option_was_provided("--vae-full-precision", "--no-vae-full-precision"):  # fmt: skip
+                # A JSON boolean only: bool("false") is True, and the decode mode changes the image.
+                recorded_vae_full_precision = prior_gen_metadata.get("vae_full_precision")
+                recorded_vae_full_precision = False if recorded_vae_full_precision is None else recorded_vae_full_precision
+                if not isinstance(recorded_vae_full_precision, bool):
+                    self.error(f"vae_full_precision in --config-from-metadata must be true or false, not {recorded_vae_full_precision!r}.")  # fmt: off
+                namespace.vae_full_precision = recorded_vae_full_precision
 
             if hasattr(namespace, "pid_degrade_sigma") and not self._option_was_provided("--pid-degrade-sigma"):
                 # Non-PiD sidecars omit the key entirely, but a hand-edited one can carry an

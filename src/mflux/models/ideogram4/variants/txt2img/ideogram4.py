@@ -5,6 +5,7 @@ from mlx import nn
 
 from mflux.models.common.config import Config, ModelConfig
 from mflux.models.common.pid_decoder.pid_decoder import pid_decode_latents
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.common.vae.vae_util import VAEUtil
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
@@ -169,6 +170,7 @@ class Ideogram4(nn.Module):
             generation_time=time_steps.format_dict["elapsed"],
             pid_decode=pid_decode,
             pid_degrade_sigma=pid_degrade_sigma,
+            generation_parameters=VAEDecodeOptions.generation_parameters(self),
         )
 
     def save_model(self, base_path: str) -> None:

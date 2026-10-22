@@ -9,30 +9,40 @@ from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
 
 class LoRASaver:
     @staticmethod
-    def bake_and_strip_lora(module: nn.Module, dense_weights: dict | None = None) -> nn.Module:
+    def bake_and_strip_lora(
+        module: nn.Module,
+        dense_weights: dict | None = None,
+        kept: list[float] | None = None,
+    ) -> nn.Module:
         # dense_weights is the tree this module was loaded from, when the checkpoint stores it
         # unquantized and -q quantized it at load. A layer found there is folded before it is
         # quantized (see _fold_before_quantizing); every other layer is folded as it stands.
+        # kept, when given, receives the share of the LoRA updates the baked weights hold (see
+        # _add_overlap); layers with a LoKr are left out of it.
         upgraded: list[str] = []
+        overlap = [0.0, 0.0]
 
         def bake(layer: nn.Module, path: str) -> nn.Module:
             fused = isinstance(layer, FusedLoRALinear)
             base = layer.base_linear if fused else layer.linear
             adapters = layer.loras if fused else [layer]
+            measured = kept is not None and all(isinstance(adapter, LoRALinear) for adapter in adapters)
+            before = dense_weight(base, dtype=mx.float32) if measured else None
             source = LoRASaver._stored_weight(dense_weights, path) if dense_weights is not None else None
             folded = LoRASaver._fold_before_quantizing(base, adapters, source, path=path)
-            if folded is not None:
-                return folded
-            # Adapters are folded one at a time rather than summed: a LoKr carrying a
-            # dora_scale is a non-linear function of the CURRENT base weight, so each
-            # delta must see the result of the previous fold.
-            current = base
-            for adapter in adapters:
-                if isinstance(adapter, LoRALinear):
-                    current = LoRASaver._bake_lora_into_linear(current, adapter, path=path, upgraded=upgraded)
-                elif isinstance(adapter, LoKrLinear):
-                    current = LoRASaver._bake_lokr_into_linear(current, adapter, path=path, upgraded=upgraded)
-            return current
+            if folded is None:
+                # Adapters are folded one at a time rather than summed: a LoKr carrying a
+                # dora_scale is a non-linear function of the CURRENT base weight, so each
+                # delta must see the result of the previous fold.
+                folded = base
+                for adapter in adapters:
+                    if isinstance(adapter, LoRALinear):
+                        folded = LoRASaver._bake_lora_into_linear(folded, adapter, path=path, upgraded=upgraded)
+                    elif isinstance(adapter, LoKrLinear):
+                        folded = LoRASaver._bake_lokr_into_linear(folded, adapter, path=path, upgraded=upgraded)
+            if measured:
+                LoRASaver._add_overlap(overlap, before, dense_weight(folded, dtype=mx.float32), adapters)
+            return folded
 
         # The walk gets bake as an argument. A walker that closes over itself is a reference cycle
         # that only the garbage collector frees, and it kept Krea 2's 26 GB tree alive after the load.
@@ -41,7 +51,22 @@ class LoRASaver:
             print(
                 f"🔧 Re-quantized {len(upgraded)} sub-8-bit layers at q8: the folded LoRA delta is below their quantization step"
             )
+        if kept is not None and overlap[1] > 0:
+            kept.append(overlap[0] / overlap[1])
         return module
+
+    @staticmethod
+    def _add_overlap(overlap: list[float], before: mx.array, after: mx.array, adapters: list) -> None:
+        # How far the stored weight moved along the LoRA update, against the update itself. Summed
+        # over layers, overlap[0] / overlap[1] is the share of the update the baked model applies:
+        # whatever falls under half a step of the stored dtype or of the quantization grid rounds
+        # away. The rank-256 viggle_turbo LoRA for Qwen-Image-2.1 kept 66% of itself on bfloat16 weights.
+        delta = sum(LoRASaver._lora_delta(adapter, dtype=mx.float32) for adapter in adapters)
+        moved = after.astype(mx.float32) - before.astype(mx.float32)
+        along, length = mx.sum(moved * delta), mx.sum(delta * delta)
+        mx.eval(along, length)
+        overlap[0] += along.item()
+        overlap[1] += length.item()
 
     @staticmethod
     def _replace_adapters(obj, bake, parent=None, attr_name=None, idx=None, path: str = "") -> None:

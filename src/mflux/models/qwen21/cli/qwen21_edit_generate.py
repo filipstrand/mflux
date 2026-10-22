@@ -7,18 +7,25 @@ from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_ar
 from mflux.models.common.compute_precision import ComputePrecision
 from mflux.models.common.resolution.config_resolution import ConfigResolution
 from mflux.models.qwen21.latent_creator.qwen_image21_latent_creator import QwenImage21LatentCreator
-from mflux.models.qwen21.model.qwen21_scheduler import ViggleTurboScheduler
+from mflux.models.qwen21.model.qwen21_scheduler import Qwen21TurboScheduler, ViggleTurboScheduler
+from mflux.models.qwen21.model.qwen21_small_text_encoder.qwen21_small_text_encoder import Qwen21SmallTextEncoder
 from mflux.models.qwen21.variants.edit.qwen_image_21_edit import EDIT_SCHEDULERS, MAX_REFERENCES, QwenImage21Edit
 from mflux.utils.dimension_resolver import DimensionResolver
 from mflux.utils.exceptions import ModelConfigError, PromptFileReadError, StopImageGenerationException
 from mflux.utils.prompt_util import PromptUtil
 from mflux.utils.scale_factor import ScaleFactor
 
+# Same architecture as qwen-image-2.1. The Turbo checkpoint brings its own schedule.
+FAMILY_MODELS = ("qwen-image-2.1-turbo",)
 IGNORED_OPTIONS = {"--lora-style": "Named LoRA styles are only supported by the Flux in-context CLI; use --lora."}
 CONDITIONAL_OPTIONS = {
     "--scheduler": {
         "condition": "linear Euler or viggle_turbo scheduler only",
         "reason": "Other scheduler values exit with an error before model loading.",
+    },
+    "--small-text-encoder": {
+        "condition": "without --auto-mask, --enhance-prompt and --verify",
+        "reason": "Those options run the native Qwen3-VL chat model; with the small encoder they exit with an error.",
     },
     "--negative-prompt": {
         "condition": "guidance greater than 1",
@@ -32,6 +39,7 @@ def build_parser() -> CommandLineParser:
     parser.add_general_arguments()
     parser.add_model_arguments(require_model_arg=False, default_model="qwen-image-2.1")
     parser.add_compute_precision_arguments()
+    parser.add_small_text_encoder_arguments(Qwen21SmallTextEncoder.CLI_HELP)
     parser.add_lora_arguments()
     parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
     parser.set_defaults(width=None, height=None)
@@ -79,7 +87,7 @@ def build_parser() -> CommandLineParser:
         action=argparse.BooleanOptionalAction,
         default=False,
         help="Skip unchanged transformer blocks on similar steps (faster, slightly different output; "
-        "needs --use-kv-cache).",
+        "needs --use-kv-cache; runs under 10 steps skip nothing).",
     )
     parser.add_argument(
         "--step-cache-threshold",
@@ -130,6 +138,9 @@ def validate_edit_args(parser: CommandLineParser, args, paths: list) -> None:
         parser.error("--verify-retries needs --verify")
     if args.use_step_cache and not args.use_kv_cache:
         parser.error("--use-step-cache needs --use-kv-cache (the default)")
+    vision_chat = [flag for flag in ("--auto-mask", "--enhance-prompt", "--verify") if flag in used]
+    if args.small_text_encoder and vision_chat:
+        parser.error(f"{', '.join(vision_chat)} need the native Qwen3-VL text encoder; remove --small-text-encoder.")
 
 
 def main() -> None:
@@ -165,15 +176,21 @@ def main() -> None:
         )
         QwenImage21LatentCreator.validate_resolution(args.output_resolution)
         model_config = ConfigResolution.resolve_restricted(
-            args.model, "qwen-image-2.1", model_path=args.model_path, base_model=args.base_model
+            args.model,
+            "qwen-image-2.1",
+            model_path=args.model_path,
+            extra_keys=FAMILY_MODELS,
+            base_model=args.base_model,
         )
     except (ModelConfigError, ValueError) as exc:
         parser.error(str(exc))
+    Qwen21TurboScheduler.check_args(parser, args, model_config)
     model = QwenImage21Edit(
         quantize=args.quantize,
         model_path=args.model_path,
         model_config=model_config,
         compute_precision=ComputePrecision.dtype_for(args.compute_precision),
+        small_text_encoder=args.small_text_encoder,
         **lora_init_kwargs_from_args(args),
     )
     memory_saver = CallbackManager.register_callbacks(args, model, QwenImage21LatentCreator)

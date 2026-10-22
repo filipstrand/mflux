@@ -124,15 +124,18 @@ MFLUX supports the following model families. They have different strengths and w
 |[Z-Image](src/mflux/models/z_image/README.md) | Nov 2025 | 6B | Distilled & Base | Yes | Fast, small, very good quality and realism. |
 |[Krea 2](src/mflux/models/krea2/README.md) | Jun 2026 | 12B | Turbo (distilled) | No | Very good quality with a wide range of styles; good for creative exploration. |
 |[FLUX.2](src/mflux/models/flux2/README.md) | Jan 2026 | 4B & 9B | Distilled & Base | Yes | Fastest + smallest with very good quality and edit capabilities. |
+|[FLUX 3 Image Klein](src/mflux/models/flux3/README.md) | Oct 2026 | 5.6B (+4B TE) | Distilled & Base | No | Text-to-image and editing with up to 10 reference images in one model; bounding-box layouts, strong text rendering. 16 steps distilled, 50 steps Base. |
+|[Iris-3B](src/mflux/models/iris/README.md) | Oct 2026 | 3B (+4B TE) | Turbo (distilled) & Base | No | Pixel-space diffusion transformer: no VAE, direct RGB generation. 4 steps Turbo, 100 steps base. |
 |[Ideogram 4](src/mflux/models/ideogram4/README.md) | Jun 2026 | 9B | Base | No | JSON-caption-native, typography-focused text-to-image generation. |
 |[ERNIE-Image](src/mflux/models/ernie_image/README.md) | Apr 2026 | 8B | Distilled & Base | No | Single-stream DiT from Baidu. Vivid, high-contrast output. |
 |[Lens](src/mflux/models/lens/README.md) | May 2026 | 3.8B (+20B TE) | Turbo (distilled) | No | Dual-stream MMDiT from Microsoft with a GPT-OSS text encoder. Strong prompt adherence in 4 steps. |
 |[Ming-Image](src/mflux/models/ming_image/README.md) | Sep 2026 | 6.15B (+16B MoE TE) | Base | No | Design-focused (posters, cards, UI) with strong typography; outputs RGBA. |
+|[MOSS-Image](src/mflux/models/moss_image/README.md) | Oct 2026 | 4.9B (+9B TE) | Base (SFT) | No | Single-stream DiT from OpenMOSS with a Qwen3.5 text encoder. Takes natural-language, tag and JSON-layout prompts. Renders English and Chinese text. 50 steps with CFG. |
 |[Boogu Image](src/mflux/models/boogu/README.md) | Jun 2026 | 10B | Turbo (distilled) | No | DMD-distilled 4-step model with a photographic look and bilingual (EN/ZH) text rendering. |
 |[FIBO](src/mflux/models/fibo/README.md) | Oct 2025+ | 8B | Distilled & Base | No | Very good JSON-based prompt understanding. Has edit capabilities. |
 |[SeedVR2](src/mflux/models/seedvr2/README.md) | Jun 2025 | 3B & 7B | — | No | Best upscaling model. |
 |[Qwen Image](src/mflux/models/qwen/README.md) | Aug 2025+ | 20B | Base | No | Large model (slower); strong prompt understanding and world knowledge. Has edit capabilities |
-|[Qwen Image 2.1](src/mflux/models/qwen21/README.md) | Sep 2026 | 7.1B (+8B TE) | Base | No | Single-stream block-causal DiT with a Qwen3-VL text encoder; 40-step guidance-free sampling. [Multi-reference editing, LoRA, and RGBA](src/mflux/models/qwen21/reference/README.md). |
+|[Qwen Image 2.1](src/mflux/models/qwen21/README.md) | Sep 2026+ | 7.1B (+8B TE) | Distilled & Base | No | Single-stream block-causal DiT with a Qwen3-VL text encoder. Base: 40 steps without guidance. Turbo: 8 steps. [Multi-reference editing, LoRA, and RGBA](src/mflux/models/qwen21/reference/README.md). |
 |[Depth Pro](src/mflux/models/depth_pro/README.md) | Oct 2024 | — | — | No | Very fast and accurate depth estimation model from Apple. |
 |[FLUX.1](src/mflux/models/flux/README.md) | Aug 2024 | 12B | Distilled & Base | No (legacy) | Legacy option with decent quality. Has edit capabilities with 'Kontext' model and upscaling support via ControlNet |
 
@@ -149,13 +152,13 @@ MFlux supports a small number of schedulers - see;<br>
 - Quantization and local model loading
 - LoRA support (multi-LoRA, scales, library lookup), including LyCORIS LoKr on FLUX.1 and FLUX.2
 - Metadata export + reuse, plus prompt file support
-- Float16 compute for Apple M1-family GPUs on FLUX.2, Z-Image and Qwen-Image 2.1 (`--compute-precision float16`, see the [common README](src/mflux/models/common/README.md#float16-compute-apple-m1-family))
+- Float16 compute for Apple M1-family GPUs on FLUX.2, FLUX 3 Image Klein, Z-Image and Qwen-Image 2.1 (`--compute-precision float16`, see the [common README](src/mflux/models/common/README.md#float16-compute-apple-m1-family))
 
 **Model-specific highlights**
 - Text-to-image and image-to-image generation.
 - LoRA finetuning
 - In-context editing, multi-image editing, and virtual try-on
-- ControlNet (Canny for FLUX.1, Union for Z-Image and Qwen-Image-2.1), depth conditioning, fill/inpainting, and Redux
+- ControlNet (Canny for FLUX.1, Union for Z-Image and Qwen-Image-2.1, depth for Krea 2), depth conditioning, fill/inpainting, and Redux
 - Upscaling (SeedVR2 and Flux ControlNet)
 - Depth map extraction and FIBO prompt tooling (VLM inspire/refine)
 
@@ -200,6 +203,8 @@ Where the models and the main features came from, read from the merge history (`
 | Z-Image | [@filipstrand](https://github.com/filipstrand) | [#284](https://github.com/mflux-community/mflux/pull/284) |
 | SeedVR2 | [@filipstrand](https://github.com/filipstrand) | [#297](https://github.com/mflux-community/mflux/pull/297) |
 | FLUX.2 Klein | [@filipstrand](https://github.com/filipstrand) | [#323](https://github.com/mflux-community/mflux/pull/323) |
+| FLUX 3 Image Klein | [@cguldogan](https://github.com/cguldogan) | [#876](https://github.com/mflux-community/mflux/issues/876) |
+| Iris-3B | [@cguldogan](https://github.com/cguldogan) | [#898](https://github.com/mflux-community/mflux/issues/898) |
 | FLUX.2 KV cache (klein-9b-kv) | [@michaeltrefry](https://github.com/michaeltrefry) | [#426](https://github.com/mflux-community/mflux/pull/426) |
 | ERNIE-Image | [@azrahello](https://github.com/azrahello) | [#417](https://github.com/mflux-community/mflux/pull/417) |
 | Ideogram 4 | [@omercelik](https://github.com/omercelik) | [#433](https://github.com/mflux-community/mflux/pull/433) |
@@ -207,6 +212,7 @@ Where the models and the main features came from, read from the merge history (`
 | LyCORIS LoKr adapters | [@JanGrohn](https://github.com/JanGrohn) | [#422](https://github.com/mflux-community/mflux/pull/422) |
 | Fused-qkv LoRA loading | [@deadmansahil](https://github.com/deadmansahil) | [#459](https://github.com/mflux-community/mflux/pull/459) |
 | Boogu-Image | [@plz12345](https://github.com/plz12345) | [#446](https://github.com/mflux-community/mflux/pull/446) |
+| MOSS-Image | [@vanch007](https://github.com/vanch007) | [#895](https://github.com/mflux-community/mflux/pull/895) |
 | PiD pixel-diffusion decoder | [@azrahello](https://github.com/azrahello) | [#490](https://github.com/mflux-community/mflux/pull/490) |
 | Z-Image Union ControlNet | [@fxd0h](https://github.com/fxd0h) | [#482](https://github.com/mflux-community/mflux/pull/482) |
 | Krea 2 Raw, LoRA training, diffusers loading | [@fxd0h](https://github.com/fxd0h) | [#462](https://github.com/mflux-community/mflux/pull/462) |
@@ -267,6 +273,14 @@ After installation in the same environment, consumers can use
 discover applications, or mount routes. UI framework dependencies belong to the
 individual UI distributions; this namespace support adds none to `mflux`.
 
+#### Extras under `mflux.extras`
+
+Plugins are optional packages that install next to mflux, put their code under
+`mflux.extras` and add their own commands. mflux's own commands do not change.
+The mflux-community plugins live in
+[mflux-plugins](https://github.com/mflux-community/mflux-plugins). To find,
+install or write one, see [Plugins - User Manual](docs/plugins.md).
+
 #### Community applications
 
 - [MindCraft Studio](https://themindstudio.cc/mindcraft#models) — macOS app built on mflux by [@shaoju](https://github.com/shaoju)
@@ -275,8 +289,9 @@ individual UI distributions; this namespace support adds none to `mflux`.
 - [MFLUX-WEBUI](https://github.com/CharafChnioune/MFLUX-WEBUI) by [@CharafChnioune](https://github.com/CharafChnioune)
 - [mflux-fasthtml](https://github.com/anthonywu/mflux-fasthtml) by [@anthonywu](https://github.com/anthonywu)
 - [mflux-streamlit](https://github.com/elitexp/mflux-streamlit) by [@elitexp](https://github.com/elitexp)
+- [mfluxible](https://github.com/wesbiggs/mfluxible) — streaming HTTP API server for mflux models with a browser harness, an MCP tool and an OpenAI-compatible endpoint, by [@wesbiggs](https://github.com/wesbiggs)
 - [mlx-taef](https://github.com/IonDen/mlx-taef) — TAESD/TAEF tiny-autoencoder live previews and low-memory FLUX decode for mflux, by [@IonDen](https://github.com/IonDen)
-- [mlx-teacache](https://github.com/IonDen/mlx-teacache) — TeaCache step-skipping to speed up FLUX generation in mflux, by [@IonDen](https://github.com/IonDen)
+- [mlx-teacache](https://github.com/IonDen/mlx-teacache) — TeaCache step skipping for FLUX.1 dev and Krea, FLUX.2 Klein base, Z-Image base and Qwen-Image (original checkpoint) in mflux, by [@IonDen](https://github.com/IonDen)
 - [MLXBits Image Studio](https://github.com/MLXBits/image-studio) - A native macOS Swift app for FLUX, Krea 2, Z-Image and more!
 ---
 
@@ -290,10 +305,12 @@ MFLUX would not be possible without the great work of:
 - Tongyi Lab for the [Z-Image project](https://tongyi-mai.github.io/Z-Image-blog/)
 - Baidu for the [ERNIE-Image project](https://huggingface.co/baidu/ERNIE-Image)
 - Ideogram for the [Ideogram 4 project](https://huggingface.co/ideogram-ai/ideogram-4-fp8)
+- Speridlabs for the [Iris-3B project](https://github.com/speridlabs/iris-3b)
 - Krea.ai for the [Krea 2 project](https://www.krea.ai/blog/krea-2-technical-report)
 - Qwen Team for the [Qwen Image project](https://qwen.ai/blog?id=a6f483777144685d33cd3d2af95136fcbeb57652&from=research.research-list)
 - Microsoft for the Lens (Turbo) model, and Comfy-Org for the [weights repackage](https://huggingface.co/Comfy-Org/Lens)
 - inclusionAI for the [Ming-Image project](https://github.com/inclusionAI/Ming-Image)
+- OpenMOSS for the [MOSS-Image project](https://github.com/OpenMOSS/MOSS-Image)
 - The Boogu team for the [Boogu Image project](https://huggingface.co/Boogu/Boogu-Image-0.1-Turbo)
 - ByteDance, @numz and @adrientoupet for the [SeedVR2 project](https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler)
 - Hugging Face for the [Diffusers library implementations](https://github.com/huggingface/diffusers) 

@@ -5,6 +5,7 @@ import transformers
 from huggingface_hub import snapshot_download
 from huggingface_hub.utils import LocalEntryNotFoundError
 
+from mflux.models.common.resolution.model_revisions import ModelRevisions
 from mflux.models.common.tokenizer.tokenizer import (
     BaseTokenizer,
     LanguageTokenizer,
@@ -175,6 +176,7 @@ class TokenizerLoader:
                 snapshot_download(
                     repo_id=model_path,
                     allow_patterns=patterns,
+                    revision=ModelRevisions.get(model_path),
                     local_files_only=True,
                 )
             )
@@ -197,6 +199,7 @@ class TokenizerLoader:
                 snapshot_download(
                     repo_id=model_path,
                     allow_patterns=patterns,
+                    revision=ModelRevisions.get(model_path),
                 )
             )
         except Exception as exc:  # noqa: BLE001

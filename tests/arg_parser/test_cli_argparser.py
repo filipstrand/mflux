@@ -844,10 +844,9 @@ def test_controlnet_args(mflux_generate_controlnet_parser, mflux_generate_contro
 @pytest.mark.fast
 def test_save_args(mflux_save_parser):
     with patch("sys.argv", ["mflux-save", "--model", "dev"]):
-        # required --path not provided, exits to error
-        assert pytest.raises(SystemExit, mflux_save_parser.parse_args)
+        # --path is optional in the parser: mflux-save falls back to $MFLUX_MODELS_DIR.
+        assert mflux_save_parser.parse_args().path is None
     with patch("sys.argv", ["mflux-save", "--model", "dev", "--path", "/some/model/folder"]):
-        # required --path not provided, exits to error
         args = mflux_save_parser.parse_args()
         assert args.path == "/some/model/folder"
 

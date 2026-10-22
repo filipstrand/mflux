@@ -56,6 +56,7 @@ class Qwen3TextEncoder(nn.Module):
         input_ids: mx.array,
         attention_mask: mx.array | None = None,
         output_hidden_states: bool = False,
+        position_ids: mx.array | None = None,
     ) -> tuple[mx.array, list[mx.array] | None]:
         batch_size, seq_len = input_ids.shape
         hidden_states = self.embed_tokens(input_ids)
@@ -85,9 +86,10 @@ class Qwen3TextEncoder(nn.Module):
             causal_tri_mask = mx.broadcast_to(causal_tri_mask, (batch_size, 1, seq_len, seq_len))
         attention_mask_4d = causal_tri_mask + padding_mask
 
-        position_ids = mx.arange(seq_len, dtype=mx.int32)
-        position_ids = mx.expand_dims(position_ids, axis=0)
-        position_ids = mx.broadcast_to(position_ids, (batch_size, seq_len))
+        if position_ids is None:
+            position_ids = mx.arange(seq_len, dtype=mx.int32)
+            position_ids = mx.expand_dims(position_ids, axis=0)
+            position_ids = mx.broadcast_to(position_ids, (batch_size, seq_len))
         position_embeddings = self.rotary_emb(hidden_states, position_ids)
 
         # Match HF behavior: include embedding output as the first hidden state.
@@ -110,11 +112,13 @@ class Qwen3TextEncoder(nn.Module):
         input_ids: mx.array,
         attention_mask: mx.array | None = None,
         hidden_state_layers: tuple[int, ...] = (9, 18, 27),
+        position_ids: mx.array | None = None,
     ) -> mx.array:
         _, hidden_states_list = self(
             input_ids=input_ids,
             attention_mask=attention_mask,
             output_hidden_states=True,
+            position_ids=position_ids,
         )
         if hidden_states_list is None:
             raise RuntimeError("Hidden states not available for prompt embedding.")

@@ -12,11 +12,15 @@ from mflux.models.common.resolution.path_resolution import PathResolution
 from mflux.models.common.tokenizer import TokenizerLoader
 from mflux.models.common.weights.loading.weight_applier import WeightApplier
 from mflux.models.common.weights.loading.weight_loader import WeightLoader
+from mflux.models.qwen21.model.qwen21_small_text_encoder.qwen21_small_text_encoder import Qwen21SmallTextEncoder
 from mflux.models.qwen21.model.qwen21_text_encoder.qwen21_text_encoder import Qwen21TextEncoder
 from mflux.models.qwen21.model.qwen21_transformer.qwen21_transformer import Qwen21Transformer
 from mflux.models.qwen21.model.qwen21_vae.qwen21_vae import Qwen21VAE
 from mflux.models.qwen21.weights.qwen21_lora_mapping import Qwen21LoRAMapping
-from mflux.models.qwen21.weights.qwen21_weight_definition import Qwen21WeightDefinition
+from mflux.models.qwen21.weights.qwen21_weight_definition import (
+    Qwen21NoTextEncoderWeightDefinition,
+    Qwen21WeightDefinition,
+)
 
 
 class Qwen21Initializer:
@@ -30,16 +34,22 @@ class Qwen21Initializer:
         lora_scales: list[float] | None = None,
         bake_lora: bool = True,
         compute_precision: mx.Dtype | None = None,
+        small_text_encoder: bool = False,
     ) -> None:
         precision = ComputePrecision(compute_precision)
         path = model_path if model_path else model_config.model_name
         Qwen21Initializer.init_config(model, model_config)
-        root = PathResolution.resolve(path, Qwen21WeightDefinition.get_download_patterns())
+        model.small_text_encoder = small_text_encoder
+        definition = Qwen21NoTextEncoderWeightDefinition if small_text_encoder else Qwen21WeightDefinition
+        root = PathResolution.resolve(path, definition.get_download_patterns())
         if root is None:
             raise ValueError("No Qwen-Image-2.1 checkpoint path was provided.")
-        Qwen21Initializer._init_tokenizers(model, path)
+        if small_text_encoder:
+            model.tokenizers = {}
+        else:
+            Qwen21Initializer._init_tokenizers(model, path)
         Qwen21Initializer._init_models(model)
-        Qwen21Initializer.load_components(model, root, Qwen21WeightDefinition, quantize, validate=True)
+        Qwen21Initializer.load_components(model, root, definition, quantize, validate=True)
         Qwen21Initializer.apply_lora(model, lora_paths, lora_scales, bake_lora)
         model.compute_precision = precision
         if compute_precision is not None:
@@ -54,11 +64,19 @@ class Qwen21Initializer:
             module = getattr(model, component.model_attr or component.name)
             weights = WeightLoader.load_single_local(component, root)
             supplied = dict(tree_flatten(weights.components[component.name]))
+            if component.precision is not None:
+                # An mflux save skips the cast the HuggingFace load does, and can store a component
+                # narrower than it runs (the Turbo VAE runs in float32 and is saved in bfloat16).
+                supplied = Qwen21Initializer._widen_floats(supplied, component.precision)
+                weights.components[component.name] = tree_unflatten(list(supplied.items()))
             if component.name == "transformer":
                 supplied = Qwen21Initializer._normalize_transformer_weights(supplied)
                 weights.components[component.name] = tree_unflatten(list(supplied.items()))
             elif component.name == "vae":
-                supplied = Qwen21Initializer._normalize_vae_weights(supplied)
+                supplied = Qwen21Initializer._normalize_vae_weights(supplied, module)
+                weights.components[component.name] = tree_unflatten(list(supplied.items()))
+            elif component.name == "text_encoder":
+                supplied = Qwen21Initializer._normalize_text_encoder_weights(supplied, module)
                 weights.components[component.name] = tree_unflatten(list(supplied.items()))
             if validate and weights.meta_data.quantization_level is None:
                 Qwen21Initializer._validate_weights(component.name, module, supplied, weight_definition)
@@ -115,7 +133,20 @@ class Qwen21Initializer:
     def _init_models(model) -> None:
         model.vae = Qwen21VAE()
         model.transformer = Qwen21Transformer()
-        model.text_encoder = Qwen21TextEncoder()
+        if model.small_text_encoder:
+            model.text_encoder, model.processor = Qwen21SmallTextEncoder.load()
+        else:
+            model.text_encoder = Qwen21TextEncoder()
+
+    @staticmethod
+    def _widen_floats(supplied: dict[str, mx.array], dtype: mx.Dtype) -> dict[str, mx.array]:
+        # Only widens: a save that kept wider weights keeps them. Packed quantized weights are integers.
+        return {
+            key: value.astype(dtype)
+            if mx.issubdtype(value.dtype, mx.floating) and value.dtype.size < dtype.size
+            else value
+            for key, value in supplied.items()
+        }
 
     @staticmethod
     def _normalize_transformer_weights(supplied: dict[str, mx.array]) -> dict[str, mx.array]:
@@ -133,11 +164,30 @@ class Qwen21Initializer:
         return normalized
 
     @staticmethod
-    def _normalize_vae_weights(supplied: dict[str, mx.array]) -> dict[str, mx.array]:
+    def _normalize_text_encoder_weights(supplied: dict[str, mx.array], module) -> dict[str, mx.array]:
+        # A save from QwenImage21Edit (mflux-save) keeps the language model under language_model.
+        # and also holds the vision tower and lm_head. The text-only encoder uses neither. The
+        # editing encoder has all of them, so its keys stay the same.
+        if hasattr(module, "language_model") or not any(key.startswith("language_model.") for key in supplied):
+            return supplied
+        return {
+            key.removeprefix("language_model."): value
+            for key, value in supplied.items()
+            if not key.startswith(("visual.", "lm_head."))
+        }
+
+    @staticmethod
+    def _normalize_vae_weights(supplied: dict[str, mx.array], module=None) -> dict[str, mx.array]:
         # Saved mflux exports bypass HF mappings. Text VAE exports from before the shared VAE
         # use Qwen21CausalConv (".conv.") and Qwen21RMSNorm (".weight") parameter names.
+        # QwenImage21Edit saves the per-frame video layers (time_conv). A VAE without them never runs them.
+        drop_time_conv = module is not None and not any(
+            ".time_conv." in key for key, _ in tree_flatten(module.parameters())
+        )
         normalized = {}
         for key, value in supplied.items():
+            if drop_time_conv and ".time_conv." in key:
+                continue
             target = key.replace(".downsampler.conv.", ".downsampler.resample.1.")
             target = target.replace(".upsampler.conv.", ".upsampler.resample.1.")
             target = target.replace(".conv.", ".")

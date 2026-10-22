@@ -66,6 +66,23 @@ class SafetensorsReader:
         return weights
 
     @staticmethod
+    def stored_float_dtype(directory: str | Path) -> mx.Dtype | None:
+        # The one float dtype the directory's shards store, read from the headers only.
+        # None when there are no shards or they mix float dtypes.
+        found = set()
+        for file in Path(directory).expanduser().glob("*.safetensors"):
+            if file.name.startswith("._"):
+                continue
+            with file.open("rb") as fh:
+                header = json.loads(fh.read(struct.unpack("<Q", fh.read(8))[0]))
+            found |= {
+                info["dtype"]
+                for name, info in header.items()
+                if name != "__metadata__" and isinstance(info, dict) and info.get("dtype") in ("BF16", "F16", "F32")
+            }
+        return SafetensorsReader._DTYPES[found.pop()][1] if len(found) == 1 else None
+
+    @staticmethod
     def _read_tensor(path: Path, data_start: int, info: SafetensorsTensorInfo) -> mx.array:
         try:
             np_dtype, mx_view_dtype = SafetensorsReader._DTYPES[info.dtype]

@@ -6,11 +6,14 @@
 import json
 import sys
 
+import PIL.Image
 import pytest
 
 from mflux.models.common.resolution.config_resolution import ConfigResolution
 from mflux.models.flux.cli import flux_generate_redux
 from mflux.models.flux2.cli import flux2_edit_generate, flux2_generate
+from mflux.models.flux3.cli import flux3_edit_generate, flux3_generate
+from mflux.models.flux3.latent_creator.flux3_reference_images import Flux3ReferenceImages
 from mflux.models.krea2.cli import krea2_generate
 from mflux.models.qwen.cli import qwen_image_edit_generate
 from mflux.models.z_image.cli import z_image_generate
@@ -18,8 +21,8 @@ from mflux.utils.exceptions import ModelConfigError
 
 ELSEWHERE = "/Users/someone-else/photos/cat.png"
 
-SCALE_FACTOR_CLIS = [krea2_generate, qwen_image_edit_generate, flux2_edit_generate]
-EDIT_CLIS = [qwen_image_edit_generate, flux2_edit_generate]
+SCALE_FACTOR_CLIS = [krea2_generate, qwen_image_edit_generate, flux2_edit_generate, flux3_edit_generate]
+EDIT_CLIS = [qwen_image_edit_generate, flux2_edit_generate, flux3_edit_generate]
 
 
 @pytest.fixture
@@ -105,7 +108,7 @@ def test_a_sidecar_without_the_keys_leaves_the_defaults_alone(parse, sidecar):
 
 
 @pytest.mark.fast
-@pytest.mark.parametrize("cli", EDIT_CLIS, ids=["qwen-edit", "flux2-edit"])
+@pytest.mark.parametrize("cli", EDIT_CLIS, ids=["qwen-edit", "flux2-edit", "flux3-edit"])
 def test_the_sidecar_supplies_the_init_images(parse, sidecar, cli):
     # argparse checks required= before parse_args reaches the metadata block, so this used
     # to exit 2 on images the sidecar was carrying all along.
@@ -116,7 +119,7 @@ def test_the_sidecar_supplies_the_init_images(parse, sidecar, cli):
 
 
 @pytest.mark.fast
-@pytest.mark.parametrize("cli", EDIT_CLIS, ids=["qwen-edit", "flux2-edit"])
+@pytest.mark.parametrize("cli", EDIT_CLIS, ids=["qwen-edit", "flux2-edit", "flux3-edit"])
 def test_init_images_on_the_command_line_replace_the_sidecars(parse, sidecar, source_image, cli):
     mine = source_image("mine.png")
     args = parse(cli, "--config-from-metadata", str(sidecar()), "--image-paths", mine)
@@ -124,7 +127,7 @@ def test_init_images_on_the_command_line_replace_the_sidecars(parse, sidecar, so
 
 
 @pytest.mark.fast
-@pytest.mark.parametrize("cli", EDIT_CLIS, ids=["qwen-edit", "flux2-edit"])
+@pytest.mark.parametrize("cli", EDIT_CLIS, ids=["qwen-edit", "flux2-edit", "flux3-edit"])
 def test_an_edit_cli_still_requires_init_images_from_somewhere(parse, capsys, cli):
     with pytest.raises(SystemExit) as exit_info:
         parse(cli, "--prompt", "a red cube")
@@ -305,3 +308,68 @@ def test_an_explicit_base_model_beats_the_ride_along(parse, sidecar):
     prior = sidecar(model="black-forest-labs/FLUX.2-klein-4B", model_path="/models/my-finetune", image_paths=None)
     args = parse(flux2_generate, "--base-model", "flux2-klein-base-4b", "--config-from-metadata", str(prior))
     assert args.base_model == "flux2-klein-base-4b"
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize("cli", [flux3_generate, flux3_edit_generate], ids=["flux3", "flux3-edit"])
+def test_flux3_rejects_a_negative_prompt_that_was_actually_typed(monkeypatch, capsys, source_image, cli):
+    extra = ["--image-paths", source_image("a.png")] if cli is flux3_edit_generate else []
+    monkeypatch.setattr(sys, "argv", ["prog", "--prompt", "a red cube", *extra, "--negative-prompt", "blurry"])
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main()
+    assert exit_info.value.code == 2
+    assert "not supported for FLUX 3 Image Klein" in capsys.readouterr().err
+
+
+@pytest.mark.fast
+def test_flux3_does_not_blame_the_user_for_a_sidecars_negative_prompt(monkeypatch, sidecar):
+    reached_model_load = RuntimeError("reached model load")
+
+    def explode(*args, **kwargs):
+        raise reached_model_load
+
+    monkeypatch.setattr(flux3_edit_generate, "Flux3KleinEdit", explode)
+    monkeypatch.setattr(sys, "argv", ["prog", "--config-from-metadata", str(sidecar(model="flux3-image-klein"))])
+    with pytest.raises(RuntimeError) as exit_info:
+        flux3_edit_generate.main()
+    assert exit_info.value is reached_model_load
+
+
+@pytest.mark.fast
+def test_a_flux3_base_replay_resolves_to_the_base_entry(parse, sidecar):
+    # The sidecar of a run from a saved Base model records the repo id it resolved to; it rides along as the base,
+    # so the replay does not depend on the directory name.
+    prior = sidecar(
+        model="black-forest-labs/flux-3-image-klein-base", model_path="/models/my-saved-model", image_paths=None
+    )
+    args = parse(flux3_generate, "--config-from-metadata", str(prior))
+    resolved = ConfigResolution.resolve_restricted(
+        args.model,
+        "flux3-image-klein",
+        model_path=args.model_path,
+        base_model=args.base_model,
+        extra_keys=flux3_generate.FAMILY_MODELS,
+    )
+    assert resolved.model_name == "black-forest-labs/flux-3-image-klein-base"
+
+
+@pytest.mark.fast
+def test_a_flux3_edit_replay_resolves_to_the_same_canvas_and_crop(parse, sidecar, tmp_path):
+    # A 700x500 reference generates on a 704x512 canvas and is cropped to 700x500, so the sidecar records
+    # 700x500. Replaying that explicit size must hit the same canvas and crop, not round to 688x496.
+    reference = tmp_path / "ref.png"
+    PIL.Image.new("RGB", (700, 500)).save(reference)
+    args = parse(flux3_edit_generate, "--image-paths", str(reference), "--prompt", "x")
+    first = _flux3_edit_canvas(flux3_edit_generate._explicit_size(args.width, args.height, reference), reference)
+
+    replayed = parse(flux3_edit_generate, "--config-from-metadata", str(sidecar(width=700, height=500, image_paths=[str(reference)])))  # fmt: skip
+    replay = _flux3_edit_canvas(
+        flux3_edit_generate._explicit_size(replayed.width, replayed.height, reference), reference
+    )
+
+    assert first == replay == (704, 512, (2, 6, 702, 506))
+
+
+def _flux3_edit_canvas(size, reference):
+    references, box = Flux3ReferenceImages.prepare([PIL.Image.open(reference)])
+    return Flux3ReferenceImages.resolve_canvas(references, box, *size)

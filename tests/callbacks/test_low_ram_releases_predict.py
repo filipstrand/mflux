@@ -6,7 +6,10 @@ import mlx.core as mx
 import pytest
 
 from mflux.callbacks.callback_registry import CallbackRegistry
+from mflux.models.common.compute_precision import ComputePrecision
 from mflux.models.common.config import ModelConfig
+from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
+from mflux.models.flux3.variants import Flux3Klein
 from mflux.models.krea2.variants import Krea2
 from mflux.models.z_image.variants.z_image import ZImage
 
@@ -100,3 +103,41 @@ def test_compiled_z_image_predict_does_not_keep_transformer_after_release():
     del predict
     gc.collect()
     assert transformer_ref() is None
+
+
+class _FakeFlux3Transformer:
+    flow_map = True
+
+    def __call__(self, **kwargs):
+        return mx.zeros_like(kwargs["hidden_states"])
+
+
+class _FakePackedVAE(Flux2VAE):
+    def __init__(self) -> None:  # no weights: only decode_packed_latents is exercised, and it is replaced below
+        pass
+
+    def decode_packed_latents(self, packed_latents, tiling_config=None):
+        return mx.zeros((packed_latents.shape[0], 3, packed_latents.shape[2] * 16, packed_latents.shape[3] * 16))
+
+
+@pytest.mark.fast
+def test_flux3_generate_image_releases_transformer_before_after_loop_callbacks():
+    # MemorySaver frees the transformer in call_after_loop; the predict closure must not keep it alive.
+    model = Flux3Klein.__new__(Flux3Klein)
+    model.model_config = ModelConfig.flux3_image_klein()
+    model.callbacks = CallbackRegistry()
+    model.transformer = _FakeFlux3Transformer()
+    model.vae = _FakePackedVAE()
+    model.bits = None
+    model.lora_paths = None
+    model.lora_scales = None
+    model.compute_precision = ComputePrecision()
+    model.tiling_config = None
+    model._noise_override = None
+    model.prompt_cache = {"x": (mx.zeros((1, 80, 8)), mx.zeros((80, 4)))}
+    callback = _DropTransformerAfterLoop(model)
+    model.callbacks.register(callback)
+
+    model.generate_image(seed=1, prompt="x", num_inference_steps=2, height=64, width=64)
+
+    assert callback.alive_after_loop is False

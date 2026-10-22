@@ -84,6 +84,7 @@ def test_completion_generator_tracks_installed_console_scripts():
         "mflux-generate-ernie-image",
         "mflux-generate-ernie-image-turbo",
         "mflux-generate-ideogram4",
+        "mflux-generate-moss-image",
         "mflux-capabilities",
     ):
         assert command in generator.commands
@@ -136,3 +137,14 @@ def test_completion_generator_completes_every_spelling_of_a_renamed_flag():
     assert "{--config-from-conf,--config-from-metadata,-C}" in script
     assert "{--make-conf,--metadata}" in script
     assert "{--no-exif,--no-metadata}" in script
+
+
+@pytest.mark.fast
+def test_optional_option_value_uses_a_doubled_colon():
+    # --hf-symlink takes an optional USERNAME (nargs="?"). With one colon, zsh would require a value.
+    generator = CompletionGenerator()
+    parser = generator.create_parser_for_command("mflux-save")
+    script = generator.generate_command_function("mflux-save", parser)
+
+    line = next(line for line in script.splitlines() if "'--hf-symlink'" in line)
+    assert line.rstrip().rstrip("\\").rstrip().endswith("]::value:'")

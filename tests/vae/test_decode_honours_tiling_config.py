@@ -14,9 +14,11 @@ from mflux.models.common.resolution.path_resolution import PathResolution
 from mflux.models.common.vae.tiling_config import TilingConfig
 from mflux.models.flux2.model.flux2_vae.vae import Flux2VAE
 from mflux.models.flux2.variants import Flux2Klein, Flux2KleinEdit
+from mflux.models.flux3.variants import Flux3Klein, Flux3KleinEdit
 from mflux.models.ideogram4.variants import Ideogram4
 from mflux.models.krea2.variants import Krea2
 from mflux.models.lens.variants.txt2img.lens_image import LensImage
+from mflux.models.moss_image.variants import MOSSImage
 
 
 class _FakeQwen3Tokenizer:
@@ -33,6 +35,8 @@ class _FakeQwen3TextEncoder:
 
 
 class _FakeHiddenStatesTransformer:
+    flow_map = True
+
     def __call__(self, **kwargs):
         return mx.zeros_like(kwargs["hidden_states"])
 
@@ -40,6 +44,16 @@ class _FakeHiddenStatesTransformer:
 class _FakeLensTextEncoder:
     def encode(self, prompt):
         return mx.zeros((1, 4, 8))
+
+
+class _FakeMOSSTransformer:
+    layers = [None] * 42
+
+    def time_signal(self, sigmas):
+        return sigmas
+
+    def __call__(self, hidden_states, timestep, encoder_hidden_states, skip_layers=frozenset()):
+        return mx.zeros_like(hidden_states)
 
 
 class _RecordingPackedVAE:
@@ -90,6 +104,23 @@ class _PackedModelFixtures:
         return model
 
     @staticmethod
+    def flux3_klein(vae: _RecordingPackedVAE, tiling_config: TilingConfig | None, edit: bool = False):
+        model = (Flux3KleinEdit if edit else Flux3Klein).__new__(Flux3KleinEdit if edit else Flux3Klein)
+        model.model_config = ModelConfig.flux3_image_klein()
+        model.callbacks = CallbackRegistry()
+        model.transformer = _FakeHiddenStatesTransformer()
+        model.vae = vae
+        model.bits = None
+        model.lora_paths = None
+        model.lora_scales = None
+        model.compute_precision = ComputePrecision()
+        model.tiling_config = tiling_config
+        model._noise_override = None
+        # The prompt is looked up in the cache, so no tokenizer or text encoder is needed.
+        model.prompt_cache = {"x": (mx.zeros((1, 80, 8)), mx.zeros((80, 4)))}
+        return model
+
+    @staticmethod
     def lens_image(vae: _RecordingPackedVAE, tiling_config: TilingConfig | None) -> LensImage:
         model = LensImage.__new__(LensImage)
         model.model_config = ModelConfig.lens_turbo()
@@ -99,6 +130,21 @@ class _PackedModelFixtures:
         model.vae = vae
         model.bits = None
         model.tiling_config = tiling_config
+        return model
+
+    @staticmethod
+    def moss_image(vae: _RecordingPackedVAE, tiling_config: TilingConfig | None) -> MOSSImage:
+        model = MOSSImage.__new__(MOSSImage)
+        model.model_config = ModelConfig.moss_image_sft()
+        model.callbacks = CallbackRegistry()
+        model.transformer = _FakeMOSSTransformer()
+        model.vae = vae
+        model.bits = None
+        model.lora_paths = []
+        model.lora_scales = []
+        model.tiling_config = tiling_config
+        # The prompts are looked up in the cache, so no tokenizer or text encoder is needed.
+        model.prompt_cache = {"x": mx.zeros((1, 4, 8)), "": mx.zeros((1, 2, 8))}
         return model
 
     @staticmethod
@@ -311,6 +357,41 @@ def test_flux2_klein_edit_decode_with_tiling_config_none_still_returns_image(tmp
     assert vae.received_tiling_configs[-1] is None
 
 
+# FLUX 3 shares the FLUX.2 VAE; its decode (and the edit variant's reference encode) must honour the tiling config too.
+@pytest.mark.fast
+def test_flux3_klein_decode_passes_tiling_config_to_vae():
+    vae = _RecordingPackedVAE()
+    tiling_config = TilingConfig(vae_decode_tile_size=512)
+    model = _PackedModelFixtures.flux3_klein(vae, tiling_config)
+
+    model.generate_image(seed=1, prompt="x", num_inference_steps=1, height=64, width=64)
+
+    assert vae.received_tiling_configs[-1] is tiling_config
+
+
+@pytest.mark.fast
+def test_flux3_klein_decode_with_tiling_config_none_still_returns_image():
+    vae = _RecordingPackedVAE()
+    model = _PackedModelFixtures.flux3_klein(vae, None)
+
+    model.generate_image(seed=1, prompt="x", num_inference_steps=1, height=64, width=64)
+
+    assert vae.received_tiling_configs[-1] is None
+
+
+@pytest.mark.fast
+def test_flux3_klein_edit_decode_passes_tiling_config_to_vae(tmp_path):
+    reference_path = tmp_path / "reference.png"
+    _PackedModelFixtures.write_reference_image(reference_path)
+    vae = _RecordingPackedVAE()
+    tiling_config = TilingConfig(vae_decode_tile_size=512)
+    model = _PackedModelFixtures.flux3_klein(vae, tiling_config, edit=True)
+
+    model.generate_image(seed=1, prompt="x", num_inference_steps=1, height=64, width=64, image_paths=[reference_path])
+
+    assert vae.received_tiling_configs[-1] is tiling_config
+
+
 # Bug: lens_image.py's `decoded = self.vae.decode_packed_latents(packed.astype(mx.float32))`
 # dropped tiling_config too, so --vae-tiling had no effect on Lens's decode.
 @pytest.mark.fast
@@ -441,3 +522,28 @@ def test_flux2_vae_decode_packed_latents_single_pass_when_tiling_config_none():
     vae.decode_packed_latents(mx.zeros((1, 128, 16, 16)))
 
     assert vae.decode_calls == [(1, 32, 32, 32)]
+
+
+# Guard: the MOSS-Image decode has to read self.tiling_config, or --vae-tiling and --low-ram
+# would decode in one pass.
+@pytest.mark.fast
+@pytest.mark.parametrize("tiling_config", [TilingConfig(vae_decode_tile_size=512), None])
+def test_moss_image_decode_passes_tiling_config_to_vae(tiling_config):
+    vae = _RecordingPackedVAE()
+    model = _PackedModelFixtures.moss_image(vae, tiling_config)
+
+    model.generate_image(seed=1, prompt="x", num_inference_steps=1, height=64, width=64)
+
+    assert vae.received_tiling_configs[-1] is tiling_config
+
+
+@pytest.mark.fast
+@pytest.mark.parametrize(("layers", "recorded"), [((22,), [22]), ((), [])])
+def test_moss_image_records_the_skipped_layers_in_its_metadata(layers, recorded):
+    model = _PackedModelFixtures.moss_image(_RecordingPackedVAE(), None)
+
+    image = model.generate_image(
+        seed=1, prompt="x", num_inference_steps=1, height=64, width=64, uncond_skip_layers=layers
+    )
+
+    assert image.generation_parameters["uncond_skip_layers"] == recorded

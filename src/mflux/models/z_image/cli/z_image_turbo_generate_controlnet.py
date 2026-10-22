@@ -8,6 +8,7 @@ from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.parser.parsers import CommandLineParser
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.resolution.config_resolution import ConfigResolution
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.z_image.latent_creator import ZImageLatentCreator
 from mflux.models.z_image.variants.controlnet.control_types import ControlSpec, ControlType
 from mflux.models.z_image.variants.controlnet.z_image_turbo_controlnet import ZImageTurboControlnet
@@ -23,6 +24,9 @@ IGNORED_OPTIONS = {
 }
 
 
+CONDITIONAL_OPTIONS = VAEDecodeOptions.conditional_options()
+
+
 def build_parser() -> CommandLineParser:
     parser = CommandLineParser(description="Generate an image using Z-Image Turbo + ControlNet Union.")
     parser.add_general_arguments()
@@ -32,6 +36,7 @@ def build_parser() -> CommandLineParser:
     parser.add_union_controlnet_arguments(require_controls=True)
     parser.add_float32_arguments()
     parser.add_output_arguments()
+    parser.add_vae_full_precision_arguments()
     # Default to the Union ControlNet model so step-count normalization resolves to its 8 steps
     # instead of the generic fallback when --model is omitted.
     parser.set_defaults(model="z-image-controlnet")
@@ -57,7 +62,7 @@ class ZImageTurboControlnetCommand:
     @staticmethod
     def load(args: Namespace) -> ZImageTurboControlnet:
         # validate() is cheap and pure, so load() runs it again rather than trusting the caller did.
-        return ZImageTurboControlnet(
+        model = ZImageTurboControlnet(
             model_config=ZImageTurboControlnetCommand.validate(args),
             quantize=args.quantize,
             model_path=args.model_path,
@@ -65,6 +70,8 @@ class ZImageTurboControlnetCommand:
             lora_paths=args.lora_paths,
             lora_scales=args.lora_scales,
         )
+        VAEDecodeOptions.apply(args, model)
+        return model
 
     @staticmethod
     def generate(model: ZImageTurboControlnet, args: Namespace, seed: int, prompt: str) -> GeneratedImage:
@@ -116,6 +123,7 @@ class ZImageTurboControlnetCommand:
 def main():
     parser = build_parser()
     args = parser.parse_args()
+    VAEDecodeOptions.warn_encode_only_tiling()
     CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
 
     try:

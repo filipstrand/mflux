@@ -1,4 +1,3 @@
-import sys
 import warnings
 from argparse import Namespace
 
@@ -7,6 +6,7 @@ from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_ar
 from mflux.models.common.compute_precision import ComputePrecision
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.resolution.config_resolution import ConfigResolution
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.z_image.latent_creator import ZImageLatentCreator
 from mflux.models.z_image.variants.z_image import ZImage
 from mflux.utils.dimension_resolver import DimensionResolver
@@ -26,6 +26,7 @@ FAMILY_MODELS = ("z-image-turbo",)
 # mflux-capabilities dump reads them. Both flags depend on what --model resolves to,
 # so they are conditional, not statically ignored.
 CONDITIONAL_OPTIONS = {
+    **VAEDecodeOptions.conditional_options(),
     "--guidance": {
         "condition": "the resolved model supports guidance",
         "reason": "guidance-distilled Z-Image variants force guidance to 0.0.",
@@ -48,6 +49,10 @@ def build_parser() -> CommandLineParser:
     parser.add_pid_decode_arguments()
     parser.add_float32_arguments()
     parser.add_output_arguments()
+    parser.add_vae_full_precision_arguments()
+    # The command's scheduler. A parser default, so --scheduler=NAME, a --config-from-conf replay
+    # and a script that parses these flags all see it the way the command line does.
+    parser.set_defaults(scheduler="flow_match_euler_discrete")
     return parser
 
 
@@ -67,7 +72,7 @@ class ZImageCommand:
 
     @staticmethod
     def load(args: Namespace) -> ZImage:
-        return ZImage(
+        model = ZImage(
             model_config=ZImageCommand.validate(args),
             quantize=args.quantize,
             model_path=args.model_path,
@@ -75,6 +80,8 @@ class ZImageCommand:
             compute_precision=ComputePrecision.dtype_for(args.compute_precision),
             **lora_init_kwargs_from_args(args),
         )
+        VAEDecodeOptions.apply(args, model)
+        return model
 
     @staticmethod
     def generate(model: ZImage, args: Namespace, seed: int, prompt: str) -> GeneratedImage:
@@ -100,10 +107,7 @@ class ZImageCommand:
 def main():
     parser = build_parser()
     args = parser.parse_args()
-
-    # The command's scheduler default; it reads sys.argv, so it stays here, not in generate().
-    if "--scheduler" not in sys.argv:
-        args.scheduler = "flow_match_euler_discrete"
+    VAEDecodeOptions.warn_encode_only_tiling()
 
     model_config = ZImageCommand.validate(args)
 

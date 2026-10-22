@@ -59,6 +59,7 @@ class CompletionGenerator:
 
         elif command == "mflux-save":
             parser.add_model_arguments(path_type="save", require_model_arg=True)
+            parser.add_hf_symlink_argument()
 
         elif command == "mflux-save-depth":
             parser.add_save_depth_arguments()
@@ -133,7 +134,11 @@ class CompletionGenerator:
 
             # Add value spec for non-flag arguments
             if not is_flag and (action.type or action.choices or action.nargs):
-                opt_spec += self.get_value_spec(action)
+                value_spec = self.get_value_spec(action)
+                # nargs="?" makes the value optional. zsh marks an optional value with a doubled colon.
+                if action.nargs == "?" and value_spec.startswith(":"):
+                    value_spec = ":" + value_spec
+                opt_spec += value_spec
 
             opt_spec += "'"
             specs.append(opt_spec)

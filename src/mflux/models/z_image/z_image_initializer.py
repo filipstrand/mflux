@@ -7,6 +7,7 @@ from mflux.models.common.compute_precision import ComputePrecision
 from mflux.models.common.config import ModelConfig
 from mflux.models.common.lora.mapping.lora_loader import LoRALoader
 from mflux.models.common.tokenizer import TokenizerLoader
+from mflux.models.common.vae.block_decoder import VAEBlockDecoder
 from mflux.models.common.weights.loading.loaded_weights import LoadedWeights
 from mflux.models.common.weights.loading.weight_applier import WeightApplier
 from mflux.models.common.weights.loading.weight_loader import WeightLoader
@@ -70,6 +71,7 @@ class ZImageInitializer:
     @staticmethod
     def _init_models(model) -> None:
         model.vae = VAE()
+        model.vae.decode_mode = VAEBlockDecoder.LOW_MEMORY
         model.transformer = ZImageTransformer()
         model.text_encoder = TextEncoder()
 
