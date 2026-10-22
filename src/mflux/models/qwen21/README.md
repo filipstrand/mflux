@@ -126,6 +126,36 @@ mflux-generate-qwen-2.1-controlnet \
 - The output is RGBA, so `--output` must be a PNG, WebP or TIFF file.
 - Measured on M5 Max with `-q 8` at 1024×1024: peak memory 27 GB, about 45 s for Turbo and 170 s for the base model, model load included.
 
+### Small text encoder (experimental)
+
+`--small-text-encoder` replaces the Qwen3-VL-8B text encoder with Qwen3.5-0.8B and the 158M text-fusion adapter from [AiArtLab/zen-image-edit](https://huggingface.co/AiArtLab/zen-image-edit). The adapter maps 6 hidden layers of the 0.8B encoder to the 4096-dim condition of the Qwen-Image-2.1 transformer. The transformer and the VAE stay the stock Qwen-Image-2.1 ones, and mflux does not download the 17.5 GB `text_encoder` folder.
+
+```sh
+mflux-generate-qwen-2.1-edit \
+  --small-text-encoder \
+  --prompt "Change the background to a beach at sunset" \
+  --image-paths photo.png \
+  --seed 42 \
+  -q 8
+```
+
+The small text encoder (Qwen3.5-0.8B + the zen-image-edit adapter) on a red-fox prompt across four lighting conditions:
+
+![Small text encoder output](../../assets/qwen_image_21_small_encoder.jpg)
+
+The same red-fox subject with the small and the full Qwen3-VL-8B text encoder:
+
+![Small vs full text encoder](../../assets/qwen_image_21_small_encoder_compare.jpg)
+
+- `mflux-generate-qwen-2.1` and `mflux-generate-qwen-2.1-edit` accept the flag. The edit command also sends the reference images through the 12-layer vision tower of Qwen3.5-0.8B.
+- The first run downloads about 2.1 GB: the 1.7 GB encoder and processor files, and the 320 MB `text_fusion.*` byte range of the zen-image-edit transformer. mflux reads that byte range with an HTTP range request and does not download the 14.5 GB transformer. The adapter file goes into the mflux cache (`MFLUX_CACHE_DIR`).
+- `-q` does not quantize the small encoder. Its language model runs in bf16. The vision tower and the adapter run in float32, because in bf16 the image features drift away from the reference. The float32 vision tower uses about 200 MB more memory than a bf16 one (402 MB instead of 201 MB).
+- `--auto-mask`, `--enhance-prompt` and `--verify` need the Qwen3-VL chat model. With `--small-text-encoder`, they stop with an error.
+- A model built with the flag cannot be saved (`save_model()` raises an error). The image metadata records the flag, so `--config-from-metadata` uses it again.
+- AiArtLab trained the adapter on Qwen-Image-2.1. Their model card gives a cosine similarity of 0.95 on text positions and 0.97 on vision positions against the native encoder. Prompts must be in English, and numerals in rendered text can come out wrong.
+- The zen-image-edit pipeline uses guidance 1.5 with a negative prompt by default. mflux keeps the Qwen-Image-2.1 defaults. To match the zen-image-edit pipeline, add `--guidance 1.5 --negative-prompt "..."`.
+- License: the adapter uses the Qwen Research License (the same as Qwen-Image-2.1). Qwen3.5-0.8B uses Apache-2.0.
+
 ### img2img
 
 Pass `--image-path` and optionally `--image-strength`, like the other models.

@@ -11,6 +11,7 @@ from mflux.models.common.vae.vae_util import VAEUtil
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.qwen21.latent_creator.qwen21_latent_creator import Qwen21LatentCreator
 from mflux.models.qwen21.model.qwen21_scheduler import Qwen21TurboScheduler
+from mflux.models.qwen21.model.qwen21_small_text_encoder.qwen21_small_text_encoder import Qwen21SmallTextEncoder
 from mflux.models.qwen21.model.qwen21_text_encoder.qwen21_prompt_encoder import Qwen21PromptEncoder
 from mflux.models.qwen21.model.qwen21_text_encoder.qwen21_text_encoder import Qwen21TextEncoder
 from mflux.models.qwen21.model.qwen21_transformer.qwen21_transformer import Qwen21Transformer
@@ -25,7 +26,8 @@ from mflux.utils.image_util import ImageUtil
 class QwenImage21(nn.Module):
     vae: Qwen21VAE
     transformer: Qwen21Transformer
-    text_encoder: Qwen21TextEncoder
+    text_encoder: Qwen21TextEncoder | Qwen21SmallTextEncoder | None
+    small_text_encoder: bool = False
 
     def __init__(
         self,
@@ -36,6 +38,7 @@ class QwenImage21(nn.Module):
         lora_scales: list[float] | None = None,
         bake_lora: bool = True,
         compute_precision: mx.Dtype | None = None,
+        small_text_encoder: bool = False,
     ):
         super().__init__()
         Qwen21Initializer.init(
@@ -47,6 +50,7 @@ class QwenImage21(nn.Module):
             lora_scales=lora_scales,
             bake_lora=bake_lora,
             compute_precision=compute_precision,
+            small_text_encoder=small_text_encoder,
         )
 
     def generate_image(
@@ -98,21 +102,11 @@ class QwenImage21(nn.Module):
         # img2img noise interpolation promotes to fp32; keep the stream in model precision
         latents = latents.astype(ModelConfig.precision)
 
-        prompt_embeds, prompt_mask = Qwen21PromptEncoder.encode_prompt(
-            prompt=prompt,
-            prompt_cache=self.prompt_cache,
-            tokenizer=self.tokenizers["qwen21"],
-            text_encoder=self.text_encoder,
-        )
+        prompt_embeds, prompt_mask = self._encode_prompt(prompt)
         # like the reference pipeline, a missing (or empty) negative prompt disables true CFG
         do_true_cfg = config.guidance > 1.0 and bool(negative_prompt)
         if do_true_cfg:
-            negative_prompt_embeds, negative_prompt_mask = Qwen21PromptEncoder.encode_prompt(
-                prompt=negative_prompt,
-                prompt_cache=self.prompt_cache,
-                tokenizer=self.tokenizers["qwen21"],
-                text_encoder=self.text_encoder,
-            )
+            negative_prompt_embeds, negative_prompt_mask = self._encode_prompt(negative_prompt)
 
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
@@ -167,6 +161,8 @@ class QwenImage21(nn.Module):
             **step_cache.generation_parameters(step_cache_ratio),
             **self.compute_precision.generation_parameters(),
         }
+        if self.small_text_encoder:
+            parameters["small_text_encoder"] = True
         if scheduler != "linear":
             # The schedule changes the image, so a run that used another one records it for --config-from-conf.
             parameters["scheduler"] = scheduler
@@ -184,9 +180,28 @@ class QwenImage21(nn.Module):
         )
 
     def save_model(self, base_path: str) -> None:
+        if self.small_text_encoder:
+            raise ValueError("A model built with --small-text-encoder cannot be saved; load it without the flag.")
         ModelSaver.save_model(
             model=self,
             bits=self.bits,
             base_path=base_path,
             weight_definition=Qwen21WeightDefinition,
         )
+
+    def _encode_prompt(self, prompt: str) -> tuple[mx.array, mx.array]:
+        if not self.small_text_encoder:
+            return Qwen21PromptEncoder.encode_prompt(
+                prompt=prompt,
+                prompt_cache=self.prompt_cache,
+                tokenizer=self.tokenizers["qwen21"],
+                text_encoder=self.text_encoder,
+            )
+        if prompt in self.prompt_cache:
+            return self.prompt_cache[prompt]
+        if self.text_encoder is None:
+            raise RuntimeError("The text encoder was released by the memory saver; reload the model for a new prompt.")
+        prompt_embeds, _ = self.text_encoder.encode(prompt, [], self.processor)
+        encoded = (prompt_embeds, mx.ones(prompt_embeds.shape[:2], dtype=mx.int32))
+        self.prompt_cache[prompt] = encoded
+        return encoded

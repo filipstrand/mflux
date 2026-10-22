@@ -13,6 +13,7 @@ from mflux.models.common.tokenizer import TokenizerLoader
 from mflux.models.common.weights.loading.safetensors_reader import SafetensorsReader
 from mflux.models.common.weights.loading.weight_applier import WeightApplier
 from mflux.models.common.weights.loading.weight_loader import WeightLoader
+from mflux.models.qwen21.model.qwen21_small_text_encoder.qwen21_small_text_encoder import Qwen21SmallTextEncoder
 from mflux.models.qwen21.model.qwen21_text_encoder.processor import QwenImage21Processor
 from mflux.models.qwen21.model.qwen21_text_encoder.text_encoder import QwenImage21TextEncoder
 from mflux.models.qwen21.model.qwen21_transformer.qwen21_attention import Qwen21Attention
@@ -20,7 +21,10 @@ from mflux.models.qwen21.model.qwen21_transformer.qwen21_feed_forward import Qwe
 from mflux.models.qwen21.model.qwen21_transformer.qwen_image21_transformer import QwenImage21Transformer
 from mflux.models.qwen21.model.qwen21_vae.vae import QwenImage21VAE
 from mflux.models.qwen21.qwen21_initializer import Qwen21Initializer
-from mflux.models.qwen21.weights.qwen_image21_weight_definition import QwenImage21WeightDefinition
+from mflux.models.qwen21.weights.qwen_image21_weight_definition import (
+    QwenImage21NoTextEncoderWeightDefinition,
+    QwenImage21WeightDefinition,
+)
 
 if TYPE_CHECKING:
     from mflux.models.qwen21.variants.controlnet.qwen_image_21_controlnet import QwenImage21Controlnet
@@ -39,38 +43,41 @@ class QwenImage21Initializer:
         bake_lora: bool = True,
         compute_precision: mx.Dtype | None = None,
         download_patterns: list[str] | None = None,
+        small_text_encoder: bool = False,
     ) -> None:
         precision = ComputePrecision(compute_precision)
+        definition = QwenImage21NoTextEncoderWeightDefinition if small_text_encoder else QwenImage21WeightDefinition
         root = PathResolution.resolve(
             model_path or model_config.model_name,
-            download_patterns or QwenImage21WeightDefinition.get_download_patterns(),
+            download_patterns or definition.get_download_patterns(),
         )
         if root is None:
             raise ValueError("No Qwen-Image-2.1 checkpoint path was provided.")
         Qwen21Initializer.init_config(model, model_config)
         model._checkpoint_path = str(root)
-        missing_configs = [
-            name for name in ("vae", "transformer", "text_encoder") if not (root / name / "config.json").is_file()
-        ]
+        model.small_text_encoder = small_text_encoder
+        components = ("vae", "transformer") if small_text_encoder else ("vae", "transformer", "text_encoder")
+        missing_configs = [name for name in components if not (root / name / "config.json").is_file()]
         if missing_configs:
             raise ValueError(
                 f"Editing requires a complete checkpoint with component configs; missing: {missing_configs}. "
                 "Use the original Qwen-Image-2.1 checkpoint or an export from QwenImage21Edit.save_model; "
                 "text-only exports do not contain the visual encoder and processor needed for editing."
             )
-        model._component_configs = {
-            name: json.loads((root / name / "config.json").read_text())
-            for name in ("vae", "transformer", "text_encoder")
-        }
-        model.tokenizers = TokenizerLoader.load_all(QwenImage21WeightDefinition.get_tokenizers(), str(root))
-        model.processor = QwenImage21Processor(root / "processor", model.tokenizers["qwen21"].tokenizer)
+        model._component_configs = {name: json.loads((root / name / "config.json").read_text()) for name in components}
+        if small_text_encoder:
+            model.tokenizers = {}
+            model.text_encoder, model.processor = Qwen21SmallTextEncoder.load()
+        else:
+            model.tokenizers = TokenizerLoader.load_all(QwenImage21WeightDefinition.get_tokenizers(), str(root))
+            model.processor = QwenImage21Processor(root / "processor", model.tokenizers["qwen21"].tokenizer)
+            model.text_encoder = QwenImage21TextEncoder(model._component_configs["text_encoder"])
         model.vae = QwenImage21VAE(model._component_configs["vae"])
         # The VAE runs in float32; a save writes it back in the dtype its source stores
         # (bfloat16 for Qwen-Image-2.1-Turbo, float32 for Qwen-Image-2.1).
         model._vae_stored_dtype = SafetensorsReader.stored_float_dtype(root / "vae")
         model.transformer = QwenImage21Transformer(model._component_configs["transformer"])
-        model.text_encoder = QwenImage21TextEncoder(model._component_configs["text_encoder"])
-        Qwen21Initializer.load_components(model, root, QwenImage21WeightDefinition, quantize, validate=True)
+        Qwen21Initializer.load_components(model, root, definition, quantize, validate=True)
         Qwen21Initializer.apply_lora(model, lora_paths, lora_scales, bake_lora)
         model.compute_precision = precision
         if compute_precision is not None:

@@ -37,6 +37,13 @@ EDIT_SCHEDULERS = ("linear", "viggle_turbo")
 
 
 class QwenImage21Edit(nn.Module):
+    # The small encoder has no generation head, so the Qwen3-VL chat features are not available with it.
+    SMALL_TEXT_ENCODER_VISION_ERROR = (
+        "auto_mask, enhance_prompt, verify and rewrite_prompt need the native Qwen3-VL text encoder. "
+        "They do not work with small_text_encoder."
+    )
+    small_text_encoder: bool = False
+
     def __init__(
         self,
         quantize: int | None = None,
@@ -46,6 +53,7 @@ class QwenImage21Edit(nn.Module):
         lora_scales: list[float] | None = None,
         bake_lora: bool = True,
         compute_precision: mx.Dtype | None = None,
+        small_text_encoder: bool = False,
     ):
         super().__init__()
         QwenImage21Initializer.init(
@@ -57,6 +65,7 @@ class QwenImage21Edit(nn.Module):
             lora_scales,
             bake_lora,
             compute_precision=compute_precision,
+            small_text_encoder=small_text_encoder,
         )
 
     def generate_image(
@@ -93,6 +102,8 @@ class QwenImage21Edit(nn.Module):
             raise ValueError(f"strength must be in (0, 1], got {strength}.")
         if verify_retries < 0:
             raise ValueError(f"verify_retries must be >= 0, got {verify_retries}.")
+        if self.small_text_encoder and (auto_mask is not None or enhance_prompt or verify):
+            raise ValueError(QwenImage21Edit.SMALL_TEXT_ENCODER_VISION_ERROR)
         needs_source = mask_image is not None or auto_mask is not None or strength < 1 or enhance_prompt or verify
         if needs_source and not image_paths:
             raise ValueError("mask_image, auto_mask, strength, enhance_prompt and verify need a reference image.")
@@ -235,6 +246,8 @@ class QwenImage21Edit(nn.Module):
             "output_resolution": output_resolution,
             **self.compute_precision.generation_parameters(),
         }
+        if self.small_text_encoder:
+            parameters["small_text_encoder"] = True
         if strength < 1:
             parameters["strength"] = strength
         if scheduler != "linear":
@@ -297,6 +310,8 @@ class QwenImage21Edit(nn.Module):
         return image
 
     def save_model(self, base_path: str) -> None:
+        if self.small_text_encoder:
+            raise ValueError("A model built with --small-text-encoder cannot be saved; load it without the flag.")
         ModelSaver.save_model(
             self,
             self.bits,
@@ -344,6 +359,8 @@ class QwenImage21Edit(nn.Module):
         # The rewrite enhance_prompt=True runs, for a caller who wants to read or change it first and
         # then pass it as the prompt with enhance_prompt=False (#831). Unlike enhance_prompt, it raises
         # when it can't rewrite: handing back the terse instruction would pass for a rewrite.
+        if self.small_text_encoder:
+            raise ValueError(QwenImage21Edit.SMALL_TEXT_ENCODER_VISION_ERROR)
         if not images:
             raise ValueError("rewrite_prompt needs at least one reference image.")
         QwenImage21Edit._check_reference_count(images)
@@ -436,7 +453,10 @@ class QwenImage21Edit(nn.Module):
             return self.prompt_cache[prompt]
         if self.text_encoder is None:
             raise RuntimeError("The text encoder was released by the memory saver; reload the model for a new prompt.")
-        encoded = QwenImage21PromptEncoder.encode(prompt, images, self.processor, self.text_encoder)
+        if self.small_text_encoder:
+            encoded = self.text_encoder.encode(prompt, images, self.processor)
+        else:
+            encoded = QwenImage21PromptEncoder.encode(prompt, images, self.processor, self.text_encoder)
         if not images:
             self.prompt_cache[prompt] = encoded
         return encoded
