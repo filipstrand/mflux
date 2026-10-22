@@ -53,3 +53,12 @@ image.save(path="lens.png")
 You can also call the steps of `mflux-generate-lens` from Python. `LensCommand` in `mflux.models.lens.cli.lens_generate` has `validate(args)`, `load(args)` and `generate(model, args, seed, prompt)`. They work like the Z-Image Turbo steps; the [Z-Image README](../z_image/README.md#z-image-turbo-example) has a full script and the rules for keeping a model loaded.
 
 </details>
+
+## VAE decode
+The VAE decodes the image in bf16 row strips of 128 rows. Each GroupNorm uses statistics from the full image, so the strips do not change the colours, and the image has no seams. The decoder releases the temporary data of each block before the next block starts, and the attention runs in chunks of 4096 queries.
+
+- `--vae-full-precision` decodes each block on the full image, as the earlier decode did. The metadata records the flag, so `--config-from-metadata` uses it again.
+- `--vae-tiling` and `--vae-tile-size` do not change the decode, and the CLI shows a warning.
+- `--low-ram` still releases the text encoder and the transformer before the decode. It does not change the decode.
+
+Lens uses the FLUX.2 Klein VAE, so the decode figures in the [FLUX.2 README](../flux2/README.md#vae-decode) apply. They were not measured with Lens.

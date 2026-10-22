@@ -3,6 +3,7 @@ from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_ar
 from mflux.models.common.compute_precision import ComputePrecision
 from mflux.models.common.config.model_config import AVAILABLE_MODELS
 from mflux.models.common.resolution.config_resolution import ConfigResolution
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.flux3.latent_creator.flux3_latent_creator import Flux3LatentCreator
 from mflux.models.flux3.variants import Flux3Klein
 from mflux.utils.dimension_resolver import DimensionResolver
@@ -18,6 +19,7 @@ FAMILY_MODELS = tuple(key for key in AVAILABLE_MODELS if key.startswith("flux3-"
 IGNORED_OPTIONS = {
     "--scheduler": "FLUX 3 Image Klein always runs the flow-map schedule its checkpoints were trained with (Base uses the same schedule with CFG).",
     "--lora-style": "Named LoRA styles are only supported by the Flux in-context CLI; use --lora.",
+    **VAEDecodeOptions.ignored_options(),
 }
 
 CONDITIONAL_OPTIONS = {
@@ -40,6 +42,7 @@ def build_parser() -> CommandLineParser:
     parser.add_compute_precision_arguments()
     parser.add_lora_arguments()
     parser.add_output_arguments()
+    parser.add_vae_full_precision_arguments()
     return parser
 
 
@@ -69,6 +72,7 @@ def main():
         **lora_init_kwargs_from_args(args),
         compute_precision=ComputePrecision.dtype_for(args.compute_precision),
     )
+    VAEDecodeOptions.apply(args, model)
 
     memory_saver = CallbackManager.register_callbacks(
         args=args,

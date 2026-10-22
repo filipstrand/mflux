@@ -4,6 +4,7 @@ from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.parser.parsers import CommandLineParser
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.resolution.config_resolution import ConfigResolution
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.flux2.latent_creator.flux2_latent_creator import Flux2LatentCreator
 from mflux.models.lens.variants.txt2img.lens_image import LensImage
 from mflux.utils.dimension_resolver import DimensionResolver
@@ -18,6 +19,7 @@ DEFAULT_MODEL = "lens-turbo"
 # Single source of truth for options this CLI accepts but cannot honour: the runtime
 # warning and the mflux-capabilities dump both read it.
 IGNORED_OPTIONS = {
+    **VAEDecodeOptions.ignored_options(),
     "--guidance": "Lens Turbo is a 4-step distillation with CFG internalized; guidance is never applied.",
     "--negative-prompt": "CFG is disabled on Lens Turbo, so the negative prompt is never encoded.",
     "--scheduler": "Lens Turbo runs the shifted sigma schedule its distillation was trained on.",
@@ -30,6 +32,7 @@ def build_parser() -> CommandLineParser:
     parser.add_model_arguments(require_model_arg=False, default_model=DEFAULT_MODEL)
     parser.add_image_generator_arguments(supports_metadata_config=True)
     parser.add_output_arguments()
+    parser.add_vae_full_precision_arguments()
     return parser
 
 
@@ -46,11 +49,13 @@ class LensCommand:
 
     @staticmethod
     def load(args: Namespace) -> LensImage:
-        return LensImage(
+        model = LensImage(
             model_config=LensCommand.validate(args),
             quantize=args.quantize,
             model_path=args.model_path,
         )
+        VAEDecodeOptions.apply(args, model)
+        return model
 
     @staticmethod
     def generate(model: LensImage, args: Namespace, seed: int, prompt: str) -> GeneratedImage:

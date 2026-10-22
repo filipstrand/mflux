@@ -7,6 +7,7 @@ from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.latent_creator.latent_creator import LatentCreator
 from mflux.models.common.pid_decoder.pid_decoder import pid_decode_latents
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.flux2.flux2_initializer import Flux2Initializer
 from mflux.models.flux2.latent_creator.flux2_latent_creator import Flux2LatentCreator
@@ -316,7 +317,10 @@ class Flux2Klein(nn.Module):
         return mx.compile(predict)
 
     def _generation_parameters(self) -> dict:
-        parameters = self.compute_precision.generation_parameters()
+        parameters = {
+            **self.compute_precision.generation_parameters(),
+            **VAEDecodeOptions.generation_parameters(self),
+        }
         if self.small_text_encoder:
             parameters = {**parameters, "small_text_encoder": True}
         if self.small_decoder:

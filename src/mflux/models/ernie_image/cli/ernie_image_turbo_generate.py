@@ -4,6 +4,7 @@ from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_args
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.resolution.config_resolution import ConfigResolution
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.ernie_image.latent_creator import ErnieLatentCreator
 from mflux.models.ernie_image.variants.txt2img.ernie_image import ErnieImage
 from mflux.utils.dimension_resolver import DimensionResolver
@@ -16,6 +17,7 @@ IGNORED_OPTIONS = {
 }
 
 CONDITIONAL_OPTIONS = {
+    **VAEDecodeOptions.conditional_options(),
     "--guidance": {
         "condition": "must be 1.0",
         "reason": "turbo is guidance-distilled; any other value exits with an error.",
@@ -34,6 +36,7 @@ def build_parser() -> CommandLineParser:
     parser.add_image_to_image_arguments(required=False)
     parser.add_pid_decode_arguments()
     parser.add_output_arguments()
+    parser.add_vae_full_precision_arguments()
     parser.set_defaults(model="ernie-image-turbo")
     return parser
 
@@ -52,12 +55,14 @@ class ErnieImageTurboCommand:
 
     @staticmethod
     def load(args: Namespace) -> ErnieImage:
-        return ErnieImage(
+        model = ErnieImage(
             model_config=ErnieImageTurboCommand.validate(args),
             quantize=args.quantize,
             model_path=args.model_path,
             **lora_init_kwargs_from_args(args),
         )
+        VAEDecodeOptions.apply(args, model)
+        return model
 
     @staticmethod
     def generate(model: ErnieImage, args: Namespace, seed: int, prompt: str) -> GeneratedImage:
@@ -96,6 +101,7 @@ class ErnieImageTurboCommand:
 def main():
     parser = build_parser()
     args = parser.parse_args()
+    VAEDecodeOptions.warn_encode_only_tiling()
     CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
 
     try:

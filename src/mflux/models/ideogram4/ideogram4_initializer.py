@@ -10,6 +10,7 @@ from mflux.models.common.lora.mapping.lora_loader import LoRALoader
 from mflux.models.common.lora.mapping.lora_saver import LoRASaver
 from mflux.models.common.resolution.path_resolution import PathResolution
 from mflux.models.common.tokenizer import TokenizerLoader
+from mflux.models.common.vae.block_decoder import VAEBlockDecoder
 from mflux.models.common.weights.loading.loaded_weights import LoadedWeights
 from mflux.models.common.weights.loading.weight_applier import WeightApplier
 from mflux.models.common.weights.loading.weight_loader import WeightLoader
@@ -79,6 +80,7 @@ class Ideogram4Initializer:
     @staticmethod
     def _init_models(model, model_path: Path) -> None:
         model.vae = Flux2VAE()
+        model.vae.decode_mode = VAEBlockDecoder.LOW_MEMORY
         model.conditional_transformer = Ideogram4Transformer(
             Ideogram4Initializer._transformer_config(model_path / "transformer")
         )

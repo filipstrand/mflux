@@ -1,6 +1,7 @@
 import mlx.core as mx
 from mlx import nn
 
+from mflux.models.common.vae.block_decoder import VAEBlockDecoder
 from mflux.models.common.vae.tiling_config import TilingConfig
 from mflux.models.common.vae.vae_util import VAEUtil
 from mflux.models.flux2.model.flux2_vae.common.batch_norm_stats import Flux2BatchNormStats
@@ -16,6 +17,13 @@ class Flux2VAE(nn.Module):
     # Each tile carries its own GroupNorm statistics, which offsets colour between tiles on this
     # decoder. Tiling stays available through --vae-tiling, but low-RAM mode must not choose it.
     supports_implicit_tiling: bool = False
+    # "legacy" decodes the full image in one graph and honours tiling_config. The other modes ignore
+    # tiling_config and use VAEBlockDecoder: "low_memory" runs in bf16 row strips with full-image GroupNorm
+    # statistics, and "full_precision" keeps the input dtype and the full image for each block.
+    DECODE_LEGACY = VAEBlockDecoder.LEGACY
+    DECODE_LOW_MEMORY = VAEBlockDecoder.LOW_MEMORY
+    DECODE_FULL_PRECISION = VAEBlockDecoder.FULL_PRECISION
+    decode_mode: str = DECODE_LEGACY
 
     def __init__(self, decoder_block_out_channels: tuple[int, ...] = (128, 256, 512, 512)):
         super().__init__()
@@ -39,6 +47,8 @@ class Flux2VAE(nn.Module):
     def decode(self, latents: mx.array) -> mx.array:
         if latents.ndim == 5:
             latents = latents[:, :, 0, :, :]
+        if self.decode_mode != self.DECODE_LEGACY:
+            return VAEBlockDecoder.decode(vae=self, latent=latents, strips=self.decode_mode == self.DECODE_LOW_MEMORY)
         latents = (latents / self.scaling_factor) + self.shift_factor
         latents = mx.transpose(latents, (0, 2, 3, 1))
         latents = self.post_quant_conv(latents)

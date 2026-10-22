@@ -7,6 +7,7 @@ from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.latent_creator.latent_creator import Img2Img, LatentCreator
 from mflux.models.common.pid_decoder.pid_decoder import pid_decode_latents
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.common.vae.vae_util import VAEUtil
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.z_image.latent_creator import ZImageLatentCreator
@@ -169,6 +170,7 @@ class ZImage(nn.Module):
             generation_parameters={
                 **({"float32": True} if self.float32 else {}),
                 **self.compute_precision.generation_parameters(),
+                **VAEDecodeOptions.generation_parameters(self),
             },
         )
 

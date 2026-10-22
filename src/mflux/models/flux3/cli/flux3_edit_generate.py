@@ -5,6 +5,7 @@ from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_ar
 from mflux.models.common.compute_precision import ComputePrecision
 from mflux.models.common.config.model_config import AVAILABLE_MODELS
 from mflux.models.common.resolution.config_resolution import ConfigResolution
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.flux3.latent_creator.flux3_latent_creator import Flux3LatentCreator
 from mflux.models.flux3.latent_creator.flux3_reference_images import MAX_REFERENCES
 from mflux.models.flux3.variants import Flux3KleinEdit
@@ -28,6 +29,7 @@ CONDITIONAL_OPTIONS = {
         "condition": "base (non-distilled) FLUX 3 Image Klein checkpoints",
         "reason": "the distilled checkpoint has no CFG branch, so the value is ignored with a warning.",
     },
+    **VAEDecodeOptions.conditional_options(),
 }
 
 REJECTED_OPTIONS = {
@@ -49,6 +51,7 @@ def build_parser() -> CommandLineParser:
     parser.add_compute_precision_arguments()
     parser.add_lora_arguments()
     parser.add_output_arguments()
+    parser.add_vae_full_precision_arguments()
     return parser
 
 
@@ -86,6 +89,7 @@ def main():
     CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
     if not model_config.supports_guidance:
         CommandLineParser.warn_ignored_options({"--guidance": CONDITIONAL_OPTIONS["--guidance"]["reason"]})
+    VAEDecodeOptions.warn_encode_only_tiling()
     model = Flux3KleinEdit(
         model_config=model_config,
         quantize=args.quantize,
@@ -93,6 +97,7 @@ def main():
         **lora_init_kwargs_from_args(args),
         compute_precision=ComputePrecision.dtype_for(args.compute_precision),
     )
+    VAEDecodeOptions.apply(args, model)
 
     memory_saver = CallbackManager.register_callbacks(
         args=args,
