@@ -32,6 +32,8 @@ It returns the `ModelConfig`. If a test fails, it raises an error.
 
 This step reads the weights into memory. It is the slow step and uses the most memory. Call it one time and use the model again for each image.
 
+There is one exception. If you register the callbacks with one seed and `--low-ram` or `--pid-decode`, the memory saver removes the transformer after the image. Call `load` again before the next `generate`.
+
 Usually the model has three components:
 
 - The text encoder. It changes the prompt into embeddings.
