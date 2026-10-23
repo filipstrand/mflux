@@ -1,6 +1,6 @@
 # Quantization by saved model
 
-Models that `mflux-save` can save. Source: `MODEL_CLASSES` in `src/mflux/models/common/cli/save.py`.
+Models that `mflux-save` can save, except the FLUX.1 and SeedVR2 models. Source: `MODEL_CLASSES` in `src/mflux/models/common/cli/save.py`.
 
 
 | Line | Model name | TE Q | DiT Q | GS | Text encoder | HS | State(s) Used | FP8 | NVFP4 |

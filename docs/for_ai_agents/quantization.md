@@ -2,7 +2,7 @@
 
 Scope: diffusion transformers (DiT) and text encoders. This file does not cover depth, upscale (SeedVR2), Redux, or ControlNet internals, except where noted.
 
-Verified against: MLX 0.32.0 (`pyproject.toml` pins `mlx>=0.32.0,<0.33.0` on macOS), git HEAD `02bbe7b`. Paths are relative to `src/mflux/` unless noted.
+Verified against: MLX 0.32.0 (`pyproject.toml` pins `mlx>=0.32.0,<0.33.0` on macOS), git commit `02bbe7b` (#844, 2026-10-08). Paths are relative to `src/mflux/` unless noted.
 
 ## 1. Short answers
 
@@ -143,11 +143,13 @@ Why the skip exists: the repo gives no measurement. Both `qwen/README.md` and `q
 
 ### 6.1 Skip with a pre-quantized checkpoint
 
-`_quantize` and `apply_and_quantize_single` treat `skip_quantization` as "do not quantize BF16 weights on load". They do not block a checkpoint that already ships quantized tensors for that component:
+`_quantize` (multi-component models) treats `skip_quantization` as "do not quantize BF16 weights on load". It does not block a checkpoint that already ships quantized tensors for that component:
 
 - Component has stored weights: the stored-layout predicate builds quantized modules where `scales` exist. Layers without `scales` stay Linear.
 - Component has no weights in the file: the skip holds.
 - `mflux-save -q 8` on Qwen writes the text encoder in BF16. It reloads as BF16.
+
+`apply_and_quantize_single` (Lens, Z-Image ControlNet) is different. If `skip_quantization` is set, it never calls `nn.quantize`, also for a pre-quantized checkpoint. The layers stay Linear.
 
 Test: `tests/weights/test_skip_quantization_prequantized.py`.
 

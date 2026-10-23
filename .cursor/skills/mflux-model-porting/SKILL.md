@@ -69,7 +69,7 @@ Provide a repeatable, MLX-focused workflow for porting ML models (typically from
    - Add CLI/pipeline defaults and completions later, once core output is stable.
    - Ensure the model is wired into the standard surfaces:
      - `ModelConfig` entry + aliases
-     - Thin model CLI entrypoint that uses shared parser/config/callback patterns
+     - Thin model CLI entrypoint that uses shared parser/config/callback patterns and a command class with `validate`, `load` and `generate` (see [Command class](#command-class-validate-load-generate))
      - README following the structure and tone of existing model READMEs
      - Python API example that matches the CLI/defaults
    - Document any new mapping rules, shape constraints, or tolerances.
@@ -150,18 +150,34 @@ Past [closed PRs](https://github.com/mflux-community/mflux/pulls?q=is%3Apr+is%3A
 |---|---|
 | `*LoRAMapping` | Support **multiple export key conventions** (diffusers, PEFT `.default.weight`, kohya/`diffusion_model.*` aliases) — silent zero-key loads were fixed repeatedly ([#376](https://github.com/mflux-community/mflux/pull/376), [#374](https://github.com/mflux-community/mflux/pull/374), [#397](https://github.com/mflux-community/mflux/pull/397)) |
 | Tests | Fast tests that real community LoRA filenames map to non-zero keys |
-| Inference CLI | `--lora-paths` / `--lora-scales` via shared parser (no bespoke loader) |
+| Inference CLI | `--lora` via shared parser (no bespoke loader). `--lora-paths` / `--lora-scales` are deprecated. |
 
 ### Inference CLI & shared features
 
 | Surface | What to do |
 |---|---|
-| Thin CLI | `CommandLineParser` + `CallbackManager.register_callbacks(...)` |
+| Thin CLI | `build_parser()` with `CommandLineParser` + `CallbackManager.register_callbacks(...)` |
+| Command class | **Required.** Put the CLI work in `<Model>Command` with `validate`, `load`, `generate` and `latent_creator`. `main()` only calls these steps. See below. |
 | `DimensionResolver` | Use in generate/edit CLIs when width/height can be omitted (API/OpenWebUI paths) — [#378](https://github.com/mflux-community/mflux/pull/378) |
 | `latent_creator` | `pack_latents` / `unpack_latents`; img2img path must match txt2img normalization (BN, scale factor) |
 | `tiling_config` | If initializer sets custom tiling, ensure `MemorySaver` does not overwrite it |
 | Guidance defaults | Distilled vs base: match `ModelConfig`, CLI default, README, and training preview adapter |
 | `mflux-save` round-trip | Save quantized model → load from local path → generate; confirm `model.safetensors.index.json` if sharded |
+
+### Command class: validate, load, generate
+
+Use this pattern for every new generate CLI. Do not put the full flow in one `main()`. Plugins under `mflux.extras` call these steps. A CLI without them cannot support plugins. See `docs/plugins.md` and `docs/validate-load-generate.md`.
+
+Copy the structure of `src/mflux/models/qwen/cli/qwen_image_generate.py`:
+
+| Member | Rule |
+|---|---|
+| `latent_creator` | Class attribute. `main()` passes it to `CallbackManager.register_callbacks(...)`. |
+| `validate(args) -> ModelConfig` | Static. Do not load weights. Resolve `--model` with `ConfigResolution.resolve_restricted(...)`. If the command has rules for flag combinations, sizes or output formats, test them here and raise `ValueError`. |
+| `load(args) -> Model` | Static. Call `validate(args)` first. Then make the model with `quantize`, `model_path` and `**lora_init_kwargs_from_args(args)`. |
+| `generate(model, args, seed, prompt) -> GeneratedImage` | Static. Make one image for one seed and one prompt. Apply the command defaults here, for example guidance and `DimensionResolver`. A direct caller must get the same image as `main()`. Do not save the image. |
+
+`main()` only parses the arguments, calls `load`, registers the callbacks, calls `generate` for each seed and saves each image.
 
 ### Training (if supported)
 
@@ -191,4 +207,4 @@ When fixing a gap for model *N*, ask whether the same gap exists for other recen
 - Deterministic MLX test that verifies correctness.
 - Documented weight mapping, shape constraints, and any known tolerances.
 - Cleaned, shared components aligned with mflux style.
-- Standard mflux surfaces in place: config aliases, thin CLI, and a README/examples pass aligned with the final behavior.
+- Standard mflux surfaces in place: config aliases, thin CLI with a `validate` / `load` / `generate` command class, and a README/examples pass aligned with the final behavior.
