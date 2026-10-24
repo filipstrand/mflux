@@ -9,6 +9,7 @@ from mflux.cli.defaults.defaults import model_inference_steps
 from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.schedulers.flow_match_euler_discrete_scheduler import FlowMatchEulerDiscreteScheduler
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.fibo2.fibo2_initializer import Fibo2Initializer
 from mflux.models.fibo2.latent_creator.fibo2_latent_creator import Fibo2LatentCreator
@@ -136,6 +137,9 @@ class _Fibo2Core(nn.Module):
             lora_scales=self.lora_scales,
             image_paths=image_paths,
             masked_image_path=mask_path,
+            generation_parameters={
+                **VAEDecodeOptions.generation_parameters(self),
+            },
         )
 
     @staticmethod

@@ -10,6 +10,7 @@ from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
 from mflux.models.common.lora.mapping.lora_loader import LoRALoader
+from mflux.models.common.vae.block_decoder import VAEBlockDecoder
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.fibo2 import fibo2_initializer
 from mflux.models.fibo2.fibo2_initializer import Fibo2Initializer
@@ -61,6 +62,18 @@ class _Loop:
     def to_image(**kwargs):
         return kwargs
 
+    def generate(self, monkeypatch, model_config: ModelConfig | None = None, vae=None, **kwargs) -> dict:
+        # Runs the loop of a core without weights on these stand-ins, and returns what reaches ImageUtil.to_image
+        core = _Core.of(model_config or ModelConfig.fibo2(), callbacks=CallbackRegistry(), vae=vae, tiling_config=None, bits=None)  # fmt: off
+        core.lora_paths, core.lora_scales = None, None
+        core._encode_prompts = self.encode_prompts
+        core._encode_prompt = self.encode_prompt
+        core._predict = self.predict
+        monkeypatch.setattr(Fibo2LatentCreator, "decode", staticmethod(_Loop.decode))
+        monkeypatch.setattr(fibo2_core.ImageUtil, "to_image", staticmethod(_Loop.to_image))
+        settings = {"seed": 1, "prompt": "p", "num_inference_steps": 8, "height": 512, "width": 512, "guidance": 5.0}
+        return core._generate(**{**settings, **kwargs})
+
 
 class _Fonts:
     # Records the patterns PathResolution is asked for
@@ -104,15 +117,17 @@ def test_steps_and_guidance_default_by_checkpoint(name, base_model, expected):
 def test_the_loop_switches_to_the_text_images_once_the_noise_level_is_at_most_0_9(monkeypatch):
     # The schedule diffusers runs for 8 steps at 512x512: sigmas 1.0 and 0.929 run without the text images
     loop = _Loop()
-    core = _Core.of(ModelConfig.fibo2(), callbacks=CallbackRegistry(), vae=None, tiling_config=None, bits=None)
-    core.lora_paths, core.lora_scales = None, None
-    core._encode_prompts = loop.encode_prompts
-    core._encode_prompt = loop.encode_prompt
-    core._predict = loop.predict
-    monkeypatch.setattr(Fibo2LatentCreator, "decode", staticmethod(_Loop.decode))
-    monkeypatch.setattr(fibo2_core.ImageUtil, "to_image", staticmethod(_Loop.to_image))
-    core._generate(seed=1, prompt="p", num_inference_steps=8, height=512, width=512, guidance=5.0)
+    loop.generate(monkeypatch)
     assert loop.embeds_per_step == ["without", "without"] + ["with"] * 6
+
+
+@pytest.mark.parametrize(
+    ("decode_mode", "recorded"),
+    [(VAEBlockDecoder.LOW_MEMORY, {}), (VAEBlockDecoder.FULL_PRECISION, {"vae_full_precision": True})],
+)
+def test_the_metadata_records_a_full_precision_decode(monkeypatch, decode_mode, recorded):
+    image = _Loop().generate(monkeypatch, vae=SimpleNamespace(decode_mode=decode_mode))
+    assert image["generation_parameters"] == recorded
 
 
 def test_save_model_writes_the_processor_config_and_the_fonts_with_their_licences(tmp_path, monkeypatch):

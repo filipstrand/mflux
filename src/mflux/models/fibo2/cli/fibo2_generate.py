@@ -6,6 +6,7 @@ from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_args
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.resolution.config_resolution import ConfigResolution
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.fibo2.latent_creator.fibo2_latent_creator import Fibo2LatentCreator
 from mflux.models.fibo2.variants.txt2img.fibo2 import Fibo2
 from mflux.utils.dimension_resolver import DimensionResolver
@@ -22,6 +23,7 @@ FAMILY_MODELS = ("fibo2-edit-turbo",)
 IGNORED_OPTIONS = {
     "--scheduler": "FIBO 2 always runs the flow-match Euler schedule it was trained with.",
     "--lora-style": "Named LoRA styles are only supported by the Flux in-context CLI; use --lora.",
+    **VAEDecodeOptions.ignored_options(),
 }
 
 TURBO_GUIDANCE_WARNING = (
@@ -45,6 +47,7 @@ def build_parser() -> CommandLineParser:
     parser.add_argument("--no-text-images", action="store_true", help="Do not show the text encoder images of the caption's text_render texts. FIBO 2 renders text better with them.")  # fmt: off
     parser.add_lora_arguments()
     parser.add_output_arguments()
+    parser.add_vae_full_precision_arguments()
     return parser
 
 
@@ -63,12 +66,14 @@ class Fibo2Command:
 
     @staticmethod
     def load(args: Namespace) -> Fibo2:
-        return Fibo2(
+        model = Fibo2(
             model_config=Fibo2Command.validate(args),
             quantize=args.quantize,
             model_path=args.model_path,
             **lora_init_kwargs_from_args(args),
         )
+        VAEDecodeOptions.apply(args, model)
+        return model
 
     @staticmethod
     def warn_guidance_on_turbo(args: Namespace, model_config: ModelConfig) -> None:

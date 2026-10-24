@@ -5,6 +5,7 @@ from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_args
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.resolution.config_resolution import ConfigResolution
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.fibo2.cli.fibo2_generate import Fibo2Command
 from mflux.models.fibo2.latent_creator.fibo2_latent_creator import Fibo2LatentCreator
 from mflux.models.fibo2.model.fibo2_text_encoder.prompt_encoder import Fibo2PromptEncoder
@@ -25,6 +26,10 @@ IGNORED_OPTIONS = {
     "--lora-style": "Named LoRA styles are only supported by the Flux in-context CLI; use --lora.",
 }
 
+CONDITIONAL_OPTIONS = {
+    **VAEDecodeOptions.conditional_options(),
+}
+
 
 def build_parser() -> CommandLineParser:
     parser = CommandLineParser(
@@ -41,6 +46,7 @@ def build_parser() -> CommandLineParser:
     parser.add_argument("--no-text-images", action="store_true", help="Do not show the text encoder images of the caption's text_render texts. FIBO 2 renders text better with them.")  # fmt: off
     parser.add_lora_arguments()
     parser.add_output_arguments()
+    parser.add_vae_full_precision_arguments()
     return parser
 
 
@@ -68,12 +74,14 @@ class Fibo2EditCommand:
 
     @staticmethod
     def load(args: Namespace) -> Fibo2Edit:
-        return Fibo2Edit(
+        model = Fibo2Edit(
             model_config=Fibo2EditCommand.validate(args),
             quantize=args.quantize,
             model_path=args.model_path,
             **lora_init_kwargs_from_args(args),
         )
+        VAEDecodeOptions.apply(args, model)
+        return model
 
     @staticmethod
     def generate(model: Fibo2Edit, args: Namespace, seed: int, prompt: str) -> GeneratedImage:
@@ -106,6 +114,7 @@ def main():
     # 0. Parse command line arguments
     parser = build_parser()
     args = parser.parse_args()
+    VAEDecodeOptions.warn_encode_only_tiling()
 
     # 1. Check the flags, then load the model
     try:
