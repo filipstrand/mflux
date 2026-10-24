@@ -36,11 +36,20 @@ TURBO_GUIDANCE_WARNING = (
     "Edit Turbo is distilled to run without guidance; a value above 1 still runs the negative pass."
 )
 
-CONDITIONAL_OPTIONS = {
+# Options that act through guidance's second pass, which does not run at guidance 1.0. Both commands warn about them.
+GUIDANCE_OPTIONS = {
     "--negative-prompt": {
         "condition": "guidance above 1.0",
         "reason": "the negative prompt is guidance's second pass, so at guidance 1.0 it is never encoded.",
     },
+    "--cfg-end": {
+        "condition": "guidance above 1.0",
+        "reason": "it ends guidance's second pass early, so at guidance 1.0 it changes nothing.",
+    },
+}
+
+CONDITIONAL_OPTIONS = {
+    **GUIDANCE_OPTIONS,
 }
 
 
@@ -54,6 +63,7 @@ def build_parser() -> CommandLineParser:
     parser.add_argument("--text-images", dest="render_text_images", action=BooleanOptionalAction, default=True, help="Show the text encoder images of the caption's text_render texts (default). FIBO 2 renders text better with them; --no-text-images turns them off.")  # fmt: off
     parser.add_lora_arguments()
     parser.add_step_cache_arguments()
+    parser.add_cfg_end_arguments()
     parser.add_output_arguments()
     parser.add_vae_full_precision_arguments()
     return parser
@@ -105,12 +115,12 @@ class Fibo2Command:
             warnings.warn(f"--guidance {args.guidance}: {TURBO_GUIDANCE_WARNING}", stacklevel=2)
 
     @staticmethod
-    def warn_unused_negative_prompt(args: Namespace, model_config: ModelConfig) -> None:
+    def warn_unused_guidance_options(args: Namespace, model_config: ModelConfig) -> None:
         # Guidance is off when set to 1 or below, or left to Edit Turbo's default of 1
         guidance_off = args.guidance <= 1.0 if args.guidance is not None else not model_config.supports_guidance
-        if guidance_off and CommandLineParser._option_was_provided("--negative-prompt"):
-            reason = CONDITIONAL_OPTIONS["--negative-prompt"]["reason"]
-            warnings.warn(f"--negative-prompt is ignored at guidance 1.0; {reason}", stacklevel=2)
+        for option, entry in GUIDANCE_OPTIONS.items():
+            if guidance_off and CommandLineParser._option_was_provided(option):
+                warnings.warn(f"{option} is ignored at guidance 1.0; {entry['reason']}", stacklevel=2)
 
     @staticmethod
     def generate(model: Fibo2, args: Namespace, seed: int, prompt: str) -> GeneratedImage:
@@ -125,6 +135,7 @@ class Fibo2Command:
             num_inference_steps=args.steps,
             render_text_images=args.render_text_images,
             step_cache_ratio=args.step_cache_ratio,
+            cfg_end=args.cfg_end,
         )
 
 
@@ -140,7 +151,7 @@ def main():
         parser.error(str(exc))
     CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
     Fibo2Command.warn_guidance_on_turbo(args, model_config)
-    Fibo2Command.warn_unused_negative_prompt(args, model_config)
+    Fibo2Command.warn_unused_guidance_options(args, model_config)
     # FIBO-vlm turns a plain prompt into a caption before FIBO 2 loads, so the two are not in memory together
     expanded_prompt = None
     if args.expand_prompt:

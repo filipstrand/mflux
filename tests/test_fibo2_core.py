@@ -12,6 +12,7 @@ from mflux.callbacks.callback_registry import CallbackRegistry
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
 from mflux.models.common.lora.mapping.lora_loader import LoRALoader
+from mflux.models.common.step_cache.step_cache import StepCache
 from mflux.models.common.vae.block_decoder import VAEBlockDecoder
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.fibo2 import fibo2_initializer
@@ -43,9 +44,11 @@ class _Loop:
     # Stands in for the encoders, the transformer and the decoder, and records the embeddings each step is given
     WITH_TEXT_IMAGES = mx.ones((1,))
     WITHOUT_TEXT_IMAGES = mx.zeros((1,))
+    ENCODED = mx.full((1,), 2.0)
 
     def __init__(self):
         self.embeds_per_step: list[str] = []
+        self.negative_per_step: list[bool] = []
         self.encoded: list[str] = []
 
     def encode_prompts(self, prompt, images, text_encoder_images, render_text_images):
@@ -53,10 +56,11 @@ class _Loop:
 
     def encode_prompt(self, prompt, images=None):
         self.encoded.append(prompt)
-        return mx.zeros((1,))
+        return _Loop.ENCODED
 
     def predict(self, latents, sigma, embeds, negative_embeds, guidance, context_latents):
         self.embeds_per_step.append("with" if embeds is _Loop.WITH_TEXT_IMAGES else "without")
+        self.negative_per_step.append(negative_embeds is not None)
         return mx.zeros_like(latents)
 
     @staticmethod
@@ -67,24 +71,28 @@ class _Loop:
     def to_image(**kwargs):
         return kwargs
 
-    def core(self, monkeypatch, model_config: ModelConfig | None = None, vae=None, stand_in_prompts: bool = True):
+    def core(self, monkeypatch, model_config: ModelConfig | None = None, vae=None, stand_in_prompts: bool = True, transformer=None):  # fmt: off
         # A core without weights whose loop runs on these stand-ins. Without stand_in_prompts the prompts go through
-        # the real _encode_prompts, and only the text encoder is a stand-in.
+        # the real _encode_prompts, and only the text encoder is a stand-in. With a transformer, the real _predict
+        # runs it.
         core = _Core.of(model_config or ModelConfig.fibo2(), callbacks=CallbackRegistry(), vae=vae, tiling_config=None, bits=None, fonts_dir=None)  # fmt: off
         core.lora_paths, core.lora_scales = None, None
         if stand_in_prompts:
             core._encode_prompts = self.encode_prompts
         core._encode_prompt = self.encode_prompt
-        core._predict = self.predict
+        if transformer is None:
+            core._predict = self.predict
+        else:
+            core.transformer = transformer
         monkeypatch.setattr(Fibo2LatentCreator, "decode", staticmethod(_Loop.decode))
         monkeypatch.setattr(Fibo2LatentCreator, "encode_image", staticmethod(_Loop.encode_image))
         monkeypatch.setattr(fibo2_core.ImageUtil, "to_image", staticmethod(_Loop.to_image))
         return core
 
-    def generate(self, monkeypatch, model_config: ModelConfig | None = None, vae=None, **kwargs) -> dict:
+    def generate(self, monkeypatch, model_config: ModelConfig | None = None, vae=None, transformer=None, **kwargs) -> dict:  # fmt: off
         # Returns what reaches ImageUtil.to_image
         settings = {"seed": 1, "prompt": "p", "num_inference_steps": 8, "height": 512, "width": 512, "guidance": 5.0}
-        return self.core(monkeypatch, model_config, vae)._generate(**{**settings, **kwargs})
+        return self.core(monkeypatch, model_config, vae, transformer=transformer)._generate(**{**settings, **kwargs})
 
     @staticmethod
     def encode_image(vae, image, tiling_config=None):
@@ -208,6 +216,58 @@ def test_a_step_cache_reuses_the_velocity_on_the_steps_it_skips(monkeypatch):
     loop = _Loop()
     assert loop.generate(monkeypatch, num_inference_steps=20)["generation_parameters"] == {}
     assert len(loop.embeds_per_step) == 20
+
+
+class _Transformer:
+    # Records the text embeddings of each pass the real _predict runs
+    def __init__(self):
+        self.embeds: list[mx.array] = []
+
+    def __call__(self, latents, sigma, embeds, context_latents=None):
+        self.embeds.append(embeds)
+        return mx.zeros_like(latents)
+
+
+@pytest.mark.parametrize(("cfg_end", "guided_steps"), [(None, 10), (1.0, 10), (0.6, 6), (0.75, 8)])
+def test_cfg_end_runs_the_negative_pass_on_the_first_steps_only(monkeypatch, cfg_end, guided_steps):
+    loop = _Loop()
+    image = loop.generate(monkeypatch, num_inference_steps=10, cfg_end=cfg_end)
+    assert loop.negative_per_step == [True] * guided_steps + [False] * (10 - guided_steps)
+    assert image["generation_parameters"] == ({} if cfg_end is None else {"cfg_end": cfg_end})
+
+
+def test_the_transformer_runs_no_unconditional_pass_after_the_cutoff(monkeypatch):
+    # The real _predict: 10 steps at cfg_end 0.6 run the prompt's pass and then the negative one on steps 0 to 5,
+    # and the prompt's pass alone on steps 6 to 9
+    transformer = _Transformer()
+    _Loop().generate(monkeypatch, num_inference_steps=10, cfg_end=0.6, transformer=transformer)
+    negative_passes = [embeds is _Loop.ENCODED for embeds in transformer.embeds]
+    assert negative_passes == [False, True] * 6 + [False] * 4
+
+
+def test_the_cutoff_counts_steps_not_the_passes_a_step_cache_runs(monkeypatch):
+    # The steps the cache skips run no pass at all, and the cutoff is still step 10 of 20
+    monkeypatch.setattr(fibo2_core.StepCache, "for_run", staticmethod(lambda config, ratio: StepCache(frozenset({3, 8, 12}))))  # fmt: off
+    loop = _Loop()
+    image = loop.generate(monkeypatch, num_inference_steps=20, step_cache_ratio=0.25, cfg_end=0.5)
+    computed = [t for t in range(20) if t not in {3, 8, 12}]
+    assert loop.negative_per_step == [t < 10 for t in computed]
+    assert image["generation_parameters"] == {"step_cache_ratio": 0.25, "cfg_end": 0.5}
+
+
+def test_cfg_end_changes_nothing_without_guidance(monkeypatch):
+    loop = _Loop()
+    loop.generate(monkeypatch, guidance=1.0, cfg_end=0.5)
+    assert loop.negative_per_step == [False] * 8
+    assert loop.encoded == []
+
+
+def test_a_cfg_end_outside_0_to_1_fails_before_the_prompts_are_encoded(monkeypatch):
+    loop = _Loop()
+    core = loop.core(monkeypatch, stand_in_prompts=False)
+    with pytest.raises(ValueError, match="cfg_end must be > 0 and <= 1"):
+        core._generate(seed=1, prompt="p", num_inference_steps=8, height=512, width=512, guidance=5.0, cfg_end=1.5)
+    assert loop.encoded == []
 
 
 @pytest.mark.parametrize(("render_text_images", "recorded"), [(True, {}), (False, {"render_text_images": False})])

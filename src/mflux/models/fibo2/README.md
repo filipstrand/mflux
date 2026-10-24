@@ -155,6 +155,31 @@ mflux-generate-fibo2 \
 
 `--steps` defaults to 4 and guidance to 1.0, which turns it off; `--negative-prompt` then has no effect. A 1024×1024 edit takes about 40 seconds on an M5 Pro, against about 10 minutes with Dev. A 1024×1024 image from a caption took 18 seconds on an M5 Max, model load included. The first run downloads another 25.5 GB, since the Hugging Face cache keeps each repository on its own.
 
+## Faster Dev runs
+Dev runs guidance on every step, so each step is two passes of the transformer. Fewer steps cut both passes. `--cfg-end` cuts the second one: `--cfg-end 0.6` keeps guidance on the first 60% of the steps and runs the prompt's pass alone on the rest, as Ideogram 4's `--cfg-end` does.
+
+```sh
+mflux-generate-fibo2 --prompt-file caption.json --steps 30 --cfg-end 0.6 --seed 42
+```
+
+Four JSON captions with one seed each, on an M5 Max in bf16 at 1024×1024: a portrait, a shop front with two signs, a product shot on a plain backdrop and a sunset sky. Each image of a caption started from the same noise, with the model loaded and the GPU cooled down before it. The PSNR column compares each image with the 50-step one from the same noise.
+
+| Settings | Seconds per image | Faster | PSNR against 50 steps |
+|---|---:|---:|---|
+| 50 steps (default) | 220 | | |
+| 50 steps, `--cfg-end 0.75` | 191 | 1.15× | 38 to 47 dB |
+| 50 steps, `--cfg-end 0.6` | 177 | 1.24× | 31 to 41 dB |
+| 30 steps | 129 | 1.7× | 16 to 42 dB |
+| 30 steps, `--cfg-end 0.75` | 107 | 2.1× | 16 to 41 dB |
+| 30 steps, `--cfg-end 0.6` | 98 | 2.2× | 16 to 39 dB |
+| 30 steps, `--cfg-end 0.6`, `--step-cache-ratio 0.25` | 77 | 2.9× | 18 to 31 dB |
+
+At 30 steps the portrait got a bright curtain at its left edge and the street other houses down the side street, which is where the 16 and 20 dB come from. The face and the signs stayed, and the 30-step images look as finished as the 50-step ones. The product shot and the sunset barely moved. `--cfg-end` changes far less than the step count does: against 30 steps with guidance throughout, 0.6 is 31 to 41 dB away. At 1:1 it costs some fine detail. With 30 steps and 0.6 the portrait kept its freckles and wrinkles with 9% less fine contrast than at 50 steps, 3% of it from the steps alone. Both signs read right in every run, and neither the sky nor the backdrop showed banding. Shorter runs also heat the GPU less, so the saving runs a little ahead of the passes: 30 steps with 0.6 is 48% of the passes and took 45% of the time.
+
+The step cache on top skips steps 3 to 10 of the 30, while the layout is still forming, so it redraws more. The shop front moved in the frame, and the sunset got a second sailboat where the caption asks for one. Its 77 seconds came later, three of the four on a warmer GPU. It suits drafts.
+
+The defaults stay at the model card's 50 steps with guidance on every step. `--cfg-end` does nothing at guidance 1, so Edit Turbo ignores it. The metadata records it and `--config-from-metadata` replays it.
+
 ## LoRA
 Both commands load FIBO 2 LoRAs with `--lora PATH [SCALE]`, for example ones trained with diffusers' [FIBO 2 DreamBooth script](https://github.com/huggingface/diffusers/blob/main/examples/dreambooth/README_bria_fibo2.md), which adapts every linear layer of the transformer:
 

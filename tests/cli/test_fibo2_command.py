@@ -73,6 +73,7 @@ def shared_argv(tmp_path, lora_file):
         "--negative-prompt", "blurry",
         "--no-text-images",
         "--step-cache-ratio", "0.25",
+        "--cfg-end", "0.6",
         "--lora", str(lora_file), "0.5",
         "--no-bake-lora",
         "-q", "8",
@@ -118,6 +119,7 @@ def test_text_to_image_passes_every_flag_to_the_model(monkeypatch, tmp_path, lor
             "num_inference_steps": 12,
             "render_text_images": False,
             "step_cache_ratio": 0.25,
+            "cfg_end": 0.6,
         }
         for seed in (7, 8)
     ]
@@ -149,6 +151,7 @@ def test_edit_passes_every_flag_to_the_model(monkeypatch, tmp_path, image, lora_
             "num_inference_steps": 12,
             "render_text_images": False,
             "step_cache_ratio": 0.25,
+            "cfg_end": 0.6,
         }
         for seed in (7, 8)
     ]
@@ -162,6 +165,7 @@ def test_text_to_image_defaults_leave_steps_at_50_and_guidance_to_the_model(monk
     run(monkeypatch, cli, ["--prompt", "an owl", "--output", str(tmp_path / "out.png")])
     call = FakeFibo2.instances[0].generate_calls[0]
     assert (call["num_inference_steps"], call["guidance"], call["render_text_images"]) == (50, None, True)
+    assert (call["step_cache_ratio"], call["cfg_end"]) == (None, None)
     assert (call["width"], call["height"]) == (1024, 1024)
 
 
@@ -224,17 +228,28 @@ def test_both_commands_warn_about_options_they_ignore(monkeypatch, tmp_path, ima
         run(monkeypatch, module, argv)
 
 
+@pytest.mark.parametrize(("option", "value"), [("--negative-prompt", "blurry"), ("--cfg-end", "0.6")])
 @pytest.mark.parametrize(
     ("module", "extra"),
-    [(cli, ["--guidance", "1"]), (edit_cli, ["--model", "fibo2-edit-turbo"])],
-    ids=["dev-at-guidance-1", "turbo-default"],
+    [(cli, ["--guidance", "1"]), (cli, ["--model", "fibo2-edit-turbo"]), (edit_cli, ["--model", "fibo2-edit-turbo"])],
+    ids=["dev-at-guidance-1", "turbo-text-to-image", "turbo-edit"],
 )
-def test_a_negative_prompt_at_guidance_1_is_reported(monkeypatch, tmp_path, image, module, extra):
-    argv = ["--prompt", "p", "--negative-prompt", "blurry", *extra, "--output", str(tmp_path / "o.png")]
+def test_guidance_options_at_guidance_1_are_reported(monkeypatch, tmp_path, image, module, extra, option, value):
+    assert module.CONDITIONAL_OPTIONS[option]["condition"] == "guidance above 1.0"
+    argv = ["--prompt", "p", option, value, *extra, "--output", str(tmp_path / "o.png")]
     if module is edit_cli:
         argv += ["--image-paths", str(image)]
-    with pytest.warns(UserWarning, match="--negative-prompt is ignored at guidance 1"):
+    with pytest.warns(UserWarning, match=f"{option} is ignored at guidance 1"):
         run(monkeypatch, module, argv)
+
+
+@pytest.mark.parametrize("module", [cli, edit_cli], ids=["text-to-image", "edit"])
+def test_cfg_end_with_guidance_is_not_reported(monkeypatch, tmp_path, image, module, recwarn):
+    argv = ["--prompt", "p", "--cfg-end", "0.6", "--output", str(tmp_path / "o.png")]
+    if module is edit_cli:
+        argv += ["--image-paths", str(image)]
+    run(monkeypatch, module, argv)
+    assert not [w for w in recwarn if "--cfg-end" in str(w.message)]
 
 
 @pytest.mark.parametrize(
@@ -260,6 +275,36 @@ def test_a_sidecar_replays_the_step_cache(monkeypatch, tmp_path, image, module):
         argv += ["--image-paths", str(image)]
     monkeypatch.setattr(sys, "argv", ["mflux-generate-fibo2", *argv])
     assert module.build_parser().parse_args().step_cache_ratio == 0.25
+
+
+@pytest.mark.parametrize("module", [cli, edit_cli], ids=["text-to-image", "edit"])
+@pytest.mark.parametrize(("recorded", "flag", "expected"), [(0.6, [], 0.6), (0.6, ["--cfg-end", "0.75"], 0.75), (None, [], None)])  # fmt: off
+def test_a_sidecar_replays_cfg_end(monkeypatch, tmp_path, image, module, recorded, flag, expected):
+    sidecar = tmp_path / "image.metadata.json"
+    sidecar.write_text(json.dumps({"prompt": "p", "seed": 1, "steps": 30} | ({} if recorded is None else {"cfg_end": recorded})))  # fmt: off
+    argv = ["--config-from-metadata", str(sidecar), *flag]
+    if module is edit_cli:
+        argv += ["--image-paths", str(image)]
+    monkeypatch.setattr(sys, "argv", ["mflux-generate-fibo2", *argv])
+    assert module.build_parser().parse_args().cfg_end == expected
+
+
+@pytest.mark.parametrize(
+    ("argv", "message"),
+    [
+        (["--prompt", "p", "--cfg-end", "0"], "'0' must be > 0 and <= 1"),
+        (["--prompt", "p", "--cfg-end", "1.5"], "'1.5' must be > 0 and <= 1"),
+        (["--config-from-metadata", "SIDECAR"], "cfg_end in --config-from-conf: '1.5' must be > 0 and <= 1"),
+    ],
+    ids=["zero", "above-1", "sidecar"],
+)
+def test_a_cfg_end_outside_0_to_1_is_refused_before_loading(monkeypatch, capsys, tmp_path, argv, message):
+    sidecar = tmp_path / "image.metadata.json"
+    sidecar.write_text(json.dumps({"prompt": "p", "seed": 1, "cfg_end": 1.5}))
+    code, err = exit_code(monkeypatch, capsys, cli, [str(sidecar) if value == "SIDECAR" else value for value in argv])
+    assert code == 2
+    assert message in err
+    assert FakeFibo2.instances == []
 
 
 @pytest.mark.parametrize("module", [cli, edit_cli], ids=["text-to-image", "edit"])

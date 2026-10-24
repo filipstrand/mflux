@@ -6,7 +6,7 @@ from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_ar
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.resolution.config_resolution import ConfigResolution
 from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
-from mflux.models.fibo2.cli.fibo2_generate import Fibo2Command
+from mflux.models.fibo2.cli.fibo2_generate import GUIDANCE_OPTIONS, Fibo2Command
 from mflux.models.fibo2.latent_creator.fibo2_latent_creator import Fibo2LatentCreator
 from mflux.models.fibo2.model.fibo2_text_encoder.fibo2_caption_check import Fibo2CaptionCheck
 from mflux.models.fibo2.variants import Fibo2Edit
@@ -28,6 +28,7 @@ IGNORED_OPTIONS = {
 
 CONDITIONAL_OPTIONS = {
     **VAEDecodeOptions.conditional_options(),
+    **GUIDANCE_OPTIONS,
 }
 
 
@@ -46,6 +47,7 @@ def build_parser() -> CommandLineParser:
     parser.add_argument("--text-images", dest="render_text_images", action=BooleanOptionalAction, default=True, help="Show the text encoder images of the caption's text_render texts (default). FIBO 2 renders text better with them; --no-text-images turns them off.")  # fmt: off
     parser.add_lora_arguments()
     parser.add_step_cache_arguments()
+    parser.add_cfg_end_arguments()
     parser.add_output_arguments()
     parser.add_vae_full_precision_arguments()
     return parser
@@ -95,6 +97,7 @@ class Fibo2EditCommand:
             num_inference_steps=args.steps,
             render_text_images=args.render_text_images,
             step_cache_ratio=args.step_cache_ratio,
+            cfg_end=args.cfg_end,
         )
 
     @staticmethod
@@ -121,7 +124,7 @@ def main():
         parser.error(str(exc))
     CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
     Fibo2Command.warn_guidance_on_turbo(args, model_config)
-    Fibo2Command.warn_unused_negative_prompt(args, model_config)
+    Fibo2Command.warn_unused_guidance_options(args, model_config)
     model = Fibo2EditCommand.load(args)
 
     # 2. Register callbacks
