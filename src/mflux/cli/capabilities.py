@@ -58,6 +58,7 @@ _CONVERTER_WIRE_TYPES = {
     _parsers.positive_float: "float",
     _parsers.finite_float: "float",
     _parsers.open_unit_float: "float",
+    _parsers.positive_fraction: "float",
     _parsers.vae_tile_size: "int",
     _parsers.int_or_special_value: "int-or-scale",
     Path: "path",

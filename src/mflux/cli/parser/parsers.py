@@ -77,6 +77,17 @@ def open_unit_float(value: str) -> float:
     return parsed
 
 
+def positive_fraction(value: str) -> float:
+    # A share that may be all of it: --cfg-end 1 runs CFG on every step
+    try:
+        parsed = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"'{value}' is not a valid number")
+    if not 0 < parsed <= 1:
+        raise argparse.ArgumentTypeError(f"'{value}' must be > 0 and <= 1")
+    return parsed
+
+
 def vae_tile_size(value: str) -> int:
     # The decode tiler uses a fixed 64px overlap; the tile must be strictly larger
     # than the overlap or the tiling stride becomes <= 0. 128 is the practical floor.
@@ -267,6 +278,10 @@ class CommandLineParser(argparse.ArgumentParser):
     def add_step_cache_arguments(self) -> None:
         # --teacache-ratio is the flag's first released name (Qwen Image 2.1); it stays as an alias.
         self.add_argument("--step-cache-ratio", "--teacache-ratio", dest="step_cache_ratio", type=open_unit_float, default=None, help="TeaCache-style step reuse: skip the transformer on this fraction of denoise steps (those whose timestep signal changes least; the first and last 10%% always run) and reuse the previous step's prediction. Must be within (0, 1). Trades a little detail for speed: 0.25 is about 1.4x faster. Runs under 10 steps are unaffected. Default: off.")
+
+    def add_cfg_end_arguments(self) -> None:
+        # Ideogram 4's option (#441); the cutoff is mflux.models.common.cfg_end.CfgEnd
+        self.add_argument("--cfg-end", type=positive_fraction, default=None, help="Fraction of steps (0-1) that run CFG; the remaining steps run cond-only (guidance 1.0, skipping the unconditional forward). Lower = faster. Default: full CFG.")
 
     def add_pid_decode_arguments(self) -> None:
         self.add_argument("--pid-decode", action=argparse.BooleanOptionalAction, default=False, help="Decode with NVIDIA PiD's pixel-diffusion super-resolving decoder instead of the standard VAE. First run downloads two separate Hugging Face checkpoints (~8GB total); google/gemma-2-2b-it is gated and requires accepting its license + `hf auth login`.")
@@ -520,6 +535,17 @@ class CommandLineParser(argparse.ArgumentParser):
                     namespace.step_cache_ratio = open_unit_float(str(prior_gen_metadata["step_cache_ratio"]))
                 except argparse.ArgumentTypeError as exc:
                     self.error(f"step_cache_ratio in --config-from-conf: {exc}")
+            # The steps --cfg-end runs without guidance change it too.
+            if (
+                hasattr(namespace, "cfg_end")
+                and prior_gen_metadata.get("cfg_end") is not None
+                and not self._option_was_provided("--cfg-end")
+            ):
+                # Same range check as the flag, so a bad sidecar fails here instead of after the model loads.
+                try:
+                    namespace.cfg_end = positive_fraction(str(prior_gen_metadata["cfg_end"]))
+                except argparse.ArgumentTypeError as exc:
+                    self.error(f"cfg_end in --config-from-conf: {exc}")
             # MOSS-Image records the layers its negative CFG branch skips. They change the image too.
             if (
                 hasattr(namespace, "uncond_skip_layers")
@@ -653,6 +679,14 @@ class CommandLineParser(argparse.ArgumentParser):
                 if not isinstance(recorded_vae_full_precision, bool):
                     self.error(f"vae_full_precision in --config-from-metadata must be true or false, not {recorded_vae_full_precision!r}.")  # fmt: off
                 namespace.vae_full_precision = recorded_vae_full_precision
+
+            if hasattr(namespace, "render_text_images") and not self._option_was_provided("--text-images", "--no-text-images"):  # fmt: skip
+                # FIBO 2 records its text images only when they are off. A JSON boolean only, as above.
+                recorded_text_images = prior_gen_metadata.get("render_text_images")
+                recorded_text_images = True if recorded_text_images is None else recorded_text_images
+                if not isinstance(recorded_text_images, bool):
+                    self.error(f"render_text_images in --config-from-metadata must be true or false, not {recorded_text_images!r}.")  # fmt: off
+                namespace.render_text_images = recorded_text_images
 
             if hasattr(namespace, "pid_degrade_sigma") and not self._option_was_provided("--pid-degrade-sigma"):
                 # Non-PiD sidecars omit the key entirely, but a hand-edited one can carry an

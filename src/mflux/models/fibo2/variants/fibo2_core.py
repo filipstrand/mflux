@@ -6,9 +6,12 @@ from mlx import nn
 from PIL import Image
 
 from mflux.cli.defaults.defaults import model_inference_steps
+from mflux.models.common.cfg_end.cfg_end import CfgEnd
 from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.schedulers.flow_match_euler_discrete_scheduler import FlowMatchEulerDiscreteScheduler
+from mflux.models.common.step_cache.step_cache import StepCache
+from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.fibo2.fibo2_initializer import Fibo2Initializer
 from mflux.models.fibo2.latent_creator.fibo2_latent_creator import Fibo2LatentCreator
@@ -79,9 +82,13 @@ class _Fibo2Core(nn.Module):
         image_paths: list[Path | str] | None = None,
         mask_path: Path | str | None = None,
         render_text_images: bool = True,
+        step_cache_ratio: float | None = None,
+        cfg_end: float | None = None,
     ) -> GeneratedImage:
         # Shared by the txt2img and edit variants: images are the crops to edit (None for txt2img)
         num_inference_steps, guidance = self._resolve_sampling(num_inference_steps, guidance)
+        # The steps from this index on run without the negative pass
+        cfg_cutoff = CfgEnd.cutoff(num_inference_steps, cfg_end)
         config = Config(
             model_config=self.model_config,
             num_inference_steps=num_inference_steps,
@@ -92,26 +99,40 @@ class _Fibo2Core(nn.Module):
         )
         config.scheduler.set_mu(FlowMatchEulerDiscreteScheduler._compute_linear_mu(config.image_seq_len))
 
-        # 1. Encode the prompt (an edit's with its images), and the negative prompt, without them, when guidance is on
-        prompt, prompt_embeds, base_embeds = self._encode_prompts(
-            prompt, images, text_encoder_images, render_text_images
-        )
+        # 1. Encode the prompt (an edit's with its images), and the negative prompt, without them, when guidance is on.
+        # The metadata keeps the prompt as given, so a replay encodes it the same way.
+        prompt_embeds, base_embeds = self._encode_prompts(prompt, images, text_encoder_images, render_text_images)
         negative_embeds = None
         if config.guidance > 1.0:
-            negative_embeds = self._encode_prompt(negative_prompt or Fibo2PromptEncoder.NULL_CAPTION)
+            # The model card's defaults: a caption of what text to image steers away from, the null caption for edits
+            default = Fibo2PromptEncoder.NULL_CAPTION if images else Fibo2PromptEncoder.TEXT_TO_IMAGE_NEGATIVE
+            negative_embeds = self._encode_prompt(negative_prompt or default)
 
         # 2. Starting noise, kept in float32 between steps, and the latents of the images to edit
         latents = Fibo2LatentCreator.create_noise(seed, config.height, config.width)
         context_latents = [Fibo2LatentCreator.encode_image(self.vae, image, self.tiling_config) for image in images or []]  # fmt: off
 
-        # 3. Denoising loop
-        ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
+        # 3. Denoising loop. The steps after the cfg_end cutoff run the prompt's pass alone. A step the step cache skips
+        # reuses the stored velocity only if that velocity came from the same embeddings, so the step the text images
+        # start on and the cutoff step always run the transformer
+        step_cache = StepCache.for_run(config, ratio=step_cache_ratio)
+        stored_from: tuple[mx.array, mx.array | None] | None = None
+        # MemorySaver frees the text encoder between seeds when the callbacks' prompt is in prompt_cache. Text to image
+        # caches the formatted caption, unless its text images need the encoder again. An edit never caches its prompt.
+        callbacks_prompt = prompt if images else Fibo2PromptEncoder.format_prompt(prompt)
+        ctx = self.callbacks.start(seed=seed, prompt=callbacks_prompt, config=config)
         ctx.before_loop(latents)
         for t in config.time_steps:
             try:
                 sigma = config.scheduler.sigmas[t : t + 1]
                 embeds = _Fibo2Core._embeds_for_step(float(sigma[0]), prompt_embeds, base_embeds)
-                velocity = self._predict(latents, sigma, embeds, negative_embeds, config.guidance, context_latents)
+                negative = negative_embeds if t < cfg_cutoff else None
+                same_embeds = stored_from is not None and stored_from[0] is embeds and stored_from[1] is negative
+                velocity = step_cache.reuse(t) if same_embeds else None
+                if velocity is None:
+                    velocity = self._predict(latents, sigma, embeds, negative, config.guidance, context_latents)
+                    step_cache.store(velocity)
+                    stored_from = (embeds, negative)
                 latents = config.scheduler.step(noise=velocity, timestep=t, latents=latents)
                 ctx.in_loop(t, latents)
                 mx.eval(latents)
@@ -136,6 +157,13 @@ class _Fibo2Core(nn.Module):
             lora_scales=self.lora_scales,
             image_paths=image_paths,
             masked_image_path=mask_path,
+            generation_parameters={
+                **StepCache.generation_parameters(step_cache_ratio),
+                **CfgEnd.generation_parameters(cfg_end),
+                **VAEDecodeOptions.generation_parameters(self),
+                # Recorded only when off, which --config-from-metadata replays
+                **({} if render_text_images else {"render_text_images": False}),
+            },
         )
 
     @staticmethod
@@ -158,20 +186,20 @@ class _Fibo2Core(nn.Module):
         images: list[Image.Image] | None,
         text_encoder_images: list[Image.Image] | None,
         render_text_images: bool,
-    ) -> tuple[str, mx.array, mx.array | None]:
+    ) -> tuple[mx.array, mx.array | None]:
         # A generation with text images also gets the embeddings its first steps run on; an edit uses them throughout
         if images:
             caption, _ = Fibo2PromptEncoder.edit_caption(prompt)
             text_images = self._text_images(caption) if render_text_images else []
-            prompt = Fibo2PromptEncoder.edit_prompt(prompt, len(images), text_images=bool(text_images))
-            return prompt, self._encode_prompt(prompt, [*text_encoder_images, *text_images]), None
-        prompt = Fibo2PromptEncoder.format_prompt(prompt)
-        text_images = self._text_images(Fibo2PromptEncoder.caption(prompt)) if render_text_images else []
+            edit_prompt = Fibo2PromptEncoder.edit_prompt(prompt, len(images), text_images=bool(text_images))
+            return self._encode_prompt(edit_prompt, [*text_encoder_images, *text_images]), None
+        formatted = Fibo2PromptEncoder.format_prompt(prompt)
+        text_images = self._text_images(Fibo2PromptEncoder.caption(formatted)) if render_text_images else []
         if not text_images:
-            return prompt, self._encode_prompt(prompt), None
-        marked = Fibo2PromptEncoder.mark_text_images(prompt, Fibo2PromptEncoder.VISION_MARKER)
-        base = Fibo2PromptEncoder.mark_text_images(prompt, "")
-        return prompt, self._encode_prompt(marked, text_images), self._encode_prompt(base)
+            return self._encode_prompt(formatted), None
+        marked = Fibo2PromptEncoder.mark_text_images(formatted, Fibo2PromptEncoder.VISION_MARKER)
+        base = Fibo2PromptEncoder.mark_text_images(formatted, "")
+        return self._encode_prompt(marked, text_images), self._encode_prompt(base)
 
     def _text_images(self, caption: dict | str | None) -> list[Image.Image]:
         if not isinstance(caption, dict):

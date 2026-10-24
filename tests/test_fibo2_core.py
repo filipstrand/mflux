@@ -1,19 +1,25 @@
+import json
 from pathlib import Path
-from types import SimpleNamespace
+from types import MethodType, SimpleNamespace
 
 import mlx.core as mx
 import numpy as np
 import pytest
 from mlx import nn
+from PIL import Image
 
 from mflux.callbacks.callback_registry import CallbackRegistry
+from mflux.callbacks.instances.memory_saver import MemorySaver
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
 from mflux.models.common.lora.mapping.lora_loader import LoRALoader
+from mflux.models.common.step_cache.step_cache import StepCache
+from mflux.models.common.vae.block_decoder import VAEBlockDecoder
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.fibo2 import fibo2_initializer
 from mflux.models.fibo2.fibo2_initializer import Fibo2Initializer
 from mflux.models.fibo2.latent_creator.fibo2_latent_creator import Fibo2LatentCreator
+from mflux.models.fibo2.model.fibo2_text_encoder.prompt_encoder import Fibo2PromptEncoder
 from mflux.models.fibo2.model.fibo2_transformer.fibo2_transformer import Fibo2Transformer
 from mflux.models.fibo2.variants import fibo2_core
 from mflux.models.fibo2.variants.fibo2_core import _Fibo2Core
@@ -39,18 +45,23 @@ class _Loop:
     # Stands in for the encoders, the transformer and the decoder, and records the embeddings each step is given
     WITH_TEXT_IMAGES = mx.ones((1,))
     WITHOUT_TEXT_IMAGES = mx.zeros((1,))
+    ENCODED = mx.full((1,), 2.0)
 
     def __init__(self):
         self.embeds_per_step: list[str] = []
+        self.negative_per_step: list[bool] = []
+        self.encoded: list[str] = []
 
     def encode_prompts(self, prompt, images, text_encoder_images, render_text_images):
-        return prompt, _Loop.WITH_TEXT_IMAGES, _Loop.WITHOUT_TEXT_IMAGES
+        return _Loop.WITH_TEXT_IMAGES, _Loop.WITHOUT_TEXT_IMAGES
 
     def encode_prompt(self, prompt, images=None):
-        return mx.zeros((1,))
+        self.encoded.append(prompt)
+        return _Loop.ENCODED
 
     def predict(self, latents, sigma, embeds, negative_embeds, guidance, context_latents):
         self.embeds_per_step.append("with" if embeds is _Loop.WITH_TEXT_IMAGES else "without")
+        self.negative_per_step.append(negative_embeds is not None)
         return mx.zeros_like(latents)
 
     @staticmethod
@@ -60,6 +71,33 @@ class _Loop:
     @staticmethod
     def to_image(**kwargs):
         return kwargs
+
+    def core(self, monkeypatch, model_config: ModelConfig | None = None, vae=None, stand_in_prompts: bool = True, transformer=None):  # fmt: off
+        # A core without weights whose loop runs on these stand-ins. Without stand_in_prompts the prompts go through
+        # the real _encode_prompts, and only the text encoder is a stand-in. With a transformer, the real _predict
+        # runs it.
+        core = _Core.of(model_config or ModelConfig.fibo2(), callbacks=CallbackRegistry(), vae=vae, tiling_config=None, bits=None, fonts_dir=None)  # fmt: off
+        core.lora_paths, core.lora_scales = None, None
+        if stand_in_prompts:
+            core._encode_prompts = self.encode_prompts
+        core._encode_prompt = self.encode_prompt
+        if transformer is None:
+            core._predict = self.predict
+        else:
+            core.transformer = transformer
+        monkeypatch.setattr(Fibo2LatentCreator, "decode", staticmethod(_Loop.decode))
+        monkeypatch.setattr(Fibo2LatentCreator, "encode_image", staticmethod(_Loop.encode_image))
+        monkeypatch.setattr(fibo2_core.ImageUtil, "to_image", staticmethod(_Loop.to_image))
+        return core
+
+    def generate(self, monkeypatch, model_config: ModelConfig | None = None, vae=None, transformer=None, **kwargs) -> dict:  # fmt: off
+        # Returns what reaches ImageUtil.to_image
+        settings = {"seed": 1, "prompt": "p", "num_inference_steps": 8, "height": 512, "width": 512, "guidance": 5.0}
+        return self.core(monkeypatch, model_config, vae, transformer=transformer)._generate(**{**settings, **kwargs})
+
+    @staticmethod
+    def encode_image(vae, image, tiling_config=None):
+        return mx.zeros((1, 32, image.height // 8, image.width // 8))
 
 
 class _Fonts:
@@ -89,10 +127,10 @@ class _Saver:
 @pytest.mark.parametrize(
     ("name", "base_model", "expected"),
     [
-        ("fibo2", None, (30, 5.0)),
+        ("fibo2", None, (50, 5.0)),
         ("fibo2-edit-turbo", None, (4, 1.0)),
         ("/models/my-own-turbo", "fibo2-edit-turbo", (4, 1.0)),
-        ("/models/my-own-dev", "fibo2", (30, 5.0)),
+        ("/models/my-own-dev", "fibo2", (50, 5.0)),
     ],
 )
 def test_steps_and_guidance_default_by_checkpoint(name, base_model, expected):
@@ -104,15 +142,188 @@ def test_steps_and_guidance_default_by_checkpoint(name, base_model, expected):
 def test_the_loop_switches_to_the_text_images_once_the_noise_level_is_at_most_0_9(monkeypatch):
     # The schedule diffusers runs for 8 steps at 512x512: sigmas 1.0 and 0.929 run without the text images
     loop = _Loop()
-    core = _Core.of(ModelConfig.fibo2(), callbacks=CallbackRegistry(), vae=None, tiling_config=None, bits=None)
-    core.lora_paths, core.lora_scales = None, None
-    core._encode_prompts = loop.encode_prompts
-    core._encode_prompt = loop.encode_prompt
-    core._predict = loop.predict
-    monkeypatch.setattr(Fibo2LatentCreator, "decode", staticmethod(_Loop.decode))
-    monkeypatch.setattr(fibo2_core.ImageUtil, "to_image", staticmethod(_Loop.to_image))
-    core._generate(seed=1, prompt="p", num_inference_steps=8, height=512, width=512, guidance=5.0)
+    loop.generate(monkeypatch)
     assert loop.embeds_per_step == ["without", "without"] + ["with"] * 6
+
+
+@pytest.mark.parametrize(
+    ("decode_mode", "recorded"),
+    [(VAEBlockDecoder.LOW_MEMORY, {}), (VAEBlockDecoder.FULL_PRECISION, {"vae_full_precision": True})],
+)
+def test_the_metadata_records_a_full_precision_decode(monkeypatch, decode_mode, recorded):
+    image = _Loop().generate(monkeypatch, vae=SimpleNamespace(decode_mode=decode_mode))
+    assert image["generation_parameters"] == recorded
+
+
+@pytest.mark.parametrize(
+    ("prompt", "images"),
+    [
+        ("Make the bicycle blue", 1),
+        (json.dumps({"structured_caption": "A blue bicycle.", "edit_instruction": "Make the bicycle blue"}), 1),
+        (json.dumps({"short_description": "A blue bicycle.", "edit_instruction": "Make the bicycle blue"}), 2),
+        (json.dumps({"short_description": "A blue bicycle.", "lighting": {}}), 0),
+    ],
+    ids=["instruction", "structured-caption", "caption-two-images", "text-to-image"],
+)
+def test_the_metadata_keeps_the_prompt_as_given(monkeypatch, prompt, images):
+    # Only the text encoder reads the prompt with its image markers. With the markers in the metadata, a replay of a
+    # "structured_caption" edit failed check_edit_prompt, and an instruction alone gained a second image marker. The
+    # callbacks get an edit's prompt as given too, and for text to image the formatted caption, its prompt_cache key.
+    loop = _Loop()
+    core = loop.core(monkeypatch, stand_in_prompts=False)
+    started = []
+    start = core.callbacks.start
+    core.callbacks.start = lambda **kwargs: started.append(kwargs["prompt"]) or start(**kwargs)
+    crops = [Image.new("RGB", (64, 64))] * images
+    settings = {"seed": 1, "num_inference_steps": 2, "height": 64, "width": 64, "guidance": 1.0, "images": crops, "text_encoder_images": crops}  # fmt: off
+    recorded = core._generate(prompt=prompt, **settings)["prompt"]
+    replayed = core._generate(prompt=recorded, **settings)["prompt"]
+    assert recorded == replayed == prompt
+    assert started == [prompt if images else Fibo2PromptEncoder.format_prompt(prompt)] * 2
+    assert loop.encoded[0] == loop.encoded[1] != prompt
+    if images:
+        Fibo2PromptEncoder.check_edit_prompt(recorded)
+        assert loop.encoded[0].count(Fibo2PromptEncoder.VISION_MARKER) == images
+
+
+@pytest.mark.parametrize(
+    ("prompt", "images", "freed"),
+    [
+        (json.dumps({"short_description": "A blue bicycle.", "lighting": {}}, indent=2), 0, True),
+        ("A blue bicycle.", 0, True),
+        (json.dumps({"short_description": "A shop sign.", "text_render": [{"text": "OPEN"}]}), 0, False),
+        ("Make the bicycle blue", 1, False),
+    ],
+    ids=["json-caption", "short-description", "text-images", "edit"],
+)
+def test_memory_saver_frees_the_text_encoder_when_later_seeds_need_no_encoding(monkeypatch, prompt, images, freed):
+    # MemorySaver frees it when the callbacks' prompt is in prompt_cache. A JSON caption is cached formatted, and the
+    # callbacks got it as given, a key it is not cached under. Text images and edits encode with images on every seed.
+    encoded = []
+    monkeypatch.setattr(Fibo2PromptEncoder, "encode_prompt", staticmethod(lambda prompt, *args: encoded.append(prompt) or _Loop.ENCODED))  # fmt: off
+    core = _Loop().core(monkeypatch, stand_in_prompts=False)
+    core._encode_prompt = MethodType(_Fibo2Core._encode_prompt, core)
+    core.prompt_cache, core.processor, core.text_encoder = {}, None, "text encoder"
+    core.callbacks.register(MemorySaver(model=core, cache_limit_bytes=None, num_seeds=2))
+    crops = [Image.new("RGB", (64, 64))] * images
+    settings = {"prompt": prompt, "num_inference_steps": 2, "height": 64, "width": 64, "guidance": 1.0, "images": crops, "text_encoder_images": crops}  # fmt: off
+    core._generate(seed=1, **settings)
+    assert (core.text_encoder is None) is freed
+    if freed:
+        core._generate(seed=2, **settings)
+        assert len(encoded) == 1
+
+
+@pytest.mark.parametrize(
+    ("negative_prompt", "images", "encoded"),
+    [
+        (None, 0, Fibo2PromptEncoder.TEXT_TO_IMAGE_NEGATIVE),
+        ("", 1, Fibo2PromptEncoder.NULL_CAPTION),
+        ("blurry", 0, "blurry"),
+        ("blurry", 1, "blurry"),
+    ],
+)
+def test_the_negative_prompt_defaults_to_the_model_cards(monkeypatch, negative_prompt, images, encoded):
+    # Text to image steers away from the card's caption of soft, featureless images, an edit from the null caption
+    loop = _Loop()
+    crops = [Image.new("RGB", (64, 64))] * images
+    loop.generate(monkeypatch, negative_prompt=negative_prompt, images=crops, text_encoder_images=crops)
+    assert loop.encoded == [encoded]
+
+
+def test_the_text_to_image_negative_has_the_keys_of_the_null_caption():
+    negative = json.loads(Fibo2PromptEncoder.TEXT_TO_IMAGE_NEGATIVE)
+    assert list(negative) == list(json.loads(Fibo2PromptEncoder.NULL_CAPTION))
+    assert negative["objects"][0]["description"] == "the main subject"
+
+
+def test_a_step_cache_reuses_the_velocity_on_the_steps_it_skips(monkeypatch):
+    # 20 steps at 0.25: the 5 steps whose sigma changes least, 2 to 6, skip the transformer, except step 4, where the
+    # text images start
+    loop = _Loop()
+    image = loop.generate(monkeypatch, num_inference_steps=20, step_cache_ratio=0.25)
+    assert len(loop.embeds_per_step) == 16
+    assert image["generation_parameters"] == {"step_cache_ratio": 0.25}
+    loop = _Loop()
+    assert loop.generate(monkeypatch, num_inference_steps=20)["generation_parameters"] == {}
+    assert len(loop.embeds_per_step) == 20
+
+
+@pytest.mark.parametrize(
+    ("cfg_end", "skipped", "embeds", "negative"),
+    [
+        # 8 steps at 512x512 start the text images on step 2: a skipped step 2 runs anyway, and step 3 reuses it
+        (None, {2, 3}, ["without"] * 2 + ["with"] * 5, [True] * 7),
+        # cfg_end 0.5 ends the negative pass on step 4: a skipped step 4 runs without it, and step 5 reuses it
+        (0.5, {4, 5}, ["without"] * 2 + ["with"] * 5, [True] * 4 + [False] * 3),
+    ],
+    ids=["text-images", "cfg-end"],
+)
+def test_a_step_cache_does_not_reuse_a_velocity_across_a_change_of_embeddings(monkeypatch, cfg_end, skipped, embeds, negative):  # fmt: off
+    # Reusing the velocity of the step before would start the text images, or end the negative pass, on the next
+    # step the cache does not skip
+    monkeypatch.setattr(fibo2_core.StepCache, "for_run", staticmethod(lambda config, ratio: StepCache(frozenset(skipped))))  # fmt: off
+    loop = _Loop()
+    loop.generate(monkeypatch, step_cache_ratio=0.25, cfg_end=cfg_end)
+    assert (loop.embeds_per_step, loop.negative_per_step) == (embeds, negative)
+
+
+class _Transformer:
+    # Records the text embeddings of each pass the real _predict runs
+    def __init__(self):
+        self.embeds: list[mx.array] = []
+
+    def __call__(self, latents, sigma, embeds, context_latents=None):
+        self.embeds.append(embeds)
+        return mx.zeros_like(latents)
+
+
+@pytest.mark.parametrize(("cfg_end", "guided_steps"), [(None, 10), (1.0, 10), (0.6, 6), (0.75, 8)])
+def test_cfg_end_runs_the_negative_pass_on_the_first_steps_only(monkeypatch, cfg_end, guided_steps):
+    loop = _Loop()
+    image = loop.generate(monkeypatch, num_inference_steps=10, cfg_end=cfg_end)
+    assert loop.negative_per_step == [True] * guided_steps + [False] * (10 - guided_steps)
+    assert image["generation_parameters"] == ({} if cfg_end is None else {"cfg_end": cfg_end})
+
+
+def test_the_transformer_runs_no_unconditional_pass_after_the_cutoff(monkeypatch):
+    # The real _predict: 10 steps at cfg_end 0.6 run the prompt's pass and then the negative one on steps 0 to 5,
+    # and the prompt's pass alone on steps 6 to 9
+    transformer = _Transformer()
+    _Loop().generate(monkeypatch, num_inference_steps=10, cfg_end=0.6, transformer=transformer)
+    negative_passes = [embeds is _Loop.ENCODED for embeds in transformer.embeds]
+    assert negative_passes == [False, True] * 6 + [False] * 4
+
+
+def test_the_cutoff_counts_steps_not_the_passes_a_step_cache_runs(monkeypatch):
+    # The steps the cache skips run no pass at all, and the cutoff is still step 10 of 20
+    monkeypatch.setattr(fibo2_core.StepCache, "for_run", staticmethod(lambda config, ratio: StepCache(frozenset({3, 8, 12}))))  # fmt: off
+    loop = _Loop()
+    image = loop.generate(monkeypatch, num_inference_steps=20, step_cache_ratio=0.25, cfg_end=0.5)
+    computed = [t for t in range(20) if t not in {3, 8, 12}]
+    assert loop.negative_per_step == [t < 10 for t in computed]
+    assert image["generation_parameters"] == {"step_cache_ratio": 0.25, "cfg_end": 0.5}
+
+
+def test_cfg_end_changes_nothing_without_guidance(monkeypatch):
+    loop = _Loop()
+    loop.generate(monkeypatch, guidance=1.0, cfg_end=0.5)
+    assert loop.negative_per_step == [False] * 8
+    assert loop.encoded == []
+
+
+def test_a_cfg_end_outside_0_to_1_fails_before_the_prompts_are_encoded(monkeypatch):
+    loop = _Loop()
+    core = loop.core(monkeypatch, stand_in_prompts=False)
+    with pytest.raises(ValueError, match="cfg_end must be > 0 and <= 1"):
+        core._generate(seed=1, prompt="p", num_inference_steps=8, height=512, width=512, guidance=5.0, cfg_end=1.5)
+    assert loop.encoded == []
+
+
+@pytest.mark.parametrize(("render_text_images", "recorded"), [(True, {}), (False, {"render_text_images": False})])
+def test_the_metadata_records_text_images_that_are_off(monkeypatch, render_text_images, recorded):
+    image = _Loop().generate(monkeypatch, render_text_images=render_text_images)
+    assert image["generation_parameters"] == recorded
 
 
 def test_save_model_writes_the_processor_config_and_the_fonts_with_their_licences(tmp_path, monkeypatch):
