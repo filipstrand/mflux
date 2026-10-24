@@ -1,3 +1,4 @@
+import json
 import sys
 
 import PIL.Image
@@ -216,6 +217,29 @@ def test_edit_turbo_warns_when_guidance_turns_it_on(monkeypatch, tmp_path, image
     with pytest.warns(UserWarning, match="distilled to run without guidance"):
         run(monkeypatch, module, argv)
     assert fake.instances[0].generate_calls[0]["guidance"] == 4.0
+
+
+@pytest.mark.parametrize("module", [cli, edit_cli], ids=["text-to-image", "edit"])
+@pytest.mark.parametrize(
+    ("recorded", "flag", "expected"),
+    [(False, [], False), (False, ["--text-images"], True), (None, [], True), (None, ["--no-text-images"], False)],
+)
+def test_a_sidecar_replays_text_images_that_were_off(monkeypatch, tmp_path, image, module, recorded, flag, expected):
+    sidecar = tmp_path / "image.metadata.json"
+    sidecar.write_text(json.dumps({"prompt": "p", "seed": 1, "steps": 4} | ({} if recorded is None else {"render_text_images": recorded})))  # fmt: off
+    argv = ["--config-from-metadata", str(sidecar), *flag]
+    if module is edit_cli:
+        argv += ["--image-paths", str(image)]
+    monkeypatch.setattr(sys, "argv", ["mflux-generate-fibo2", *argv])
+    assert module.build_parser().parse_args().render_text_images is expected
+
+
+def test_a_sidecar_text_images_value_must_be_a_boolean(monkeypatch, capsys, tmp_path):
+    sidecar = tmp_path / "image.metadata.json"
+    sidecar.write_text(json.dumps({"prompt": "p", "seed": 1, "render_text_images": "false"}))
+    code, err = exit_code(monkeypatch, capsys, cli, ["--config-from-metadata", str(sidecar)])
+    assert code == 2
+    assert "render_text_images in --config-from-metadata must be true or false" in err
 
 
 @pytest.mark.parametrize(

@@ -1,4 +1,4 @@
-from argparse import Namespace
+from argparse import BooleanOptionalAction, Namespace
 from pathlib import Path
 
 from mflux.callbacks.callback_manager import CallbackManager
@@ -43,7 +43,7 @@ def build_parser() -> CommandLineParser:
     parser.add_image_paths_arguments()
     parser.add_argument("--mask-path", type=Path, default=None, help="Mask of the region to regenerate, white on black, at the image's size. Single image only.")  # fmt: off
     parser.add_image_generator_arguments(supports_metadata_config=True, supports_dimension_scale_factor=True)
-    parser.add_argument("--no-text-images", action="store_true", help="Do not show the text encoder images of the caption's text_render texts. FIBO 2 renders text better with them.")  # fmt: off
+    parser.add_argument("--text-images", dest="render_text_images", action=BooleanOptionalAction, default=True, help="Show the text encoder images of the caption's text_render texts (default). FIBO 2 renders text better with them; --no-text-images turns them off.")  # fmt: off
     parser.add_lora_arguments()
     parser.add_output_arguments()
     parser.add_vae_full_precision_arguments()
@@ -96,7 +96,7 @@ class Fibo2EditCommand:
             height=height,
             guidance=args.guidance,
             num_inference_steps=args.steps,
-            render_text_images=not args.no_text_images,
+            render_text_images=args.render_text_images,
         )
 
     @staticmethod

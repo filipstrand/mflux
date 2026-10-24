@@ -70,7 +70,7 @@ Freeform text that is not one of these forms works less well. To turn a short re
 With guidance on, the default negative prompt is the null caption the model was trained with: the caption keys with every value empty. Pass `--negative-prompt` to use your own.
 
 ### Text in images
-When a caption asks for text in its `text_render` entries, mflux also shows Qwen3-VL each text drawn on its own, the way training drew it: one line, black on white, in Pillow's built-in font, with the fonts that ship with the model (Aileron, then DejaVu Sans) for characters that font lacks. FIBO 2 renders text better with them. A generation runs its first steps, while the noise level is above 0.9, on the caption without the images; an edit uses them at every step. A short description gets no images. Turn them off with `--no-text-images`, or `render_text_images=False` in Python.
+When a caption asks for text in its `text_render` entries, mflux also shows Qwen3-VL each text drawn on its own, the way training drew it: one line, black on white, in Pillow's built-in font, with the fonts that ship with the model (Aileron, then DejaVu Sans) for characters that font lacks. FIBO 2 renders text better with them. A generation runs its first steps, while the noise level is above 0.9, on the caption without the images; an edit uses them at every step. A short description gets no images. Turn them off with `--no-text-images`, or `render_text_images=False` in Python. The metadata records it, so `--config-from-metadata` turns them off again unless you pass `--text-images`.
 
 ## Editing
 `mflux-generate-fibo2-edit` edits one to five images. The prompt is the edit instruction:

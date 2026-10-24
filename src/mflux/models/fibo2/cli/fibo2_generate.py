@@ -1,6 +1,6 @@
 import copy
 import warnings
-from argparse import Namespace
+from argparse import BooleanOptionalAction, Namespace
 
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_args
@@ -44,7 +44,7 @@ def build_parser() -> CommandLineParser:
     parser.add_model_arguments(require_model_arg=False, default_model=DEFAULT_MODEL)
     # Editing has its own command, mflux-generate-fibo2-edit.
     parser.add_image_generator_arguments(supports_metadata_config=True)
-    parser.add_argument("--no-text-images", action="store_true", help="Do not show the text encoder images of the caption's text_render texts. FIBO 2 renders text better with them.")  # fmt: off
+    parser.add_argument("--text-images", dest="render_text_images", action=BooleanOptionalAction, default=True, help="Show the text encoder images of the caption's text_render texts (default). FIBO 2 renders text better with them; --no-text-images turns them off.")  # fmt: off
     parser.add_lora_arguments()
     parser.add_output_arguments()
     parser.add_vae_full_precision_arguments()
@@ -99,7 +99,7 @@ class Fibo2Command:
             height=height,
             guidance=args.guidance,
             num_inference_steps=args.steps,
-            render_text_images=not args.no_text_images,
+            render_text_images=args.render_text_images,
         )
 
 
