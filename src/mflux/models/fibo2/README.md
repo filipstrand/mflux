@@ -125,7 +125,7 @@ image.save("blue_bicycle.png")
 </details>
 
 ## Edit Turbo
-[Fibo 2.0 Edit Turbo](https://huggingface.co/briaai/Fibo-2.0-edit-turbo) is distilled from Dev for editing in 4 steps without guidance, so each step is one transformer pass instead of two. It has the same architecture, text encoder and VAE as Dev; only the transformer weights differ. It is for editing only: `mflux-generate-fibo2` does not accept it.
+[Fibo 2.0 Edit Turbo](https://huggingface.co/briaai/Fibo-2.0-edit-turbo) is distilled from Dev for editing in 4 steps without guidance, so each step is one transformer pass instead of two. It has the same architecture, text encoder and VAE as Dev; only the transformer weights differ.
 
 ```sh
 mflux-generate-fibo2-edit \
@@ -135,7 +135,16 @@ mflux-generate-fibo2-edit \
   --seed 42
 ```
 
-`--steps` defaults to 4 and guidance to 1.0, which turns it off; `--negative-prompt` then has no effect. A 1024×1024 edit takes about 40 seconds on an M5 Pro, against about 10 minutes with Dev. The first run downloads another 25.5 GB, since the Hugging Face cache keeps each repository on its own.
+The model card presents it for editing only, but it also generates from a caption. From the same seed it kept the composition and the text of Dev's images in our tests, with smoother skin, so `mflux-generate-fibo2` accepts it too:
+
+```sh
+mflux-generate-fibo2 \
+  --model fibo2-edit-turbo \
+  --prompt-file caption.json \
+  --seed 42
+```
+
+`--steps` defaults to 4 and guidance to 1.0, which turns it off; `--negative-prompt` then has no effect. A 1024×1024 edit takes about 40 seconds on an M5 Pro, against about 10 minutes with Dev. A 1024×1024 image from a caption took 18 seconds on an M5 Max, model load included. The first run downloads another 25.5 GB, since the Hugging Face cache keeps each repository on its own.
 
 ## LoRA
 Both commands load FIBO 2 LoRAs with `--lora PATH [SCALE]`, for example ones trained with diffusers' [FIBO 2 DreamBooth script](https://github.com/huggingface/diffusers/blob/main/examples/dreambooth/README_bria_fibo2.md), which adapts every linear layer of the transformer:

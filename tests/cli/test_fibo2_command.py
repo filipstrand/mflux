@@ -162,8 +162,20 @@ def test_edit_turbo_defaults_to_4_steps(monkeypatch, tmp_path, image):
     assert model.generate_calls[0]["num_inference_steps"] == 4
 
 
-def test_text_to_image_refuses_edit_turbo(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["mflux-generate-fibo2", "--prompt", "p", "--model", "fibo2-edit-turbo"])
+def test_text_to_image_runs_edit_turbo_with_its_defaults(monkeypatch, tmp_path):
+    run(monkeypatch, cli, ["--prompt", "p", "--model", "fibo2-edit-turbo", "--output", str(tmp_path / "out.png")])
+    model = FakeFibo2.instances[0]
+    assert model.model_config is ModelConfig.fibo2_edit_turbo()
+    # 4 steps, and guidance left to the model, which runs Edit Turbo at 1.0
+    call = model.generate_calls[0]
+    assert (call["num_inference_steps"], call["guidance"]) == (4, None)
+
+
+def test_text_to_image_refuses_another_model_before_loading(monkeypatch, capsys):
+    code, err = exit_code(monkeypatch, capsys, cli, ["--prompt", "p", "--model", "fibo"])
+    assert code == 2
+    assert "only accepts the aliases" in err
+    assert FakeFibo2.instances == []
     with pytest.raises(ModelConfigError):
         cli.Fibo2Command.validate(cli.build_parser().parse_args())
 
@@ -192,11 +204,18 @@ def test_a_negative_prompt_at_guidance_1_is_reported(monkeypatch, tmp_path, imag
         run(monkeypatch, module, argv)
 
 
-def test_edit_turbo_warns_when_guidance_turns_it_on(monkeypatch, tmp_path, image):
-    argv = ["--prompt", "p", "--image-paths", str(image), "--model", "fibo2-edit-turbo", "--guidance", "4"]
+@pytest.mark.parametrize(
+    ("module", "fake"),
+    [(cli, FakeFibo2), (edit_cli, FakeFibo2Edit)],
+    ids=["text-to-image", "edit"],
+)
+def test_edit_turbo_warns_when_guidance_turns_it_on(monkeypatch, tmp_path, image, module, fake):
+    argv = ["--prompt", "p", "--model", "fibo2-edit-turbo", "--guidance", "4", "--output", str(tmp_path / "out.png")]
+    if module is edit_cli:
+        argv += ["--image-paths", str(image)]
     with pytest.warns(UserWarning, match="distilled to run without guidance"):
-        run(monkeypatch, edit_cli, [*argv, "--output", str(tmp_path / "out.png")])
-    assert FakeFibo2Edit.instances[0].generate_calls[0]["guidance"] == 4.0
+        run(monkeypatch, module, argv)
+    assert fake.instances[0].generate_calls[0]["guidance"] == 4.0
 
 
 @pytest.mark.parametrize(

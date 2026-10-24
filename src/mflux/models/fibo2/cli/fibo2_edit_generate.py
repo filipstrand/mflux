@@ -1,4 +1,3 @@
-import warnings
 from argparse import Namespace
 from pathlib import Path
 
@@ -25,10 +24,6 @@ IGNORED_OPTIONS = {
     "--scheduler": "FIBO 2 always runs the flow-match Euler schedule it was trained with.",
     "--lora-style": "Named LoRA styles are only supported by the Flux in-context CLI; use --lora.",
 }
-
-TURBO_GUIDANCE_WARNING = (
-    "Edit Turbo is distilled to run without guidance; a value above 1 still runs the negative pass."
-)
 
 
 def build_parser() -> CommandLineParser:
@@ -97,11 +92,6 @@ class Fibo2EditCommand:
         )
 
     @staticmethod
-    def warn_guidance_on_turbo(args: Namespace, model_config: ModelConfig) -> None:
-        if not model_config.supports_guidance and args.guidance is not None and args.guidance > 1.0:
-            warnings.warn(f"--guidance {args.guidance}: {TURBO_GUIDANCE_WARNING}", stacklevel=2)
-
-    @staticmethod
     def _explicit_size(
         width: int | ScaleFactor, height: int | ScaleFactor, image_path: Path
     ) -> tuple[int | None, int | None]:
@@ -123,7 +113,7 @@ def main():
     except ValueError as exc:
         parser.error(str(exc))
     CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
-    Fibo2EditCommand.warn_guidance_on_turbo(args, model_config)
+    Fibo2Command.warn_guidance_on_turbo(args, model_config)
     Fibo2Command.warn_unused_negative_prompt(args, model_config)
     model = Fibo2EditCommand.load(args)
 

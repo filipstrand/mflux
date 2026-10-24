@@ -15,12 +15,18 @@ from mflux.utils.prompt_util import PromptUtil
 
 # The model this CLI runs. The parser needs it to key the --steps default off the right model.
 DEFAULT_MODEL = "fibo2"
+# Edit Turbo generates from a caption too, in 4 steps without guidance
+FAMILY_MODELS = ("fibo2-edit-turbo",)
 
 # Options the shared parser adds that FIBO 2 cannot use: kept accepted so scripts do not break, but reported
 IGNORED_OPTIONS = {
     "--scheduler": "FIBO 2 always runs the flow-match Euler schedule it was trained with.",
     "--lora-style": "Named LoRA styles are only supported by the Flux in-context CLI; use --lora.",
 }
+
+TURBO_GUIDANCE_WARNING = (
+    "Edit Turbo is distilled to run without guidance; a value above 1 still runs the negative pass."
+)
 
 CONDITIONAL_OPTIONS = {
     "--negative-prompt": {
@@ -51,6 +57,7 @@ class Fibo2Command:
             args.model,
             DEFAULT_MODEL,
             model_path=args.model_path,
+            extra_keys=FAMILY_MODELS,
             base_model=args.base_model,
         )
 
@@ -62,6 +69,11 @@ class Fibo2Command:
             model_path=args.model_path,
             **lora_init_kwargs_from_args(args),
         )
+
+    @staticmethod
+    def warn_guidance_on_turbo(args: Namespace, model_config: ModelConfig) -> None:
+        if not model_config.supports_guidance and args.guidance is not None and args.guidance > 1.0:
+            warnings.warn(f"--guidance {args.guidance}: {TURBO_GUIDANCE_WARNING}", stacklevel=2)
 
     @staticmethod
     def warn_unused_negative_prompt(args: Namespace, model_config: ModelConfig) -> None:
@@ -91,9 +103,14 @@ def main():
     parser = build_parser()
     args = parser.parse_args()
 
-    # 1. Load the model
+    # 1. Check the flags, then load the model
+    try:
+        model_config = Fibo2Command.validate(args)
+    except ValueError as exc:
+        parser.error(str(exc))
     CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
-    Fibo2Command.warn_unused_negative_prompt(args, Fibo2Command.validate(args))
+    Fibo2Command.warn_guidance_on_turbo(args, model_config)
+    Fibo2Command.warn_unused_negative_prompt(args, model_config)
     model = Fibo2Command.load(args)
 
     # 2. Register callbacks
