@@ -21,7 +21,7 @@ mflux-generate-fibo2 \
   --seed 42
 ```
 
-`--steps` defaults to 30 and `--guidance` to 5.0. The model card suggests 50 steps for the best quality. Width and height must be multiples of 16. Long captions are easier to keep in a file with `--prompt-file caption.json`.
+`--steps` defaults to 50 and `--guidance` to 5.0, the model card's settings. Width and height must be multiples of 16. Long captions are easier to keep in a file with `--prompt-file caption.json`.
 
 <details>
 <summary>Python API</summary>
@@ -69,7 +69,7 @@ The commands check a JSON caption before the model loads, against the format of 
 
 Freeform text that is not one of these forms works less well. To turn a short request into a full caption, see the prompt-to-JSON models on the [Bria FIBO](https://huggingface.co/briaai/FIBO) page.
 
-With guidance on, the default negative prompt is the null caption the model was trained with: the caption keys with every value empty. Pass `--negative-prompt` to use your own.
+With guidance on, the default negative prompt is the model card's. Text to image steers away from a caption of soft, featureless images with blur, haze and lens flare. An edit uses the null caption the model was trained with: the caption keys with every value empty. Pass `--negative-prompt` to use your own.
 
 ### Text in images
 When a caption asks for text in its `text_render` entries, mflux also shows Qwen3-VL each text drawn on its own, the way training drew it: one line, black on white, in Pillow's built-in font, with the fonts that ship with the model (Aileron, then DejaVu Sans) for characters that font lacks. FIBO 2 renders text better with them. A generation runs its first steps, while the noise level is above 0.9, on the caption without the images; an edit uses them at every step. A short description gets no images. Turn them off with `--no-text-images`, or `render_text_images=False` in Python. The metadata records it, so `--config-from-metadata` turns them off again unless you pass `--text-images`.

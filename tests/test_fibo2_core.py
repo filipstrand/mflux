@@ -118,10 +118,10 @@ class _Saver:
 @pytest.mark.parametrize(
     ("name", "base_model", "expected"),
     [
-        ("fibo2", None, (30, 5.0)),
+        ("fibo2", None, (50, 5.0)),
         ("fibo2-edit-turbo", None, (4, 1.0)),
         ("/models/my-own-turbo", "fibo2-edit-turbo", (4, 1.0)),
-        ("/models/my-own-dev", "fibo2", (30, 5.0)),
+        ("/models/my-own-dev", "fibo2", (50, 5.0)),
     ],
 )
 def test_steps_and_guidance_default_by_checkpoint(name, base_model, expected):
@@ -174,6 +174,29 @@ def test_callbacks_and_metadata_keep_the_prompt_as_given(monkeypatch, prompt, im
     if images:
         Fibo2PromptEncoder.check_edit_prompt(recorded)
         assert loop.encoded[0].count(Fibo2PromptEncoder.VISION_MARKER) == images
+
+
+@pytest.mark.parametrize(
+    ("negative_prompt", "images", "encoded"),
+    [
+        (None, 0, Fibo2PromptEncoder.TEXT_TO_IMAGE_NEGATIVE),
+        ("", 1, Fibo2PromptEncoder.NULL_CAPTION),
+        ("blurry", 0, "blurry"),
+        ("blurry", 1, "blurry"),
+    ],
+)
+def test_the_negative_prompt_defaults_to_the_model_cards(monkeypatch, negative_prompt, images, encoded):
+    # Text to image steers away from the card's caption of soft, featureless images, an edit from the null caption
+    loop = _Loop()
+    crops = [Image.new("RGB", (64, 64))] * images
+    loop.generate(monkeypatch, negative_prompt=negative_prompt, images=crops, text_encoder_images=crops)
+    assert loop.encoded == [encoded]
+
+
+def test_the_text_to_image_negative_has_the_keys_of_the_null_caption():
+    negative = json.loads(Fibo2PromptEncoder.TEXT_TO_IMAGE_NEGATIVE)
+    assert list(negative) == list(json.loads(Fibo2PromptEncoder.NULL_CAPTION))
+    assert negative["objects"][0]["description"] == "the main subject"
 
 
 def test_a_step_cache_reuses_the_velocity_on_the_steps_it_skips(monkeypatch):

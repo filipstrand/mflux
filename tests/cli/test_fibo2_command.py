@@ -144,10 +144,10 @@ def test_edit_passes_every_flag_to_the_model(monkeypatch, tmp_path, image, lora_
     ]
 
 
-def test_text_to_image_defaults_leave_steps_at_30_and_guidance_to_the_model(monkeypatch, tmp_path):
+def test_text_to_image_defaults_leave_steps_at_50_and_guidance_to_the_model(monkeypatch, tmp_path):
     run(monkeypatch, cli, ["--prompt", "an owl", "--output", str(tmp_path / "out.png")])
     call = FakeFibo2.instances[0].generate_calls[0]
-    assert (call["num_inference_steps"], call["guidance"], call["render_text_images"]) == (30, None, True)
+    assert (call["num_inference_steps"], call["guidance"], call["render_text_images"]) == (50, None, True)
     assert (call["width"], call["height"]) == (1024, 1024)
 
 
@@ -155,7 +155,7 @@ def test_edit_auto_size_is_left_to_the_model(monkeypatch, tmp_path, image):
     run(monkeypatch, edit_cli, ["--prompt", "p", "--image-paths", str(image), "--output", str(tmp_path / "o.png")])
     call = FakeFibo2Edit.instances[0].generate_calls[0]
     assert (call["width"], call["height"]) == (None, None)
-    assert call["num_inference_steps"] == 30
+    assert call["num_inference_steps"] == 50
 
 
 def test_edit_turbo_defaults_to_4_steps(monkeypatch, tmp_path, image):

@@ -100,7 +100,9 @@ class _Fibo2Core(nn.Module):
         prompt_embeds, base_embeds = self._encode_prompts(prompt, images, text_encoder_images, render_text_images)
         negative_embeds = None
         if config.guidance > 1.0:
-            negative_embeds = self._encode_prompt(negative_prompt or Fibo2PromptEncoder.NULL_CAPTION)
+            # The model card's defaults: a caption of what text to image steers away from, the null caption for edits
+            default = Fibo2PromptEncoder.NULL_CAPTION if images else Fibo2PromptEncoder.TEXT_TO_IMAGE_NEGATIVE
+            negative_embeds = self._encode_prompt(negative_prompt or default)
 
         # 2. Starting noise, kept in float32 between steps, and the latents of the images to edit
         latents = Fibo2LatentCreator.create_noise(seed, config.height, config.width)
