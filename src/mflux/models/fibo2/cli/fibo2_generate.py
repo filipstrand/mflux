@@ -47,6 +47,7 @@ def build_parser() -> CommandLineParser:
     parser.add_image_generator_arguments(supports_metadata_config=True)
     parser.add_argument("--text-images", dest="render_text_images", action=BooleanOptionalAction, default=True, help="Show the text encoder images of the caption's text_render texts (default). FIBO 2 renders text better with them; --no-text-images turns them off.")  # fmt: off
     parser.add_lora_arguments()
+    parser.add_step_cache_arguments()
     parser.add_output_arguments()
     parser.add_vae_full_precision_arguments()
     return parser
@@ -103,6 +104,7 @@ class Fibo2Command:
             guidance=args.guidance,
             num_inference_steps=args.steps,
             render_text_images=args.render_text_images,
+            step_cache_ratio=args.step_cache_ratio,
         )
 
 

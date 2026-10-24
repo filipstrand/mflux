@@ -9,6 +9,7 @@ from mflux.cli.defaults.defaults import model_inference_steps
 from mflux.models.common.config.config import Config
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.schedulers.flow_match_euler_discrete_scheduler import FlowMatchEulerDiscreteScheduler
+from mflux.models.common.step_cache.step_cache import StepCache
 from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.common.weights.saving.model_saver import ModelSaver
 from mflux.models.fibo2.fibo2_initializer import Fibo2Initializer
@@ -80,6 +81,7 @@ class _Fibo2Core(nn.Module):
         image_paths: list[Path | str] | None = None,
         mask_path: Path | str | None = None,
         render_text_images: bool = True,
+        step_cache_ratio: float | None = None,
     ) -> GeneratedImage:
         # Shared by the txt2img and edit variants: images are the crops to edit (None for txt2img)
         num_inference_steps, guidance = self._resolve_sampling(num_inference_steps, guidance)
@@ -104,14 +106,18 @@ class _Fibo2Core(nn.Module):
         latents = Fibo2LatentCreator.create_noise(seed, config.height, config.width)
         context_latents = [Fibo2LatentCreator.encode_image(self.vae, image, self.tiling_config) for image in images or []]  # fmt: off
 
-        # 3. Denoising loop
+        # 3. Denoising loop. The steps a step cache skips reuse the velocity of the step before
+        step_cache = StepCache.for_run(config, ratio=step_cache_ratio)
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
         for t in config.time_steps:
             try:
-                sigma = config.scheduler.sigmas[t : t + 1]
-                embeds = _Fibo2Core._embeds_for_step(float(sigma[0]), prompt_embeds, base_embeds)
-                velocity = self._predict(latents, sigma, embeds, negative_embeds, config.guidance, context_latents)
+                velocity = step_cache.reuse(t)
+                if velocity is None:
+                    sigma = config.scheduler.sigmas[t : t + 1]
+                    embeds = _Fibo2Core._embeds_for_step(float(sigma[0]), prompt_embeds, base_embeds)
+                    velocity = self._predict(latents, sigma, embeds, negative_embeds, config.guidance, context_latents)
+                    step_cache.store(velocity)
                 latents = config.scheduler.step(noise=velocity, timestep=t, latents=latents)
                 ctx.in_loop(t, latents)
                 mx.eval(latents)
@@ -137,6 +143,7 @@ class _Fibo2Core(nn.Module):
             image_paths=image_paths,
             masked_image_path=mask_path,
             generation_parameters={
+                **StepCache.generation_parameters(step_cache_ratio),
                 **VAEDecodeOptions.generation_parameters(self),
                 # Recorded only when off, which --config-from-metadata replays
                 **({} if render_text_images else {"render_text_images": False}),

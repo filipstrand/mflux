@@ -176,6 +176,17 @@ def test_callbacks_and_metadata_keep_the_prompt_as_given(monkeypatch, prompt, im
         assert loop.encoded[0].count(Fibo2PromptEncoder.VISION_MARKER) == images
 
 
+def test_a_step_cache_reuses_the_velocity_on_the_steps_it_skips(monkeypatch):
+    # 20 steps at 0.25: the 5 steps whose sigma changes least, outside the first and last 2, skip the transformer
+    loop = _Loop()
+    image = loop.generate(monkeypatch, num_inference_steps=20, step_cache_ratio=0.25)
+    assert len(loop.embeds_per_step) == 15
+    assert image["generation_parameters"] == {"step_cache_ratio": 0.25}
+    loop = _Loop()
+    assert loop.generate(monkeypatch, num_inference_steps=20)["generation_parameters"] == {}
+    assert len(loop.embeds_per_step) == 20
+
+
 @pytest.mark.parametrize(("render_text_images", "recorded"), [(True, {}), (False, {"render_text_images": False})])
 def test_the_metadata_records_text_images_that_are_off(monkeypatch, render_text_images, recorded):
     image = _Loop().generate(monkeypatch, render_text_images=render_text_images)

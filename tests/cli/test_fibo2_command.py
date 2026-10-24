@@ -58,6 +58,7 @@ def shared_argv(tmp_path, lora_file):
         "--guidance", "3.5",
         "--negative-prompt", "blurry",
         "--no-text-images",
+        "--step-cache-ratio", "0.25",
         "--lora", str(lora_file), "0.5",
         "--no-bake-lora",
         "-q", "8",
@@ -102,6 +103,7 @@ def test_text_to_image_passes_every_flag_to_the_model(monkeypatch, tmp_path, lor
             "guidance": 3.5,
             "num_inference_steps": 12,
             "render_text_images": False,
+            "step_cache_ratio": 0.25,
         }
         for seed in (7, 8)
     ]
@@ -132,6 +134,7 @@ def test_edit_passes_every_flag_to_the_model(monkeypatch, tmp_path, image, lora_
             "guidance": 3.5,
             "num_inference_steps": 12,
             "render_text_images": False,
+            "step_cache_ratio": 0.25,
         }
         for seed in (7, 8)
     ]
@@ -217,6 +220,17 @@ def test_edit_turbo_warns_when_guidance_turns_it_on(monkeypatch, tmp_path, image
     with pytest.warns(UserWarning, match="distilled to run without guidance"):
         run(monkeypatch, module, argv)
     assert fake.instances[0].generate_calls[0]["guidance"] == 4.0
+
+
+@pytest.mark.parametrize("module", [cli, edit_cli], ids=["text-to-image", "edit"])
+def test_a_sidecar_replays_the_step_cache(monkeypatch, tmp_path, image, module):
+    sidecar = tmp_path / "image.metadata.json"
+    sidecar.write_text(json.dumps({"prompt": "p", "seed": 1, "steps": 50, "step_cache_ratio": 0.25}))
+    argv = ["--config-from-metadata", str(sidecar)]
+    if module is edit_cli:
+        argv += ["--image-paths", str(image)]
+    monkeypatch.setattr(sys, "argv", ["mflux-generate-fibo2", *argv])
+    assert module.build_parser().parse_args().step_cache_ratio == 0.25
 
 
 @pytest.mark.parametrize("module", [cli, edit_cli], ids=["text-to-image", "edit"])

@@ -19,6 +19,7 @@ class Fibo2Edit(_Fibo2Core):
         guidance: float | None = None,
         negative_prompt: str | None = None,
         render_text_images: bool = True,
+        step_cache_ratio: float | None = None,
     ) -> GeneratedImage:
         Fibo2CaptionCheck.check_and_log(prompt, edit=True)
         # Without width and height the result takes the trained size for the first image's aspect ratio
@@ -32,6 +33,7 @@ class Fibo2Edit(_Fibo2Core):
             guidance=guidance,
             negative_prompt=negative_prompt,
             render_text_images=render_text_images,
+            step_cache_ratio=step_cache_ratio,
             images=images,
             text_encoder_images=text_encoder_images,
             image_paths=image_paths,
