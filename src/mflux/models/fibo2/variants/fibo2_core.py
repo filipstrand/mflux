@@ -100,7 +100,7 @@ class _Fibo2Core(nn.Module):
         config.scheduler.set_mu(FlowMatchEulerDiscreteScheduler._compute_linear_mu(config.image_seq_len))
 
         # 1. Encode the prompt (an edit's with its images), and the negative prompt, without them, when guidance is on.
-        # The callbacks and the metadata keep the prompt as given, so a replay encodes it the same way.
+        # The metadata keeps the prompt as given, so a replay encodes it the same way.
         prompt_embeds, base_embeds = self._encode_prompts(prompt, images, text_encoder_images, render_text_images)
         negative_embeds = None
         if config.guidance > 1.0:
@@ -117,7 +117,10 @@ class _Fibo2Core(nn.Module):
         # start on and the cutoff step always run the transformer
         step_cache = StepCache.for_run(config, ratio=step_cache_ratio)
         stored_from: tuple[mx.array, mx.array | None] | None = None
-        ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
+        # MemorySaver frees the text encoder between seeds when the callbacks' prompt is in prompt_cache. Text to image
+        # caches the formatted caption, unless its text images need the encoder again. An edit never caches its prompt.
+        callbacks_prompt = prompt if images else Fibo2PromptEncoder.format_prompt(prompt)
+        ctx = self.callbacks.start(seed=seed, prompt=callbacks_prompt, config=config)
         ctx.before_loop(latents)
         for t in config.time_steps:
             try:

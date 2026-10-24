@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from types import SimpleNamespace
+from types import MethodType, SimpleNamespace
 
 import mlx.core as mx
 import numpy as np
@@ -9,6 +9,7 @@ from mlx import nn
 from PIL import Image
 
 from mflux.callbacks.callback_registry import CallbackRegistry
+from mflux.callbacks.instances.memory_saver import MemorySaver
 from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.lora.layer.linear_lora_layer import LoRALinear
 from mflux.models.common.lora.mapping.lora_loader import LoRALoader
@@ -164,9 +165,10 @@ def test_the_metadata_records_a_full_precision_decode(monkeypatch, decode_mode, 
     ],
     ids=["instruction", "structured-caption", "caption-two-images", "text-to-image"],
 )
-def test_callbacks_and_metadata_keep_the_prompt_as_given(monkeypatch, prompt, images):
+def test_the_metadata_keeps_the_prompt_as_given(monkeypatch, prompt, images):
     # Only the text encoder reads the prompt with its image markers. With the markers in the metadata, a replay of a
-    # "structured_caption" edit failed check_edit_prompt, and an instruction alone gained a second image marker.
+    # "structured_caption" edit failed check_edit_prompt, and an instruction alone gained a second image marker. The
+    # callbacks get an edit's prompt as given too, and for text to image the formatted caption, its prompt_cache key.
     loop = _Loop()
     core = loop.core(monkeypatch, stand_in_prompts=False)
     started = []
@@ -177,11 +179,39 @@ def test_callbacks_and_metadata_keep_the_prompt_as_given(monkeypatch, prompt, im
     recorded = core._generate(prompt=prompt, **settings)["prompt"]
     replayed = core._generate(prompt=recorded, **settings)["prompt"]
     assert recorded == replayed == prompt
-    assert started == [prompt, prompt]
+    assert started == [prompt if images else Fibo2PromptEncoder.format_prompt(prompt)] * 2
     assert loop.encoded[0] == loop.encoded[1] != prompt
     if images:
         Fibo2PromptEncoder.check_edit_prompt(recorded)
         assert loop.encoded[0].count(Fibo2PromptEncoder.VISION_MARKER) == images
+
+
+@pytest.mark.parametrize(
+    ("prompt", "images", "freed"),
+    [
+        (json.dumps({"short_description": "A blue bicycle.", "lighting": {}}, indent=2), 0, True),
+        ("A blue bicycle.", 0, True),
+        (json.dumps({"short_description": "A shop sign.", "text_render": [{"text": "OPEN"}]}), 0, False),
+        ("Make the bicycle blue", 1, False),
+    ],
+    ids=["json-caption", "short-description", "text-images", "edit"],
+)
+def test_memory_saver_frees_the_text_encoder_when_later_seeds_need_no_encoding(monkeypatch, prompt, images, freed):
+    # MemorySaver frees it when the callbacks' prompt is in prompt_cache. A JSON caption is cached formatted, and the
+    # callbacks got it as given, a key it is not cached under. Text images and edits encode with images on every seed.
+    encoded = []
+    monkeypatch.setattr(Fibo2PromptEncoder, "encode_prompt", staticmethod(lambda prompt, *args: encoded.append(prompt) or _Loop.ENCODED))  # fmt: off
+    core = _Loop().core(monkeypatch, stand_in_prompts=False)
+    core._encode_prompt = MethodType(_Fibo2Core._encode_prompt, core)
+    core.prompt_cache, core.processor, core.text_encoder = {}, None, "text encoder"
+    core.callbacks.register(MemorySaver(model=core, cache_limit_bytes=None, num_seeds=2))
+    crops = [Image.new("RGB", (64, 64))] * images
+    settings = {"prompt": prompt, "num_inference_steps": 2, "height": 64, "width": 64, "guidance": 1.0, "images": crops, "text_encoder_images": crops}  # fmt: off
+    core._generate(seed=1, **settings)
+    assert (core.text_encoder is None) is freed
+    if freed:
+        core._generate(seed=2, **settings)
+        assert len(encoded) == 1
 
 
 @pytest.mark.parametrize(
