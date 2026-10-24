@@ -91,7 +91,7 @@ mflux-generate-fibo2-edit \
   --seed 42
 ```
 
-Without `--width` and `--height`, the result takes the size FIBO 2 was trained at for the aspect ratio of the first image, about one megapixel. A single image is cropped to the size of the result; several images are each cropped to the trained size for their own aspect ratio.
+Without `--width` and `--height`, the result takes the size FIBO 2 was trained at for the aspect ratio of the first image, about one megapixel. With only one of them, the other keeps that aspect ratio. A single image is cropped to the size of the result; several images are each cropped to the trained size for their own aspect ratio.
 
 The prompt can also be a JSON object with an `"edit_instruction"` key and a caption of the result, either as the caption's own keys or as a `"structured_caption"` key holding a caption or a short description:
 
