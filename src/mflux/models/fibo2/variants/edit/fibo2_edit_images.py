@@ -66,13 +66,14 @@ class Fibo2EditImages:
 
     @staticmethod
     def _result_size(aspect_ratio: float, width: int | None, height: int | None) -> tuple[int, int]:
-        # Without width and height, the trained size for the first image's aspect ratio; with one, the other keeps it
+        # Without width and height, the trained size for the first image's aspect ratio. With one, the other keeps it,
+        # and is at least 16 so that it does not round down to nothing.
         if width is not None and height is not None:
             return width, height
         if width is not None:
-            return width, round(width / aspect_ratio)
+            return width, max(Fibo2EditImages.MULTIPLE, round(width / aspect_ratio))
         if height is not None:
-            return round(height * aspect_ratio), height
+            return max(Fibo2EditImages.MULTIPLE, round(height * aspect_ratio)), height
         return Fibo2EditImages.trained_size(aspect_ratio)
 
     @staticmethod

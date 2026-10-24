@@ -62,6 +62,14 @@ def test_one_side_given_keeps_the_aspect_ratio_of_the_first_image(tmp_path, widt
     assert crops[0].size == size
 
 
+@pytest.mark.parametrize(("source", "width", "height", "size"), [((4000, 200), 256, None, (256, 16)), ((200, 4000), None, 256, (16, 256))])  # fmt: off
+def test_a_side_that_keeps_the_aspect_ratio_is_at_least_16(tmp_path, source, width, height, size):
+    # A 20:1 banner at --width 256 keeps its aspect ratio at a height of 13, which rounded down to an empty crop
+    crops, _, result = Fibo2EditImages.prepare([_Images.save(tmp_path / "a.png", source)], width=width, height=height)
+    assert result == size
+    assert crops[0].size == size
+
+
 def test_exif_orientation_is_applied_to_the_image(tmp_path):
     # A landscape file whose Orientation tag says to show it rotated: the model must see it upright (portrait)
     path = tmp_path / "phone.jpg"
