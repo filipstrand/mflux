@@ -201,6 +201,25 @@ def test_expand_prompt_writes_the_caption_once_before_fibo2_loads(monkeypatch, t
     assert [call["prompt"] for call in FakeFibo2.instances[0].generate_calls] == [caption, caption]
 
 
+@pytest.mark.parametrize(
+    ("caption", "message"),
+    [
+        ('{"short_description": "an owl", "lighting": {"conditions": "dawn', "is not valid JSON"),
+        ('{"short_description": "an owl", "lighting": "soft"}', "lighting has to be a JSON object"),
+    ],
+    ids=["cut-short", "wrong-type"],
+)
+def test_expand_prompt_refuses_a_broken_caption_before_fibo2_loads(monkeypatch, capsys, tmp_path, caption, message):
+    # FIBO-vlm returns a caption it cannot parse as it is
+    monkeypatch.setattr(FakeFiboVLM, "generate", lambda self, prompt, seed=None: caption)
+    argv = ["--prompt", "an owl", "--expand-prompt", "--output", str(tmp_path / "o.png")]
+    code, err = exit_code(monkeypatch, capsys, cli, argv)
+    assert code == 2
+    assert "FIBO-vlm's caption" in err
+    assert message in err
+    assert FakeFibo2.instances == []
+
+
 def test_expand_prompt_keeps_a_json_caption_as_it_is(monkeypatch, tmp_path):
     prompt = '{"short_description": "an owl"}'
     run(monkeypatch, cli, ["--prompt", prompt, "--expand-prompt", "--output", str(tmp_path / "o.png")])

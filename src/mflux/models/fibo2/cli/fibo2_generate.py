@@ -98,7 +98,8 @@ class Fibo2Command:
     @staticmethod
     def expand_prompt(prompt: str, quantize: int | None) -> str:
         # FIBO-vlm writes the caption with the seed FIBO's command uses, and is freed before FIBO 2 loads. Its captions
-        # keep FIBO 1's scores, which FIBO 2 drops when it reads them.
+        # keep FIBO 1's scores, which FIBO 2 drops when it reads them. The caption is checked like a given one, so one
+        # that is cut short or has a field of the wrong type raises before FIBO 2 loads.
         if Fibo2PromptEncoder.caption(prompt) is not None:
             return prompt
         vlm = FiboVLM(quantize=quantize)
@@ -107,6 +108,7 @@ class Fibo2Command:
         gc.collect()
         mx.clear_cache()
         print(f"FIBO-vlm caption: {caption}")
+        Fibo2CaptionCheck.check(caption, edit=False)
         return caption
 
     @staticmethod
@@ -160,6 +162,8 @@ def main():
         except PromptFileReadError as exc:
             print(exc)
             return
+        except ValueError as exc:
+            parser.error(f"FIBO-vlm's caption: {exc}")
     model = Fibo2Command.load(args)
 
     # 2. Register callbacks
