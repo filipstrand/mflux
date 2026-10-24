@@ -112,20 +112,24 @@ class _Fibo2Core(nn.Module):
         latents = Fibo2LatentCreator.create_noise(seed, config.height, config.width)
         context_latents = [Fibo2LatentCreator.encode_image(self.vae, image, self.tiling_config) for image in images or []]  # fmt: off
 
-        # 3. Denoising loop. The steps a step cache skips reuse the velocity of the step before, guided or not, and the
-        # steps after the cfg_end cutoff run the prompt's pass alone
+        # 3. Denoising loop. The steps after the cfg_end cutoff run the prompt's pass alone. A step the step cache skips
+        # reuses the stored velocity only if that velocity came from the same embeddings, so the step the text images
+        # start on and the cutoff step always run the transformer
         step_cache = StepCache.for_run(config, ratio=step_cache_ratio)
+        stored_from: tuple[mx.array, mx.array | None] | None = None
         ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
         ctx.before_loop(latents)
         for t in config.time_steps:
             try:
-                velocity = step_cache.reuse(t)
+                sigma = config.scheduler.sigmas[t : t + 1]
+                embeds = _Fibo2Core._embeds_for_step(float(sigma[0]), prompt_embeds, base_embeds)
+                negative = negative_embeds if t < cfg_cutoff else None
+                same_embeds = stored_from is not None and stored_from[0] is embeds and stored_from[1] is negative
+                velocity = step_cache.reuse(t) if same_embeds else None
                 if velocity is None:
-                    sigma = config.scheduler.sigmas[t : t + 1]
-                    embeds = _Fibo2Core._embeds_for_step(float(sigma[0]), prompt_embeds, base_embeds)
-                    negative = negative_embeds if t < cfg_cutoff else None
                     velocity = self._predict(latents, sigma, embeds, negative, config.guidance, context_latents)
                     step_cache.store(velocity)
+                    stored_from = (embeds, negative)
                 latents = config.scheduler.step(noise=velocity, timestep=t, latents=latents)
                 ctx.in_loop(t, latents)
                 mx.eval(latents)

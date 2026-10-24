@@ -208,14 +208,34 @@ def test_the_text_to_image_negative_has_the_keys_of_the_null_caption():
 
 
 def test_a_step_cache_reuses_the_velocity_on_the_steps_it_skips(monkeypatch):
-    # 20 steps at 0.25: the 5 steps whose sigma changes least, outside the first and last 2, skip the transformer
+    # 20 steps at 0.25: the 5 steps whose sigma changes least, 2 to 6, skip the transformer, except step 4, where the
+    # text images start
     loop = _Loop()
     image = loop.generate(monkeypatch, num_inference_steps=20, step_cache_ratio=0.25)
-    assert len(loop.embeds_per_step) == 15
+    assert len(loop.embeds_per_step) == 16
     assert image["generation_parameters"] == {"step_cache_ratio": 0.25}
     loop = _Loop()
     assert loop.generate(monkeypatch, num_inference_steps=20)["generation_parameters"] == {}
     assert len(loop.embeds_per_step) == 20
+
+
+@pytest.mark.parametrize(
+    ("cfg_end", "skipped", "embeds", "negative"),
+    [
+        # 8 steps at 512x512 start the text images on step 2: a skipped step 2 runs anyway, and step 3 reuses it
+        (None, {2, 3}, ["without"] * 2 + ["with"] * 5, [True] * 7),
+        # cfg_end 0.5 ends the negative pass on step 4: a skipped step 4 runs without it, and step 5 reuses it
+        (0.5, {4, 5}, ["without"] * 2 + ["with"] * 5, [True] * 4 + [False] * 3),
+    ],
+    ids=["text-images", "cfg-end"],
+)
+def test_a_step_cache_does_not_reuse_a_velocity_across_a_change_of_embeddings(monkeypatch, cfg_end, skipped, embeds, negative):  # fmt: off
+    # Reusing the velocity of the step before would start the text images, or end the negative pass, on the next
+    # step the cache does not skip
+    monkeypatch.setattr(fibo2_core.StepCache, "for_run", staticmethod(lambda config, ratio: StepCache(frozenset(skipped))))  # fmt: off
+    loop = _Loop()
+    loop.generate(monkeypatch, step_cache_ratio=0.25, cfg_end=cfg_end)
+    assert (loop.embeds_per_step, loop.negative_per_step) == (embeds, negative)
 
 
 class _Transformer:
