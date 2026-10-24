@@ -64,6 +64,26 @@ def test_unknown_and_missing_fields_are_warnings():
     ]
 
 
+@pytest.mark.parametrize("text_render", [[{"text": "FRESH BREAD"}], []], ids=["a-text", "no-text"])
+def test_the_short_form_has_no_missing_fields(text_render):
+    # Exactly a short_description and a text_render list is a form training saw on its own, with each text alone
+    caption = {"short_description": "A bakery storefront at dawn.", "text_render": text_render}
+    assert Fibo2CaptionCheck.check(json.dumps(caption), edit=False) == []
+    assert Fibo2CaptionCheck.check(json.dumps({**caption, "edit_instruction": "Add the sign."}), edit=True) == []
+    edit = {"structured_caption": caption, "edit_instruction": "Add the sign."}
+    assert Fibo2CaptionCheck.check(json.dumps(edit), edit=True) == []
+
+
+def test_the_short_form_still_reports_unknown_fields_and_wrong_types():
+    caption = {"short_description": "A shop.", "text_render": [{"text": "OPEN", "fnot": "serif"}, {"size": "large"}]}
+    assert Fibo2CaptionCheck.check(json.dumps(caption), edit=False) == [
+        "Unknown field 'text_render[0].fnot': the model was not trained on it. Did you mean 'font'?",
+        "Missing in text_render[1]: text. FIBO 2's training captions have these fields.",
+    ]
+    with pytest.raises(ValueError, match=r"text_render\[0\]\.text has to be a string, not the number 5"):
+        Fibo2CaptionCheck.check(json.dumps({"short_description": "A shop.", "text_render": [{"text": 5}]}), edit=False)
+
+
 def test_fibo1_scores_and_empty_values_are_not_reported():
     caption = {**CAPTION, "aesthetics": {**CAPTION["aesthetics"], "aesthetic_score": "very high"}, "objects": []}
     assert Fibo2CaptionCheck.check(json.dumps(caption), edit=False) == []

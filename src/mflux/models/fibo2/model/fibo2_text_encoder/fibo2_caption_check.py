@@ -63,6 +63,12 @@ class Fibo2CaptionCheck:
         "context": (STRING, True),
         "artistic_style": (STRING, False),
     }
+    # Exactly a short_description and a text_render list, a form training saw on its own, where an entry can hold its
+    # text alone
+    SHORT_CAPTION = {
+        "short_description": (STRING, True),
+        "text_render": ([{name: (kind, name == "text") for name, (kind, _) in TEXT_RENDER.items()}], True),
+    }
 
     @staticmethod
     def check(prompt: str, edit: bool) -> list[str]:
@@ -94,7 +100,9 @@ class Fibo2CaptionCheck:
         if not isinstance(caption, dict):
             return warnings
         errors: list[str] = []
-        Fibo2CaptionCheck._check_fields(caption, Fibo2CaptionCheck.CAPTION, "", errors, warnings)
+        short = set(caption) == set(Fibo2CaptionCheck.SHORT_CAPTION)
+        spec = Fibo2CaptionCheck.SHORT_CAPTION if short else Fibo2CaptionCheck.CAPTION
+        Fibo2CaptionCheck._check_fields(caption, spec, "", errors, warnings)
         if errors:
             raise ValueError("The JSON caption does not have the format FIBO 2 reads:\n  " + "\n  ".join(errors))
         return warnings
