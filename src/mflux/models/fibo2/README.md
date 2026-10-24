@@ -67,7 +67,14 @@ FIBO 2 was trained on three kinds of prompt, and mflux passes each of them on th
 
 The commands check a JSON caption before the model loads, against the format of the training captions (ThalesVGL in [bria-vgl](https://github.com/Bria-AI/vgl) 0.10.0). A field of the wrong type stops the command with the field's name, and a prompt that starts with `{` but is not valid JSON stops it with the line and column of the error. An unknown field, or a missing one that every training caption has, gives a warning, since the model still runs on such a caption: `Unknown field 'lightning': the model was not trained on it. Did you mean 'lighting'?`
 
-Freeform text that is not one of these forms works less well. To turn a short request into a full caption, see the prompt-to-JSON models on the [Bria FIBO](https://huggingface.co/briaai/FIBO) page.
+Freeform text that is not one of these forms works less well. `--expand-prompt` turns a short request into a full caption with [FIBO-vlm](https://huggingface.co/briaai/FIBO-vlm), FIBO's prompt-to-JSON model (about 8 GB on first use), before FIBO 2 loads. The command prints the caption, and the metadata keeps it. A JSON caption is used as it is:
+
+```sh
+mflux-generate-fibo2 \
+  --prompt "A snowy owl perched on a mossy branch in a misty pine forest at dawn, soft golden light." \
+  --expand-prompt \
+  --seed 42
+```
 
 With guidance on, the default negative prompt is the model card's. Text to image steers away from a caption of soft, featureless images with blur, haze and lens flare. An edit uses the null caption the model was trained with: the caption keys with every value empty. Pass `--negative-prompt` to use your own.
 

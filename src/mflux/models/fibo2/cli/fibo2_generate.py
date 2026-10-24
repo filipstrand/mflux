@@ -1,6 +1,9 @@
 import copy
+import gc
 import warnings
 from argparse import BooleanOptionalAction, Namespace
+
+import mlx.core as mx
 
 from mflux.callbacks.callback_manager import CallbackManager
 from mflux.cli.parser.parsers import CommandLineParser, lora_init_kwargs_from_args
@@ -9,7 +12,9 @@ from mflux.models.common.resolution.config_resolution import ConfigResolution
 from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.fibo2.latent_creator.fibo2_latent_creator import Fibo2LatentCreator
 from mflux.models.fibo2.model.fibo2_text_encoder.fibo2_caption_check import Fibo2CaptionCheck
+from mflux.models.fibo2.model.fibo2_text_encoder.prompt_encoder import Fibo2PromptEncoder
 from mflux.models.fibo2.variants.txt2img.fibo2 import Fibo2
+from mflux.models.fibo_vlm.model.fibo_vlm import FiboVLM
 from mflux.utils.dimension_resolver import DimensionResolver
 from mflux.utils.exceptions import PromptFileReadError, StopImageGenerationException
 from mflux.utils.generated_image import GeneratedImage
@@ -45,6 +50,7 @@ def build_parser() -> CommandLineParser:
     parser.add_model_arguments(require_model_arg=False, default_model=DEFAULT_MODEL)
     # Editing has its own command, mflux-generate-fibo2-edit.
     parser.add_image_generator_arguments(supports_metadata_config=True)
+    parser.add_argument("--expand-prompt", action="store_true", help="Write a JSON caption from a plain-text prompt with FIBO-vlm (briaai/FIBO-vlm, about 8 GB on first use) before FIBO 2 loads, and generate from it. A JSON caption is used as it is.")  # fmt: off
     parser.add_argument("--text-images", dest="render_text_images", action=BooleanOptionalAction, default=True, help="Show the text encoder images of the caption's text_render texts (default). FIBO 2 renders text better with them; --no-text-images turns them off.")  # fmt: off
     parser.add_lora_arguments()
     parser.add_step_cache_arguments()
@@ -78,6 +84,20 @@ class Fibo2Command:
         )
         VAEDecodeOptions.apply(args, model)
         return model
+
+    @staticmethod
+    def expand_prompt(prompt: str, quantize: int | None) -> str:
+        # FIBO-vlm writes the caption with the seed FIBO's command uses, and is freed before FIBO 2 loads. Its captions
+        # keep FIBO 1's scores, which FIBO 2 drops when it reads them.
+        if Fibo2PromptEncoder.caption(prompt) is not None:
+            return prompt
+        vlm = FiboVLM(quantize=quantize)
+        caption = vlm.generate(prompt=prompt, seed=42)
+        del vlm
+        gc.collect()
+        mx.clear_cache()
+        print(f"FIBO-vlm caption: {caption}")
+        return caption
 
     @staticmethod
     def warn_guidance_on_turbo(args: Namespace, model_config: ModelConfig) -> None:
@@ -121,6 +141,14 @@ def main():
     CommandLineParser.warn_ignored_options(IGNORED_OPTIONS)
     Fibo2Command.warn_guidance_on_turbo(args, model_config)
     Fibo2Command.warn_unused_negative_prompt(args, model_config)
+    # FIBO-vlm turns a plain prompt into a caption before FIBO 2 loads, so the two are not in memory together
+    expanded_prompt = None
+    if args.expand_prompt:
+        try:
+            expanded_prompt = Fibo2Command.expand_prompt(PromptUtil.read_prompt(args), args.quantize)
+        except PromptFileReadError as exc:
+            print(exc)
+            return
     model = Fibo2Command.load(args)
 
     # 2. Register callbacks
@@ -135,7 +163,7 @@ def main():
         run_args.width, run_args.height = DimensionResolver.resolve(width=args.width, height=args.height)
         for seed in args.seed:
             # 3. Generate an image for each seed value
-            image = Fibo2Command.generate(model, run_args, seed, PromptUtil.read_prompt(args))
+            image = Fibo2Command.generate(model, run_args, seed, expanded_prompt or PromptUtil.read_prompt(args))
             # 4. Save the image
             image.save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)
     except (StopImageGenerationException, PromptFileReadError) as exc:

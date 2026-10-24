@@ -24,11 +24,25 @@ class FakeFibo2Edit(FakeModel):
     real = Fibo2Edit
 
 
+class FakeFiboVLM:
+    # Records each caption it writes and how many FIBO 2 models existed then
+    calls: list[tuple[str, int | None, int]] = []
+
+    def __init__(self, quantize: int | None = None):
+        self.quantize = quantize
+
+    def generate(self, prompt: str, seed: int | None = None) -> str:
+        FakeFiboVLM.calls.append((prompt, self.quantize, len(FakeFibo2.instances)))
+        return json.dumps({"short_description": prompt, "aesthetics": {"aesthetic_score": "high"}})
+
+
 @pytest.fixture(autouse=True)
 def isolated_cli(monkeypatch):
     FakeFibo2.instances.clear()
     FakeFibo2Edit.instances.clear()
+    FakeFiboVLM.calls.clear()
     monkeypatch.setattr(cli, "Fibo2", FakeFibo2)
+    monkeypatch.setattr(cli, "FiboVLM", FakeFiboVLM)
     monkeypatch.setattr(edit_cli, "Fibo2Edit", FakeFibo2Edit)
     reset_cli_globals(monkeypatch)
     yield
@@ -173,6 +187,21 @@ def test_text_to_image_runs_edit_turbo_with_its_defaults(monkeypatch, tmp_path):
     # 4 steps, and guidance left to the model, which runs Edit Turbo at 1.0
     call = model.generate_calls[0]
     assert (call["num_inference_steps"], call["guidance"]) == (4, None)
+
+
+def test_expand_prompt_writes_the_caption_once_before_fibo2_loads(monkeypatch, tmp_path):
+    argv = ["--prompt", "an owl", "--expand-prompt", "--seed", "1", "2", "-q", "8", "--output", str(tmp_path / "o.png")]
+    run(monkeypatch, cli, argv)
+    assert FakeFiboVLM.calls == [("an owl", 8, 0)]
+    caption = json.dumps({"short_description": "an owl", "aesthetics": {"aesthetic_score": "high"}})
+    assert [call["prompt"] for call in FakeFibo2.instances[0].generate_calls] == [caption, caption]
+
+
+def test_expand_prompt_keeps_a_json_caption_as_it_is(monkeypatch, tmp_path):
+    prompt = '{"short_description": "an owl"}'
+    run(monkeypatch, cli, ["--prompt", prompt, "--expand-prompt", "--output", str(tmp_path / "o.png")])
+    assert FakeFiboVLM.calls == []
+    assert FakeFibo2.instances[0].generate_calls[0]["prompt"] == prompt
 
 
 def test_text_to_image_refuses_another_model_before_loading(monkeypatch, capsys):
