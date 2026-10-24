@@ -8,7 +8,7 @@ from mflux.models.common.resolution.config_resolution import ConfigResolution
 from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.fibo2.cli.fibo2_generate import Fibo2Command
 from mflux.models.fibo2.latent_creator.fibo2_latent_creator import Fibo2LatentCreator
-from mflux.models.fibo2.model.fibo2_text_encoder.prompt_encoder import Fibo2PromptEncoder
+from mflux.models.fibo2.model.fibo2_text_encoder.fibo2_caption_check import Fibo2CaptionCheck
 from mflux.models.fibo2.variants import Fibo2Edit
 from mflux.models.fibo2.variants.edit.fibo2_edit_images import Fibo2EditImages
 from mflux.utils.dimension_resolver import DimensionResolver
@@ -59,11 +59,7 @@ class Fibo2EditCommand:
             raise ValueError(f"--image-paths takes 1 to {Fibo2EditImages.MAX_IMAGES} images, got {len(args.image_paths)}.")  # fmt: off
         if args.mask_path is not None and len(args.image_paths) != 1:
             raise ValueError("--mask-path can only be used with a single image.")
-        # stdin ("-") is read once, at generation, and checked there
-        if args.prompt and args.prompt != "-":
-            Fibo2PromptEncoder.check_edit_prompt(args.prompt)
-        elif args.prompt_file is not None and Path(args.prompt_file).is_file():
-            Fibo2PromptEncoder.check_edit_prompt(Path(args.prompt_file).read_text().strip())
+        Fibo2CaptionCheck.check_args(args, edit=True)
         return ConfigResolution.resolve_restricted(
             args.model,
             DEFAULT_MODEL,

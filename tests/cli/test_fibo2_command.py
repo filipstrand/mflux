@@ -243,12 +243,36 @@ def test_a_sidecar_text_images_value_must_be_a_boolean(monkeypatch, capsys, tmp_
 
 
 @pytest.mark.parametrize(
+    ("argv", "message"),
+    [
+        (
+            ["--prompt", '{"short_description": "x",}'],
+            "not valid JSON: Illegal trailing comma before end of object at line 1, column 26",
+        ),
+        (["--prompt", '{"short_description": "x", "lighting": "soft"}'], "lighting has to be a JSON object"),
+        (["--model", "fibo2-edit-turbo", "--prompt-file", "FILE"], "lighting has to be a JSON object"),
+    ],
+)
+def test_text_to_image_refuses_a_broken_caption_before_loading(monkeypatch, capsys, tmp_path, argv, message):
+    prompt_file = tmp_path / "caption.json"
+    prompt_file.write_text('{"short_description": "x",\n "lighting": "soft"}')
+    code, err = exit_code(monkeypatch, capsys, cli, [str(prompt_file) if value == "FILE" else value for value in argv])
+    assert code == 2
+    assert message in err
+    assert FakeFibo2.instances == []
+
+
+@pytest.mark.parametrize(
     ("extra", "message"),
     [
         (["--prompt", "p", "--image-paths", *["IMG"] * 6], "1 to 5 images"),
         (["--prompt", "p", "--image-paths", "IMG", "IMG", "--mask-path", "IMG"], "single image"),
         (["--image-paths", "IMG", "--prompt", '{"short_description": "x"}'], "edit_instruction"),
         (["--image-paths", "IMG", "--prompt-file", "JSON"], "edit_instruction"),
+        (
+            ["--image-paths", "IMG", "--prompt", '{"edit_instruction": "y", "objects": {"description": "d"}}'],
+            "objects has to be a list",
+        ),
     ],
 )
 def test_edit_refuses_bad_flags_and_prompts_before_loading(monkeypatch, capsys, tmp_path, image, extra, message):

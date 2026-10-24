@@ -1,3 +1,4 @@
+from mflux.models.fibo2.model.fibo2_text_encoder.fibo2_caption_check import Fibo2CaptionCheck
 from mflux.models.fibo2.variants.fibo2_core import _Fibo2Core
 from mflux.utils.generated_image import GeneratedImage
 
@@ -14,6 +15,7 @@ class Fibo2(_Fibo2Core):
         negative_prompt: str | None = None,
         render_text_images: bool = True,
     ) -> GeneratedImage:
+        Fibo2CaptionCheck.check_and_log(prompt, edit=False)
         return self._generate(
             seed=seed,
             prompt=prompt,

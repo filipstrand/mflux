@@ -8,6 +8,7 @@ from mflux.models.common.config.model_config import ModelConfig
 from mflux.models.common.resolution.config_resolution import ConfigResolution
 from mflux.models.common.vae.vae_decode_options import VAEDecodeOptions
 from mflux.models.fibo2.latent_creator.fibo2_latent_creator import Fibo2LatentCreator
+from mflux.models.fibo2.model.fibo2_text_encoder.fibo2_caption_check import Fibo2CaptionCheck
 from mflux.models.fibo2.variants.txt2img.fibo2 import Fibo2
 from mflux.utils.dimension_resolver import DimensionResolver
 from mflux.utils.exceptions import PromptFileReadError, StopImageGenerationException
@@ -56,13 +57,15 @@ class Fibo2Command:
 
     @staticmethod
     def validate(args: Namespace) -> ModelConfig:
-        return ConfigResolution.resolve_restricted(
+        model_config = ConfigResolution.resolve_restricted(
             args.model,
             DEFAULT_MODEL,
             model_path=args.model_path,
             extra_keys=FAMILY_MODELS,
             base_model=args.base_model,
         )
+        Fibo2CaptionCheck.check_args(args, edit=False)
+        return model_config
 
     @staticmethod
     def load(args: Namespace) -> Fibo2:
